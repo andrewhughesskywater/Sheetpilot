@@ -111,7 +111,7 @@ export function configureLogger() {
             },
             
             // Primary message content
-            message: msg.data.map((d: any) => typeof d === 'object' ? JSON.stringify(d) : String(d)).join(' '),
+            message: msg.data.map((d: unknown) => typeof d === 'object' ? JSON.stringify(d) : String(d)).join(' '),
             
             // Structured data for machine parsing
             data: msg.data.length === 1 && typeof msg.data[0] === 'object' ? msg.data[0] : msg.data,
@@ -150,7 +150,7 @@ export interface LogContext {
     /** Transaction or request ID for correlation */
     transactionId?: string;
     /** Additional structured data */
-    [key: string]: any;
+    [key: string]: unknown;
 }
 
 /**
@@ -186,7 +186,7 @@ export class Logger {
      * Formats a log message with context
      * @private
      */
-    private formatMessage(level: string, message: string, data?: any): void {
+    private formatMessage(level: string, message: string, data?: unknown): void {
         const entry = {
             ...this.context,
             message,
@@ -223,7 +223,7 @@ export class Logger {
      * ISO9000: Document non-conformities and corrective actions
      * SOC2: Track security incidents and system errors
      */
-    error(message: string, error?: Error | any): void {
+    error(message: string, error?: Error | unknown): void {
         const errorData = error instanceof Error ? {
             errorName: error.name,
             errorMessage: error.message,
@@ -237,7 +237,7 @@ export class Logger {
      * Logs a warning message
      * ISO9000: Document potential issues and preventive actions
      */
-    warn(message: string, data?: any): void {
+    warn(message: string, data?: unknown): void {
         this.formatMessage('warn', message, data);
     }
     
@@ -245,7 +245,7 @@ export class Logger {
      * Logs an informational message
      * ISO9000: Document normal operations and decisions
      */
-    info(message: string, data?: any): void {
+    info(message: string, data?: unknown): void {
         this.formatMessage('info', message, data);
     }
     
@@ -253,7 +253,7 @@ export class Logger {
      * Logs verbose operational details
      * For troubleshooting and detailed operational tracking
      */
-    verbose(message: string, data?: any): void {
+    verbose(message: string, data?: unknown): void {
         this.formatMessage('verbose', message, data);
     }
     
@@ -261,14 +261,14 @@ export class Logger {
      * Logs debug information
      * For development and deep troubleshooting
      */
-    debug(message: string, data?: any): void {
+    debug(message: string, data?: unknown): void {
         this.formatMessage('debug', message, data);
     }
     
     /**
      * Logs extremely detailed trace information
      */
-    silly(message: string, data?: any): void {
+    silly(message: string, data?: unknown): void {
         this.formatMessage('silly', message, data);
     }
     
@@ -284,14 +284,14 @@ export class Logger {
      * // ... perform operation ...
      * timer.done({ recordCount: 100 }); // Logs duration with metadata
      */
-    startTimer(operation: string): { done: (metadata?: any) => void } {
+    startTimer(operation: string): { done: (metadata?: unknown) => void } {
         const startTime = Date.now();
         const timerLogger = this.child({ operation });
         
         timerLogger.verbose(`Operation started: ${operation}`);
         
         return {
-            done: (metadata?: any) => {
+            done: (metadata?: unknown) => {
                 const duration = Date.now() - startTime;
                 timerLogger.verbose(`Operation completed: ${operation}`, {
                     durationMs: duration,
@@ -309,7 +309,7 @@ export class Logger {
      * @param message - Description of the event
      * @param data - Additional structured data
      */
-    security(eventType: string, message: string, data?: any): void {
+    security(eventType: string, message: string, data?: unknown): void {
         this.formatMessage('warn', `[SECURITY] ${eventType}: ${message}`, {
             securityEvent: eventType,
             ...data,
@@ -325,7 +325,7 @@ export class Logger {
      * @param message - Description of the action
      * @param data - Additional structured data
      */
-    audit(action: string, message: string, data?: any): void {
+    audit(action: string, message: string, data?: unknown): void {
         this.formatMessage('info', `[AUDIT] ${action}: ${message}`, {
             auditAction: action,
             auditTimestamp: new Date().toISOString(),

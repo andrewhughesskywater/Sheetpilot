@@ -49,7 +49,7 @@ export default function SidebarNavigation({
       <div className="sidebar__add-button">
         <button className="add-button" onClick={onLogoClick}>
           <img 
-            src="./SheetPilot Logo.ico" 
+            src="/transparent-logo-no-text.svg?v=2" 
             alt="SheetPilot" 
             className="logo-icon"
           />

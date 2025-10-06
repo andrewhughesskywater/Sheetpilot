@@ -65,17 +65,16 @@ function loadBetterSqlite3(): (typeof import('better-sqlite3')) {
     if (__betterSqlite3Module) return __betterSqlite3Module;
     try {
         dbLogger.verbose('Loading better-sqlite3 native module');
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
         __betterSqlite3Module = require('better-sqlite3');
         if (!__betterSqlite3Module) {
             throw new Error('Failed to load better-sqlite3 module');
         }
         dbLogger.info('better-sqlite3 module loaded successfully');
         return __betterSqlite3Module;
-    } catch (err: any) {
+    } catch (err: unknown) {
         const message = [
             'Failed to load better-sqlite3 native module',
-            String(err?.message ?? err),
+            err instanceof Error ? err.message : String(err),
             'Recommended actions:',
             '- Run: npm run rebuild   (rebuilds native modules for current Electron)',
             '- Or run: npx electron-rebuild -f -w better-sqlite3',
@@ -100,7 +99,7 @@ export function openDb(opts?: BetterSqlite3.Options): BetterSqlite3.Database {
     fs.mkdirSync(dbDir, { recursive: true });
     
     dbLogger.verbose('Opening database connection', { dbPath: DB_PATH, options: opts });
-    const mod = loadBetterSqlite3() as any;
+    const mod = loadBetterSqlite3() as unknown;
     const DatabaseCtor = mod?.default ?? mod;
     const db = new DatabaseCtor(DB_PATH, opts);
     dbLogger.debug('Database connection established');
@@ -231,7 +230,7 @@ export function checkDuplicateEntry(entry: {
         `);
         
         const result = checkDuplicate.get(entry.date, entry.timeIn, entry.project, entry.taskDescription);
-        return (result as any).count > 0;
+        return (result as { count: number }).count > 0;
     } finally {
         db.close();
     }
@@ -261,7 +260,7 @@ export function getDuplicateEntries(startDate?: string, endDate?: string) {
             HAVING COUNT(*) > 1
         `;
         
-        const params: any[] = [];
+        const params: unknown[] = [];
         
         if (startDate) {
             query += ` AND date >= ?`;
@@ -325,7 +324,7 @@ export function insertTimesheetEntries(entries: Array<{
         let inserted = 0;
         let duplicates = 0;
         
-        const insertMany = db.transaction((entriesList: any[]) => {
+        const insertMany = db.transaction((entriesList: TimesheetEntry[]) => {
             for (const entry of entriesList) {
                 const result = insert.run(
                     entry.date,

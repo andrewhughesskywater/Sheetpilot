@@ -1,23 +1,11 @@
 import { app, BrowserWindow, ipcMain, screen } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import * as path from 'path';
-import {
-  setDbPath,
-  ensureSchema,
-  getDbPath,
-  storeCredentials,
-  getCredentials,
-  listCredentials,
-  deleteCredentials,
-  openDb
-} from './src/services/database';
-import { submitTimesheets } from './src/services/timesheet_importer';
-import {
-  initializeLogging,
-  appLogger,
-  dbLogger,
-  ipcLogger
-} from './src/shared/logger';
+import { setDbPath, ensureSchema, getDbPath, storeCredentials, getCredentials, listCredentials, deleteCredentials, openDb } from '../services/database'
+import { submitTimesheets } from '../services/timesheet_importer';
+import { initializeLogging, appLogger, dbLogger, ipcLogger } from '../shared/logger';
+
+// Helper functions for timesheet validation
 function parseTimeToMinutes(timeStr: string): number {
   const parts = timeStr.split(':');
   if (parts.length !== 2 || !parts[0] || !parts[1]) {
@@ -99,8 +87,8 @@ function getWindowState(): WindowState {
         isMaximized: isMaximized || false
       };
     }
-  } catch (error: any) {
-    appLogger.warn('Failed to load window state, using defaults', { error: error?.message || String(error) });
+  } catch (error: unknown) {
+    appLogger.warn('Failed to load window state, using defaults', { error: error instanceof Error ? error.message : String(error) });
   }
   
   return {
@@ -134,16 +122,16 @@ function saveWindowState() {
     fs.writeFileSync(windowStatePath, JSON.stringify(windowState, null, 2));
     
     appLogger.debug('Window state saved', windowState);
-  } catch (error: any) {
-    appLogger.warn('Failed to save window state', { error: error?.message || String(error) });
+  } catch (error: unknown) {
+    appLogger.warn('Failed to save window state', { error: error instanceof Error ? error.message : String(error) });
   }
 }
 
 // Global safety nets for unhandled async errors
-process.on('unhandledRejection', (reason: any) => {
+process.on('unhandledRejection', (reason: unknown) => {
   appLogger.error('Unhandled promise rejection detected', {
-    reason: String((reason && reason.message) || reason),
-    stack: reason && reason.stack,
+    reason: reason instanceof Error ? reason.message : String(reason),
+    stack: reason instanceof Error ? reason.stack : undefined,
   });
 });
 process.on('rejectionHandled', () => {
@@ -158,10 +146,10 @@ function configureAutoUpdater() {
   
   // Configure logging
   autoUpdater.logger = {
-    info: (message?: any) => appLogger.info('AutoUpdater', { message }),
-    warn: (message?: any) => appLogger.warn('AutoUpdater', { message }),
-    error: (message?: any) => appLogger.error('AutoUpdater error', { message }),
-    debug: (message?: any) => appLogger.debug('AutoUpdater', { message })
+    info: (message?: unknown) => appLogger.info('AutoUpdater', { message }),
+    warn: (message?: unknown) => appLogger.warn('AutoUpdater', { message }),
+    error: (message?: unknown) => appLogger.error('AutoUpdater error', { message }),
+    debug: (message?: unknown) => appLogger.debug('AutoUpdater', { message })
   };
 
   // Event listeners for update process
@@ -194,7 +182,7 @@ function configureAutoUpdater() {
     // due to autoInstallOnAppQuit = true
   });
 
-  autoUpdater.on('error', (err) => {
+  autoUpdater.on('error', (err: Error) => {
     appLogger.error('AutoUpdater error', { error: err.message, stack: err.stack });
   });
 }
@@ -230,7 +218,7 @@ function createWindow() {
     width: windowState.width,
     height: windowState.height,
     show: false, // Don't show until ready
-    icon: path.join(__dirname, '..', 'assets', 'images', 'icon.ico'), // Set window icon
+    icon: path.join(__dirname, '..', '..', 'src', 'assets', 'images', 'icon.ico'), // Set window icon
     autoHideMenuBar: true, // Hide the menu bar
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'), // in dev still JS, will point to compiled .js later
@@ -298,7 +286,7 @@ function createWindow() {
     mainWindow.loadURL('http://localhost:5173');
   } else {
     // In production, __dirname is 'dist/', so go up one level to reach root
-    mainWindow.loadFile(path.join(__dirname, '..', 'renderer', 'dist', 'index.html'));
+    mainWindow.loadFile(path.join(__dirname, '..', '..', 'renderer', 'dist', 'index.html'));
   }
 }
 
@@ -348,10 +336,11 @@ export function registerIPCHandlers() {
         submitResult,
         dbPath: getDbPath() 
       };
-    } catch (err: any) {
+    } catch (err: unknown) {
       ipcLogger.error('Timesheet submission failed', err);
-      timer.done({ outcome: 'error', error: err?.message });
-      return { error: String(err?.message ?? err) };
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      timer.done({ outcome: 'error', error: errorMessage });
+      return { error: errorMessage };
     }
   });
 
@@ -363,9 +352,10 @@ export function registerIPCHandlers() {
       const result = storeCredentials(service, email, password);
       ipcLogger.info('Credentials stored successfully', { service, email, changes: result.changes });
       return result;
-    } catch (err: any) {
+    } catch (err: unknown) {
       ipcLogger.error('Failed to store credentials', err);
-      return { success: false, message: String(err?.message ?? err), changes: 0 };
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      return { success: false, message: errorMessage, changes: 0 };
     }
   });
 
@@ -374,7 +364,7 @@ export function registerIPCHandlers() {
     try {
       const credentials = getCredentials(service);
       return credentials;
-    } catch (err: any) {
+    } catch {
       return null;
     }
   });
@@ -384,7 +374,7 @@ export function registerIPCHandlers() {
     try {
       const credentials = listCredentials();
       return credentials;
-    } catch (err: any) {
+    } catch {
       return [];
     }
   });
@@ -396,9 +386,10 @@ export function registerIPCHandlers() {
       const result = deleteCredentials(service);
       ipcLogger.info('Credentials deleted', { service, changes: result.changes });
       return result;
-    } catch (err: any) {
+    } catch (err: unknown) {
       ipcLogger.error('Failed to delete credentials', err);
-      return { success: false, message: String(err?.message ?? err), changes: 0 };
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      return { success: false, message: errorMessage, changes: 0 };
     }
   });
 
@@ -412,7 +403,7 @@ export function registerIPCHandlers() {
       db.close();
       ipcLogger.verbose('Timesheet entries retrieved', { count: entries.length });
       return entries;
-    } catch (err: any) {
+    } catch (err: unknown) {
       ipcLogger.error('Failed to get timesheet entries', err);
       return [];
     }
@@ -428,7 +419,7 @@ export function registerIPCHandlers() {
       db.close();
       ipcLogger.verbose('Credentials retrieved', { count: credentials.length });
       return credentials;
-    } catch (err: any) {
+    } catch (err: unknown) {
       ipcLogger.error('Failed to get credentials', err);
       return [];
     }
@@ -438,7 +429,7 @@ export function registerIPCHandlers() {
   ipcMain.handle('timesheet:exportToCSV', async () => {
     ipcLogger.verbose('Exporting timesheet data to CSV');
     try {
-      const { getSubmittedTimesheetEntriesForExport } = await import('./src/services/database');
+      const { getSubmittedTimesheetEntriesForExport } = await import('../services/database');
       const entries = getSubmittedTimesheetEntriesForExport();
       
       if (entries.length === 0) {
@@ -515,11 +506,12 @@ export function registerIPCHandlers() {
         entryCount: entries.length,
         filename: `timesheet_export_${new Date().toISOString().split('T')[0]}.csv`
       };
-    } catch (err: any) {
+    } catch (err: unknown) {
       ipcLogger.error('Failed to export CSV', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to export timesheet data';
       return {
         success: false,
-        error: err.message || 'Failed to export timesheet data'
+        error: errorMessage
       };
     }
   });
@@ -534,9 +526,10 @@ export function registerIPCHandlers() {
       db.close();
       ipcLogger.warn('Database cleared - all data removed');
       return { success: true };
-    } catch (err: any) {
+    } catch (err: unknown) {
       ipcLogger.error('Failed to clear database', err);
-      return { success: false, error: String(err?.message ?? err) };
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      return { success: false, error: errorMessage };
     }
   });
 
@@ -616,10 +609,11 @@ export function registerIPCHandlers() {
       });
       timer.done({ changes: result.changes });
       return { success: true, changes: result.changes };
-    } catch (err: any) {
+    } catch (err: unknown) {
       ipcLogger.error('Failed to save draft timesheet entry', err);
-      timer.done({ outcome: 'error', error: err?.message });
-      return { success: false, error: String(err?.message ?? err) };
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      timer.done({ outcome: 'error', error: errorMessage });
+      return { success: false, error: errorMessage };
     }
   });
 
@@ -640,7 +634,7 @@ export function registerIPCHandlers() {
       db.close();
       
       // Convert database format to grid format
-      const gridData = entries.map((entry: any) => ({
+      const gridData = entries.map((entry: Record<string, unknown>) => ({
         date: entry.date,
         timeIn: formatMinutesToTime(entry.time_in),
         timeOut: formatMinutesToTime(entry.time_out),
@@ -653,9 +647,10 @@ export function registerIPCHandlers() {
       ipcLogger.info('Draft timesheet entries loaded', { count: gridData.length });
       timer.done({ count: gridData.length });
       return gridData;
-    } catch (err: any) {
+    } catch (err: unknown) {
       ipcLogger.error('Failed to load draft timesheet entries', err);
-      timer.done({ outcome: 'error', error: err?.message });
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      timer.done({ outcome: 'error', error: errorMessage });
       return [];
     }
   });

@@ -28,6 +28,9 @@ vi.mock('electron', () => {
     }
     loadURL = vi.fn();
     loadFile = vi.fn();
+    once = vi.fn();
+    on = vi.fn();
+    show = vi.fn();
   }
 
   const ipcMain = {

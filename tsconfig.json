@@ -3,8 +3,8 @@
     "target": "ES2022",
     "module": "CommonJS",
     "lib": ["ES2022", "DOM"],
-    "outDir": "dist",
-    "rootDir": ".",
+    "outDir": "build/dist",
+    "rootDir": "src",
     "moduleResolution": "Node",
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
@@ -34,18 +34,16 @@
     "allowJs": false,
     "checkJs": false,
     "incremental": true,
-    "tsBuildInfoFile": "dist/.tsbuildinfo"
+    "tsBuildInfoFile": "build/dist/.tsbuildinfo"
   },
   "include": [
-    "main.ts",
-    "preload.ts",
-    "backend/**/*.ts"
+    "src/**/*.ts"
   ],
   "exclude": [
     "node_modules",
-    "dist",
+    "build",
     "release",
-    "backend/bot/node_modules",
+    "src/services/bot/node_modules",
     "renderer/node_modules",
     "**/*.spec.ts",
     "**/*.test.ts"
