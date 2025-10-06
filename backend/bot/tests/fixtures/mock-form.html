@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mock Timesheet Form</title>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 24px; }
+      .row { margin-bottom: 12px; }
+      label { display: block; margin-bottom: 4px; }
+      input, textarea, button { font-size: 14px; padding: 8px; }
+      textarea { width: 400px; height: 120px; }
+    </style>
+  </head>
+  <body>
+    <h1>Mock Timesheet Form</h1>
+
+    <div class="row">
+      <label>Project</label>
+      <input aria-label="Project" type="text" placeholder="Type project" />
+    </div>
+
+    <div class="row">
+      <label>Date</label>
+      <input placeholder="mm/dd/yyyy" type="text" />
+    </div>
+
+    <div class="row">
+      <label>Hours</label>
+      <input aria-label="Hours" type="number" min="0" max="24" step="0.25" />
+    </div>
+
+    <div class="row">
+      <label>Task Description</label>
+      <textarea aria-label="Task Description" role="textbox"></textarea>
+    </div>
+
+    <div class="row">
+      <button data-client-id="form_submit_btn" id="submitBtn" type="button">Submit</button>
+    </div>
+
+    <script>
+      // Simulate real page behavior: on submit, call the Smartsheet endpoint used by the bot
+      const FORM_ID = '0197cbae7daf72bdb96b3395b500d414';
+      const ENDPOINT = `https://forms.smartsheet.com/api/submit/${FORM_ID}`;
+      document.getElementById('submitBtn').addEventListener('click', async () => {
+        try {
+          await fetch(ENDPOINT, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ok: true }) });
+        } catch (e) {
+          // Ignore network errors here; Playwright will route and fulfill this request in tests
+        }
+      });
+    </script>
+  </body>
+  </html>
+
+

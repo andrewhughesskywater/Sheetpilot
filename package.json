@@ -1,0 +1,91 @@
+{
+  "name": "sheetpilot",
+  "version": "1.0.0",
+  "description": "Timesheet automation application with built-in timesheet entry and browser automation",
+  "author": "SheetPilot Team",
+  "main": "dist/main.js",
+  "scripts": {
+    "postinstall": "electron-builder install-app-deps",
+    "electron": "ts-node main.ts",
+    "electron:compiled": "npm run rebuild && electron dist/main.js",
+    "rebuild": "electron-rebuild -f -w better-sqlite3",
+    "build:main": "tsc main.ts preload.ts --outDir dist --target ES2022 --module CommonJS --moduleResolution Node --esModuleInterop --allowSyntheticDefaultImports",
+    "vite": "cd renderer && npm run dev",
+    "dev": "concurrently -k -n VITE,ELECTRON -c auto \"npm:vite\" \"wait-on tcp:5173 && npm run build:main && npm run electron:compiled\"",
+    "dev:hot": "concurrently -k -n VITE,ELECTRON -c auto \"npm:vite\" \"wait-on tcp:5173 && npm run build:main && npm run dev:main\"",
+    "dev:main": "nodemon --watch main.ts --watch preload.ts --exec \"npm run build:main && electron dist/main.js\"",
+    "build:renderer": "cd renderer && npm run build",
+    "build:bot": "cd backend/bot && npm run build",
+    "build": "npm run build:main && npm run build:renderer && npm run build:bot && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:bot": "cd backend/bot && npm test",
+    "install:bot": "cd backend/bot && npm install",
+    "clean": "rimraf dist && cd backend/bot && npm run clean"
+  },
+  "build": {
+    "appId": "com.sheetpilot.app",
+    "productName": "Sheetpilot",
+    "icon": "icon.ico",
+    "files": [
+      "dist/**/*",
+      "backend/bot/dist/**/*",
+      "renderer/dist/**/*",
+      "icon.ico",
+      "!node_modules/.cache/**",
+      "!backend/bot/node_modules/**",
+      "!renderer/node_modules/**"
+    ],
+    "directories": {
+      "output": "build-output"
+    },
+    "mac": {
+      "category": "public.app-category.productivity"
+    },
+    "win": {
+      "target": "portable",
+      "icon": "icon.ico",
+      "forceCodeSigning": false,
+      "signAndEditExecutable": false
+    },
+    "linux": {
+      "target": "AppImage"
+    },
+    "publish": {
+      "provider": "generic",
+      "url": "file://\\\\swfl-file01\\Maintenance\\Python Programs\\SheetPilot"
+    }
+  },
+  "dependencies": {
+    "@handsontable/react-wrapper": "^16.1.1",
+    "better-sqlite3": "^12.4.1",
+    "electron-log": "^5.4.3",
+    "electron-updater": "^6.6.2",
+    "handsontable": "^16.1.1"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.8.0",
+    "@testing-library/react": "^16.3.0",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^24.5.2",
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "electron": "^38.1.2",
+    "electron-builder": "^26.0.12",
+    "jsdom": "^27.0.0",
+    "material": "^0.9.24",
+    "nodemon": "^3.1.10",
+    "playwright": "^1.55.1",
+    "react": "^19.1.1",
+    "rimraf": "^6.0.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.2",
+    "ui": "^0.2.4",
+    "vite": "^7.1.7",
+    "vitest": "^3.2.4",
+    "wait-on": "^9.0.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

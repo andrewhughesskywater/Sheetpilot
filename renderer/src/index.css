@@ -1,0 +1,79 @@
+/* Import the main theme */
+@import './theme.css';
+
+/* Reset and base styles */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: var(--sp-bg);
+  color: var(--sp-text);
+  font-family: var(--sp-font-sans);
+  line-height: var(--sp-lh-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  text-align: left;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6 {
+  margin: 0;
+  color: var(--sp-text);
+}
+
+h1 {
+  font-size: var(--sp-fs-3xl);
+  font-weight: var(--sp-fw-bold);
+  line-height: var(--sp-lh-tight);
+}
+
+h2 {
+  font-size: var(--sp-fs-2xl);
+  font-weight: var(--sp-fw-semibold);
+  line-height: var(--sp-lh-tight);
+}
+
+h3 {
+  font-size: var(--sp-fs-xl);
+  font-weight: var(--sp-fw-semibold);
+  line-height: var(--sp-lh-tight);
+}
+
+/* Links */
+a {
+  color: var(--sp-color-primary);
+  text-decoration: none;
+  transition: color var(--sp-transition);
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* Buttons */
+button {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all var(--sp-transition);
+}
+
+button:focus-visible {
+  outline: none;
+  box-shadow: var(--sp-focus);
+}

@@ -1,0 +1,121 @@
+/* TimesheetGrid Component Styles */
+
+.timesheet-page {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.timesheet-grid-container {
+  margin-bottom: var(--sp-space-3);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-space-3);
+}
+
+.timesheet-table-container {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  padding: var(--sp-space-4);
+  background: var(--sp-surface);
+  border: 1px solid var(--sp-outline);
+  border-radius: var(--sp-radius-md);
+  box-shadow: var(--sp-shadow-1);
+}
+
+.save-button {
+  padding: var(--sp-space-2) var(--sp-space-4);
+  background: var(--sp-color-primary);
+  color: var(--sp-on-primary);
+  border: none;
+  border-radius: var(--sp-radius-md);
+  font-weight: var(--sp-fw-semibold);
+  cursor: pointer;
+  transition: all var(--sp-transition);
+  box-shadow: var(--sp-shadow-1);
+}
+
+.save-button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--sp-color-primary) 90%, black);
+  transform: translateY(-1px);
+  box-shadow: var(--sp-shadow-2);
+}
+
+.save-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.save-button:focus-visible {
+  outline: none;
+  box-shadow: var(--sp-focus);
+}
+
+.save-button.save-loading {
+  background: var(--sp-color-warning);
+  color: var(--sp-on-warning);
+}
+
+.save-button.save-success {
+  background: var(--sp-color-success);
+  color: var(--sp-on-success);
+  animation: successPulse 0.5s ease-in-out;
+}
+
+@keyframes successPulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.save-info-text {
+  font-size: var(--sp-fs-sm);
+  color: var(--sp-text-2);
+}
+
+/* Handsontable theme overrides */
+.timesheet-table-container .handsontable {
+  background: transparent;
+  color: var(--sp-text);
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.handsontable th {
+  background: var(--sp-surface-2);
+  color: var(--sp-text-2);
+  font-weight: var(--sp-fw-semibold);
+  border-bottom: 1px solid var(--sp-outline);
+}
+
+.handsontable td {
+  border-bottom: 1px solid var(--sp-outline);
+}
+
+.handsontable tr:hover td {
+  background: color-mix(in srgb, var(--sp-color-primary) 6%, transparent);
+}
+
+.handsontable .htDimmed {
+  background: var(--sp-surface-2);
+  color: var(--sp-text-2);
+}
+
+.handsontable .htInvalid {
+  background: color-mix(in srgb, var(--sp-color-error) 10%, var(--sp-surface));
+  border-color: var(--sp-color-error);
+}
+
+.handsontable .htEmpty {
+  background: var(--sp-surface-2);
+}

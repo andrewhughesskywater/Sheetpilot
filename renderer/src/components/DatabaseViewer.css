@@ -1,0 +1,118 @@
+/* DatabaseViewer Component Styles */
+
+.loading-container {
+  text-align: center;
+  padding: var(--sp-space-6);
+  color: var(--sp-text-2);
+}
+
+.error-container h3 {
+  color: var(--sp-color-error);
+}
+
+.error-container {
+  padding: var(--sp-space-6);
+  text-align: center;
+}
+
+.error-container button {
+  background: var(--sp-color-primary);
+  color: var(--sp-on-primary);
+  border: none;
+  padding: var(--sp-space-2) var(--sp-space-4);
+  border-radius: var(--sp-radius-md);
+  cursor: pointer;
+  font-weight: var(--sp-fw-semibold);
+  transition: all var(--sp-transition);
+  margin-top: var(--sp-space-4);
+}
+
+.error-container button:hover {
+  background: color-mix(in srgb, var(--sp-color-primary) 90%, black);
+  transform: translateY(-1px);
+}
+
+.main-container {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.header-container {
+  margin-bottom: var(--sp-space-5);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-container h2 {
+  margin: 0;
+  color: var(--sp-text);
+}
+
+.refresh-button {
+  background: var(--sp-color-primary);
+  color: var(--sp-on-primary);
+  border: none;
+  padding: var(--sp-space-2) var(--sp-space-4);
+  border-radius: var(--sp-radius-md);
+  cursor: pointer;
+  font-weight: var(--sp-fw-semibold);
+  transition: all var(--sp-transition);
+  box-shadow: var(--sp-shadow-1);
+}
+
+.refresh-button:hover {
+  background: color-mix(in srgb, var(--sp-color-primary) 90%, black);
+  transform: translateY(-1px);
+  box-shadow: var(--sp-shadow-2);
+}
+
+.refresh-button:focus-visible {
+  outline: none;
+  box-shadow: var(--sp-focus);
+}
+
+.grid-container {
+  overflow: hidden;
+  position: relative;
+  height: 500px;
+  min-height: 300px;
+  border: 1px solid var(--sp-outline);
+  border-radius: var(--sp-radius-md);
+  background: var(--sp-surface);
+  box-shadow: var(--sp-shadow-1);
+}
+
+.no-data-message {
+  padding: var(--sp-space-6);
+  text-align: center;
+  color: var(--sp-text-2);
+  background: var(--sp-surface);
+  border-radius: var(--sp-radius-md);
+  border: 1px solid var(--sp-outline);
+}
+
+/* Handsontable theme overrides for DatabaseViewer */
+.grid-container .handsontable {
+  background: var(--sp-surface);
+  color: var(--sp-text);
+  border: none;
+  border-radius: var(--sp-radius-md);
+}
+
+.grid-container .handsontable th {
+  background: var(--sp-surface-2);
+  color: var(--sp-text-2);
+  font-weight: var(--sp-fw-semibold);
+  border-bottom: 1px solid var(--sp-outline);
+}
+
+.grid-container .handsontable td {
+  border-bottom: 1px solid var(--sp-outline);
+}
+
+.grid-container .handsontable tr:hover td {
+  background: color-mix(in srgb, var(--sp-color-primary) 6%, transparent);
+}
