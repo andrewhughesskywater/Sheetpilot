@@ -118,7 +118,7 @@ export function cleanupTestFiles(filePaths: string[]): void {
             try {
                 fs.unlinkSync(filePath);
             } catch (error) {
-                console.warn(`Failed to delete test file ${filePath}:`, error);
+                console.warn(`Could not delete test file ${filePath}:`, error);
             }
         }
     });

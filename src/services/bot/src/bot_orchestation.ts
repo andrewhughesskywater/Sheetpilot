@@ -12,6 +12,7 @@
 import * as Cfg from './automation_config';
 import { WebformFiller } from './webform_flow';
 import { LoginManager } from './authentication_flow';
+import { botLogger } from '../../../shared/logger';
 
 /**
  * Result object returned after automation execution
@@ -195,20 +196,19 @@ export class BotOrchestrator {
     const total_rows = df.length;
 
     try {
-      console.log(`Starting automation workflow for ${total_rows} rows`);
-      console.log(`Login credentials provided for user: ${email}`);
+      botLogger.info('Starting automation workflow', { totalRows: total_rows, email });
       
       // Login
-      console.log('Status: Logging in... (10%)');
+      botLogger.info('Logging in', { progress: 10 });
       this.progress_callback?.(10, 'Logging in');
       await this.login_manager.run_login_steps(email, password);
       
-      console.log('Status: Login complete (20%)');
+      botLogger.info('Login complete', { progress: 20 });
       this.progress_callback?.(20, 'Login complete');
 
       const status_col = (this.cfg as any).STATUS_COLUMN_NAME ?? 'Status';
       const complete_val = (this.cfg as any).STATUS_COMPLETE ?? 'Complete';
-      console.log(`Processing ${total_rows} rows with status column: ${status_col}`);
+      botLogger.info('Processing rows', { totalRows: total_rows, statusColumn: status_col, completeValue: complete_val });
 
       for (let i = 0; i < df.length; i++) {
         const idx = i; // Using array index as row identifier
@@ -217,19 +217,21 @@ export class BotOrchestrator {
         try {
           // Skip completed rows
           if (status_col in row && String(row[status_col] ?? '').trim() === complete_val) {
-            console.log(`Status: Skipping completed row ${i+1}/${total_rows} (${20 + Math.floor(60 * (i+1) / total_rows)}%)`);
-            this.progress_callback?.(20 + Math.floor(60 * (i+1) / total_rows), `Skipping completed row ${i+1}`);
+            const progress = 20 + Math.floor(60 * (i+1) / total_rows);
+            botLogger.verbose('Skipping completed row', { rowIndex: i+1, totalRows: total_rows, progress });
+            this.progress_callback?.(progress, `Skipping completed row ${i+1}`);
             continue;
           }
 
-          console.log(`Status: Processing row ${i+1}/${total_rows} (${20 + Math.floor(60 * (i+1) / total_rows)}%)`);
+          const progress = 20 + Math.floor(60 * (i+1) / total_rows);
+          botLogger.verbose('Processing row', { rowIndex: i+1, totalRows: total_rows, progress });
 
           // Build fields from row
           const fields = this._build_fields_from_row(row);
           
           // Validate required fields
           if (!this._validate_required_fields(fields, idx)) {
-            console.log(`Row ${idx} skipped: Missing required fields`);
+            botLogger.warn('Row skipped', { rowIndex: idx, reason: 'Missing required fields' });
             failed_rows.push([idx, 'Missing required fields']);
             continue;
           }
@@ -238,11 +240,11 @@ export class BotOrchestrator {
           await this.webform_filler.wait_for_form_ready();
 
           // Fill fields
-          console.log(`Filling form fields for row ${idx}`);
+          botLogger.verbose('Filling form fields', { rowIndex: idx });
           await this._fill_fields(fields);
 
           if (Cfg.SUBMIT_FORM_AFTER_FILLING) {
-            console.log(`Waiting for form to stabilize before submission`);
+            botLogger.verbose('Waiting for form to stabilize before submission', { rowIndex: idx });
             // Wait for form to be stable (no ongoing animations or changes)
             await Cfg.wait_for_dom_stability(
               this.webform_filler.require_page(),
@@ -258,18 +260,18 @@ export class BotOrchestrator {
             let submissionSuccess = false;
             
             for (let attempt = 0; attempt < maxRetries; attempt++) {
-              console.log(`Submitting form for row ${idx} (attempt ${attempt + 1}/${maxRetries})`);
+              botLogger.info('Submitting form', { rowIndex: idx, attempt: attempt + 1, maxRetries });
               const success = await this.webform_filler.submit_form();
               
               if (success) {
-                console.log(`Row ${idx} submitted successfully with HTTP 200 response`);
+                botLogger.info('Row submitted successfully', { rowIndex: idx, httpStatus: 200 });
                 submissionSuccess = true;
                 break;
               } else {
-                console.log(`Row ${idx} submission attempt ${attempt + 1} failed: No HTTP 200 response`);
+                botLogger.warn('Submission attempt unsuccessful', { rowIndex: idx, attempt: attempt + 1, reason: 'No HTTP 200 response' });
                 if (attempt < maxRetries - 1) {
                   const retryDelay = Cfg.SUBMIT_RETRY_DELAY;
-                  console.log(`Waiting for page to stabilize before retry...`);
+                  botLogger.verbose('Waiting for page to stabilize before retry', { rowIndex: idx, retryDelay });
                   // Wait for page to be stable before retry
                   await Cfg.wait_for_dom_stability(
                     this.webform_filler.require_page(),
@@ -281,35 +283,35 @@ export class BotOrchestrator {
                   );
                   
                   // Re-fill the form before retry
-                  console.log(`Re-filling form fields for retry attempt`);
+                  botLogger.verbose('Re-filling form fields for retry attempt', { rowIndex: idx });
                   await this._fill_fields(fields);
                 }
               }
             }
             
             if (!submissionSuccess) {
-              console.log(`Row ${idx} failed after ${maxRetries} attempts: No HTTP 200 response`);
+              botLogger.error('Row processing failed after retries', { rowIndex: idx, maxRetries, reason: 'No HTTP 200 response' });
               failed_rows.push([idx, `Form submission failed after ${maxRetries} attempts`]);
               continue;
             }
           }
 
           submitted.push(idx);
-          console.log(`Row ${idx} completed successfully`);
+          botLogger.info('Row completed successfully', { rowIndex: idx });
           
           this.progress_callback?.(20 + Math.floor(60 * (i+1) / total_rows), `Completed row ${i+1}`);
         } catch (e: any) {
           const errorMsg = String(e?.message ?? e);
-          console.log(`Row ${idx} processing failed: ${errorMsg}`);
+          botLogger.error('Row processing encountered error', { rowIndex: idx, error: errorMsg });
           
           failed_rows.push([idx, errorMsg]);
           
           // Attempt recovery using webform_filler
           try {
-            console.log(`Attempting recovery for row ${idx}`);
+            botLogger.info('Attempting recovery', { rowIndex: idx });
             await this.webform_filler.navigate_to_base();
           } catch (recoveryError) {
-            console.log(`Could not recover from page error on row ${idx}: ${String(recoveryError)}`);
+            botLogger.error('Could not recover from page error', { rowIndex: idx, recoveryError: String(recoveryError) });
           }
         }
       }
@@ -317,11 +319,13 @@ export class BotOrchestrator {
       // Log final results
       const success_count = submitted.length;
       const failure_count = failed_rows.length;
-      console.log(`Automation workflow completed:`);
-      console.log(`   Total rows: ${total_rows}`);
-      console.log(`   Successful: ${success_count}`);
-      console.log(`   Failed: ${failure_count}`);
-      console.log(`   Success rate: ${total_rows > 0 ? (success_count/total_rows*100).toFixed(1) : 'N/A'}%`);
+      const successRate = total_rows > 0 ? (success_count/total_rows*100).toFixed(1) : 'N/A';
+      botLogger.info('Automation workflow completed', { 
+        totalRows: total_rows, 
+        successCount: success_count, 
+        failureCount: failure_count,
+        successRate: successRate + '%'
+      });
 
       return {
         success: submitted.length > 0,
@@ -368,28 +372,22 @@ export class BotOrchestrator {
    * @returns Promise that resolves when all fields are filled
    */
   private async _fill_fields(fields: Record<string, any>): Promise<void> {
-    console.log(`Processing ${Object.keys(fields).length} fields for form filling`);
-    
-    // Log all available field data for context
-    console.log('Available field data:');
-    for (const [fieldKey, value] of Object.entries(fields)) {
-      console.log(`   ${fieldKey}: '${String(value)}'`);
-    }
+    botLogger.verbose('Processing fields for form filling', { fieldCount: Object.keys(fields).length, fields });
     
     for (const [field_key, value] of Object.entries(fields)) {
       let specBase: Record<string, any> | undefined;
       try {
-        console.log(`Processing field: '${field_key}'`);
+        botLogger.debug('Processing field', { fieldKey: field_key, value });
         
         specBase = Cfg.FIELD_DEFINITIONS[field_key];
         if (!specBase) {
-          console.log(`Skipping field '${field_key}': No specification found`);
+          botLogger.debug('Skipping field', { fieldKey: field_key, reason: 'No specification found' });
           continue;
         }
         
         // Skip empty values
         if (!this._should_process_field(field_key, fields)) {
-          console.log(`Skipping field '${field_key}': Empty/invalid value ('${String(value)}')`);
+          botLogger.debug('Skipping field', { fieldKey: field_key, reason: 'Empty/invalid value', value: String(value) });
           continue;
         }
         
@@ -397,7 +395,7 @@ export class BotOrchestrator {
         if (field_key === 'tool' || field_key === 'detail_code') {
           const project_name = String(fields['project_code'] ?? 'Unknown');
           if (!this._should_process_field(field_key, fields)) {
-            console.log(`Skipping field '${field_key}': Not required for project '${project_name}'`);
+            botLogger.debug('Skipping field', { fieldKey: field_key, reason: 'Not required for project', projectName: project_name });
             continue;
           }
         }
@@ -410,24 +408,33 @@ export class BotOrchestrator {
           const project_specific_locator = this.get_project_specific_tool_locator(project_name);
           if (project_specific_locator) {
             spec['locator'] = project_specific_locator;
-            console.log(`Using project-specific locator for '${field_key}' in project '${project_name}': ${project_specific_locator}`);
+            botLogger.debug('Using project-specific locator', { 
+              fieldKey: field_key, 
+              projectName: project_name, 
+              locator: project_specific_locator 
+            });
           }
         }
         
         // Log field specification details
-        console.log(`Field specification for '${field_key}':`);
-        console.log(`   Label: ${spec['label'] || 'No label'}`);
-        console.log(`   Type: ${spec['type'] || 'text'}`);
-        console.log(`   Locator: ${spec['locator'] || 'No locator'}`);
+        botLogger.debug('Field specification', { 
+          fieldKey: field_key,
+          label: spec['label'] || 'No label',
+          type: spec['type'] || 'text',
+          locator: spec['locator'] || 'No locator'
+        });
         
         // Inject the field value
-        console.log(`Calling webform_filler.inject_field_value for '${field_key}'`);
+        botLogger.debug('Injecting field value', { fieldKey: field_key, value: String(value) });
         await this.webform_filler.inject_field_value(spec, String(value));
         
       } catch (error) {
-        console.error(`Failed to process field '${field_key}' with value '${value}'`);
-        console.error(`   Field specification: ${specBase ? JSON.stringify(specBase) : 'Not available'}`);
-        console.error(`   Error: ${String(error)}`);
+        botLogger.error('Could not process field', { 
+          fieldKey: field_key, 
+          value, 
+          fieldSpec: specBase ? JSON.stringify(specBase) : 'Not available',
+          error: String(error) 
+        });
         throw error;
       }
     }

@@ -83,7 +83,7 @@ export class LoginManager {
             baseUrl: this.cfg.BASE_URL,
             error: String(e) 
           });
-          throw new BotNavigationError(`Failed to navigate to ${this.cfg.BASE_URL} after ${max_navigation_retries} attempts: ${String(e)}`);
+          throw new BotNavigationError(`Could not navigate to ${this.cfg.BASE_URL} after ${max_navigation_retries} attempts: ${String(e)}`);
         }
         // Wait for page to be stable after navigation failure
         const page = this.browser_manager.require_page();

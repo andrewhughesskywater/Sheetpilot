@@ -1,15 +1,17 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { HotTable } from '@handsontable/react-wrapper';
 import { registerAllModules } from 'handsontable/registry';
-import 'handsontable/dist/handsontable.full.min.css';
+import type { HotTableRef } from '@handsontable/react-wrapper';
+import 'handsontable/styles/handsontable.css';
+import 'handsontable/styles/ht-theme-horizon.css';
 import { useData } from '../contexts/DataContext';
 import './TimesheetGrid.css';
 
 // Register all Handsontable modules
 registerAllModules();
 
-// Define the row data type according to Phase 1 requirements
 interface TimesheetRow {
+  id?: number;
   date?: string;
   timeIn?: string;
   timeOut?: string;
@@ -19,7 +21,7 @@ interface TimesheetRow {
   taskDescription?: string;
 }
 
-// Phase 2: Data structures for dependent dropdowns
+// Business logic: dependent dropdown data structures
 const projectsWithoutTools = new Set([
   "ERT",
   "PTO/RTO", 
@@ -109,11 +111,9 @@ const chargeCodes = [
   "Admin", "EPR1", "EPR2", "EPR3", "EPR4", "Repair", "Meeting", "Other", "PM", "Training", "Upgrade"
 ];
 
-// Phase 2: Helper functions for cascading rules
+// Helper functions for dropdown cascading logic
 function getToolOptions(project?: string): string[] {
-  if (!project || projectsWithoutTools.has(project)) {
-    return [];
-  }
+  if (!project || projectsWithoutTools.has(project)) return [];
   return toolsByProject[project] || [];
 }
 
@@ -125,7 +125,7 @@ function projectNeedsTools(project?: string): boolean {
   return !!project && !projectsWithoutTools.has(project);
 }
 
-// Phase 3: Validation helper functions
+// Validation helpers
 function isValidDate(dateStr?: string): boolean {
   if (!dateStr) return false;
   const date = new Date(dateStr);
@@ -250,25 +250,20 @@ function validateField(value: unknown, row: number, prop: string | number, rows:
   }
 }
 
-// Phase 3: Normalization helper functions
+// Normalization helpers
 function normalizeRowData(row: TimesheetRow): TimesheetRow {
   const normalized = { ...row };
-  
-  // Normalize N/A fields to null
   if (!projectNeedsTools(normalized.project)) {
     normalized.tool = null;
     normalized.chargeCode = null;
   }
-  
   if (!toolNeedsChargeCode(normalized.tool || undefined)) {
     normalized.chargeCode = null;
   }
-  
   return normalized;
 }
 
-
-// Helper function to normalize trailing blank rows
+// Ensure one blank row at end for new entries
 function normalizeTrailingBlank(rows: TimesheetRow[]): TimesheetRow[] {
   // Remove trailing empty rows
   let lastNonEmptyIndex = -1;
@@ -288,6 +283,7 @@ interface TimesheetGridProps {
 
 const TimesheetGrid: React.FC<TimesheetGridProps> = ({ onChange }) => {
   const [saveButtonState, setSaveButtonState] = useState<'normal' | 'saving' | 'success'>('normal');
+  const hotTableRef = useRef<HotTableRef>(null);
   
   // Use preloaded data from context
   const { 
@@ -297,34 +293,62 @@ const TimesheetGrid: React.FC<TimesheetGridProps> = ({ onChange }) => {
     timesheetDraftError 
   } = useData();
 
-  // Update local state when preloaded data changes
-  useEffect(() => {
-    if (timesheetDraftData) {
-      onChange?.(timesheetDraftData);
+  // Update data using updateData() to preserve table state (selection, scroll position)
+  const updateTableData = useCallback((newData: TimesheetRow[]) => {
+    if (hotTableRef.current?.hotInstance) {
+      console.log('[TimesheetGrid] Updating table data while preserving state');
+      hotTableRef.current.hotInstance.updateData(newData);
     }
-  }, [timesheetDraftData, onChange]);
+    onChange?.(newData);
+  }, [onChange]);
 
-  // Phase 4: Autosave function
-  const autosaveRow = useCallback(async (row: TimesheetRow) => {
-    // Only autosave if row has required fields
-    if (!row.date || !row.timeIn || !row.timeOut || !row.project || !row.taskDescription) {
-      return;
+  // Track if this is the initial load to avoid unnecessary updateData() calls
+  const isInitialLoadRef = useRef(true);
+
+  // Update local state when preloaded data changes from external source (e.g., refresh)
+  useEffect(() => {
+    if (isInitialLoadRef.current) {
+      // First load - no need to use updateData(), just let data prop handle it
+      isInitialLoadRef.current = false;
+      onChange?.(timesheetDraftData);
+    } else if (timesheetDraftData && hotTableRef.current?.hotInstance) {
+      // Subsequent loads from external source - use updateData() to preserve UI state
+      updateTableData(timesheetDraftData);
     }
+  }, [timesheetDraftData, updateTableData, onChange]);
+
+  // LocalStorage backup for offline resilience
+  const saveLocalBackup = useCallback((data: TimesheetRow[]) => {
+    try {
+      const dataToBackup = data.filter(row => 
+        row.date || row.timeIn || row.timeOut || row.project || row.taskDescription
+      );
+      localStorage.setItem('sheetpilot_timesheet_backup', JSON.stringify({
+        data: dataToBackup,
+        timestamp: new Date().toISOString()
+      }));
+      console.log('[TimesheetGrid] Local backup saved', { rows: dataToBackup.length });
+    } catch (error) {
+      console.error('[TimesheetGrid] Could not save local backup:', error);
+    }
+  }, []);
+
+  // Autosave row to database when complete
+  const autosaveRow = useCallback(async (row: TimesheetRow) => {
+    if (!row.date || !row.timeIn || !row.timeOut || !row.project || !row.taskDescription) return;
     
     try {
-      console.log('[TimesheetGrid] Autosaving row:', row);
       const result = await window.timesheet.saveDraft({
-        date: row.date || '',
-        timeIn: row.timeIn || '',
-        timeOut: row.timeOut || '',
-        project: row.project || '',
+        id: row.id,
+        date: row.date,
+        timeIn: row.timeIn,
+        timeOut: row.timeOut,
+        project: row.project,
         tool: row.tool,
         chargeCode: row.chargeCode,
-        taskDescription: row.taskDescription || ''
+        taskDescription: row.taskDescription
       });
-      if (result.success) {
-        console.log('[TimesheetGrid] Autosave successful, changes:', result.changes);
-      } else {
+      if (!result.success) {
         console.error('[TimesheetGrid] Autosave failed:', result.error);
       }
     } catch (error) {
@@ -332,279 +356,179 @@ const TimesheetGrid: React.FC<TimesheetGridProps> = ({ onChange }) => {
     }
   }, []);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleAfterChange = useCallback((changes: any, source: string) => {
     if (!changes || source === 'loadData') return;
     
     const next = [...timesheetDraftData];
-    for (const [rowIdxStr, prop, oldVal, newVal] of changes) {
-      const rowIdx = Number(rowIdxStr);
-      if (next[rowIdx]) {
-        const currentRow = next[rowIdx];
-        
-        // Auto-format time inputs
-        if ((prop === 'timeIn' || prop === 'timeOut') && newVal !== oldVal && newVal) {
-          const formattedTime = formatTimeInput(String(newVal));
-          next[rowIdx] = { ...currentRow, [prop]: formattedTime };
-          continue;
-        }
-        
-        // Phase 2: Implement cascading rules
-        if (prop === 'project' && newVal !== oldVal) {
-          // When project changes, clear tool and chargeCode if project doesn't need tools
-          if (typeof newVal === 'string' && projectsWithoutTools.has(newVal)) {
-            next[rowIdx] = { ...currentRow, project: newVal, tool: null, chargeCode: null };
-          } else {
-            // Clear tool and chargeCode when project changes (user needs to reselect)
-            next[rowIdx] = { ...currentRow, project: typeof newVal === 'string' ? newVal : String(newVal || ''), tool: null, chargeCode: null };
-          }
-        } else if (prop === 'tool' && newVal !== oldVal) {
-          // When tool changes, clear chargeCode if tool doesn't need it
-          if (typeof newVal === 'string' && toolsWithoutCharges.has(newVal)) {
-            next[rowIdx] = { ...currentRow, tool: newVal, chargeCode: null };
-          } else {
-            next[rowIdx] = { ...currentRow, tool: typeof newVal === 'string' ? newVal : String(newVal || '') };
-          }
-        } else {
-          // Regular field update
-          next[rowIdx] = { ...currentRow, [prop]: newVal };
-        }
+    
+    for (const change of changes) {
+      const [rowIdx, prop, oldVal, newVal] = change;
+      if (!next[rowIdx]) continue;
+      
+      const currentRow = next[rowIdx];
+      const propStr = String(prop);
+      
+      // Auto-format time inputs
+      if ((propStr === 'timeIn' || propStr === 'timeOut') && newVal !== oldVal && newVal) {
+        next[rowIdx] = { ...currentRow, [propStr]: formatTimeInput(String(newVal)) };
+        continue;
+      }
+      
+      // Cascading dropdown rules
+      if (propStr === 'project' && newVal !== oldVal) {
+        const project = typeof newVal === 'string' ? newVal : String(newVal || '');
+        next[rowIdx] = projectsWithoutTools.has(project)
+          ? { ...currentRow, project, tool: null, chargeCode: null }
+          : { ...currentRow, project, tool: null, chargeCode: null };
+      } else if (propStr === 'tool' && newVal !== oldVal) {
+        const tool = typeof newVal === 'string' ? newVal : String(newVal || '');
+        next[rowIdx] = toolsWithoutCharges.has(tool)
+          ? { ...currentRow, tool, chargeCode: null }
+          : { ...currentRow, tool };
+      } else {
+        next[rowIdx] = { ...currentRow, [propStr]: newVal };
       }
     }
     
-    // Phase 3: Normalize all rows
+    // Normalize and save
     const normalizedRows = normalizeTrailingBlank(next.map(normalizeRowData));
     setTimesheetDraftData(normalizedRows);
     onChange?.(normalizedRows);
+    saveLocalBackup(normalizedRows);
     
-    // Phase 4: Autosave the changed row
-    if (changes && changes.length > 0) {
-      const [rowIdxStr] = changes[0];
-      const rowIdx = Number(rowIdxStr);
-      if (normalizedRows[rowIdx]) {
-        autosaveRow({
-          date: normalizedRows[rowIdx].date || '',
-          timeIn: normalizedRows[rowIdx].timeIn || '',
-          timeOut: normalizedRows[rowIdx].timeOut || '',
-          project: normalizedRows[rowIdx].project || '',
-          tool: normalizedRows[rowIdx].tool,
-          chargeCode: normalizedRows[rowIdx].chargeCode,
-          taskDescription: normalizedRows[rowIdx].taskDescription || ''
-        });
-      }
+    // Autosave first changed row
+    if (changes.length > 0 && normalizedRows[changes[0][0]]) {
+      autosaveRow(normalizedRows[changes[0][0]]);
     }
-  }, [timesheetDraftData, onChange, autosaveRow]);
+  }, [timesheetDraftData, setTimesheetDraftData, onChange, autosaveRow, saveLocalBackup]);
 
-  // Phase 3: Validation hooks
+  // Handle row removal (note: deleteDraft API not yet implemented)
+  const handleAfterRemoveRow = useCallback(() => {
+    // TODO: Implement deleteDraft API in window.timesheet
+    // For now, removed rows will be handled on next data refresh
+  }, []);
+
+  // Validation hooks
   const handleBeforeValidate = useCallback((value: unknown, row: number, prop: string | number) => {
     const errorMessage = validateField(value, row, prop, timesheetDraftData);
-    if (errorMessage) {
-      // Return the error message to be displayed
-      return errorMessage;
-    }
-    return value;
+    return errorMessage || value;
   }, [timesheetDraftData]);
 
-  const handleAfterValidate = useCallback((isValid: boolean, value: unknown, row: number, prop: string | number) => {
-    // Remove unused parameter warning
-    void value;
-    // For N/A fields, always consider them valid
-    if (prop === 'tool' && !projectNeedsTools(timesheetDraftData[row]?.project)) {
-      return true;
-    }
-    if (prop === 'chargeCode' && !toolNeedsChargeCode(timesheetDraftData[row]?.tool || undefined)) {
-      return true;
-    }
-    
+  const handleAfterValidate = useCallback((isValid: boolean, _value: unknown, row: number, prop: string | number) => {
+    // N/A fields are always valid
+    if (prop === 'tool' && !projectNeedsTools(timesheetDraftData[row]?.project)) return true;
+    if (prop === 'chargeCode' && !toolNeedsChargeCode(timesheetDraftData[row]?.tool || undefined)) return true;
     return isValid;
   }, [timesheetDraftData]);
 
-  // Phase 6: Copy/paste normalization
-  const handleBeforeCopy = useCallback((data: unknown[][], coords: unknown[], copiedHeadersCount: { columnHeadersCount: number }) => {
-    // Remove unused parameters warning
-    void coords;
-    void copiedHeadersCount;
-    console.log('[TimesheetGrid] Copying data:', data);
-    return true;
-  }, []);
-
-  const handleBeforePaste = useCallback((data: unknown[][], coords: unknown[]) => {
-    // Remove unused parameter warning
-    void coords;
-    console.log('[TimesheetGrid] Pasting data:', data);
-    
-    // Normalize pasted data
-    data.map(row => {
+  // Normalize pasted data
+  const handleBeforePaste = useCallback((data: unknown[][]) => {
+    data.forEach((row, i) => {
       if (row.length >= 7) {
         const [date, timeIn, timeOut, project, tool, chargeCode, taskDescription] = row;
         
-        // Apply normalization rules
         let normalizedTool = tool;
         let normalizedChargeCode = chargeCode;
         
-        // If project doesn't need tools, clear tool and chargeCode
         if (typeof project === 'string' && projectsWithoutTools.has(project)) {
           normalizedTool = null;
           normalizedChargeCode = null;
-        }
-        // If tool doesn't need charge codes, clear chargeCode
-        else if (typeof tool === 'string' && toolsWithoutCharges.has(tool)) {
+        } else if (typeof tool === 'string' && toolsWithoutCharges.has(tool)) {
           normalizedChargeCode = null;
         }
         
-        return [date, timeIn, timeOut, project, normalizedTool, normalizedChargeCode, taskDescription];
+        data[i] = [date, timeIn, timeOut, project, normalizedTool, normalizedChargeCode, taskDescription];
       }
-      return row;
     });
-    
     return true;
   }, []);
 
-  const handleAfterCopy = useCallback(() => {
-    console.log('[TimesheetGrid] Data copied successfully');
+  // PersistentState hooks for localStorage state management
+  const handlePersistentStateSave = useCallback((key: string, value: unknown) => {
+    try {
+      localStorage.setItem(`sheetpilot_${key}`, JSON.stringify(value));
+    } catch (error) {
+      console.error('[TimesheetGrid] Could not save to localStorage:', error);
+    }
   }, []);
 
-  const handleAfterPaste = useCallback(() => {
-    console.log('[TimesheetGrid] Data pasted successfully');
+  const handlePersistentStateLoad = useCallback((key: string) => {
+    try {
+      const stored = localStorage.getItem(`sheetpilot_${key}`);
+      return stored ? JSON.parse(stored) : undefined;
+    } catch (error) {
+      console.error('[TimesheetGrid] Could not load from localStorage:', error);
+      return undefined;
+    }
   }, []);
 
-  // Phase 2: Create cells function for enable/disable logic
+  const handlePersistentStateReset = useCallback((key: string) => {
+    try {
+      localStorage.removeItem(`sheetpilot_${key}`);
+    } catch (error) {
+      console.error('[TimesheetGrid] Could not reset localStorage:', error);
+    }
+  }, []);
+
+  // Cell-level configuration (cascades over column config)
   const cellsFunction = useCallback((row: number, col: number) => {
     const rowData = timesheetDraftData[row];
-    const cellProps: Record<string, unknown> = {};
     
-    if (col === 4) { // tool column
+    // Tool column - dynamic dropdown based on selected project
+    if (col === 4) {
       const project = rowData?.project;
-      if (!projectNeedsTools(project)) {
-        cellProps.readOnly = true;
-        cellProps.className = 'htDimmed';
-        cellProps.placeholder = 'N/A for this project';
-      } else {
-        // Set the dynamic source for this specific row
-        cellProps.source = getToolOptions(project);
-      }
-    } else if (col === 5) { // chargeCode column
-      const tool = rowData?.tool;
-      if (!toolNeedsChargeCode(tool || undefined)) {
-        cellProps.readOnly = true;
-        cellProps.className = 'htDimmed';
-        cellProps.placeholder = 'N/A for this tool';
-      }
+      return !projectNeedsTools(project)
+        ? { readOnly: true, className: 'htDimmed', placeholder: 'N/A for this project' }
+        : { source: getToolOptions(project) };
     }
     
-    return cellProps;
+    // Charge code column - conditional based on selected tool
+    if (col === 5 && !toolNeedsChargeCode(rowData?.tool || undefined)) {
+      return { readOnly: true, className: 'htDimmed', placeholder: 'N/A for this tool' };
+    }
+    
+    return {};
   }, [timesheetDraftData]);
 
-
-  // Phase 2: Create dynamic column definitions with Phase 6 accessibility enhancements
+  // Column definitions using cascading configuration
   const columnDefinitions = useMemo(() => [
-    { 
-      data: 'date', 
-      type: 'date', 
-      dateFormat: 'YYYY-MM-DD', 
-      placeholder: 'Like 2024-01-15',
-      // Phase 6: Accessibility
-      className: 'htCenter',
-      renderer: 'date',
-      validator: 'date'
-    },
-    { 
-      data: 'timeIn', 
-      type: 'text', 
-      placeholder: 'Like 09:00 or 800',
-      // Phase 6: Accessibility
-      className: 'htCenter',
-      validator: 'time'
-    },
-    { 
-      data: 'timeOut', 
-      type: 'text', 
-      placeholder: 'Like 17:00 or 1700',
-      // Phase 6: Accessibility
-      className: 'htCenter',
-      validator: 'time'
-    },
-    { 
-      data: 'project', 
-      type: 'dropdown', 
-      source: projects,
-      strict: true,
-      allowInvalid: false,
-      placeholder: 'Pick a project',
-      // Phase 6: Accessibility
-      className: 'htCenter'
-    },
-    {
-      data: 'tool',
-      type: 'dropdown',
-      source: [], // This will be overridden by cells function
-      strict: true,
-      allowInvalid: false,
-      placeholder: 'Pick a tool',
-      // Phase 6: Accessibility
-      className: 'htCenter'
-    },
-    {
-      data: 'chargeCode',
-      type: 'dropdown',
-      source: chargeCodes,
-      strict: true,
-      allowInvalid: false,
-      placeholder: 'Pick a charge code',
-      // Phase 6: Accessibility
-      className: 'htCenter'
-    },
-    { 
-      data: 'taskDescription', 
-      type: 'text', 
-      placeholder: 'Describe what you did',
-      // Phase 6: Accessibility
-      className: 'htLeft'
-    }
+    { data: 'date', type: 'date', dateFormat: 'YYYY-MM-DD', placeholder: 'Like 2024-01-15', className: 'htCenter' },
+    { data: 'timeIn', type: 'text', placeholder: 'Like 09:00 or 800', className: 'htCenter' },
+    { data: 'timeOut', type: 'text', placeholder: 'Like 17:00 or 1700', className: 'htCenter' },
+    { data: 'project', type: 'dropdown', source: projects, strict: true, allowInvalid: false, placeholder: 'Pick a project', className: 'htCenter' },
+    { data: 'tool', type: 'dropdown', source: [], strict: true, allowInvalid: false, placeholder: 'Pick a tool', className: 'htCenter' },
+    { data: 'chargeCode', type: 'dropdown', source: chargeCodes, strict: true, allowInvalid: false, placeholder: 'Pick a charge code', className: 'htCenter' },
+    { data: 'taskDescription', type: 'text', placeholder: 'Describe what you did', className: 'htLeft' }
   ], []);
 
-  // Phase 4: Save all rows action
+  // Save all rows manually
   const handleSaveAll = useCallback(async () => {
-    if (saveButtonState !== 'normal') return; // Prevent multiple saves
+    if (saveButtonState !== 'normal') return;
     
     try {
       setSaveButtonState('saving');
-      console.log('[TimesheetGrid] Saving all rows...');
-      let savedCount = 0;
-      let errorCount = 0;
       
       for (const row of timesheetDraftData) {
         if (row.date && row.timeIn && row.timeOut && row.project && row.taskDescription) {
-          const result = await window.timesheet.saveDraft({
-        date: row.date || '',
-        timeIn: row.timeIn || '',
-        timeOut: row.timeOut || '',
-        project: row.project || '',
-        tool: row.tool,
-        chargeCode: row.chargeCode,
-        taskDescription: row.taskDescription || ''
-      });
-          if (result.success) {
-            savedCount++;
-          } else {
-            errorCount++;
-            console.error('[TimesheetGrid] Failed to save row:', row, result.error);
-          }
+          await window.timesheet.saveDraft({
+            id: row.id,
+            date: row.date,
+            timeIn: row.timeIn,
+            timeOut: row.timeOut,
+            project: row.project,
+            tool: row.tool,
+            chargeCode: row.chargeCode,
+            taskDescription: row.taskDescription
+          });
         }
       }
       
-      console.log(`[TimesheetGrid] Save complete: ${savedCount} saved, ${errorCount} errors`);
-      
-      // Show success state
       setSaveButtonState('success');
-      
-      // Fade back to normal after 5 seconds
-      setTimeout(() => {
-        setSaveButtonState('normal');
-      }, 5000);
-      
+      setTimeout(() => setSaveButtonState('normal'), 5000);
     } catch (error) {
       console.error('[TimesheetGrid] Error saving all rows:', error);
-      setSaveButtonState('normal'); // Reset on error
+      setSaveButtonState('normal');
     }
   }, [timesheetDraftData, saveButtonState]);
 
@@ -626,9 +550,10 @@ const TimesheetGrid: React.FC<TimesheetGridProps> = ({ onChange }) => {
     );
   }
 
+
   return (
     <div className="timesheet-page">
-      <h2>Timesheet</h2>
+      <h2 className="md-typescale-headline-medium">Timesheet</h2>
       <div className="timesheet-grid-container">
         <button 
           onClick={handleSaveAll} 
@@ -637,49 +562,64 @@ const TimesheetGrid: React.FC<TimesheetGridProps> = ({ onChange }) => {
         >
           {saveButtonState === 'success' ? '✓ Complete' : saveButtonState === 'saving' ? 'Saving...' : 'Save All Rows'}
         </button>
-        <span className="save-info-text">
+        <span className="save-info-text md-typescale-body-small">
           Your work is saved automatically when you finish each row
         </span>
       </div>
       <div className="timesheet-table-container">
         <HotTable
+        ref={hotTableRef}
+        id="sheetpilot-timesheet-grid"
         data={timesheetDraftData}
         columns={columnDefinitions}
         cells={cellsFunction}
         afterChange={handleAfterChange}
+        afterRemoveRow={handleAfterRemoveRow}
         beforeValidate={handleBeforeValidate}
         afterValidate={handleAfterValidate}
-        beforeCopy={handleBeforeCopy}
         beforePaste={handleBeforePaste}
-        afterCopy={handleAfterCopy}
-        afterPaste={handleAfterPaste}
+        persistentState={true}
+        persistentStateSave={handlePersistentStateSave}
+        persistentStateLoad={handlePersistentStateLoad}
+        persistentStateReset={handlePersistentStateReset}
+        themeName="ht-theme-horizon"
         width="100%"
         height={400}
         rowHeaders={true}
         colHeaders={['Date', 'Start Time', 'End Time', 'Project', 'Tool', 'Charge Code', 'Task Description']}
-        contextMenu={true}
+        contextMenu={['row_above', 'row_below', 'remove_row', '---------', 'undo', 'redo', '---------', 'copy', 'cut']}
         manualColumnResize={true}
         manualRowResize={true}
         stretchH="all"
         licenseKey="non-commercial-and-evaluation"
         minSpareRows={1}
-        // Phase 6: Accessibility and UX enhancements
+        readOnly={false}
+        fillHandle={true}
+        autoWrapRow={true}
+        autoWrapCol={true}
+        fragmentSelection={true}
+        disableVisualSelection={false}
+        selectionMode="multiple"
+        outsideClickDeselects={true}
+        columnSorting={{
+          initialConfig: { column: 0, sortOrder: 'desc' },
+          indicator: true,
+          headerAction: true,
+          sortEmptyCells: true,
+          compareFunctionFactory: (sortOrder: string) => (value: unknown, nextValue: unknown): -1 | 0 | 1 => {
+            if (value === null || value === undefined || value === '') return sortOrder === 'asc' ? 1 : -1;
+            if (nextValue === null || nextValue === undefined || nextValue === '') return sortOrder === 'asc' ? -1 : 1;
+            if (value === nextValue) return 0;
+            return (value < nextValue ? -1 : 1) * (sortOrder === 'asc' ? 1 : -1) as -1 | 0 | 1;
+          }
+        }}
         tabNavigation={true}
         navigableHeaders={true}
         copyPaste={true}
         search={true}
-        // Phase 6: Keyboard navigation
-        enterMoves={{
-          row: 1,
-          col: 0
-        }}
-        tabMoves={{
-          row: 0,
-          col: 1
-        }}
-        // Phase 6: Visual indicators
+        enterMoves={{ row: 1, col: 0 }}
+        tabMoves={{ row: 0, col: 1 }}
         invalidCellClassName="htInvalid"
-        // Phase 6: Copy/paste normalization
       />
       </div>
     </div>

@@ -64,50 +64,57 @@ function getWindowState(): WindowState {
   const defaultWidth = 1200;
   const defaultHeight = Math.round(defaultWidth * 1.618);
   
-  try {
-    const userDataPath = app.getPath('userData');
-    const fs = require('fs');
-    const windowStatePath = path.join(userDataPath, 'window-state.json');
-    
-    if (fs.existsSync(windowStatePath)) {
-      const data = fs.readFileSync(windowStatePath, 'utf8');
-      const savedState = JSON.parse(data);
-      
-      // Validate saved state and ensure it's within screen bounds
-      const { width, height, x, y, isMaximized } = savedState;
-      const display = screen.getPrimaryDisplay();
-      const { width: screenWidth, height: screenHeight } = display.workAreaSize;
-      
-      // Ensure window is not larger than screen
-      const validWidth = Math.min(width || defaultWidth, screenWidth);
-      const validHeight = Math.min(height || defaultHeight, screenHeight);
-      
-      // Ensure window position is within screen bounds
-      let validX = x;
-      let validY = y;
-      
-      if (validX !== undefined && validY !== undefined) {
-        validX = Math.max(0, Math.min(validX, screenWidth - validWidth));
-        validY = Math.max(0, Math.min(validY, screenHeight - validHeight));
-      }
-      
-      return {
-        width: validWidth,
-        height: validHeight,
-        x: validX,
-        y: validY,
-        isMaximized: isMaximized || false
-      };
-    }
-  } catch (error: any) {
-    appLogger.warn('Failed to load window state, using defaults', { error: error?.message || String(error) });
-  }
-  
+  // Fast path: return defaults immediately for quick startup
+  // Window state will be restored asynchronously after window is shown
   return {
     width: defaultWidth,
     height: defaultHeight,
     isMaximized: false
   };
+}
+
+// Asynchronous window state restoration (called after window is shown)
+async function restoreWindowState(window: BrowserWindow): Promise<void> {
+  try {
+    const userDataPath = app.getPath('userData');
+    const fs = require('fs').promises;
+    const windowStatePath = path.join(userDataPath, 'window-state.json');
+    
+    const data = await fs.readFile(windowStatePath, 'utf8');
+    const savedState = JSON.parse(data);
+    
+    // Validate saved state and ensure it's within screen bounds
+    const { width, height, x, y, isMaximized } = savedState;
+    const display = screen.getPrimaryDisplay();
+    const { width: screenWidth, height: screenHeight } = display.workAreaSize;
+    
+    // Ensure window is not larger than screen
+    const validWidth = Math.min(width || 1200, screenWidth);
+    const validHeight = Math.min(height || 1943, screenHeight);
+    
+    // Ensure window position is within screen bounds
+    let validX = x;
+    let validY = y;
+    
+    if (validX !== undefined && validY !== undefined) {
+      validX = Math.max(0, Math.min(validX, screenWidth - validWidth));
+      validY = Math.max(0, Math.min(validY, screenHeight - validHeight));
+    }
+    
+    // Restore window state
+    if (isMaximized) {
+      window.maximize();
+    } else {
+      window.setBounds({ width: validWidth, height: validHeight, x: validX, y: validY });
+    }
+    
+    appLogger.debug('Window state restored', { width: validWidth, height: validHeight, isMaximized });
+  } catch (error: unknown) {
+    // Window state file doesn't exist or is invalid - keep defaults
+    appLogger.debug('Using default window state', { 
+      error: error instanceof Error ? error.message : String(error) 
+    });
+  }
 }
 
 function saveWindowState() {
@@ -134,20 +141,20 @@ function saveWindowState() {
     fs.writeFileSync(windowStatePath, JSON.stringify(windowState, null, 2));
     
     appLogger.debug('Window state saved', windowState);
-  } catch (error: any) {
-    appLogger.warn('Failed to save window state', { error: error?.message || String(error) });
+  } catch (error: unknown) {
+    appLogger.warn('Could not save window state', { error: error instanceof Error ? error.message : String(error) });
   }
 }
 
 // Global safety nets for unhandled async errors
-process.on('unhandledRejection', (reason: any) => {
+process.on('unhandledRejection', (reason: unknown) => {
   appLogger.error('Unhandled promise rejection detected', {
-    reason: String((reason && reason.message) || reason),
-    stack: reason && reason.stack,
+    reason: reason instanceof Error ? reason.message : String(reason),
+    stack: reason instanceof Error ? reason.stack : undefined,
   });
 });
 process.on('rejectionHandled', () => {
-  appLogger.warn('Previously unhandled rejection was handled later');
+  appLogger.warn('Application handled previously unhandled rejection');
 });
 
 // Configure auto-updater
@@ -158,10 +165,10 @@ function configureAutoUpdater() {
   
   // Configure logging
   autoUpdater.logger = {
-    info: (message?: any) => appLogger.info('AutoUpdater', { message }),
-    warn: (message?: any) => appLogger.warn('AutoUpdater', { message }),
-    error: (message?: any) => appLogger.error('AutoUpdater error', { message }),
-    debug: (message?: any) => appLogger.debug('AutoUpdater', { message })
+    info: (message?: unknown) => appLogger.info('AutoUpdater', { message }),
+    warn: (message?: unknown) => appLogger.warn('AutoUpdater', { message }),
+    error: (message?: unknown) => appLogger.error('AutoUpdater error', { message }),
+    debug: (message?: unknown) => appLogger.debug('AutoUpdater', { message })
   };
 
   // Event listeners for update process
@@ -207,12 +214,27 @@ function checkForUpdates() {
     return;
   }
 
+  // On Windows, skip update check on first run due to Squirrel.Windows file lock
+  // See: https://github.com/electron/electron/issues/7155
+  if (process.platform === 'win32' && process.argv.includes('--squirrel-firstrun')) {
+    appLogger.info('Skipping update check on first run (Squirrel.Windows file lock)');
+    // Schedule update check for 10 seconds later when file lock is released
+    setTimeout(() => {
+      appLogger.info('Starting delayed update check after first run');
+      autoUpdater.checkForUpdates().catch(err => {
+        appLogger.error('Could not check for updates', { error: err.message });
+      });
+    }, 10000);
+    return;
+  }
+
   appLogger.info('Starting update check');
   autoUpdater.checkForUpdates().catch(err => {
-    appLogger.error('Failed to check for updates', { error: err.message });
+    appLogger.error('Could not check for updates', { error: err.message });
   });
 }
 
+// Synchronous version for backwards compatibility
 function bootstrapDatabase() {
   const timer = dbLogger.startTimer('bootstrap-database');
   const dbFile = path.join(app.getPath('userData'), 'sheetpilot.sqlite');
@@ -223,6 +245,22 @@ function bootstrapDatabase() {
   timer.done();
 }
 
+// Asynchronous database initialization (non-blocking)
+async function bootstrapDatabaseAsync() {
+  return new Promise<void>((resolve) => {
+    // Run database initialization in next tick to avoid blocking
+    setImmediate(() => {
+      try {
+        bootstrapDatabase();
+        resolve();
+      } catch (error) {
+        dbLogger.error('Database initialization failed', error);
+        resolve(); // Don't block app startup on DB error
+      }
+    });
+  });
+}
+
 function createWindow() {
   const windowState = getWindowState();
   
@@ -230,6 +268,7 @@ function createWindow() {
     width: windowState.width,
     height: windowState.height,
     show: false, // Don't show until ready
+    backgroundColor: '#ffffff', // Prevent white flash
     icon: path.join(__dirname, '..', 'assets', 'images', 'icon.ico'), // Set window icon
     autoHideMenuBar: true, // Hide the menu bar
     webPreferences: {
@@ -255,15 +294,17 @@ function createWindow() {
     mainWindow.maximize();
   }
 
-  // Show window when ready to prevent visual flash
+  // Show window IMMEDIATELY when ready to prevent visual flash
   mainWindow.once('ready-to-show', () => {
     mainWindow?.show();
-    appLogger.info('Main window created and shown', { 
+    appLogger.info('Main window shown', { 
       width: windowState.width, 
-      height: windowState.height,
-      x: windowState.x,
-      y: windowState.y,
-      isMaximized: windowState.isMaximized
+      height: windowState.height
+    });
+    
+    // Restore window state asynchronously after window is shown
+    restoreWindowState(mainWindow).catch(err => {
+      appLogger.debug('Could not restore window state', { error: err.message });
     });
   });
 
@@ -308,9 +349,6 @@ export function registerIPCHandlers() {
   ipcMain.handle('ping', async (_event, msg: string): Promise<string> => {
     return `pong: ${msg}`;
   });
-  initializeLogging();
-  appLogger.info('Application ready event received');
-  bootstrapDatabase();
   
 
   // Handler for timesheet submission (submit pending data from database)
@@ -348,34 +386,50 @@ export function registerIPCHandlers() {
         submitResult,
         dbPath: getDbPath() 
       };
-    } catch (err: any) {
+    } catch (err: unknown) {
       ipcLogger.error('Timesheet submission failed', err);
-      timer.done({ outcome: 'error', error: err?.message });
-      return { error: String(err?.message ?? err) };
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      timer.done({ outcome: 'error', error: errorMessage });
+      return { error: errorMessage };
     }
   });
 
 
   // Handler for storing credentials
   ipcMain.handle('credentials:store', async (_event, service: string, email: string, password: string) => {
+    // Validate parameters
+    if (!service || !email || !password) {
+      return { success: false, error: 'Invalid parameters: service, email, and password are required' };
+    }
+    
     ipcLogger.audit('store-credentials', 'User storing credentials', { service, email });
     try {
       const result = storeCredentials(service, email, password);
       ipcLogger.info('Credentials stored successfully', { service, email, changes: result.changes });
       return result;
-    } catch (err: any) {
-      ipcLogger.error('Failed to store credentials', err);
-      return { success: false, message: String(err?.message ?? err), changes: 0 };
+    } catch (err: unknown) {
+      ipcLogger.error('Could not store credentials', err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      return { success: false, error: errorMessage, changes: 0 };
     }
   });
 
   // Handler for getting credentials
   ipcMain.handle('credentials:get', async (_event, service: string) => {
+    // Validate service parameter
+    if (!service) {
+      return { success: false, error: 'Service name is required' };
+    }
+    
     try {
       const credentials = getCredentials(service);
-      return credentials;
-    } catch (err: any) {
-      return null;
+      if (!credentials) {
+        return { success: false, error: 'Credentials not found for service: ' + service };
+      }
+      return { success: true, credentials };
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      return { success: false, error: errorMessage };
     }
   });
 
@@ -383,38 +437,46 @@ export function registerIPCHandlers() {
   ipcMain.handle('credentials:list', async () => {
     try {
       const credentials = listCredentials();
-      return credentials;
-    } catch (err: any) {
-      return [];
+      return { success: true, credentials };
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      return { success: false, error: errorMessage, credentials: [] };
     }
   });
 
   // Handler for deleting credentials
   ipcMain.handle('credentials:delete', async (_event, service: string) => {
+    // Validate service parameter
+    if (!service) {
+      return { success: false, error: 'Service name is required' };
+    }
+    
     ipcLogger.audit('delete-credentials', 'User deleting credentials', { service });
     try {
       const result = deleteCredentials(service);
       ipcLogger.info('Credentials deleted', { service, changes: result.changes });
       return result;
-    } catch (err: any) {
-      ipcLogger.error('Failed to delete credentials', err);
-      return { success: false, message: String(err?.message ?? err), changes: 0 };
+    } catch (err: unknown) {
+      ipcLogger.error('Could not delete credentials', err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      return { success: false, error: errorMessage, changes: 0 };
     }
   });
 
   // Handler for getting all timesheet entries (for database viewer)
   ipcMain.handle('database:getAllTimesheetEntries', async () => {
-    ipcLogger.verbose('Fetching all timesheet entries');
+    ipcLogger.verbose('Fetching all timesheet entries (Archive - Complete only)');
     try {
       const db = openDb();
-      const getAll = db.prepare('SELECT * FROM timesheet ORDER BY date ASC, time_in ASC');
+      const getAll = db.prepare('SELECT * FROM timesheet WHERE status = \'Complete\' ORDER BY date ASC, time_in ASC');
       const entries = getAll.all();
       db.close();
-      ipcLogger.verbose('Timesheet entries retrieved', { count: entries.length });
-      return entries;
-    } catch (err: any) {
-      ipcLogger.error('Failed to get timesheet entries', err);
-      return [];
+      ipcLogger.verbose('Archive timesheet entries retrieved', { count: entries.length });
+      return { success: true, entries };
+    } catch (err: unknown) {
+      ipcLogger.error('Could not get timesheet entries', err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      return { success: false, error: errorMessage, entries: [] };
     }
   });
 
@@ -427,10 +489,11 @@ export function registerIPCHandlers() {
       const credentials = getAll.all();
       db.close();
       ipcLogger.verbose('Credentials retrieved', { count: credentials.length });
-      return credentials;
-    } catch (err: any) {
-      ipcLogger.error('Failed to get credentials', err);
-      return [];
+      return { success: true, credentials };
+    } catch (err: unknown) {
+      ipcLogger.error('Could not get credentials', err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      return { success: false, error: errorMessage, credentials: [] };
     }
   });
 
@@ -458,12 +521,12 @@ export function registerIPCHandlers() {
       // CSV headers
       const headers = [
         'Date',
-        'Time In',
-        'Time Out', 
+        'Start Time',
+        'End Time', 
         'Hours',
         'Project',
         'Tool',
-        'Detail Charge Code',
+        'Charge Code',
         'Task Description',
         'Status',
         'Submitted At'
@@ -511,15 +574,17 @@ export function registerIPCHandlers() {
 
       return {
         success: true,
-        csvContent,
+        csvData: csvContent,
+        csvContent, // Keep for backward compatibility
         entryCount: entries.length,
         filename: `timesheet_export_${new Date().toISOString().split('T')[0]}.csv`
       };
-    } catch (err: any) {
-      ipcLogger.error('Failed to export CSV', err);
+    } catch (err: unknown) {
+      ipcLogger.error('Could not export CSV', err);
+      const errorMessage = err instanceof Error ? err.message : 'Could not export timesheet data';
       return {
         success: false,
-        error: err.message || 'Failed to export timesheet data'
+        error: errorMessage
       };
     }
   });
@@ -533,15 +598,17 @@ export function registerIPCHandlers() {
       db.exec('DELETE FROM credentials');
       db.close();
       ipcLogger.warn('Database cleared - all data removed');
-      return { success: true };
-    } catch (err: any) {
-      ipcLogger.error('Failed to clear database', err);
-      return { success: false, error: String(err?.message ?? err) };
+      return { success: true, message: 'Database cleared successfully' };
+    } catch (err: unknown) {
+      ipcLogger.error('Could not clear database', err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      return { success: false, error: errorMessage };
     }
   });
 
   // Handler for saving draft timesheet entries
   ipcMain.handle('timesheet:saveDraft', async (_event, row: {
+    id?: number;
     date: string;
     timeIn: string;
     timeOut: string;
@@ -552,7 +619,19 @@ export function registerIPCHandlers() {
   }) => {
     const timer = ipcLogger.startTimer('save-draft');
     try {
+      // Validate required fields
+      if (!row.date) {
+        return { success: false, error: 'Date is required' };
+      }
+      if (!row.project) {
+        return { success: false, error: 'Project is required' };
+      }
+      if (!row.taskDescription) {
+        return { success: false, error: 'Task description is required' };
+      }
+      
       ipcLogger.verbose('Saving draft timesheet entry', { 
+        id: row.id,
         date: row.date,
         project: row.project 
       });
@@ -583,43 +662,114 @@ export function registerIPCHandlers() {
         throw new Error('Time Out must be after Time In');
       }
       
-      // Insert or update the timesheet entry
       const db = openDb();
-      const insert = db.prepare(`
-        INSERT INTO timesheet
-        (date, time_in, time_out, project, tool, detail_charge_code, task_description, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, NULL)
-        ON CONFLICT(date, time_in, project, task_description) DO UPDATE SET
-          time_out = excluded.time_out,
-          tool = excluded.tool,
-          detail_charge_code = excluded.detail_charge_code,
-          task_description = excluded.task_description,
-          status = NULL
-      `);
+      let result;
       
-      const result = insert.run(
-        row.date,
-        timeInMinutes,
-        timeOutMinutes,
-        row.project,
-        row.tool || null,
-        row.chargeCode || null,
-        row.taskDescription
-      );
+      // If row has an id, UPDATE the existing row
+      if (row.id !== undefined && row.id !== null) {
+        ipcLogger.debug('Updating existing timesheet entry', { id: row.id });
+        const update = db.prepare(`
+          UPDATE timesheet
+          SET date = ?,
+              time_in = ?,
+              time_out = ?,
+              project = ?,
+              tool = ?,
+              detail_charge_code = ?,
+              task_description = ?,
+              status = NULL
+          WHERE id = ?
+        `);
+        
+        result = update.run(
+          row.date,
+          timeInMinutes,
+          timeOutMinutes,
+          row.project,
+          row.tool || null,
+          row.chargeCode || null,
+          row.taskDescription,
+          row.id
+        );
+      } else {
+        // If no id, INSERT a new row (with deduplication)
+        ipcLogger.debug('Inserting new timesheet entry');
+        const insert = db.prepare(`
+          INSERT INTO timesheet
+          (date, time_in, time_out, project, tool, detail_charge_code, task_description, status)
+          VALUES (?, ?, ?, ?, ?, ?, ?, NULL)
+          ON CONFLICT(date, time_in, project, task_description) DO UPDATE SET
+            time_out = excluded.time_out,
+            tool = excluded.tool,
+            detail_charge_code = excluded.detail_charge_code,
+            status = NULL
+        `);
+        
+        result = insert.run(
+          row.date,
+          timeInMinutes,
+          timeOutMinutes,
+          row.project,
+          row.tool || null,
+          row.chargeCode || null,
+          row.taskDescription
+        );
+      }
       
       db.close();
       
       ipcLogger.info('Draft timesheet entry saved', { 
+        id: row.id,
         changes: result.changes,
         date: row.date,
         project: row.project 
       });
       timer.done({ changes: result.changes });
       return { success: true, changes: result.changes };
-    } catch (err: any) {
-      ipcLogger.error('Failed to save draft timesheet entry', err);
-      timer.done({ outcome: 'error', error: err?.message });
-      return { success: false, error: String(err?.message ?? err) };
+    } catch (err: unknown) {
+      ipcLogger.error('Could not save draft timesheet entry', err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      timer.done({ outcome: 'error', error: errorMessage });
+      return { success: false, error: errorMessage };
+    }
+  });
+
+  // Handler for deleting draft timesheet entries
+  ipcMain.handle('timesheet:deleteDraft', async (_event, id: number) => {
+    const timer = ipcLogger.startTimer('delete-draft');
+    try {
+      if (!id || typeof id !== 'number') {
+        return { success: false, error: 'Valid ID is required' };
+      }
+
+      ipcLogger.verbose('Deleting draft timesheet entry', { id });
+      
+      const db = openDb();
+      const deleteStmt = db.prepare(`
+        DELETE FROM timesheet 
+        WHERE id = ? AND status IS NULL
+      `);
+      
+      const result = deleteStmt.run(id);
+      db.close();
+      
+      if (result.changes === 0) {
+        ipcLogger.warn('No draft entry found to delete', { id });
+        timer.done({ outcome: 'not_found' });
+        return { success: false, error: 'Draft entry not found' };
+      }
+      
+      ipcLogger.info('Draft timesheet entry deleted', { 
+        id,
+        changes: result.changes
+      });
+      timer.done({ changes: result.changes });
+      return { success: true };
+    } catch (err: unknown) {
+      ipcLogger.error('Could not delete draft timesheet entry', err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      timer.done({ outcome: 'error', error: errorMessage });
+      return { success: false, error: errorMessage };
     }
   });
 
@@ -636,11 +786,21 @@ export function registerIPCHandlers() {
         ORDER BY date ASC, time_in ASC
       `);
       
-      const entries = getPending.all();
+      const entries = getPending.all() as Array<{
+        id: number;
+        date: string;
+        time_in: number;
+        time_out: number;
+        project: string;
+        tool?: string;
+        detail_charge_code?: string;
+        task_description: string;
+      }>;
       db.close();
       
       // Convert database format to grid format
-      const gridData = entries.map((entry: any) => ({
+      const gridData = entries.map((entry) => ({
+        id: entry.id,
         date: entry.date,
         timeIn: formatMinutesToTime(entry.time_in),
         timeOut: formatMinutesToTime(entry.time_out),
@@ -652,27 +812,50 @@ export function registerIPCHandlers() {
       
       ipcLogger.info('Draft timesheet entries loaded', { count: gridData.length });
       timer.done({ count: gridData.length });
-      return gridData;
-    } catch (err: any) {
-      ipcLogger.error('Failed to load draft timesheet entries', err);
-      timer.done({ outcome: 'error', error: err?.message });
-      return [];
+      
+      // Return one blank row if no entries, otherwise return the entries
+      const entriesToReturn = gridData.length > 0 ? gridData : [{}];
+      return { success: true, entries: entriesToReturn };
+    } catch (err: unknown) {
+      ipcLogger.error('Could not load draft timesheet entries', err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      timer.done({ outcome: 'error', error: errorMessage });
+      return { success: false, error: errorMessage, entries: [] };
     }
   });
 
+  // Create and show window FIRST (immediate visual feedback)
   createWindow();
   
-  // Configure and check for updates after window is created
-  configureAutoUpdater();
-  checkForUpdates();
+  // Initialize database asynchronously (non-blocking)
+  bootstrapDatabaseAsync().then(() => {
+    dbLogger.info('Database ready for operations');
+  }).catch(err => {
+    dbLogger.error('Database initialization failed', err);
+  });
+  
+  // Configure and check for updates asynchronously (non-blocking)
+  setImmediate(() => {
+    try {
+      configureAutoUpdater();
+      checkForUpdates();
+    } catch (err) {
+      appLogger.error('Auto-updater setup failed', err);
+    }
+  });
 }
 
 // Initialize app when running as main entry point
 app.whenReady().then(() => {
+  // Initialize logging first (fast, non-blocking)
   initializeLogging();
-  appLogger.info('Application ready event received');
-  bootstrapDatabase();
+  appLogger.info('Application startup initiated');
+  
+  // Register IPC handlers immediately (required for renderer communication)
   registerIPCHandlers();
+  
+  // Note: bootstrapDatabase() is now called asynchronously inside registerIPCHandlers()
+  // This allows the window to show before database is fully initialized
 });
 
 app.on('window-all-closed', () => {

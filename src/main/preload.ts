@@ -29,6 +29,8 @@ contextBridge.exposeInMainWorld('timesheet', {
     chargeCode?: string | null;
     taskDescription: string;
   }>> => ipcRenderer.invoke('timesheet:loadDraft'),
+  deleteDraft: (id: number): Promise<{ success: boolean; error?: string }> => 
+    ipcRenderer.invoke('timesheet:deleteDraft', id),
   exportToCSV: (): Promise<{
     success: boolean;
     csvContent?: string;
@@ -45,9 +47,11 @@ contextBridge.exposeInMainWorld('credentials', {
   }> => ipcRenderer.invoke('credentials:store', service, email, password),
   get: (service: string): Promise<{ email: string; password: string } | null> => 
     ipcRenderer.invoke('credentials:get', service),
-  list: (): Promise<Array<{
-    id: number; service: string; email: string; created_at: string; updated_at: string;
-  }>> => ipcRenderer.invoke('credentials:list'),
+  list: (): Promise<{
+    success: boolean; credentials: Array<{
+      id: number; service: string; email: string; created_at: string; updated_at: string;
+    }>; error?: string;
+  }> => ipcRenderer.invoke('credentials:list'),
   delete: (service: string): Promise<{
     success: boolean; message: string; changes: number;
   }> => ipcRenderer.invoke('credentials:delete', service)

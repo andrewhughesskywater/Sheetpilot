@@ -23,7 +23,7 @@ import {
     insertTimesheetEntries,
     checkDuplicateEntry,
     getDuplicateEntries
-} from '../backend/database';
+} from '../src/services/database';
 
 describe('Database Module', () => {
     let testDbPath: string;

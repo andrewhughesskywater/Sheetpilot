@@ -13,8 +13,8 @@ import {
     markTimesheetEntriesAsSubmitted,
     removeFailedTimesheetEntries,
     setDbPath
-} from '../backend/database';
-import { submitTimesheets, getPendingEntries } from '../backend/timesheet_importer';
+} from '../src/services/database';
+import { submitTimesheets, getPendingEntries } from '../src/services/timesheet_importer';
 import * as fs from 'fs';
 import * as path from 'path';
 

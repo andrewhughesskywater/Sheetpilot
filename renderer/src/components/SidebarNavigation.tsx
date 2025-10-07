@@ -2,15 +2,15 @@ import {
   Assignment as AssignmentIcon,
   Help as HelpIcon,
   House as HouseIcon,
-  Storage as StorageIcon
+  Storage as StorageIcon,
+  LightMode as LightModeIcon,
+  DarkMode as DarkModeIcon
 } from '@mui/icons-material';
+import { useTheme } from '../hooks/useTheme';
 
 interface SidebarNavigationProps {
   activeTab: number;
   onTabChange: (tabIndex: number) => void;
-  onThemeToggle?: () => void;
-  isDarkMode?: boolean;
-  onSignOut?: () => void;
   onLogoClick?: () => void;
 }
 
@@ -42,6 +42,7 @@ export default function SidebarNavigation({
   onTabChange, 
   onLogoClick
 }: SidebarNavigationProps) {
+  const { effectiveTheme, toggleTheme } = useTheme();
 
   return (
     <div className="sidebar">
@@ -49,7 +50,7 @@ export default function SidebarNavigation({
       <div className="sidebar__add-button">
         <button className="add-button" onClick={onLogoClick}>
           <img 
-            src="/transparent-logo-no-text.svg?v=2" 
+            src="/transparent-logo.png" 
             alt="SheetPilot" 
             className="logo-icon"
           />
@@ -69,6 +70,25 @@ export default function SidebarNavigation({
         ))}
       </nav>
 
+      {/* Bottom Section with Theme Toggle */}
+      <div className="sidebar__bottom">
+        <div className="theme-toggle">
+          <button
+            className={`theme-toggle__button ${effectiveTheme === 'light' ? 'theme-toggle__button--active' : ''}`}
+            onClick={() => toggleTheme()}
+            aria-label="Light mode"
+          >
+            <LightModeIcon />
+          </button>
+          <button
+            className={`theme-toggle__button ${effectiveTheme === 'dark' ? 'theme-toggle__button--active' : ''}`}
+            onClick={() => toggleTheme()}
+            aria-label="Dark mode"
+          >
+            <DarkModeIcon />
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

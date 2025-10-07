@@ -36,28 +36,32 @@
   font-style: italic;
 }
 
-/*---------- Base tokens (Light) ---------- */
+/*---------- M3 Token Mapping (Backward Compatibility) ---------- */
 :root {
-  /* Brand */
-  --sp-color-primary: #4F8EF7;   /* Sky */
-  --sp-color-secondary: #FF6B6B; /* Coral*/
+  /* Brand - Map to M3 color system */
+  --sp-color-primary: var(--md-sys-color-primary);
+  --sp-color-secondary: var(--md-sys-color-secondary);
 
-  /*Status */
-  --sp-color-success: #34D399;   /* Leaf */
-  --sp-color-warning: #FACC15;   /* Sunny */
-  --sp-color-info:    #A78BFA;   /* Lilac */
-  --sp-color-error:   #DC2626;   /* Red 600*/
+  /*Status - Map to M3 tokens */
+  --sp-color-success: var(--md-ref-palette-tertiary60);
+  --sp-color-warning: #FACC15;   /* Custom warning color */
+  --sp-color-info:    var(--md-ref-palette-tertiary70);
+  --sp-color-error:   var(--md-sys-color-error);
 
-  /*Neutrals */
-  --sp-bg:        #F9FAFB; /* App background */
-  --sp-surface:   #FFFFFF; /* Cards, sheets */
-  --sp-surface-2: #F5F7FB; /* Subtle containers */
-  --sp-outline:   #E5E7EB; /* Dividers, borders*/
+  /*Neutrals - Map to M3 surface tokens */
+  --sp-bg:        var(--md-sys-color-background);
+  --sp-surface:   var(--md-sys-color-surface);
+  --sp-surface-2: var(--md-sys-color-surface-container-low);
+  --sp-outline:   var(--md-sys-color-outline-variant);
 
-  /*Text */
-  --sp-text:      #111827; /* Primary */
-  --sp-text-2:    #6B7280; /* Secondary */
-  --sp-on-primary:#FFFFFF; /* Contrast for primary buttons*/
+  /*Text - Map to M3 text colors */
+  --sp-text:      var(--md-sys-color-on-background);
+  --sp-text-2:    var(--md-sys-color-on-surface-variant);
+  --sp-on-primary: var(--md-sys-color-on-primary);
+  
+  /* Additional success/warning states for buttons */
+  --sp-on-success: var(--md-ref-palette-tertiary100);
+  --sp-on-warning: var(--md-ref-palette-neutral10);
 
   /*Typography — font families*/
   --sp-font-sans: "Inter", "Noto Sans", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
@@ -97,29 +101,29 @@
   --sp-space-10:40px;
   --sp-space-12:48px;
 
-  /*Elevation*/
-  --sp-shadow-0: none;
-  --sp-shadow-1: 0 1px 2px rgba(0,0,0,0.06), 0 1px 1px rgba(0,0,0,0.04);
-  --sp-shadow-2: 0 2px 8px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.06);
-  --sp-shadow-3: 0 6px 16px rgba(0,0,0,0.10), 0 3px 6px rgba(0,0,0,0.08);
-  --sp-shadow-4: 0 12px 28px rgba(0,0,0,0.12), 0 6px 12px rgba(0,0,0,0.10);
+  /*Elevation - Map to M3 elevation system*/
+  --sp-shadow-0: var(--md-sys-elevation-level0);
+  --sp-shadow-1: var(--md-sys-elevation-level1);
+  --sp-shadow-2: var(--md-sys-elevation-level2);
+  --sp-shadow-3: var(--md-sys-elevation-level3);
+  --sp-shadow-4: var(--md-sys-elevation-level4);
 
-  /*State overlays */
-  --sp-hover: rgba(17,24,39,0.04);
-  --sp-pressed: rgba(17,24,39,0.08);
-  --sp-disabled: 0.55; /* opacity*/
+  /*State overlays - Map to M3 state layers */
+  --sp-hover: var(--md-sys-state-hover-opacity);
+  --sp-pressed: var(--md-sys-state-pressed-opacity);
+  --sp-disabled: 0.38; /* M3 disabled opacity */
 
-  /*Motion*/
-  --sp-ease: cubic-bezier(.2,.7,.2,1);
-  --sp-transition-fast: 120ms var(--sp-ease);
-  --sp-transition:      180ms var(--sp-ease);
-  --sp-transition-slow: 240ms var(--sp-ease);
+  /*Motion - Map to M3 motion tokens */
+  --sp-ease: var(--md-sys-motion-easing-standard);
+  --sp-transition-fast: var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard);
+  --sp-transition:      var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard);
+  --sp-transition-slow: var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-standard);
 
-  /*Shape*/
-  --sp-radius-sm: 8px;
-  --sp-radius-md: 12px;
-  --sp-radius-lg: 16px;
-  --sp-focus: 0 0 0 3px rgba(79, 142, 247, 0.35);
+  /*Shape - Map to M3 corner radius */
+  --sp-radius-sm: var(--md-sys-shape-corner-small);
+  --sp-radius-md: var(--md-sys-shape-corner-medium);
+  --sp-radius-lg: var(--md-sys-shape-corner-large);
+  --sp-focus: 0 0 0 3px color-mix(in srgb, var(--md-sys-color-primary) 35%, transparent);
 
   /*Components*/
   --sp-btn-height: 40px;
@@ -261,9 +265,9 @@ textarea.input { height: auto; padding: var(--sp-space-3); min-height: 96px; res
 }
 
 .add-button {
-  width: 48px;
+  width: 120px;
   height: 48px;
-  border-radius: 50%;
+  border-radius: var(--md-sys-shape-corner-medium);
   background: #FF8A8A;
   border: none;
   display: flex;
@@ -280,8 +284,8 @@ textarea.input { height: auto; padding: var(--sp-space-3); min-height: 96px; res
 }
 
 .add-button .logo-icon {
-  width: 40px;
-  height: 40px;
+  width: 100px;
+  height: 32px;
   object-fit: contain;
 }
 

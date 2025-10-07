@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, type ReactNode }
 
 // Define data types
 interface TimesheetRow {
+  id?: number;
   date?: string;
   timeIn?: string;
   timeOut?: string;
@@ -83,6 +84,21 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
   const [isArchiveDataLoading, setIsArchiveDataLoading] = useState(true);
   const [archiveDataError, setArchiveDataError] = useState<string | null>(null);
 
+  // Restore from localStorage backup if database fails
+  const restoreFromLocalBackup = (): TimesheetRow[] | null => {
+    try {
+      const backup = localStorage.getItem('sheetpilot_timesheet_backup');
+      if (backup) {
+        const parsed = JSON.parse(backup);
+        console.log('[DataContext] Found localStorage backup from:', parsed.timestamp);
+        return parsed.data || null;
+      }
+    } catch (error) {
+      console.error('[DataContext] Could not restore from localStorage backup:', error);
+    }
+    return null;
+  };
+
   // Load timesheet draft data
   const loadTimesheetDraftData = async () => {
     try {
@@ -90,16 +106,45 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       setTimesheetDraftError(null);
       
       console.log('[DataContext] Loading timesheet draft data...');
-      const draftData = await window.timesheet.loadDraft();
-      console.log('[DataContext] Loaded timesheet draft data:', draftData);
+      const response = await window.timesheet.loadDraft();
+      console.log('[DataContext] Loaded timesheet draft response:', response);
       
-      // Add one blank row at the end if we have data
-      const rowsWithBlank = draftData.length > 0 ? [...draftData, {}] : [{}];
-      setTimesheetDraftData(rowsWithBlank);
+      // Handle new structured response format
+      if (response && response.success) {
+        const draftData = response.entries || [];
+        // Add one blank row at the end if we have data
+        const rowsWithBlank = draftData.length > 0 && Object.keys(draftData[0] || {}).length > 0 
+          ? [...draftData, {}] 
+          : [{}];
+        setTimesheetDraftData(rowsWithBlank);
+      } else {
+        // Handle old format or error - try to restore from localStorage backup
+        const errorMsg = response?.error || 'Could not load timesheet draft';
+        console.warn('[DataContext] Database load failed, attempting localStorage restore...');
+        
+        const backupData = restoreFromLocalBackup();
+        if (backupData && backupData.length > 0) {
+          console.log('[DataContext] Restored from localStorage backup:', backupData.length, 'rows');
+          setTimesheetDraftError(`${errorMsg} (restored from backup)`);
+          setTimesheetDraftData([...backupData, {}]);
+        } else {
+          setTimesheetDraftError(errorMsg);
+          setTimesheetDraftData([{}]);
+        }
+      }
     } catch (error) {
       console.error('[DataContext] Error loading timesheet draft data:', error);
-      setTimesheetDraftError(error instanceof Error ? error.message : 'Failed to load timesheet draft');
-      setTimesheetDraftData([{}]); // Fallback to empty row
+      
+      // Try to restore from localStorage backup on error
+      const backupData = restoreFromLocalBackup();
+      if (backupData && backupData.length > 0) {
+        console.log('[DataContext] Restored from localStorage backup after error:', backupData.length, 'rows');
+        setTimesheetDraftError(`${error instanceof Error ? error.message : 'Could not load timesheet draft'} (restored from backup)`);
+        setTimesheetDraftData([...backupData, {}]);
+      } else {
+        setTimesheetDraftError(error instanceof Error ? error.message : 'Could not load timesheet draft');
+        setTimesheetDraftData([{}]); // Fallback to empty row
+      }
     } finally {
       setIsTimesheetDraftLoading(false);
     }
@@ -112,21 +157,32 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       setArchiveDataError(null);
       
       console.log('[DataContext] Loading archive data...');
-      const timesheetData = await window.database?.getAllTimesheetEntries();
-      const credentialsData = await window.database?.getAllCredentials();
+      const timesheetResponse = await window.database?.getAllTimesheetEntries();
+      const credentialsResponse = await window.database?.getAllCredentials();
+      
+      // Handle new structured response format
+      const timesheetData = timesheetResponse?.success ? (timesheetResponse.entries || []) : [];
+      const credentialsData = credentialsResponse?.success ? (credentialsResponse.credentials || []) : [];
       
       console.log('[DataContext] Loaded archive data:', {
-        timesheetCount: timesheetData?.length || 0,
-        credentialsCount: credentialsData?.length || 0
+        timesheetCount: timesheetData.length,
+        credentialsCount: credentialsData.length
       });
       
       setArchiveData({
-        timesheet: timesheetData || [],
-        credentials: credentialsData || []
+        timesheet: timesheetData,
+        credentials: credentialsData
       });
+      
+      // Check for errors
+      if (timesheetResponse && !timesheetResponse.success) {
+        setArchiveDataError(timesheetResponse.error || 'Could not load timesheet data');
+      } else if (credentialsResponse && !credentialsResponse.success) {
+        setArchiveDataError(credentialsResponse.error || 'Could not load credentials data');
+      }
     } catch (error) {
       console.error('[DataContext] Error loading archive data:', error);
-      setArchiveDataError(error instanceof Error ? error.message : 'Failed to load archive data');
+      setArchiveDataError(error instanceof Error ? error.message : 'Could not load archive data');
       setArchiveData({ timesheet: [], credentials: [] }); // Fallback to empty data
     } finally {
       setIsArchiveDataLoading(false);

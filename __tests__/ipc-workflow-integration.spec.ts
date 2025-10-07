@@ -12,8 +12,8 @@ import {
     getPendingTimesheetEntries,
     setDbPath,
     openDb
-} from '../backend/database';
-import { submitTimesheets } from '../backend/timesheet_importer';
+} from '../src/services/database';
+import { submitTimesheets } from '../src/services/timesheet_importer';
 import * as fs from 'fs';
 import * as path from 'path';
 

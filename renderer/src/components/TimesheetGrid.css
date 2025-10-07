@@ -16,40 +16,65 @@
 .timesheet-table-container {
   width: 100%;
   max-width: 100%;
-  overflow: hidden;
+  overflow: visible;
   padding: var(--sp-space-4);
-  background: var(--sp-surface);
-  border: 1px solid var(--sp-outline);
-  border-radius: var(--sp-radius-md);
-  box-shadow: var(--sp-shadow-1);
+  background: var(--md-sys-color-surface-container-low);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-medium);
+  box-shadow: var(--md-sys-elevation-level1);
+  position: relative;
+  z-index: 1;
 }
 
 .save-button {
+  position: relative;
   padding: var(--sp-space-2) var(--sp-space-4);
-  background: var(--sp-color-primary);
-  color: var(--sp-on-primary);
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
   border: none;
-  border-radius: var(--sp-radius-md);
-  font-weight: var(--sp-fw-semibold);
+  border-radius: var(--md-sys-shape-corner-full);
+  font-family: var(--md-sys-typescale-label-large-font);
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: var(--md-sys-typescale-label-large-weight);
+  letter-spacing: var(--md-sys-typescale-label-large-tracking);
   cursor: pointer;
-  transition: all var(--sp-transition);
-  box-shadow: var(--sp-shadow-1);
+  transition: box-shadow var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard);
+  box-shadow: var(--md-sys-elevation-level0);
+  overflow: hidden;
+}
+
+.save-button::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  opacity: 0;
+  transition: opacity var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard);
+  pointer-events: none;
 }
 
 .save-button:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--sp-color-primary) 90%, black);
-  transform: translateY(-1px);
-  box-shadow: var(--sp-shadow-2);
+  box-shadow: var(--md-sys-elevation-level1);
+}
+
+.save-button:hover:not(:disabled)::before {
+  background: currentColor;
+  opacity: var(--md-sys-state-hover-opacity);
+}
+
+.save-button:active:not(:disabled)::before {
+  background: currentColor;
+  opacity: var(--md-sys-state-pressed-opacity);
 }
 
 .save-button:disabled {
   cursor: not-allowed;
-  opacity: 0.6;
+  opacity: 0.38;
 }
 
 .save-button:focus-visible {
-  outline: none;
-  box-shadow: var(--sp-focus);
+  outline: 3px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
 }
 
 .save-button.save-loading {
@@ -76,46 +101,130 @@
 }
 
 .save-info-text {
-  font-size: var(--sp-fs-sm);
-  color: var(--sp-text-2);
+  color: var(--md-sys-color-on-surface-variant);
 }
 
-/* Handsontable theme overrides */
+/* Handsontable Horizon theme container styles */
 .timesheet-table-container .handsontable {
-  background: transparent;
-  color: var(--sp-text);
-  border: none;
-  border-radius: 0;
-  box-shadow: none;
   width: 100% !important;
   max-width: 100% !important;
+  pointer-events: auto !important;
 }
 
-.handsontable th {
-  background: var(--sp-surface-2);
-  color: var(--sp-text-2);
-  font-weight: var(--sp-fw-semibold);
-  border-bottom: 1px solid var(--sp-outline);
+/* Fix header readability */
+.timesheet-table-container .handsontable th,
+.timesheet-table-container .handsontable .htCore th,
+.timesheet-table-container .handsontable .htCore thead th {
+  background: var(--md-sys-color-surface-container) !important;
+  color: var(--md-sys-color-on-surface) !important;
+  font-weight: var(--md-sys-typescale-label-large-weight) !important;
+  border-bottom: 2px solid var(--md-sys-color-outline) !important;
 }
 
-.handsontable td {
-  border-bottom: 1px solid var(--sp-outline);
+/* Row headers */
+.timesheet-table-container .handsontable .ht__rowHeader,
+.timesheet-table-container .handsontable th.ht__rowHeader {
+  background: var(--md-sys-color-surface-container) !important;
+  color: var(--md-sys-color-on-surface) !important;
+  font-weight: var(--md-sys-typescale-label-medium-weight) !important;
+  border-right: 2px solid var(--md-sys-color-outline) !important;
 }
 
-.handsontable tr:hover td {
-  background: color-mix(in srgb, var(--sp-color-primary) 6%, transparent);
+/* CRITICAL FIX: Disable pointer-events on ALL Handsontable DIV overlays */
+.timesheet-table-container .handsontable.ht_clone_inline_start.ht_clone_left,
+.timesheet-table-container .handsontable.ht_clone_left,
+.timesheet-table-container .ht_clone_inline_start,
+.timesheet-table-container .ht_clone_left,
+.timesheet-table-container div.ht_clone_left,
+.timesheet-table-container div.ht_clone_inline_start,
+.timesheet-table-container .handsontable.ht_clone_top,
+.timesheet-table-container .ht_clone_top,
+.timesheet-table-container div.ht_clone_top {
+  pointer-events: none !important;
+  z-index: -1 !important;
 }
 
-.handsontable .htDimmed {
-  background: var(--sp-surface-2);
-  color: var(--sp-text-2);
+/* Only enable pointer-events on the actual table cells within clones */
+.timesheet-table-container .ht_clone_left td,
+.timesheet-table-container .ht_clone_left th,
+.timesheet-table-container .ht_clone_top td,
+.timesheet-table-container .ht_clone_top th {
+  pointer-events: auto !important;
 }
 
-.handsontable .htInvalid {
-  background: color-mix(in srgb, var(--sp-color-error) 10%, var(--sp-surface));
-  border-color: var(--sp-color-error);
+/* CRITICAL: Ensure row headers are always clickable */
+.timesheet-table-container .handsontable th.ht__rowHeader,
+.timesheet-table-container .handsontable .ht__rowHeader,
+.timesheet-table-container th.ht__highlight,
+.timesheet-table-container .ht_clone_left th {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
 }
 
-.handsontable .htEmpty {
-  background: var(--sp-surface-2);
+/* Ensure the master table and its cells are clickable */
+.timesheet-table-container .handsontable .ht_master,
+.timesheet-table-container .ht_master {
+  pointer-events: auto !important;
+}
+
+.timesheet-table-container .handsontable td,
+.timesheet-table-container .handsontable th,
+.timesheet-table-container .handsontable table,
+.timesheet-table-container .handsontable tbody,
+.timesheet-table-container .handsontable thead,
+.timesheet-table-container .handsontable tr,
+.timesheet-table-container .handsontable input,
+.timesheet-table-container .handsontable textarea,
+.timesheet-table-container .handsontable select {
+  pointer-events: auto !important;
+}
+
+/* Custom styling for specific states (keeping application-specific overrides) */
+.timesheet-table-container .handsontable .htDimmed {
+  opacity: 0.6;
+}
+
+/* Fix dropdown auto-resize to prevent horizontal scrollbar */
+.timesheet-table-container .handsontable .htSelectEditor,
+.timesheet-table-container .handsontable .htSelectEditor select,
+.timesheet-table-container .handsontable .htSelectEditor .htSelectEditorDropdown {
+  width: auto !important;
+  min-width: 150px;
+  max-width: 400px;
+}
+
+/* Ensure dropdown options display without horizontal scrollbar */
+.timesheet-table-container .handsontable .htSelectEditorDropdown {
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  max-height: 200px;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+/* Make sure the dropdown list items don't wrap and show full text */
+.timesheet-table-container .handsontable .htSelectEditorDropdown option {
+  white-space: nowrap;
+  overflow: visible;
+  text-overflow: ellipsis;
+  padding: 4px 8px;
+  display: block;
+}
+
+/* Additional Handsontable dropdown classes */
+.timesheet-table-container .handsontable .htSelectEditorDropdown,
+.timesheet-table-container .handsontable .htSelectEditor select,
+.timesheet-table-container .handsontable .htSelectEditor {
+  position: relative;
+  z-index: 1000;
+}
+
+/* Ensure proper display of dropdown content */
+.timesheet-table-container .handsontable .htSelectEditorDropdown {
+  background: var(--sp-surface);
+  border: 1px solid var(--sp-outline);
+  border-radius: var(--sp-radius-sm);
+  box-shadow: var(--sp-shadow-2);
 }

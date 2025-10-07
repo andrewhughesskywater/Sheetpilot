@@ -2,7 +2,14 @@
 
 ## Overview
 
-Sheetpilot uses `electron-updater` for seamless, atomic auto-updates. Updates are hosted on a network drive and installed automatically during app startup.
+Sheetpilot uses `electron-updater` (NOT Electron's built-in `autoUpdater`) for seamless, atomic auto-updates. Updates are hosted on a network drive and installed automatically during app startup.
+
+### Important: electron-updater vs autoUpdater
+
+- **`electron-updater`** (what we use): Feature-rich updater from electron-builder, configured via `package.json`
+- **`autoUpdater`** (built-in): Electron's basic updater, requires `setFeedURL()`, limited features
+
+Do NOT confuse these two packages - they have different APIs!
 
 ## How It Works
 
@@ -13,7 +20,29 @@ Sheetpilot uses `electron-updater` for seamless, atomic auto-updates. Updates ar
 
 ## Setup Instructions
 
-### 1. Configure Network Drive Path
+### 1. Ensure Correct Windows Build Target
+
+**CRITICAL**: Auto-updates ONLY work with NSIS installer, not portable builds!
+
+```json
+"win": {
+  "target": {
+    "target": "nsis",
+    "arch": ["x64"]
+  }
+},
+"nsis": {
+  "oneClick": false,
+  "perMachine": false,  // ✅ Per-user install - NO UAC required!
+  "allowToChangeInstallationDirectory": true,
+  "createDesktopShortcut": true,
+  "createStartMenuShortcut": true
+}
+```
+
+**Important**: `perMachine: false` installs for current user only, avoiding UAC prompts. This is required for environments where admin rights are not available.
+
+### 2. Configure Network Drive Path
 
 You need to update two files with your actual network drive path:
 
@@ -41,7 +70,7 @@ Replace `\\\\SERVER\\Share\\sheetpilot-updates` with your actual network path.
 - Mapped drive: `file://Z:/sheetpilot-updates`
 - Local testing: `file://C:/local-update-server/sheetpilot-updates`
 
-### 2. Create Update Directory Structure
+### 3. Create Update Directory Structure
 
 On your network drive, create this structure:
 
@@ -53,7 +82,7 @@ sheetpilot-updates/
 └── ...
 ```
 
-### 3. Build and Publish Updates
+### 4. Build and Publish Updates
 
 #### Initial Release (Version 1.0.0)
 
@@ -177,6 +206,30 @@ Ensure all users have:
 
 The build/deployment person needs write access to publish updates.
 
+## Windows-Specific Behavior
+
+### First Run File Lock
+
+On Windows, Squirrel.Windows creates a file lock during first installation. The app:
+- Detects the `--squirrel-firstrun` flag
+- Delays update checks by 10 seconds to avoid lock conflicts
+- Logs this behavior for transparency
+
+This is normal and documented in [Electron issue #7155](https://github.com/electron/electron/issues/7155).
+
+### Build Target Requirements
+
+- **NSIS installer required**: Auto-updates ONLY work with `"target": "nsis"`
+- **Portable builds**: Do NOT support auto-updates
+- **Installer behavior**: NSIS creates proper uninstaller entries and supports atomic updates
+
+### Installation Scope
+
+- **Per-User Installation**: `"perMachine": false` - Installs to `%LOCALAPPDATA%`, **NO UAC required**
+- **Per-Machine Installation**: `"perMachine": true` - Installs to `Program Files`, **requires UAC/admin rights**
+
+The current configuration uses per-user installation to avoid UAC prompts, which is ideal for corporate environments where users lack admin rights.
+
 ## Troubleshooting
 
 ### Updates Not Detected
@@ -255,5 +308,7 @@ ipcMain.handle('install-update', () => {
 
 ## Reference
 
-- [electron-updater Documentation](https://www.electron.build/auto-update)
+- [electron-updater Documentation](https://www.electron.build/auto-update) (what we use)
 - [electron-builder Documentation](https://www.electron.build/)
+- [Electron autoUpdater API](https://www.electronjs.org/docs/latest/api/auto-updater) (built-in, NOT what we use)
+- [Windows First-Run Issue](https://github.com/electron/electron/issues/7155)

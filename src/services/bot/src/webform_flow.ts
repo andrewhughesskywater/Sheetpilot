@@ -295,7 +295,7 @@ export class WebformFiller {
       }
       
     } catch (error) {
-      botLogger.error('Failed to fill form field', { 
+      botLogger.error('Could not fill form field', { 
         fieldName, 
         value: String(value),
         locator: locatorSel,

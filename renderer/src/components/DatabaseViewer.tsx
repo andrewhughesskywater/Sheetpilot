@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { HotTable } from '@handsontable/react-wrapper';
 import { registerAllModules } from 'handsontable/registry';
-import 'handsontable/dist/handsontable.full.min.css';
+import 'handsontable/styles/handsontable.css';
+import 'handsontable/styles/ht-theme-horizon.css';
 import { useData } from '../contexts/DataContext';
 import './DatabaseViewer.css';
 
@@ -143,9 +144,9 @@ const Archive: React.FC<ArchiveProps> = () => {
   return (
     <div className="main-container">
       <div className="header-container">
-        <h2>Archive</h2>
+        <h2 className="md-typescale-headline-medium">Archive</h2>
         <div>
-          <span className="data-info">
+          <span className="data-info md-typescale-body-medium">
             Timesheet entries: {archiveData.timesheet.length} | 
             Credentials: {archiveData.credentials.length}
           </span>
@@ -166,9 +167,18 @@ const Archive: React.FC<ArchiveProps> = () => {
             colHeaders={true}
             rowHeaders={true}
             stretchH="all"
+            themeName="ht-theme-horizon"
             licenseKey="non-commercial-and-evaluation"
             width="100%"
             height={400}
+            readOnly={true}
+            disableVisualSelection={true}
+            contextMenu={false}
+            fillHandle={false}
+            outsideClickDeselects={true}
+            currentRowClassName=""
+            currentColClassName=""
+            activeHeaderClassName=""
           />
         ) : (
           <HotTable
@@ -177,9 +187,18 @@ const Archive: React.FC<ArchiveProps> = () => {
             colHeaders={true}
             rowHeaders={true}
             stretchH="all"
+            themeName="ht-theme-horizon"
             licenseKey="non-commercial-and-evaluation"
             width="100%"
             height={400}
+            readOnly={true}
+            disableVisualSelection={true}
+            contextMenu={false}
+            fillHandle={false}
+            outsideClickDeselects={true}
+            currentRowClassName=""
+            currentColClassName=""
+            activeHeaderClassName=""
           />
         )}
       </div>

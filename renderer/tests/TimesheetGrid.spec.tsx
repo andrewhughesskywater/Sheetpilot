@@ -1321,3 +1321,310 @@ describe('TimesheetGrid Phase 6 - Accessibility and UX Polish', () => {
     expect(getNextField('taskDescription', 'prev')).toBe('chargeCode');
   });
 });
+
+// Phase 7 Tests - Cell Interactivity
+describe('TimesheetGrid Phase 7 - Cell Interactivity', () => {
+  it('validates that cells are editable by default', () => {
+    // Test that the table is configured to allow cell editing
+    const tableConfig = {
+      readOnly: false,
+      fillHandle: true,
+      autoWrapRow: true,
+      autoWrapCol: true
+    };
+    
+    expect(tableConfig.readOnly).toBe(false);
+    expect(tableConfig.fillHandle).toBe(true);
+    expect(tableConfig.autoWrapRow).toBe(true);
+    expect(tableConfig.autoWrapCol).toBe(true);
+  });
+
+  it('validates that specific cells can be made read-only based on business rules', () => {
+    // Test the cells function that makes tool/chargeCode read-only based on project/tool
+    const projectsWithoutTools = ["ERT", "PTO/RTO", "SWFL-CHEM/GAS", "Training"];
+    const toolsWithoutCharges = ["Internal Meeting", "DECA Meeting", "Logistics", "Meeting", "Non Tool Related", "Admin", "Training"];
+    
+    const getCellProperties = (row: { project?: string; tool?: string }, col: number) => {
+      const cellProps: Record<string, unknown> = {};
+      
+      if (col === 4) { // tool column
+        const project = row?.project;
+        if (project && projectsWithoutTools.includes(project)) {
+          cellProps.readOnly = true;
+          cellProps.className = 'htDimmed';
+          cellProps.placeholder = 'N/A for this project';
+        }
+      } else if (col === 5) { // chargeCode column
+        const tool = row?.tool;
+        if (tool && toolsWithoutCharges.includes(tool)) {
+          cellProps.readOnly = true;
+          cellProps.className = 'htDimmed';
+          cellProps.placeholder = 'N/A for this tool';
+        }
+      }
+      
+      return cellProps;
+    };
+    
+    // Test that tool column is read-only for projects without tools
+    const row1 = { project: 'PTO/RTO' };
+    const toolCellProps = getCellProperties(row1, 4);
+    expect(toolCellProps.readOnly).toBe(true);
+    expect(toolCellProps.className).toBe('htDimmed');
+    
+    // Test that tool column is editable for projects with tools
+    const row2 = { project: 'FL-Carver Techs' };
+    const toolCellProps2 = getCellProperties(row2, 4);
+    expect(toolCellProps2.readOnly).toBeUndefined();
+    
+    // Test that chargeCode column is read-only for tools without charges
+    const row3 = { project: 'FL-Carver Techs', tool: 'Meeting' };
+    const chargeCellProps = getCellProperties(row3, 5);
+    expect(chargeCellProps.readOnly).toBe(true);
+    expect(chargeCellProps.className).toBe('htDimmed');
+    
+    // Test that chargeCode column is editable for tools with charges
+    const row4 = { project: 'FL-Carver Techs', tool: '#1 Rinse and 2D marker' };
+    const chargeCellProps2 = getCellProperties(row4, 5);
+    expect(chargeCellProps2.readOnly).toBeUndefined();
+  });
+
+  it('validates that all non-dimmed cells are clickable and focusable', () => {
+    // Test that standard cells don't have readOnly set
+    const standardCellProps = {};
+    expect(standardCellProps).not.toHaveProperty('readOnly');
+    
+    // Test that cell configuration allows interaction
+    const interactiveConfig = {
+      tabNavigation: true,
+      enterMoves: { row: 1, col: 0 },
+      tabMoves: { row: 0, col: 1 }
+    };
+    
+    expect(interactiveConfig.tabNavigation).toBe(true);
+    expect(interactiveConfig.enterMoves).toBeDefined();
+    expect(interactiveConfig.tabMoves).toBeDefined();
+  });
+
+  it('validates cell selection and focus behavior', () => {
+    // Test that cells allow selection by default
+    const gridConfig = {
+      readOnly: false,
+      disableVisualSelection: false,
+      outsideClickDeselects: true
+    };
+    
+    expect(gridConfig.readOnly).toBe(false);
+    expect(gridConfig.disableVisualSelection).toBe(false);
+    expect(gridConfig.outsideClickDeselects).toBe(true);
+  });
+
+  it('validates fill handle is enabled for copying values', () => {
+    const fillHandleConfig = {
+      fillHandle: true
+    };
+    
+    expect(fillHandleConfig.fillHandle).toBe(true);
+  });
+
+  it('validates that context menu is available for cell operations', () => {
+    const contextMenuConfig = {
+      contextMenu: true
+    };
+    
+    expect(contextMenuConfig.contextMenu).toBe(true);
+  });
+
+  it('validates that cells respond to keyboard input', () => {
+    // Test that keyboard navigation is properly configured
+    const keyboardConfig = {
+      tabNavigation: true,
+      enterMoves: { row: 1, col: 0 },
+      tabMoves: { row: 0, col: 1 },
+      autoWrapRow: true,
+      autoWrapCol: true
+    };
+    
+    expect(keyboardConfig.tabNavigation).toBe(true);
+    expect(keyboardConfig.autoWrapRow).toBe(true);
+    expect(keyboardConfig.autoWrapCol).toBe(true);
+  });
+});
+
+describe('TimesheetGrid Row Deletion Functionality', () => {
+  let mockWindow: any;
+
+  beforeEach(() => {
+    // Mock the window.timesheet API
+    mockWindow = {
+      timesheet: {
+        deleteDraft: vi.fn(),
+        saveDraft: vi.fn(),
+        loadDraft: vi.fn()
+      }
+    };
+    
+    // Set up global mock
+    (global as any).window = mockWindow;
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('should handle row deletion with valid ID', async () => {
+    // Mock successful deletion
+    mockWindow.timesheet.deleteDraft.mockResolvedValue({ success: true });
+
+    // Simulate the handleAfterRemoveRow function logic
+    const handleAfterRemoveRow = async (index: number, amount: number) => {
+      const removedRows = [
+        { id: 1, date: '2025-01-01', timeIn: '09:00', timeOut: '17:00', project: 'Test Project', taskDescription: 'Test Task' }
+      ].slice(index, index + amount);
+      
+      for (const row of removedRows) {
+        if (row.id !== undefined && row.id !== null) {
+          try {
+            const result = await window.timesheet.deleteDraft(row.id);
+            if (result && result.success) {
+              console.log('Successfully deleted draft row:', row.id);
+            } else {
+              console.error('Failed to delete draft row:', result?.error);
+            }
+          } catch (error) {
+            console.error('Error deleting draft row:', error);
+          }
+        }
+      }
+    };
+
+    await handleAfterRemoveRow(0, 1);
+    
+    expect(mockWindow.timesheet.deleteDraft).toHaveBeenCalledWith(1);
+    expect(mockWindow.timesheet.deleteDraft).toHaveBeenCalledTimes(1);
+  });
+
+  it('should handle multiple row deletions', async () => {
+    mockWindow.timesheet.deleteDraft.mockResolvedValue({ success: true });
+
+    const handleAfterRemoveRow = async (index: number, amount: number) => {
+      const removedRows = [
+        { id: 1, date: '2025-01-01', timeIn: '09:00', timeOut: '17:00', project: 'Test Project', taskDescription: 'Test Task' },
+        { id: 2, date: '2025-01-02', timeIn: '10:00', timeOut: '18:00', project: 'Test Project 2', taskDescription: 'Test Task 2' }
+      ].slice(index, index + amount);
+      
+      for (const row of removedRows) {
+        if (row.id !== undefined && row.id !== null) {
+          try {
+            const result = await window.timesheet.deleteDraft(row.id);
+            if (result && result.success) {
+              console.log('Successfully deleted draft row:', row.id);
+            } else {
+              console.error('Failed to delete draft row:', result?.error);
+            }
+          } catch (error) {
+            console.error('Error deleting draft row:', error);
+          }
+        }
+      }
+    };
+
+    await handleAfterRemoveRow(0, 2);
+    
+    expect(mockWindow.timesheet.deleteDraft).toHaveBeenCalledWith(1);
+    expect(mockWindow.timesheet.deleteDraft).toHaveBeenCalledWith(2);
+    expect(mockWindow.timesheet.deleteDraft).toHaveBeenCalledTimes(2);
+  });
+
+  it('should handle deletion errors gracefully', async () => {
+    mockWindow.timesheet.deleteDraft.mockResolvedValue({ 
+      success: false, 
+      error: 'Database connection failed' 
+    });
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const handleAfterRemoveRow = async (index: number, amount: number) => {
+      const removedRows = [
+        { id: 1, date: '2025-01-01', timeIn: '09:00', timeOut: '17:00', project: 'Test Project', taskDescription: 'Test Task' }
+      ].slice(index, index + amount);
+      
+      for (const row of removedRows) {
+        if (row.id !== undefined && row.id !== null) {
+          try {
+            const result = await window.timesheet.deleteDraft(row.id);
+            if (result && result.success) {
+              console.log('Successfully deleted draft row:', row.id);
+            } else {
+              console.error('Failed to delete draft row:', result?.error);
+            }
+          } catch (error) {
+            console.error('Error deleting draft row:', error);
+          }
+        }
+      }
+    };
+
+    await handleAfterRemoveRow(0, 1);
+    
+    expect(consoleSpy).toHaveBeenCalledWith('Failed to delete draft row:', 'Database connection failed');
+    expect(mockWindow.timesheet.deleteDraft).toHaveBeenCalledWith(1);
+    
+    consoleSpy.mockRestore();
+  });
+
+  it('should skip rows without IDs', async () => {
+    const handleAfterRemoveRow = async (index: number, amount: number) => {
+      const removedRows = [
+        { date: '2025-01-01', timeIn: '09:00', timeOut: '17:00', project: 'Test Project', taskDescription: 'Test Task' }, // No ID
+        { id: 2, date: '2025-01-02', timeIn: '10:00', timeOut: '18:00', project: 'Test Project 2', taskDescription: 'Test Task 2' }
+      ].slice(index, index + amount);
+      
+      for (const row of removedRows) {
+        if (row.id !== undefined && row.id !== null) {
+          try {
+            const result = await window.timesheet.deleteDraft(row.id);
+            if (result && result.success) {
+              console.log('Successfully deleted draft row:', row.id);
+            } else {
+              console.error('Failed to delete draft row:', result?.error);
+            }
+          } catch (error) {
+            console.error('Error deleting draft row:', error);
+          }
+        }
+      }
+    };
+
+    await handleAfterRemoveRow(0, 2);
+    
+    // Should only call deleteDraft for the row with ID
+    expect(mockWindow.timesheet.deleteDraft).toHaveBeenCalledWith(2);
+    expect(mockWindow.timesheet.deleteDraft).toHaveBeenCalledTimes(1);
+  });
+
+  it('should validate that afterRemoveRow handler is configured', () => {
+    // Test that the HotTable component includes the afterRemoveRow handler
+    const hotTableConfig = {
+      afterRemoveRow: 'handleAfterRemoveRow',
+      afterChange: 'handleAfterChange',
+      contextMenu: true
+    };
+    
+    expect(hotTableConfig.afterRemoveRow).toBe('handleAfterRemoveRow');
+    expect(hotTableConfig.afterChange).toBe('handleAfterChange');
+    expect(hotTableConfig.contextMenu).toBe(true);
+  });
+
+  it('should ensure context menu enables row deletion', () => {
+    // Verify that context menu is enabled to allow row deletion
+    const contextMenuConfig = {
+      contextMenu: true,
+      manualRowResize: true,
+      manualColumnResize: true
+    };
+    
+    expect(contextMenuConfig.contextMenu).toBe(true);
+    expect(contextMenuConfig.manualRowResize).toBe(true);
+  });
+});

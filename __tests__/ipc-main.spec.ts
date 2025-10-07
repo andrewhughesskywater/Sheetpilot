@@ -72,7 +72,7 @@ vi.mock('electron', () => {
 });
 
 // Mock backend modules used by main.ts
-vi.mock('../backend/database', () => {
+vi.mock('../src/services/database', () => {
   return {
     setDbPath: vi.fn(),
     ensureSchema: vi.fn(),
@@ -89,14 +89,14 @@ vi.mock('../backend/database', () => {
   };
 });
 
-vi.mock('../backend/timesheet_importer', () => {
+vi.mock('../src/services/timesheet_importer', () => {
   return {
     submitTimesheets: vi.fn(async () => ({ ok: true, submittedIds: [1], removedIds: [], totalProcessed: 1, successCount: 1, removedCount: 0 }))
   };
 });
 
 // Mock the logger module to prevent electron initialization issues
-vi.mock('../shared/logger', () => {
+vi.mock('../src/shared/logger', () => {
   const createMockLogger = () => ({
     info: vi.fn(),
     warn: vi.fn(),
@@ -123,8 +123,8 @@ vi.mock('../shared/logger', () => {
 import { registerIPCHandlers } from '../main';
 
 // Re-get typed references to mocked modules for assertions
-import * as db from '../backend/database';
-import * as imp from '../backend/timesheet_importer';
+import * as db from '../src/services/database';
+import * as imp from '../src/services/timesheet_importer';
 
 // Create local reference to handlers after all imports
 const handlers = globalThis.__test_handlers;

@@ -25,6 +25,12 @@ let DB_PATH = process.env['SHEETPILOT_DB']
     : path.resolve(process.cwd(), 'sheetpilot.sqlite');
 
 /**
+ * Track whether database schema has been ensured
+ * Allows lazy initialization on first use
+ */
+let schemaEnsured = false;
+
+/**
  * Sets the database file path
  * 
  * @param {string} p - New database file path (will be resolved to absolute path)
@@ -67,22 +73,22 @@ function loadBetterSqlite3(): (typeof import('better-sqlite3')) {
         dbLogger.verbose('Loading better-sqlite3 native module');
         __betterSqlite3Module = require('better-sqlite3');
         if (!__betterSqlite3Module) {
-            throw new Error('Failed to load better-sqlite3 module');
+            throw new Error('Could not load better-sqlite3 module');
         }
         dbLogger.info('better-sqlite3 module loaded successfully');
         return __betterSqlite3Module;
     } catch (err: unknown) {
         const message = [
-            'Failed to load better-sqlite3 native module',
+            'Could not load better-sqlite3 native module',
             err instanceof Error ? err.message : String(err),
             'Recommended actions:',
             '- Run: npm run rebuild   (rebuilds native modules for current Electron)',
             '- Or run: npx electron-rebuild -f -w better-sqlite3',
             '- Ensure Electron and Node versions match the compiled native module'
         ].join('\n');
-        dbLogger.error('Failed to load better-sqlite3 module', { 
-            error: err?.message,
-            stack: err?.stack,
+        dbLogger.error('Could not load better-sqlite3 module', { 
+            error: err instanceof Error ? err.message : String(err),
+            stack: err instanceof Error ? err.stack : undefined,
             recommendedActions: [
                 'npm run rebuild',
                 'npx electron-rebuild -f -w better-sqlite3'
@@ -95,14 +101,31 @@ function loadBetterSqlite3(): (typeof import('better-sqlite3')) {
 export function openDb(opts?: BetterSqlite3.Options): BetterSqlite3.Database {
     // Ensure the database directory exists before creating the connection
     const dbDir = path.dirname(DB_PATH);
-    dbLogger.debug('Ensuring database directory exists', { directory: dbDir });
     fs.mkdirSync(dbDir, { recursive: true });
     
     dbLogger.verbose('Opening database connection', { dbPath: DB_PATH, options: opts });
-    const mod = loadBetterSqlite3() as unknown;
+    const mod = loadBetterSqlite3() as any;
     const DatabaseCtor = mod?.default ?? mod;
-    const db = new DatabaseCtor(DB_PATH, opts);
-    dbLogger.debug('Database connection established');
+    const db = new DatabaseCtor(DB_PATH, opts) as BetterSqlite3.Database;
+    
+    // Lazy initialization: ensure schema on first database open
+    if (!schemaEnsured) {
+        const timer = dbLogger.startTimer('lazy-schema-init');
+        try {
+            dbLogger.info('Ensuring database schema (lazy init)');
+            ensureSchemaInternal(db);
+            schemaEnsured = true;
+            dbLogger.info('Database initialized successfully (lazy init)', { dbPath: DB_PATH });
+            timer.done();
+        } catch (error) {
+            dbLogger.error('Lazy database initialization failed', error);
+            timer.done({ outcome: 'error' });
+            throw error;
+        }
+    } else {
+        dbLogger.debug('Database connection established (schema already ensured)');
+    }
+    
     return db;
 }
 
@@ -324,7 +347,7 @@ export function insertTimesheetEntries(entries: Array<{
         let inserted = 0;
         let duplicates = 0;
         
-        const insertMany = db.transaction((entriesList: TimesheetEntry[]) => {
+        const insertMany = db.transaction((entriesList: any[]) => {
             for (const entry of entriesList) {
                 const result = insert.run(
                     entry.date,
@@ -377,27 +400,10 @@ export function insertTimesheetEntries(entries: Array<{
 }
 
 /**
- * Ensures the database schema is created and up-to-date
- * 
- * Creates the timesheet table with all necessary columns, constraints, and indexes
- * if they don't already exist. This function should be called before any database
- * operations to ensure the schema is properly initialized.
- * 
- * The timesheet table includes:
- * - Auto-incrementing primary key
- * - Computed hours column (calculated from time_in and time_out)
- * - Data validation constraints for time values and 15-minute increments
- * - Indexes for performance on date and project queries
- * 
- * @throws {Error} When database operations fail
- * 
- * @example
- * ensureSchema(); // Creates tables and indexes if they don't exist
+ * Internal schema creation (takes an open database connection)
+ * @private
  */
-export function ensureSchema() {
-    const timer = dbLogger.startTimer('ensure-schema');
-    dbLogger.info('Ensuring database schema is up to date');
-    const db = openDb();
+function ensureSchemaInternal(db: BetterSqlite3.Database) {
     
     // Create timesheet table with comprehensive schema and constraints
     db.exec(`
@@ -452,6 +458,38 @@ export function ensureSchema() {
         -- Index for credentials lookups
         CREATE INDEX IF NOT EXISTS idx_credentials_service ON credentials(service);
     `);
+}
+
+/**
+ * Ensures the database schema is created and up-to-date
+ * 
+ * Creates the timesheet table with all necessary columns, constraints, and indexes
+ * if they don't already exist. This function should be called before any database
+ * operations to ensure the schema is properly initialized.
+ * 
+ * The timesheet table includes:
+ * - Auto-incrementing primary key
+ * - Computed hours column (calculated from time_in and time_out)
+ * - Data validation constraints for time values and 15-minute increments
+ * - Indexes for performance on date and project queries
+ * 
+ * @throws {Error} When database operations fail
+ * 
+ * @example
+ * ensureSchema(); // Creates tables and indexes if they don't exist
+ */
+export function ensureSchema() {
+    if (schemaEnsured) {
+        dbLogger.debug('Schema already ensured, skipping');
+        return;
+    }
+    
+    const timer = dbLogger.startTimer('ensure-schema');
+    dbLogger.info('Ensuring database schema is up to date');
+    const db = openDb();
+    
+    ensureSchemaInternal(db);
+    schemaEnsured = true;
     
     dbLogger.info('Database schema ensured successfully');
     timer.done();
@@ -651,16 +689,26 @@ export function storeCredentials(service: string, email: string, password: strin
         dbLogger.verbose('Storing credentials', { service, email });
         const encryptedPassword = encryptPassword(password);
         
-        const upsert = db.prepare(`
-            INSERT INTO credentials (service, email, password, updated_at)
-            VALUES (?, ?, ?, CURRENT_TIMESTAMP)
-            ON CONFLICT(service) DO UPDATE SET
-                email = excluded.email,
-                password = excluded.password,
-                updated_at = CURRENT_TIMESTAMP
-        `);
+        // Check if credentials already exist for this service
+        const existing = db.prepare('SELECT id FROM credentials WHERE service = ?').get(service);
         
-        const result = upsert.run(service, email, encryptedPassword);
+        let result;
+        if (existing) {
+            // Update existing credentials
+            const update = db.prepare(`
+                UPDATE credentials 
+                SET email = ?, password = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE service = ?
+            `);
+            result = update.run(email, encryptedPassword, service);
+        } else {
+            // Insert new credentials
+            const insert = db.prepare(`
+                INSERT INTO credentials (service, email, password, updated_at)
+                VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+            `);
+            result = insert.run(service, email, encryptedPassword);
+        }
         
         dbLogger.audit('store-credentials', 'Credentials stored', { 
             service,
@@ -675,7 +723,7 @@ export function storeCredentials(service: string, email: string, password: strin
             changes: result.changes
         };
     } catch (error) {
-        dbLogger.error('Failed to store credentials', error);
+        dbLogger.error('Could not store credentials', error);
         timer.done({ outcome: 'error' });
         return {
             success: false,
@@ -725,7 +773,7 @@ export function getCredentials(service: string): { email: string; password: stri
             password: decryptPassword(result.password)
         };
     } catch (error) {
-        dbLogger.error('Failed to retrieve credentials', error);
+        dbLogger.error('Could not retrieve credentials', error);
         timer.done({ outcome: 'error' });
         return null;
     } finally {
@@ -791,7 +839,7 @@ export function deleteCredentials(service: string) {
             changes: result.changes
         };
     } catch (error) {
-        dbLogger.error('Failed to delete credentials', error);
+        dbLogger.error('Could not delete credentials', error);
         timer.done({ outcome: 'error' });
         return {
             success: false,

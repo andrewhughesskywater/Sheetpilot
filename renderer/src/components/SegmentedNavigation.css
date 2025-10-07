@@ -1,0 +1,157 @@
+/**
+ * Material Design 3 Segmented Button Styles
+ * Following M3 specifications for button groups
+ */
+
+.md-segmented-button-container {
+  display: flex;
+  justify-content: center;
+  flex: 1;
+}
+
+.md-segmented-button-group {
+  display: inline-flex;
+  position: relative;
+  border-radius: var(--md-sys-shape-corner-full);
+  overflow: hidden;
+  box-shadow: var(--md-sys-elevation-level0);
+  background: transparent;
+}
+
+/* Individual segmented button */
+.md-segmented-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  height: 40px;
+  padding: 0 24px;
+  border: 1px solid var(--md-sys-color-outline);
+  border-right: none; /* Remove right border to share with next button */
+  background: transparent;
+  color: var(--md-sys-color-on-surface);
+  font-family: var(--md-sys-typescale-label-large-font);
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: var(--md-sys-typescale-label-large-weight);
+  letter-spacing: var(--md-sys-typescale-label-large-tracking);
+  cursor: pointer;
+  transition: background-color var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard);
+  overflow: hidden;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Last button needs right border */
+.md-segmented-button:last-child {
+  border-right: 1px solid var(--md-sys-color-outline);
+}
+
+/* First button has rounded left corners */
+.md-segmented-button:first-child {
+  border-top-left-radius: var(--md-sys-shape-corner-full);
+  border-bottom-left-radius: var(--md-sys-shape-corner-full);
+}
+
+/* Last button has rounded right corners */
+.md-segmented-button:last-child {
+  border-top-right-radius: var(--md-sys-shape-corner-full);
+  border-bottom-right-radius: var(--md-sys-shape-corner-full);
+}
+
+/* Selected state */
+.md-segmented-button--selected {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+  border-color: transparent;
+}
+
+/* Ensure selected buttons maintain proper borders with neighbors */
+.md-segmented-button--selected + .md-segmented-button {
+  border-left-color: transparent;
+}
+
+.md-segmented-button:has(+ .md-segmented-button--selected) {
+  border-right-color: transparent;
+}
+
+/* State layer for interactive effects */
+.md-segmented-button__state-layer {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  background: currentColor;
+  transition: opacity var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard);
+  pointer-events: none;
+}
+
+/* Hover state */
+.md-segmented-button:hover .md-segmented-button__state-layer {
+  opacity: var(--md-sys-state-hover-opacity);
+}
+
+/* Focus state */
+.md-segmented-button:focus-visible {
+  outline: 3px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+  z-index: 1;
+}
+
+.md-segmented-button:focus-visible .md-segmented-button__state-layer {
+  opacity: var(--md-sys-state-focus-opacity);
+}
+
+/* Active/Pressed state */
+.md-segmented-button:active .md-segmented-button__state-layer {
+  opacity: var(--md-sys-state-pressed-opacity);
+}
+
+/* Disabled state */
+.md-segmented-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.38;
+  color: var(--md-sys-color-on-surface);
+  border-color: var(--md-sys-color-outline);
+}
+
+.md-segmented-button:disabled .md-segmented-button__state-layer {
+  opacity: 0;
+}
+
+/* Label */
+.md-segmented-button__label {
+  position: relative;
+  z-index: 1;
+}
+
+/* Responsive design - stack on smaller screens if needed */
+@media (max-width: 600px) {
+  .md-segmented-button {
+    min-width: 40px;
+    padding: 0 16px;
+  }
+  
+  .md-segmented-button__label {
+    font-size: var(--md-sys-typescale-label-medium-size);
+  }
+}
+
+/* Accessibility - high contrast mode support */
+@media (prefers-contrast: high) {
+  .md-segmented-button {
+    border-width: 2px;
+  }
+  
+  .md-segmented-button--selected {
+    border-color: var(--md-sys-color-on-secondary-container);
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .md-segmented-button,
+  .md-segmented-button__state-layer {
+    transition: none;
+  }
+}
+

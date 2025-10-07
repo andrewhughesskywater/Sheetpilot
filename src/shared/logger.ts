@@ -35,8 +35,23 @@ const SESSION_ID = `session_${Date.now()}_${Math.random().toString(36).substring
 
 /**
  * Current user name for audit trail and user-specific logging
+ * SOC2: PII handling - username hashed in production unless SHEETPILOT_LOG_USERNAME=true
  */
 const CURRENT_USER = os.userInfo().username;
+const REDACT_PII = process.env['SHEETPILOT_LOG_USERNAME'] !== 'true' && process.env['NODE_ENV'] === 'production';
+
+/**
+ * Get username for logging - redacted in production unless explicitly enabled
+ */
+function getLogUsername(): string {
+    if (REDACT_PII) {
+        // Use first 3 chars + hash for correlation while protecting PII
+        const crypto = require('crypto');
+        const hash = crypto.createHash('sha256').update(CURRENT_USER).digest('hex').substring(0, 8);
+        return `${CURRENT_USER.substring(0, 3)}***${hash}`;
+    }
+    return CURRENT_USER;
+}
 
 /**
  * Application version from package.json
@@ -49,38 +64,63 @@ const APP_VERSION = '1.0.0';
 const ENVIRONMENT = process.env['NODE_ENV'] || 'production';
 
 /**
+ * Custom transport for dual logging (local + network)
+ */
+let networkTransport: any = null;
+
+/**
  * Configure electron-log with industry-standard settings
+ * Writes to both local (15MB limit) and network drives
  */
 export function configureLogger() {
+    const fs = require('fs');
+    
     // Set log levels for different transports
-    // verbose: Detailed operational information for troubleshooting
-    log.transports.file.level = 'verbose';
-    log.transports.console.level = 'debug';
+    // Production: info level to reduce noise and protect performance
+    // Development: verbose for detailed troubleshooting
+    const isProduction = ENVIRONMENT === 'production';
+    log.transports.file.level = isProduction ? 'info' : 'verbose';
+    log.transports.console.level = isProduction ? 'warn' : 'debug';
     
-    // Configure file transport with rotation
-    // ISO9000: Maintain records for quality management
-    // SOC2: Ensure log availability and integrity
-    // Network log path for centralized logging
+    // Configure LOCAL file transport with 15MB rotation limit
+    const localLogPath = app ? app.getPath('userData') : process.cwd();
+    const sanitizedUsername = CURRENT_USER.replace(/[^a-zA-Z0-9-_.]/g, '_');
+    const logFileName = `sheetpilot_${sanitizedUsername}_${SESSION_ID}.log`;
+    
+    log.transports.file.resolvePathFn = () => path.join(localLogPath, logFileName);
+    log.transports.file.maxSize = 15 * 1024 * 1024; // 15MB per file (local limit)
+    
+    // Add NETWORK transport (asynchronous, non-blocking)
     const networkLogPath = '\\\\swfl-file01\\Maintenance\\Python Programs\\SheetPilot\\logs';
-    const fallbackLogPath = app ? app.getPath('userData') : process.cwd();
+    const networkLogFile = path.join(networkLogPath, logFileName);
     
-    // Try to use network path, fallback to local if network is unavailable
-    let logPath: string;
-    try {
-        // Test if network path is accessible by trying to create the directory
-        const fs = require('fs');
-        if (!fs.existsSync(networkLogPath)) {
-            fs.mkdirSync(networkLogPath, { recursive: true });
+    // Create network directory asynchronously (non-blocking)
+    fs.mkdir(networkLogPath, { recursive: true }, (err: any) => {
+        if (err) {
+            console.error(`[Logger] Could not create network log directory: ${err.message}`);
         }
-        logPath = networkLogPath;
-    } catch (error) {
-        // Fallback to local userData if network path is not accessible
-        logPath = fallbackLogPath;
-        console.warn('Network log path not accessible, using local fallback:', error);
-    }
+    });
     
-    log.transports.file.resolvePathFn = () => path.join(logPath, 'sheetpilot.log');
-    log.transports.file.maxSize = 10 * 1024 * 1024; // 10MB per file
+    // Create custom network transport
+    networkTransport = (message: any) => {
+        // Write to network asynchronously (non-blocking)
+        const logLine = message.text + '\n';
+        fs.appendFile(networkLogFile, logLine, (err: any) => {
+            // Silently fail - network logging should not block app
+            if (err && Math.random() < 0.01) { // Log errors occasionally (1% sample)
+                console.error(`[Logger] Network log write failed: ${err.message}`);
+            }
+        });
+    };
+    
+    // Hook into electron-log to duplicate to network
+    const originalFileTransport = log.transports.file;
+    log.hooks.push((message, transport) => {
+        if (transport === originalFileTransport && networkTransport) {
+            networkTransport(message);
+        }
+        return message;
+    });
     
     // Machine-parsable JSON format for log aggregation
     // Enables automated monitoring, alerting, and compliance reporting
@@ -96,7 +136,8 @@ export function configureLogger() {
             sessionId: SESSION_ID,
             
             // User identification for audit trail and user-specific tracking
-            username: CURRENT_USER,
+            // SOC2: PII redacted in production unless SHEETPILOT_LOG_USERNAME=true
+            username: getLogUsername(),
             
             // Application context for multi-app environments
             application: 'Sheetpilot',
@@ -120,8 +161,17 @@ export function configureLogger() {
         return [JSON.stringify(logEntry)];
     };
     
-    // Human-readable console format for development
-    log.transports.console.format = '[{y}-{m}-{d} {h}:{i}:{s}.{ms}] [{level}] {text}';
+    // Structured console format for development
+    // Single-line JSON for consistency and greppability
+    log.transports.console.format = (msg) => {
+        const consoleEntry = {
+            timestamp: new Date().toISOString(),
+            level: msg.level,
+            component: 'Application',
+            message: msg.data.map((d: unknown) => typeof d === 'object' ? JSON.stringify(d) : String(d)).join(' '),
+        };
+        return [JSON.stringify(consoleEntry)];
+    };
     
     // Error handling for log system failures
     // SOC2: Ensure system availability and error handling
@@ -187,11 +237,14 @@ export class Logger {
      * @private
      */
     private formatMessage(level: string, message: string, data?: unknown): void {
-        const entry = {
+        const entry: Record<string, unknown> = {
             ...this.context,
             message,
-            ...(data && { data }),
         };
+        
+        if (data !== undefined && data !== null) {
+            entry['data'] = data;
+        }
         
         // Use appropriate log level
         switch (level) {
@@ -295,7 +348,7 @@ export class Logger {
                 const duration = Date.now() - startTime;
                 timerLogger.verbose(`Operation completed: ${operation}`, {
                     durationMs: duration,
-                    ...metadata,
+                    ...(metadata && typeof metadata === 'object' ? metadata : {}),
                 });
             }
         };
@@ -312,7 +365,7 @@ export class Logger {
     security(eventType: string, message: string, data?: unknown): void {
         this.formatMessage('warn', `[SECURITY] ${eventType}: ${message}`, {
             securityEvent: eventType,
-            ...data,
+            ...(data && typeof data === 'object' ? data : {}),
         });
     }
     
@@ -329,7 +382,7 @@ export class Logger {
         this.formatMessage('info', `[AUDIT] ${action}: ${message}`, {
             auditAction: action,
             auditTimestamp: new Date().toISOString(),
-            ...data,
+            ...(data && typeof data === 'object' ? data : {}),
         });
     }
 }
@@ -375,6 +428,7 @@ export const authLogger = new Logger({ component: 'Authentication' });
 /**
  * Initialize the logging system
  * Should be called early in the application lifecycle
+ * Non-blocking - uses async operations for network logging
  */
 export function initializeLogging(): void {
     configureLogger();
@@ -393,13 +447,14 @@ export function initializeLogging(): void {
     
     appLogger.info('Logging system initialized', {
         sessionId: SESSION_ID,
-        username: CURRENT_USER,
+        username: getLogUsername(),
         version: APP_VERSION,
         environment: ENVIRONMENT,
         platform: process.platform,
         nodeVersion: process.version,
-        logPath: actualLogPath,
-        usingNetworkPath: actualLogPath.includes('swfl-file01'),
+        localLogPath: actualLogPath,
+        networkLogPath: '\\\\swfl-file01\\Maintenance\\Python Programs\\SheetPilot\\logs',
+        dualLogging: true,
     });
 }
 
