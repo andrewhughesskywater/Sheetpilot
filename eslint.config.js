@@ -127,7 +127,7 @@ module.exports = [
     }
   },
   {
-    files: ['renderer/**/*.{ts,tsx}'],
+    files: ['src/renderer/**/*.{ts,tsx}'],
     languageOptions: {
       parser: typescriptParser,
       parserOptions: {

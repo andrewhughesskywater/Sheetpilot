@@ -339,7 +339,7 @@ function createWindow() {
     mainWindow.loadURL('http://localhost:5173');
   } else {
     // In production, __dirname is 'dist/', so go up one level to reach root
-    mainWindow.loadFile(path.join(__dirname, '..', 'renderer', 'dist', 'index.html'));
+    mainWindow.loadFile(path.join(__dirname, '..', '..', 'src', 'renderer', 'dist', 'index.html'));
   }
 }
 

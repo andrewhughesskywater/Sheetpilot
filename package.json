@@ -10,11 +10,11 @@
     "electron:compiled": "npm run rebuild && electron build/dist/main.js",
     "rebuild": "electron-rebuild -f -w better-sqlite3",
     "build:main": "tsc main.ts src/main/preload.ts --outDir build/dist --target ES2022 --module CommonJS --moduleResolution Node --esModuleInterop --allowSyntheticDefaultImports",
-    "vite": "cd renderer && npm run dev",
+    "vite": "cd src/renderer && npm run dev",
     "dev": "concurrently -k -n VITE,ELECTRON -c auto \"npm:vite\" \"wait-on tcp:5173 && npm run build:main && npm run electron:compiled\"",
     "dev:hot": "concurrently -k -n VITE,ELECTRON -c auto \"npm:vite\" \"wait-on tcp:5173 && npm run build:main && npm run dev:main\"",
     "dev:main": "nodemon --watch main.ts --watch src/main/preload.ts --exec \"npm run build:main && electron build/dist/main.js\"",
-    "build:renderer": "cd renderer && npm run build",
+    "build:renderer": "cd src/renderer && npm run build",
     "build:bot": "cd src/services/bot && npm run build",
     "build": "npm run build:main && npm run build:renderer && npm run build:bot && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder",
     "test": "vitest run",
@@ -31,11 +31,11 @@
     "files": [
       "build/dist/**/*",
       "src/services/bot/dist/**/*",
-      "renderer/dist/**/*",
+      "src/renderer/dist/**/*",
       "src/assets/images/icon.ico",
       "!node_modules/.cache/**",
       "!src/services/bot/node_modules/**",
-      "!renderer/node_modules/**"
+      "!src/renderer/node_modules/**"
     ],
     "directories": {
       "output": "build"

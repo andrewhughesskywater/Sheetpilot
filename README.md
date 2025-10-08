@@ -27,18 +27,18 @@ Sheetpilot is a time-tracking application that combines a modern Electron UI wit
 
 ```
 Sheetpilot/
-├── backend/
-│   ├── bot/              # Playwright automation bot
-│   ├── database.ts       # Database operations
-│   └── timesheet_importer.ts
-├── renderer/             # React frontend
-│   ├── src/
-│   ├── components/
-│   └── pages/
-├── shared/               # Shared utilities (logger, etc.)
-├── tests/                # Integration and unit tests
+├── src/
+│   ├── main/             # Main process (Electron)
+│   ├── renderer/         # React frontend
+│   │   ├── src/
+│   │   ├── components/
+│   │   └── pages/
+│   ├── services/         # Backend services (database, bot)
+│   ├── shared/           # Shared utilities (logger, etc.)
+│   └── assets/           # Application assets
+├── __tests__/            # Integration and unit tests
 ├── docs/                 # Documentation
-└── dist/                 # Build output
+└── build/                # Build output
 ```
 
 ## Development
@@ -55,7 +55,7 @@ Sheetpilot/
 npm install
 
 # Install renderer dependencies
-cd renderer
+cd src/renderer
 npm install
 ```
 

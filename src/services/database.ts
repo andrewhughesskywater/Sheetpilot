@@ -37,7 +37,11 @@ let schemaEnsured = false;
  * @example
  * setDbPath('/custom/path/database.sqlite');
  */
-export const setDbPath = (p: string) => { DB_PATH = path.resolve(p); };
+export const setDbPath = (p: string) => { 
+    DB_PATH = path.resolve(p); 
+    // Reset schema flag when path changes so schema gets created for new database
+    schemaEnsured = false;
+};
 
 /**
  * Gets the current database file path

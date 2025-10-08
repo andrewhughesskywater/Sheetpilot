@@ -1,0 +1,454 @@
+/*
+  Material Design 3 - MUI Component Overrides
+  Bridges Material UI components to use M3 design tokens
+  
+  This file applies M3 styling to MUI components without replacing them,
+  ensuring we get M3 aesthetics while keeping MUI functionality.
+*/
+
+/* ========================================
+   MUI BUTTON OVERRIDES
+   ======================================== */
+
+/* Base button styling */
+.MuiButton-root {
+  border-radius: var(--md-sys-shape-corner-full);
+  text-transform: none;
+  font-family: var(--md-sys-typescale-label-large-font);
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: var(--md-sys-typescale-label-large-weight);
+  letter-spacing: var(--md-sys-typescale-label-large-tracking);
+  line-height: var(--md-sys-typescale-label-large-line-height);
+  padding: 10px 24px;
+  min-height: 40px;
+  transition: box-shadow var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard),
+              background-color var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard);
+}
+
+/* Contained button - M3 Filled */
+.MuiButton-contained {
+  background-color: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+  box-shadow: var(--md-sys-elevation-level0);
+}
+
+.MuiButton-contained:hover {
+  background-color: var(--md-sys-color-primary);
+  box-shadow: var(--md-sys-elevation-level1);
+  filter: brightness(1.05);
+}
+
+.MuiButton-contained:active {
+  box-shadow: var(--md-sys-elevation-level0);
+}
+
+.MuiButton-contained.Mui-disabled {
+  background-color: color-mix(in srgb, var(--md-sys-color-on-surface) 12%, transparent);
+  color: color-mix(in srgb, var(--md-sys-color-on-surface) 38%, transparent);
+  box-shadow: none;
+}
+
+/* Outlined button - M3 Outlined */
+.MuiButton-outlined {
+  background-color: transparent;
+  border: 1px solid var(--md-sys-color-outline);
+  color: var(--md-sys-color-primary);
+}
+
+.MuiButton-outlined:hover {
+  background-color: color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent);
+  border-color: var(--md-sys-color-outline);
+}
+
+.MuiButton-outlined.Mui-disabled {
+  border-color: color-mix(in srgb, var(--md-sys-color-on-surface) 12%, transparent);
+  color: color-mix(in srgb, var(--md-sys-color-on-surface) 38%, transparent);
+}
+
+/* Text button - M3 Text */
+.MuiButton-text {
+  background-color: transparent;
+  color: var(--md-sys-color-primary);
+  padding: 10px 12px;
+}
+
+.MuiButton-text:hover {
+  background-color: color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent);
+}
+
+/* Size variants */
+.MuiButton-sizeLarge {
+  min-height: 48px;
+  padding: 14px 28px;
+  font-size: var(--md-sys-typescale-label-large-size);
+}
+
+.MuiButton-sizeSmall {
+  min-height: 32px;
+  padding: 6px 16px;
+  font-size: var(--md-sys-typescale-label-medium-size);
+}
+
+/* ========================================
+   MUI ICON BUTTON OVERRIDES
+   ======================================== */
+
+.MuiIconButton-root {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--md-sys-shape-corner-full);
+  color: var(--md-sys-color-on-surface-variant);
+  transition: background-color var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard);
+}
+
+.MuiIconButton-root:hover {
+  background-color: color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent);
+}
+
+.MuiIconButton-colorPrimary {
+  color: var(--md-sys-color-primary);
+}
+
+.MuiIconButton-colorError {
+  color: var(--md-sys-color-error);
+}
+
+/* ========================================
+   MUI CARD OVERRIDES
+   ======================================== */
+
+.MuiCard-root {
+  background-color: var(--md-sys-color-surface-container-low);
+  color: var(--md-sys-color-on-surface);
+  border-radius: var(--md-sys-shape-corner-medium);
+  box-shadow: var(--md-sys-elevation-level1);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  transition: box-shadow var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard);
+}
+
+.MuiCardContent-root {
+  padding: var(--sp-space-4);
+}
+
+/* ========================================
+   MUI DIALOG OVERRIDES
+   ======================================== */
+
+.MuiDialog-paper {
+  background-color: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+  border-radius: var(--md-sys-shape-corner-extra-large);
+  box-shadow: var(--md-sys-elevation-level3);
+}
+
+.MuiDialogTitle-root {
+  font-family: var(--md-sys-typescale-headline-small-font);
+  font-size: var(--md-sys-typescale-headline-small-size);
+  font-weight: var(--md-sys-typescale-headline-small-weight);
+  line-height: var(--md-sys-typescale-headline-small-line-height);
+  color: var(--md-sys-color-on-surface);
+  padding: var(--sp-space-6) var(--sp-space-6) var(--sp-space-4);
+}
+
+.MuiDialogContent-root {
+  font-family: var(--md-sys-typescale-body-medium-font);
+  font-size: var(--md-sys-typescale-body-medium-size);
+  line-height: var(--md-sys-typescale-body-medium-line-height);
+  color: var(--md-sys-color-on-surface-variant);
+  padding: var(--sp-space-4) var(--sp-space-6);
+}
+
+.MuiDialogActions-root {
+  padding: var(--sp-space-4) var(--sp-space-6) var(--sp-space-6);
+  gap: var(--sp-space-2);
+}
+
+.MuiBackdrop-root {
+  background-color: color-mix(in srgb, var(--md-sys-color-scrim) 32%, transparent);
+}
+
+/* ========================================
+   MUI TEXTFIELD OVERRIDES
+   ======================================== */
+
+.MuiTextField-root {
+  --TextField-brandBorderColor: var(--md-sys-color-outline);
+  --TextField-brandBorderHoverColor: var(--md-sys-color-on-surface);
+  --TextField-brandBorderFocusedColor: var(--md-sys-color-primary);
+}
+
+.MuiOutlinedInput-root {
+  border-radius: var(--md-sys-shape-corner-small);
+  background-color: var(--md-sys-color-surface-container);
+  font-family: var(--md-sys-typescale-body-large-font);
+  font-size: var(--md-sys-typescale-body-large-size);
+  line-height: var(--md-sys-typescale-body-large-line-height);
+  transition: border-color var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard);
+}
+
+.MuiOutlinedInput-root .MuiOutlinedInput-notchedOutline {
+  border-color: var(--md-sys-color-outline);
+  transition: border-color var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard);
+}
+
+.MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
+  border-color: var(--md-sys-color-on-surface);
+}
+
+.MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+  border-color: var(--md-sys-color-primary);
+  border-width: 2px;
+}
+
+.MuiOutlinedInput-root.Mui-error .MuiOutlinedInput-notchedOutline {
+  border-color: var(--md-sys-color-error);
+}
+
+.MuiInputLabel-root {
+  font-family: var(--md-sys-typescale-body-large-font);
+  font-size: var(--md-sys-typescale-body-large-size);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.MuiInputLabel-root.Mui-focused {
+  color: var(--md-sys-color-primary);
+}
+
+.MuiInputLabel-root.Mui-error {
+  color: var(--md-sys-color-error);
+}
+
+.MuiFormHelperText-root {
+  font-family: var(--md-sys-typescale-body-small-font);
+  font-size: var(--md-sys-typescale-body-small-size);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.MuiFormHelperText-root.Mui-error {
+  color: var(--md-sys-color-error);
+}
+
+/* ========================================
+   MUI CHIP OVERRIDES
+   ======================================== */
+
+.MuiChip-root {
+  height: 32px;
+  border-radius: var(--md-sys-shape-corner-small);
+  font-family: var(--md-sys-typescale-label-large-font);
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: var(--md-sys-typescale-label-large-weight);
+  transition: background-color var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard);
+}
+
+.MuiChip-filled {
+  background-color: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.MuiChip-outlined {
+  background-color: transparent;
+  border: 1px solid var(--md-sys-color-outline);
+  color: var(--md-sys-color-on-surface);
+}
+
+.MuiChip-colorPrimary.MuiChip-filled {
+  background-color: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+}
+
+.MuiChip-colorSecondary.MuiChip-filled {
+  background-color: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+
+.MuiChip-colorError.MuiChip-filled {
+  background-color: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+}
+
+.MuiChip-sizeSmall {
+  height: 24px;
+  font-size: var(--md-sys-typescale-label-small-size);
+}
+
+/* ========================================
+   MUI LIST OVERRIDES
+   ======================================== */
+
+.MuiList-root {
+  background-color: transparent;
+  color: var(--md-sys-color-on-surface);
+}
+
+.MuiListItem-root {
+  border-radius: var(--md-sys-shape-corner-small);
+  transition: background-color var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard);
+}
+
+.MuiListItem-root:hover {
+  background-color: color-mix(in srgb, var(--md-sys-color-on-surface) 8%, transparent);
+}
+
+.MuiListItemText-primary {
+  font-family: var(--md-sys-typescale-body-large-font);
+  font-size: var(--md-sys-typescale-body-large-size);
+  line-height: var(--md-sys-typescale-body-large-line-height);
+  color: var(--md-sys-color-on-surface);
+}
+
+.MuiListItemText-secondary {
+  font-family: var(--md-sys-typescale-body-medium-font);
+  font-size: var(--md-sys-typescale-body-medium-size);
+  line-height: var(--md-sys-typescale-body-medium-line-height);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+/* ========================================
+   MUI DIVIDER OVERRIDES
+   ======================================== */
+
+.MuiDivider-root {
+  border-color: var(--md-sys-color-outline-variant);
+  background-color: var(--md-sys-color-outline-variant);
+}
+
+/* ========================================
+   MUI TYPOGRAPHY OVERRIDES
+   ======================================== */
+
+.MuiTypography-h1 {
+  font-family: var(--md-sys-typescale-display-large-font);
+  font-size: var(--md-sys-typescale-display-large-size);
+  font-weight: var(--md-sys-typescale-display-large-weight);
+  line-height: var(--md-sys-typescale-display-large-line-height);
+  letter-spacing: var(--md-sys-typescale-display-large-tracking);
+}
+
+.MuiTypography-h2 {
+  font-family: var(--md-sys-typescale-display-medium-font);
+  font-size: var(--md-sys-typescale-display-medium-size);
+  font-weight: var(--md-sys-typescale-display-medium-weight);
+  line-height: var(--md-sys-typescale-display-medium-line-height);
+  letter-spacing: var(--md-sys-typescale-display-medium-tracking);
+}
+
+.MuiTypography-h3 {
+  font-family: var(--md-sys-typescale-headline-large-font);
+  font-size: var(--md-sys-typescale-headline-large-size);
+  font-weight: var(--md-sys-typescale-headline-large-weight);
+  line-height: var(--md-sys-typescale-headline-large-line-height);
+}
+
+.MuiTypography-h4 {
+  font-family: var(--md-sys-typescale-headline-medium-font);
+  font-size: var(--md-sys-typescale-headline-medium-size);
+  font-weight: var(--md-sys-typescale-headline-medium-weight);
+  line-height: var(--md-sys-typescale-headline-medium-line-height);
+}
+
+.MuiTypography-h5 {
+  font-family: var(--md-sys-typescale-headline-small-font);
+  font-size: var(--md-sys-typescale-headline-small-size);
+  font-weight: var(--md-sys-typescale-headline-small-weight);
+  line-height: var(--md-sys-typescale-headline-small-line-height);
+}
+
+.MuiTypography-h6 {
+  font-family: var(--md-sys-typescale-title-large-font);
+  font-size: var(--md-sys-typescale-title-large-size);
+  font-weight: var(--md-sys-typescale-title-large-weight);
+  line-height: var(--md-sys-typescale-title-large-line-height);
+}
+
+.MuiTypography-body1 {
+  font-family: var(--md-sys-typescale-body-large-font);
+  font-size: var(--md-sys-typescale-body-large-size);
+  font-weight: var(--md-sys-typescale-body-large-weight);
+  line-height: var(--md-sys-typescale-body-large-line-height);
+  letter-spacing: var(--md-sys-typescale-body-large-tracking);
+}
+
+.MuiTypography-body2 {
+  font-family: var(--md-sys-typescale-body-medium-font);
+  font-size: var(--md-sys-typescale-body-medium-size);
+  font-weight: var(--md-sys-typescale-body-medium-weight);
+  line-height: var(--md-sys-typescale-body-medium-line-height);
+  letter-spacing: var(--md-sys-typescale-body-medium-tracking);
+}
+
+.MuiTypography-subtitle1 {
+  font-family: var(--md-sys-typescale-title-medium-font);
+  font-size: var(--md-sys-typescale-title-medium-size);
+  font-weight: var(--md-sys-typescale-title-medium-weight);
+  line-height: var(--md-sys-typescale-title-medium-line-height);
+}
+
+.MuiTypography-subtitle2 {
+  font-family: var(--md-sys-typescale-title-small-font);
+  font-size: var(--md-sys-typescale-title-small-size);
+  font-weight: var(--md-sys-typescale-title-small-weight);
+  line-height: var(--md-sys-typescale-title-small-line-height);
+}
+
+/* ========================================
+   MUI CIRCULAR PROGRESS OVERRIDES
+   ======================================== */
+
+.MuiCircularProgress-root {
+  color: var(--md-sys-color-primary);
+}
+
+.MuiCircularProgress-colorSecondary {
+  color: var(--md-sys-color-secondary);
+}
+
+/* ========================================
+   MUI BOX OVERRIDES (for layout containers)
+   ======================================== */
+
+.MuiBox-root {
+  /* Inherits from parent - no specific overrides needed */
+}
+
+/* ========================================
+   ACCESSIBILITY & FOCUS STATES
+   ======================================== */
+
+.MuiButton-root:focus-visible,
+.MuiIconButton-root:focus-visible,
+.MuiChip-root:focus-visible {
+  outline: 3px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
+}
+
+/* ========================================
+   REDUCED MOTION SUPPORT
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .MuiButton-root,
+  .MuiIconButton-root,
+  .MuiCard-root,
+  .MuiDialog-paper,
+  .MuiChip-root,
+  .MuiListItem-root,
+  .MuiOutlinedInput-root,
+  .MuiOutlinedInput-notchedOutline {
+    transition: none !important;
+  }
+}
+
+/* ========================================
+   HIGH CONTRAST MODE SUPPORT
+   ======================================== */
+
+@media (prefers-contrast: high) {
+  .MuiButton-outlined,
+  .MuiCard-root,
+  .MuiDialog-paper,
+  .MuiOutlinedInput-notchedOutline {
+    border-width: 2px;
+  }
+}
+

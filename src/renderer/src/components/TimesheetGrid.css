@@ -1,0 +1,120 @@
+/* TimesheetGrid Component Styles - Minimal */
+
+.timesheet-page {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.timesheet-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--sp-space-4);
+  gap: var(--sp-space-4);
+}
+
+.timesheet-header h2 {
+  margin: 0;
+  flex: 1;
+}
+
+.submit-timesheet-button {
+  flex-shrink: 0;
+}
+
+.timesheet-table-container {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  padding: 0;
+  background: var(--md-sys-color-surface-container-low);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-medium);
+  box-shadow: var(--md-sys-elevation-level1);
+}
+
+/* Minimal Handsontable styling - let the theme drive appearance */
+.timesheet-table-container .handsontable {
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Use Handsontable CSS variables for theme customization */
+.timesheet-table-container .handsontable {
+  --ht-header-background-color: var(--md-sys-color-surface-container);
+  --ht-header-foreground-color: var(--md-sys-color-on-surface-variant);
+  --ht-header-font-weight: var(--md-sys-typescale-label-large-weight);
+  --ht-header-border-color: var(--md-sys-color-outline-variant);
+}
+
+/* Reduce header cell padding to prevent text truncation */
+.timesheet-table-container .handsontable th {
+  padding: 4px 6px !important;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+/* Reduce general cell padding for better space utilization */
+.timesheet-table-container .handsontable td {
+  padding: 4px 6px !important;
+}
+
+/* Ensure header text doesn't wrap and uses available space */
+.timesheet-table-container .handsontable th .ht_master {
+  white-space: nowrap;
+  overflow: visible;
+}
+
+/* Additional Handsontable header styling for better text display */
+.timesheet-table-container .handsontable .htCore th,
+.timesheet-table-container .handsontable .ht_master th {
+  padding: 4px 6px !important;
+  min-width: auto;
+  white-space: nowrap;
+}
+
+/* Ensure proper text rendering in header cells */
+.timesheet-table-container .handsontable .htCore th .relative,
+.timesheet-table-container .handsontable .ht_master th .relative {
+  padding: 0;
+  margin: 0;
+  line-height: 1.2;
+}
+
+/* Essential custom styling only */
+.timesheet-table-container .handsontable .htDimmed {
+  opacity: 0.6;
+}
+
+/* Error message styling */
+.timesheet-error-message {
+  color: var(--md-sys-color-error);
+}
+
+/* Dropdown menu styling - make dropdowns wider than columns */
+.timesheet-table-container .handsontable .htDropdownMenuList {
+  min-width: 250px !important;
+  max-width: 400px !important;
+  width: auto !important;
+  position: absolute !important;
+  z-index: 1000 !important;
+}
+
+/* Ensure dropdown container allows overflow */
+.timesheet-table-container .handsontable .htDropdownMenu {
+  overflow: visible !important;
+  position: relative !important;
+}
+
+/* Prevent horizontal scrollbar on the table container when dropdowns are open */
+.timesheet-table-container .handsontable .ht_master .wtHolder {
+  overflow: visible !important;
+}
+
+/* Ensure dropdown items have proper spacing and don't truncate */
+.timesheet-table-container .handsontable .htDropdownMenuList .htDropdownMenuListItem {
+  white-space: nowrap !important;
+  padding: 8px 12px !important;
+}

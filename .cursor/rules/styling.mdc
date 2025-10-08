@@ -1,0 +1,100 @@
+---
+description: Material Design 3 (M3) styling standards - use design tokens instead of hard-coded values for colors, typography, spacing, and other visual properties.
+alwaysApply: true
+globs:
+  - "**/*.css"
+  - "**/*.tsx"
+  - "**/*.ts"
+  - "**/*.jsx"
+  - "**/*.js"
+---
+
+# Material Design 3 Styling Rules
+
+## 1. Use Design Tokens for All Visual Properties
+
+ALWAYS use CSS custom properties (design tokens) instead of hard-coded values. NEVER write literal colors, fonts, spacing values, or other visual properties directly in component styles.
+
+**Required token sources:**
+
+- Colors: `--md-sys-color-*` (e.g., `--md-sys-color-primary`, `--md-sys-color-surface-container`)
+- Typography: `--md-sys-typescale-*` (e.g., `--md-sys-typescale-title-medium-font`, `--md-sys-typescale-body-medium-size`)
+- Shape/Radius: `--md-sys-shape-corner-*` (e.g., `--md-sys-shape-corner-medium`)
+- Spacing: `--space-*` (e.g., `--space-1` = 4px, `--space-4` = 16px)
+- Elevation/Shadows: `--md-sys-elevation-*` (e.g., `--md-sys-elevation-2`)
+- Animation: `--md-sys-motion-*` (e.g., `--md-sys-motion-easing-standard`)
+
+**Example - INCORRECT:**
+
+```css
+button {
+  background: #6750A4;
+  font-family: 'Roboto';
+  padding: 12px 16px;
+  border-radius: 8px;
+}
+```
+
+**Example - CORRECT:**
+
+```css
+button {
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
+  font-family: var(--md-sys-typescale-label-large-font);
+  padding: var(--space-button-vertical) var(--space-button-horizontal);
+  border-radius: var(--md-sys-shape-corner-medium);
+}
+```
+
+## 2. Organize Tokens in Centralized Files
+
+All design tokens are defined in centralized files. Component styles reference these tokens but NEVER define new color/spacing values:
+
+- `renderer/src/m3-tokens.css` - All M3 design tokens (color, shape, typography, motion)
+- `renderer/src/theme.css` - Theme-specific overrides and component patterns
+- `renderer/src/utils/theme-manager.ts` - JavaScript/TypeScript theme logic
+
+Component CSS files (`renderer/src/components/*.css`) use ONLY variables from these centralized files.
+
+## 3. Permitted Exceptions
+
+Hard-coded values are ONLY acceptable in these three cases:
+
+a) Base unit definitions in token files (e.g., `:root { --space-unit: 4px; }`)
+b) Temporary debugging/experimental overrides (must be removed before commit)
+c) Dynamic colors generated from data at runtime (e.g., chart category colors)
+
+## 4. Verify Token Availability
+
+Before adding a new hard-coded value, CHECK if an appropriate M3 token already exists in `m3-tokens.css`. If the needed token doesn't exist:
+
+a) Add the token to `m3-tokens.css` following M3 naming conventions
+b) Ensure the token supports both light and dark themes
+c) Then use the new token in your component
+
+## 5. Theme Consistency
+
+Every color token usage ensures proper contrast and theme support:
+
+- Surface colors ALWAYS pair with their corresponding `on-*` color (e.g., `--md-sys-color-surface` with `--md-sys-color-on-surface`)
+- Container colors ALWAYS pair with their corresponding `on-*-container` color
+- When using custom backgrounds, define both background and foreground tokens
+
+**Example - INCORRECT:**
+
+```css
+.card {
+  background: var(--md-sys-color-primary-container);
+  color: white; /* ❌ Hard-coded, won't work in all themes */
+}
+```
+
+**Example - CORRECT:**
+
+```css
+.card {
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container); /* ✅ Paired token */
+}
+```

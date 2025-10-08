@@ -44,7 +44,7 @@
     "build",
     "release",
     "src/services/bot/node_modules",
-    "renderer/node_modules",
+    "src/renderer/node_modules",
     "**/*.spec.ts",
     "**/*.test.ts"
   ],
