@@ -53,7 +53,7 @@ vi.mock('electron', () => {
       getPath: vi.fn((key: string) => (key === 'userData' ? 'C:/tmp/sheetpilot-userdata' : 'C:/tmp')),
       isPackaged: false,
       whenReady: vi.fn(() => ({
-        then: (callback: () => void) => {
+        then: (_callback: () => void) => {
           // Don't execute callback automatically to prevent side effects
           return Promise.resolve();
         },
@@ -160,7 +160,7 @@ import * as imp from '../src/services/timesheet_importer';
 
 describe('IPC Handlers Comprehensive Tests', () => {
   let testDbPath: string;
-  let handlers: Record<string, Function>;
+  let handlers: Record<string, (...args: unknown[]) => unknown>;
 
   beforeEach(() => {
     // Create isolated test database
@@ -196,7 +196,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
     if (fs.existsSync(testDbPath)) {
       try {
         fs.unlinkSync(testDbPath);
-      } catch (error) {
+      } catch {
         // Ignore cleanup errors
       }
     }

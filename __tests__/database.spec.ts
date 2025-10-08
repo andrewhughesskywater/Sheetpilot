@@ -49,12 +49,12 @@ describe('Database Module', () => {
         if (fs.existsSync(testDbPath)) {
             try {
                 fs.unlinkSync(testDbPath);
-            } catch (error) {
+            } catch {
                 // File might be locked, try again after a short delay
                 setTimeout(() => {
                     try {
                         fs.unlinkSync(testDbPath);
-                    } catch (e) {
+                    } catch {
                         // Ignore cleanup errors
                     }
                 }, 100);

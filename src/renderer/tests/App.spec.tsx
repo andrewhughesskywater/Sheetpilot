@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 
 // Mock the entire App component to avoid React hook initialization issues
@@ -18,10 +18,6 @@ declare global {
     database: Record<string, unknown>; 
   } 
 }
-
-import App from '../src/App';
-import { render, screen } from '@testing-library/react';
-import '@testing-library/jest-dom/vitest';
 
 describe('App renderer', () => {
   it('renders without crashing', () => {

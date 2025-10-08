@@ -36,10 +36,7 @@ interface Credential {
 //   credentials: Credential[];
 // }
 
-interface ArchiveProps {
-}
-
-const Archive: React.FC<ArchiveProps> = () => {
+const Archive: React.FC = () => {
   const [activeTab] = useState<'timesheet' | 'credentials'>('timesheet');
   const gridContainerRef = useRef<HTMLDivElement | null>(null);
   

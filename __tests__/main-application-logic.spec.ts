@@ -518,7 +518,7 @@ describe('Main Application Logic Tests', () => {
           const currentQuarter = Math.floor(now.getMonth() / 3) + 1;
           const dateQuarter = Math.floor(date.getMonth() / 3) + 1;
           return date.getFullYear() === now.getFullYear() && dateQuarter === currentQuarter;
-        } catch (error) {
+        } catch {
           return false; // Return false for any errors
         }
       };

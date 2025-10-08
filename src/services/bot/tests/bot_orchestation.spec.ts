@@ -60,7 +60,7 @@ describe('BotOrchestrator small logic', () => {
         }
       ];
       
-      const [success, submitted, errors] = await bot.run_automation(
+      const [success, _submitted, errors] = await bot.run_automation(
         testRows, 
         ['test@example.com', 'password123']
       );

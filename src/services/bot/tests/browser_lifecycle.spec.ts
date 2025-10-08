@@ -5,7 +5,7 @@
  * and cleaned up to prevent resource leaks and initialization errors.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { BotOrchestrator } from '../src/bot_orchestation';
 import * as Cfg from '../src/automation_config';
 
@@ -17,7 +17,7 @@ describe('Browser Lifecycle Management', () => {
     if (bot) {
       try {
         await bot.close();
-      } catch (e) {
+      } catch {
         // Ignore cleanup errors in tests
       }
     }
@@ -32,7 +32,7 @@ describe('Browser Lifecycle Management', () => {
     // but not leave resources in a bad state
     try {
       await bot.start();
-    } catch (e) {
+    } catch {
       // Either it throws (fine) or it's idempotent (also fine)
     }
     
@@ -146,7 +146,7 @@ describe('Browser Lifecycle Management', () => {
         expect(page).toBeDefined();
         
         await testBot.close();
-      } catch (e) {
+      } catch {
         // Some browsers might not be installed in CI/test environment
         // That's okay, but initialization shouldn't crash
         await testBot.close();
@@ -165,7 +165,7 @@ describe('Browser Lifecycle Management', () => {
     try {
       await headedBot.start();
       await headedBot.close();
-    } catch (e) {
+    } catch {
       // Headed mode might not work in CI environment
       await headedBot.close();
     }

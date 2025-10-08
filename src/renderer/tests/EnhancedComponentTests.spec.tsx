@@ -11,7 +11,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 
 // Mock Electron IPC
@@ -41,7 +41,7 @@ vi.mock('@handsontable/react-wrapper', async () => {
   const React = await import('react');
   
   // Create a simple mock component inside the factory
-  const MockHotTable = ({ colHeaders, data, afterChange, ...props }: any) => {
+  const MockHotTable = ({ colHeaders, data, afterChange, ..._props }: any) => {
     return React.createElement('div', {
       'data-testid': 'timesheet-grid',
       'data-col-headers': JSON.stringify(colHeaders),

@@ -10,7 +10,7 @@ class FakeFiller {
   async inject_field_value(_spec: Record<string, any>, _v: string): Promise<void> { /* no-op */ }
   require_page(): any { 
     return {
-      waitForTimeout: async (ms: number) => { /* no-op */ }
+      waitForTimeout: async (_ms: number) => { /* no-op */ }
     }; 
   }
   async submit_form(): Promise<boolean> {

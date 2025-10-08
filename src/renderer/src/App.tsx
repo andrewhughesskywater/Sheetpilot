@@ -20,7 +20,6 @@ import {
   Divider
 } from '@mui/material';
 import {
-  PlayArrow as PlayArrowIcon,
   VpnKey as VpnKeyIcon,
   Delete as DeleteIcon,
   Download as DownloadIcon
@@ -46,7 +45,7 @@ const AppContent: React.FC = () => {
   const [isEmailFieldDisabled, setIsEmailFieldDisabled] = useState(false);
   
   // Use data context
-  const { refreshArchiveData } = useData();
+  const { refreshArchiveData: _refreshArchiveData } = useData();
 
   // Initialize theme on mount
   useEffect(() => {

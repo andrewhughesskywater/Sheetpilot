@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import path from 'path';
-import { chromium, Page } from 'playwright';
+import { Page } from 'playwright';
 import * as cfg from '../src/automation_config';
 import { WebformFiller } from '../src/webform_flow';
 
@@ -23,7 +23,6 @@ describe('WebformFiller against mock form', () => {
     page = filler.require_page();
 
     // Route the Smartsheet endpoint and return a success JSON (simulate 200 OK)
-    const endpoint = cfg.SUBMISSION_ENDPOINT;
     await page.route('**/*', async (route) => {
       const url = route.request().url();
       if (url.includes('forms.smartsheet.com') && url.includes(cfg.FORM_ID)) {

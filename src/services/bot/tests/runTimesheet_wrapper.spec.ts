@@ -5,7 +5,7 @@
  * browser lifecycle, handles errors correctly, and cleans up resources.
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { runTimesheet } from '../src/index';
 
 describe('runTimesheet wrapper function', () => {

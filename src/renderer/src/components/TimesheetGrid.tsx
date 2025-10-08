@@ -452,7 +452,7 @@ const TimesheetGrid: React.FC<TimesheetGridProps> = ({ onChange }) => {
 
   // Custom state management to replace deprecated PersistentState plugin
   // Save column sorting state
-  const handleAfterColumnSort = useCallback((currentSortConfig: unknown, destinationSortConfigs: unknown) => {
+  const handleAfterColumnSort = useCallback((_currentSortConfig: unknown, destinationSortConfigs: unknown) => {
     try {
       localStorage.setItem('sheetpilot_columnSorting', JSON.stringify(destinationSortConfigs));
     } catch (error) {

@@ -37,11 +37,7 @@ import {
 } from '@mui/icons-material';
 import './UserManual.css';
 
-interface UserManualProps {
-  // Add any props if needed in the future
-}
-
-export default function UserManual({}: UserManualProps) {
+export default function UserManual() {
   const [expandedSection, setExpandedSection] = useState<string | false>('getting-started');
 
   const handleChange = (panel: string) => (_event: React.SyntheticEvent, isExpanded: boolean) => {
@@ -65,8 +61,8 @@ export default function UserManual({}: UserManualProps) {
           
           <Alert severity="info" sx={{ mb: 3 }}>
             <AlertTitle>First Time Setup</AlertTitle>
-            Before you can use SheetPilot, you'll need to add your SmartSheet credentials. 
-            Navigate to the Home tab and click "Add Credentials" to get started.
+            Before you can use SheetPilot, you&apos;ll need to add your SmartSheet credentials. 
+            Navigate to the Home tab and click &quot;Add Credentials&quot; to get started.
           </Alert>
 
           <Typography variant="h6" gutterBottom className="manual-heading manual-spacing-top">
@@ -95,7 +91,7 @@ export default function UserManual({}: UserManualProps) {
               <StepLabel>Submit to SmartSheet</StepLabel>
               <StepContent>
                 <Typography variant="body2" className="manual-body-text">
-                  Use the "Submit Timesheet" button to automatically send your entries to SmartSheet. 
+                  Use the &quot;Submit Timesheet&quot; button to automatically send your entries to SmartSheet. 
                   The application will validate your data before submission.
                 </Typography>
               </StepContent>
@@ -271,7 +267,7 @@ export default function UserManual({}: UserManualProps) {
               <StepLabel>Review Before Submission</StepLabel>
               <StepContent>
                 <Typography variant="body2" className="manual-body-text">
-                  Before submitting, review all entries for the week to ensure they're complete 
+                  Before submitting, review all entries for the week to ensure they&apos;re complete 
                   and accurate. Check for any missing project codes or descriptions.
                 </Typography>
               </StepContent>
@@ -322,7 +318,7 @@ export default function UserManual({}: UserManualProps) {
           </Typography>
           <Paper className="manual-feature-card">
             <Typography variant="body1" className="manual-body-text manual-spacing-bottom">
-              When you're ready to submit your weekly timesheet:
+              When you&apos;re ready to submit your weekly timesheet:
             </Typography>
             <List>
               <ListItem>
@@ -447,7 +443,7 @@ export default function UserManual({}: UserManualProps) {
                     <Box>
                       <Typography variant="body2" className="manual-body-text">
                         <strong>Solution:</strong> Ensure you have timesheet entries for the current week. 
-                        Check that entries are not already submitted (they won't appear in the submission queue).
+                        Check that entries are not already submitted (they won&apos;t appear in the submission queue).
                       </Typography>
                     </Box>
                   }
@@ -544,7 +540,7 @@ export default function UserManual({}: UserManualProps) {
             Data Security
           </Typography>
           <Typography variant="body1" paragraph className="manual-body-text">
-            SheetPilot is designed with security and privacy as top priorities. Here's how we protect your data:
+            SheetPilot is designed with security and privacy as top priorities. Here&apos;s how we protect your data:
           </Typography>
 
           <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 2, mb: 3 }}>
@@ -635,7 +631,7 @@ export default function UserManual({}: UserManualProps) {
             <AlertTitle>Important Security Notes</AlertTitle>
             <Typography variant="body2" className="manual-body-text">
               • Never share your SmartSheet credentials with others<br/>
-              • Keep your device's operating system and security software up to date<br/>
+              • Keep your device&apos;s operating system and security software up to date<br/>
               • Be cautious when using SheetPilot on shared or public computers<br/>
               • Report any suspicious activity or security concerns to your system administrator
             </Typography>
@@ -672,7 +668,7 @@ export default function UserManual({}: UserManualProps) {
                 System Administrator
               </Typography>
               <Typography variant="body2" className="manual-body-text manual-spacing-bottom">
-                Your organization's system administrator can help with technical issues and account problems.
+                Your organization&apos;s system administrator can help with technical issues and account problems.
               </Typography>
               <Chip label="Internal Support" color="secondary" size="small" />
             </Card>
@@ -702,7 +698,7 @@ export default function UserManual({}: UserManualProps) {
             </Typography>
 
             <Typography variant="subtitle1" className="manual-heading manual-spacing-bottom-small">
-              Q: Can I edit entries after they've been submitted?
+              Q: Can I edit entries after they&apos;ve been submitted?
             </Typography>
             <Typography variant="body2" className="manual-body-text manual-spacing-bottom manual-padding-left">
               A: Once entries are submitted to SmartSheet, you cannot edit them through SheetPilot. 
@@ -714,14 +710,14 @@ export default function UserManual({}: UserManualProps) {
             </Typography>
             <Typography variant="body2" className="manual-body-text manual-spacing-bottom manual-padding-left">
               A: SheetPilot will show an error message. Check your connection and try submitting again. 
-              The application will only submit entries that haven't been successfully submitted yet.
+              The application will only submit entries that haven&apos;t been successfully submitted yet.
             </Typography>
 
             <Typography variant="subtitle1" className="manual-heading manual-spacing-bottom-small">
               Q: Can I use SheetPilot on multiple devices?
             </Typography>
             <Typography variant="body2" className="manual-body-text manual-spacing-bottom manual-padding-left">
-              A: SheetPilot stores data locally on each device. You'll need to add your credentials 
+              A: SheetPilot stores data locally on each device. You&apos;ll need to add your credentials 
               and manage timesheet entries separately on each device.
             </Typography>
           </Box>

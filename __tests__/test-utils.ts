@@ -13,7 +13,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import * as XLSX from 'xlsx';
-import { setDbPath, ensureSchema } from '../backend/database';
+import { setDbPath, ensureSchema, openDb } from '../backend/database';
 
 /**
  * Creates a temporary test database with a unique name
@@ -130,7 +130,6 @@ export function cleanupTestFiles(filePaths: string[]): void {
  * @returns {Object} Database statistics
  */
 export function getDatabaseStats(): { count: number; projects: string[]; dateRange: { min: string; max: string } } {
-    const { openDb } = require('../backend/database');
     const db = openDb();
     
     try {

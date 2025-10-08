@@ -5,7 +5,7 @@
  * These tests catch issues with the complete integration chain.
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { 
     ensureSchema, 
     insertTimesheetEntry, 

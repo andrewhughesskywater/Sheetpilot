@@ -24,7 +24,7 @@ vi.mock('better-sqlite3', () => {
   };
   
   return {
-    default: vi.fn().mockImplementation((dbPath: string, opts?: any) => {
+    default: vi.fn().mockImplementation((dbPath: string, _opts?: any) => {
       if (dbPath.includes('invalid')) {
         throw new Error('Database connection failed');
       }
@@ -88,7 +88,7 @@ describe('Service Layer Edge Cases', () => {
     if (fs.existsSync(testDbPath)) {
       try {
         fs.unlinkSync(testDbPath);
-      } catch (error) {
+      } catch {
         // Ignore cleanup errors
       }
     }
