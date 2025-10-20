@@ -104,7 +104,11 @@ export class WebformFiller {
           '--disable-features=TranslateUI',
           '--disable-ipc-flooding-protection',
           '--aggressive-cache-discard',
-          '--memory-pressure-off'
+          '--memory-pressure-off',
+          // Stealth configuration to reduce AV detection
+          '--disable-blink-features=AutomationControlled',
+          '--disable-web-security',
+          '--disable-features=VizDisplayCompositor'
         ]
       };
       if (channel) {
@@ -126,6 +130,47 @@ export class WebformFiller {
       viewport: { width: cfg.BROWSER_VIEWPORT_WIDTH, height: cfg.BROWSER_VIEWPORT_HEIGHT },
       ignoreHTTPSErrors: true,
       javaScriptEnabled: true,
+      // Stealth configuration to reduce AV detection
+      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      extraHTTPHeaders: {
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Upgrade-Insecure-Requests': '1',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'none',
+        'Cache-Control': 'max-age=0'
+      }
+    });
+    
+    // Hide automation flags
+    await this.context.addInitScript(() => {
+      // Remove webdriver property
+      Object.defineProperty(navigator, 'webdriver', { 
+        get: () => false 
+      });
+      
+      // Override automation detection properties
+      Object.defineProperty(navigator, 'plugins', {
+        get: () => [1, 2, 3, 4, 5] // Fake plugins array
+      });
+      
+      // Override automation detection methods
+      const originalQuery = window.navigator.permissions.query;
+      window.navigator.permissions.query = (parameters) => {
+        if (parameters.name === 'notifications') {
+          return Promise.resolve({
+            state: Notification.permission,
+            name: parameters.name,
+            onchange: null,
+            addEventListener: () => {},
+            removeEventListener: () => {},
+            dispatchEvent: () => false
+          } as PermissionStatus);
+        }
+        return originalQuery(parameters);
+      };
     });
   }
 

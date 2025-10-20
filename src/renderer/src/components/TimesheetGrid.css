@@ -26,7 +26,6 @@
 .timesheet-table-container {
   width: 100%;
   max-width: 100%;
-  overflow: hidden;
   padding: 0;
   background: var(--md-sys-color-surface-container-low);
   border: 1px solid var(--md-sys-color-outline-variant);
@@ -102,15 +101,12 @@
   z-index: 1000 !important;
 }
 
-/* Ensure dropdown container allows overflow */
+/* Dropdown menu vertical scrolling only */
 .timesheet-table-container .handsontable .htDropdownMenu {
-  overflow: visible !important;
+  max-height: 300px;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
   position: relative !important;
-}
-
-/* Prevent horizontal scrollbar on the table container when dropdowns are open */
-.timesheet-table-container .handsontable .ht_master .wtHolder {
-  overflow: visible !important;
 }
 
 /* Ensure dropdown items have proper spacing and don't truncate */

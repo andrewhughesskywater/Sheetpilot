@@ -367,6 +367,83 @@ afterValidate={(isValid, value, row, prop) => {
 | `sheetpilot_rowHeights` | Row height preferences |
 | `sheetpilot_timesheet_backup` | Data backup with timestamp |
 
+### Sorting Configuration
+
+#### Default Sort Order
+
+The Timesheet grid uses multi-level sorting by default:
+
+```typescript
+columnSorting={{
+  initialConfig: [
+    { column: 0, sortOrder: 'asc' },  // Date: least recent to most recent
+    { column: 1, sortOrder: 'asc' }   // Time In: earliest to latest (secondary)
+  ],
+  indicator: true,
+  headerAction: true,
+  sortEmptyCells: true
+}}
+```
+
+**Behavior**:
+- Primary sort: Date column (ascending - oldest first)
+- Secondary sort: Time In column (ascending - earliest first)
+- Empty cells sorted to end
+- User can override by clicking column headers
+
+#### State Persistence
+
+Sort configuration is loaded only once on component mount to prevent re-sorting on every user interaction:
+
+```typescript
+const hasLoadedInitialStateRef = useRef(false);
+
+useEffect(() => {
+  if (!hotTableRef.current?.hotInstance || hasLoadedInitialStateRef.current) return;
+  
+  const hot = hotTableRef.current.hotInstance;
+  hasLoadedInitialStateRef.current = true;
+  
+  // Load saved sort config from localStorage
+  const saved = localStorage.getItem('sheetpilot_columnSorting');
+  if (saved) {
+    const sortPlugin = hot.getPlugin('columnSorting');
+    sortPlugin?.setSortConfig(JSON.parse(saved));
+  }
+}, []); // Empty dependency array = run once on mount
+```
+
+**Key Points**:
+- Sort state loads once on mount, not on every data change
+- User-initiated sort changes are saved to localStorage
+- Prevents table from re-sorting when user edits cells
+- Preserves user's preferred sort order across sessions
+
+#### Customizing Sort Order
+
+To change the default sort behavior:
+
+```typescript
+// Single column sort
+initialConfig: { column: 0, sortOrder: 'desc' }
+
+// Multi-column sort (evaluated in order)
+initialConfig: [
+  { column: 0, sortOrder: 'asc' },   // Primary
+  { column: 1, sortOrder: 'desc' },  // Secondary
+  { column: 3, sortOrder: 'asc' }    // Tertiary
+]
+```
+
+**Column Indices**:
+- 0: Date
+- 1: Time In
+- 2: Time Out
+- 3: Project
+- 4: Tool
+- 5: Charge Code
+- 6: Task Description
+
 ---
 
 ## Auto-Updates
@@ -864,6 +941,7 @@ npm run clean        # Clean build artifacts
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0 | 2025-10-08 | Initial consolidated wiki |
+| 1.1 | 2025-10-20 | Added Handsontable sorting configuration documentation |
 
 **Consolidated from**: 21 individual documentation files  
 **Maintained by**: Development Team

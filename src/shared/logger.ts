@@ -56,24 +56,19 @@ function getLogUsername(): string {
 /**
  * Application version from package.json
  */
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.0.1';
 
 /**
  * Environment type (development, production, test)
  */
 const ENVIRONMENT = process.env['NODE_ENV'] || 'production';
 
-/**
- * Custom transport for dual logging (local + network)
- */
-let networkTransport: any = null;
 
 /**
  * Configure electron-log with industry-standard settings
  * Writes to both local (15MB limit) and network drives
  */
 export function configureLogger() {
-    const fs = require('fs');
     
     // Set log levels for different transports
     // Production: info level to reduce noise and protect performance
@@ -90,37 +85,8 @@ export function configureLogger() {
     log.transports.file.resolvePathFn = () => path.join(localLogPath, logFileName);
     log.transports.file.maxSize = 15 * 1024 * 1024; // 15MB per file (local limit)
     
-    // Add NETWORK transport (asynchronous, non-blocking)
-    const networkLogPath = '\\\\swfl-file01\\Maintenance\\Python Programs\\SheetPilot\\logs';
-    const networkLogFile = path.join(networkLogPath, logFileName);
-    
-    // Create network directory asynchronously (non-blocking)
-    fs.mkdir(networkLogPath, { recursive: true }, (err: any) => {
-        if (err) {
-            console.error(`[Logger] Could not create network log directory: ${err.message}`);
-        }
-    });
-    
-    // Create custom network transport
-    networkTransport = (message: any) => {
-        // Write to network asynchronously (non-blocking)
-        const logLine = message.text + '\n';
-        fs.appendFile(networkLogFile, logLine, (err: any) => {
-            // Silently fail - network logging should not block app
-            if (err && Math.random() < 0.01) { // Log errors occasionally (1% sample)
-                console.error(`[Logger] Network log write failed: ${err.message}`);
-            }
-        });
-    };
-    
-    // Hook into electron-log to duplicate to network
-    const originalFileTransport = log.transports.file;
-    log.hooks.push((message, transport) => {
-        if (transport === originalFileTransport && networkTransport) {
-            networkTransport(message);
-        }
-        return message;
-    });
+    // Logs are now written locally only for better security and reliability
+    appLogger.info('Local logging enabled', { localLogPath });
     
     // Machine-parsable JSON format for log aggregation
     // Enables automated monitoring, alerting, and compliance reporting
@@ -453,8 +419,7 @@ export function initializeLogging(): void {
         platform: process.platform,
         nodeVersion: process.version,
         localLogPath: actualLogPath,
-        networkLogPath: '\\\\swfl-file01\\Maintenance\\Python Programs\\SheetPilot\\logs',
-        dualLogging: true,
+        loggingMode: 'local-only',
     });
 }
 

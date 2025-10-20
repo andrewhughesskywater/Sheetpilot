@@ -308,6 +308,9 @@ const TimesheetGrid: React.FC<TimesheetGridProps> = ({ onChange }) => {
 
   // Track if this is the initial load to avoid unnecessary updateData() calls
   const isInitialLoadRef = useRef(true);
+  
+  // Track if we've already loaded the initial sort/resize state
+  const hasLoadedInitialStateRef = useRef(false);
 
   // Update local state when preloaded data changes from external source (e.g., refresh)
   useEffect(() => {
@@ -484,11 +487,12 @@ const TimesheetGrid: React.FC<TimesheetGridProps> = ({ onChange }) => {
     }
   }, []);
 
-  // Load saved states on initialization
+  // Load saved states on initialization (only once)
   useEffect(() => {
-    if (!hotTableRef.current?.hotInstance) return;
+    if (!hotTableRef.current?.hotInstance || hasLoadedInitialStateRef.current) return;
 
     const hot = hotTableRef.current.hotInstance;
+    hasLoadedInitialStateRef.current = true;
 
     // Load column sorting state
     try {
@@ -536,7 +540,7 @@ const TimesheetGrid: React.FC<TimesheetGridProps> = ({ onChange }) => {
     } catch (error) {
       console.error('[TimesheetGrid] Could not load row heights:', error);
     }
-  }, [timesheetDraftData]); // Re-run when data changes to ensure state is applied
+  }, []); // Only run once on mount
 
   // Submit timesheet functionality
   const submitTimesheet = async () => {
@@ -661,7 +665,7 @@ const TimesheetGrid: React.FC<TimesheetGridProps> = ({ onChange }) => {
         afterRowResize={handleAfterRowResize}
         themeName="ht-theme-horizon"
         width="100%"
-        height={400}
+        height="auto"
         rowHeaders={true}
         colHeaders={true}
         customBorders={[]}
@@ -680,7 +684,10 @@ const TimesheetGrid: React.FC<TimesheetGridProps> = ({ onChange }) => {
         selectionMode="multiple"
         outsideClickDeselects={true}
         columnSorting={{
-          initialConfig: { column: 0, sortOrder: 'desc' },
+          initialConfig: [
+            { column: 0, sortOrder: 'asc' },  // Date: least recent to most recent
+            { column: 1, sortOrder: 'asc' }   // Time In: earliest to latest
+          ],
           indicator: true,
           headerAction: true,
           sortEmptyCells: true,

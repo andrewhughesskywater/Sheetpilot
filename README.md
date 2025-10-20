@@ -98,6 +98,14 @@ Configuration files:
 - `vitest.config.ts`: Test configuration
 - `eslint.config.js`: ESLint configuration
 
+## Antivirus Compatibility
+
+Some enterprise antivirus solutions may flag Sheetpilot due to browser automation features. If you encounter issues:
+
+1. See [Sophos Configuration Guide](docs/SOPHOS_CONFIGURATION.md)
+2. Contact your IT administrator to add exclusions
+3. Verified safe by: Internal security review
+
 ## Documentation
 
 - [Auto Updates](docs/AUTO_UPDATES.md)

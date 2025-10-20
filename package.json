@@ -1,8 +1,12 @@
 {
   "name": "sheetpilot",
-  "version": "1.0.0",
-  "description": "Timesheet automation application with built-in timesheet entry and browser automation",
+  "version": "1.0.1",
+  "description": "Business timesheet management and reporting tool",
   "author": "SheetPilot Team",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/andrewhughesskywater/Sheetpilot.git"
+  },
   "main": "build/dist/main.js",
   "scripts": {
     "postinstall": "electron-builder install-app-deps",
@@ -27,6 +31,7 @@
   "build": {
     "appId": "com.sheetpilot.app",
     "productName": "Sheetpilot",
+    "artifactName": "${productName}-Setup.${ext}",
     "icon": "src/assets/images/icon.ico",
     "files": [
       "build/dist/**/*",
@@ -52,7 +57,8 @@
       },
       "icon": "src/assets/images/icon.ico",
       "forceCodeSigning": false,
-      "signAndEditExecutable": false
+      "signAndEditExecutable": false,
+      "requestedExecutionLevel": "asInvoker"
     },
     "nsis": {
       "oneClick": false,
@@ -69,8 +75,9 @@
       "target": "AppImage"
     },
     "publish": {
-      "provider": "generic",
-      "url": "file://\\\\swfl-file01\\Maintenance\\Python Programs\\SheetPilot"
+      "provider": "github",
+      "owner": "andrewhughesskywater",
+      "repo": "Sheetpilot"
     }
   },
   "dependencies": {

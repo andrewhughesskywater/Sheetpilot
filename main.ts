@@ -272,7 +272,7 @@ function createWindow() {
     icon: path.join(__dirname, '..', 'assets', 'images', 'icon.ico'), // Set window icon
     autoHideMenuBar: true, // Hide the menu bar
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'), // in dev still JS, will point to compiled .js later
+      preload: path.join(__dirname, 'src', 'main', 'preload.js'), // Compiled preload script
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true
@@ -586,6 +586,90 @@ export function registerIPCHandlers() {
         success: false,
         error: errorMessage
       };
+    }
+  });
+
+  // Handler for getting log file path
+  ipcMain.handle('logs:getLogPath', async () => {
+    try {
+      const userDataPath = app.getPath('userData');
+      const fs = require('fs');
+      const logFiles = fs.readdirSync(userDataPath).filter((file: string) => file.startsWith('sheetpilot_') && file.endsWith('.log'));
+      
+      if (logFiles.length === 0) {
+        return { success: false, error: 'No log files found' };
+      }
+      
+      // Get the most recent log file
+      const latestLogFile = logFiles.sort().pop();
+      const logPath = path.join(userDataPath, latestLogFile!);
+      
+      return { success: true, logPath, logFiles };
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      return { success: false, error: errorMessage };
+    }
+  });
+
+  // Handler for reading log file contents
+  ipcMain.handle('logs:readLogFile', async (_event, logPath: string) => {
+    try {
+      const fs = require('fs');
+      const logContent = fs.readFileSync(logPath, 'utf8');
+      const lines = logContent.split('\n').filter((line: string) => line.trim() !== '');
+      
+      // Parse JSON log entries
+      const parsedLogs = lines.map((line: string, index: number) => {
+        try {
+          const parsed = JSON.parse(line);
+          return { lineNumber: index + 1, ...parsed };
+        } catch {
+          return { lineNumber: index + 1, raw: line };
+        }
+      });
+      
+      return { success: true, logs: parsedLogs, totalLines: lines.length };
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      return { success: false, error: errorMessage };
+    }
+  });
+
+  // Handler for exporting logs
+  ipcMain.handle('logs:exportLogs', async (_event, logPath: string, exportFormat: 'json' | 'txt' = 'txt') => {
+    try {
+      const fs = require('fs');
+      const logContent = fs.readFileSync(logPath, 'utf8');
+      
+      if (exportFormat === 'json') {
+        // Export as formatted JSON
+        const lines = logContent.split('\n').filter((line: string) => line.trim() !== '');
+        const parsedLogs = lines.map((line: string) => {
+          try {
+            return JSON.parse(line);
+          } catch {
+            return { raw: line };
+          }
+        });
+        
+        return {
+          success: true,
+          content: JSON.stringify(parsedLogs, null, 2),
+          filename: `sheetpilot_logs_${new Date().toISOString().split('T')[0]}.json`,
+          mimeType: 'application/json'
+        };
+      } else {
+        // Export as plain text
+        return {
+          success: true,
+          content: logContent,
+          filename: `sheetpilot_logs_${new Date().toISOString().split('T')[0]}.txt`,
+          mimeType: 'text/plain'
+        };
+      }
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      return { success: false, error: errorMessage };
     }
   });
 

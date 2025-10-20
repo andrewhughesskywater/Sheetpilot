@@ -20,15 +20,20 @@ contextBridge.exposeInMainWorld('timesheet', {
     taskDescription: string;
   }): Promise<{ success: boolean; changes?: number; error?: string }> => 
     ipcRenderer.invoke('timesheet:saveDraft', row),
-  loadDraft: (): Promise<Array<{
-    date: string;
-    timeIn: string;
-    timeOut: string;
-    project: string;
-    tool?: string | null;
-    chargeCode?: string | null;
-    taskDescription: string;
-  }>> => ipcRenderer.invoke('timesheet:loadDraft'),
+  loadDraft: (): Promise<{
+    success: boolean;
+    entries?: Array<{
+      id?: number;
+      date: string;
+      timeIn: string;
+      timeOut: string;
+      project: string;
+      tool?: string | null;
+      chargeCode?: string | null;
+      taskDescription: string;
+    }>;
+    error?: string;
+  }> => ipcRenderer.invoke('timesheet:loadDraft'),
   deleteDraft: (id: number): Promise<{ success: boolean; error?: string }> => 
     ipcRenderer.invoke('timesheet:deleteDraft', id),
   exportToCSV: (): Promise<{
@@ -68,4 +73,44 @@ contextBridge.exposeInMainWorld('database', {
   }>> => ipcRenderer.invoke('database:getAllCredentials'),
   clearDatabase: (): Promise<{ success: boolean; error?: string }> => 
     ipcRenderer.invoke('database:clearDatabase')
+});
+
+contextBridge.exposeInMainWorld('logs', {
+  getLogPath: (): Promise<{
+    success: boolean;
+    logPath?: string;
+    logFiles?: string[];
+    error?: string;
+  }> => ipcRenderer.invoke('logs:getLogPath'),
+  readLogFile: (logPath: string): Promise<{
+    success: boolean;
+    logs?: Array<{
+      lineNumber: number;
+      timestamp?: string;
+      level?: string;
+      message?: string;
+      component?: string;
+      sessionId?: string;
+      username?: string;
+      application?: string;
+      version?: string;
+      environment?: string;
+      process?: {
+        pid: number;
+        platform: string;
+        nodeVersion: string;
+      };
+      data?: any;
+      raw?: string;
+    }>;
+    totalLines?: number;
+    error?: string;
+  }> => ipcRenderer.invoke('logs:readLogFile', logPath),
+  exportLogs: (logPath: string, format: 'json' | 'txt' = 'txt'): Promise<{
+    success: boolean;
+    content?: string;
+    filename?: string;
+    mimeType?: string;
+    error?: string;
+  }> => ipcRenderer.invoke('logs:exportLogs', logPath, format)
 });

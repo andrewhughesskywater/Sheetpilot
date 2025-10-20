@@ -27,7 +27,7 @@ import {
 import Archive from './components/DatabaseViewer';
 import TimesheetGrid from './components/TimesheetGrid';
 import ModernSegmentedNavigation from './components/ModernSegmentedNavigation';
-import UserManual from './components/UserManual';
+import Help from './components/Help';
 import { DataProvider, useData } from './contexts/DataContext';
 import { initializeTheme } from './utils/theme-manager';
 import './App.css';
@@ -393,7 +393,7 @@ const AppContent: React.FC = () => {
       )}
 
       {activeTab === 3 && (
-        <UserManual />
+        <Help />
       )}
         </div>
 
@@ -415,7 +415,7 @@ const AppContent: React.FC = () => {
                 className="about-dialog-logo"
               />
               <Typography variant="body1" color="text.secondary" gutterBottom>
-                Version 1.0.0
+                Version 1.0.1
               </Typography>
               <Typography variant="body1" color="text.secondary">
                 Created by Andrew Hughes
