@@ -8,12 +8,20 @@ Sheetpilot is a time-tracking application that combines a modern Electron UI wit
 
 ## Features
 
-- **Timesheet Grid Interface**: Intuitive grid-based interface for entering time entries
+- **Timesheet Grid Interface**: Intuitive grid-based interface for entering time entries with dynamic height and proper scrolling
 - **Database Storage**: SQLite-based storage for timesheet data
 - **Automated Submission**: Playwright-powered bot for automated timesheet submission
 - **Database Viewer**: Built-in viewer for managing stored timesheet data
 - **Auto-Updates**: Built-in auto-update functionality for seamless application updates
 - **Modern UI**: React-based frontend with responsive design
+
+## Recent Updates
+
+- **Fixed Timesheet Scrolling**: Resolved table height and scrolling issues for better user experience
+- **Database Connection Fixes**: Resolved Node.js compatibility and preload script issues
+- **Improved Error Handling**: Better error messages and fallback mechanisms
+
+For detailed information about recent fixes, see [TIMESHEET_FIXES_DOCUMENTATION.md](TIMESHEET_FIXES_DOCUMENTATION.md).
 
 ## Tech Stack
 
@@ -25,7 +33,7 @@ Sheetpilot is a time-tracking application that combines a modern Electron UI wit
 
 ## Project Structure
 
-```
+```text
 Sheetpilot/
 ├── src/
 │   ├── main/             # Main process (Electron)
@@ -93,6 +101,7 @@ The built application will be available in the `build-output` directory.
 ## Configuration
 
 Configuration files:
+
 - `package.json`: Application metadata and build configuration
 - `tsconfig.json`: TypeScript configuration
 - `vitest.config.ts`: Test configuration
@@ -119,4 +128,3 @@ Private repository - All rights reserved
 ## Contributing
 
 This is a private project. Contact the repository owner for contribution guidelines.
-

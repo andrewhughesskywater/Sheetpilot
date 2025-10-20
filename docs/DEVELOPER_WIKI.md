@@ -386,6 +386,7 @@ columnSorting={{
 ```
 
 **Behavior**:
+
 - Primary sort: Date column (ascending - oldest first)
 - Secondary sort: Time In column (ascending - earliest first)
 - Empty cells sorted to end
@@ -414,6 +415,7 @@ useEffect(() => {
 ```
 
 **Key Points**:
+
 - Sort state loads once on mount, not on every data change
 - User-initiated sort changes are saved to localStorage
 - Prevents table from re-sorting when user edits cells
@@ -436,6 +438,7 @@ initialConfig: [
 ```
 
 **Column Indices**:
+
 - 0: Date
 - 1: Time In
 - 2: Time Out
