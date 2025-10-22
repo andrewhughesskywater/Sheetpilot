@@ -42,22 +42,76 @@ npm run build
 
 ### Project Structure
 
-```
+```text
 src/
-├── main/                    # Main process (Electron)
-├── services/                # Backend services (database, bot)
-├── shared/                  # Shared utilities (logger)
-└── assets/                  # Application assets
+├── main/                           # Main process (Electron)
+│   ├── bootstrap-plugins.ts        # Plugin registration
+│   ├── main.ts                     # Application entry point
+│   └── preload.ts                  # Preload script (IPC bridge)
+│
+├── services/                       # Backend services
+│   ├── bot/                        # Browser automation
+│   │   └── src/                    # Bot implementation
+│   ├── plugins/                    # Service layer plugins
+│   │   ├── memory-data-service.ts
+│   │   ├── mock-submission-service.ts
+│   │   ├── playwright-bot-service.ts
+│   │   ├── sqlite-credential-service.ts
+│   │   └── sqlite-data-service.ts
+│   ├── database.ts                 # Database layer
+│   └── timesheet_importer.ts       # Timesheet import logic
+│
+├── shared/                         # Shared code (main + renderer)
+│   ├── contracts/                  # Service contracts
+│   │   ├── ICredentialService.ts
+│   │   ├── IDataService.ts
+│   │   ├── ILoggingService.ts
+│   │   └── ISubmissionService.ts
+│   ├── logger.ts                   # Logging system
+│   ├── plugin-config.ts            # Plugin configuration
+│   ├── plugin-registry.ts          # Plugin registry
+│   └── plugin-types.ts             # Plugin type system
+│
+└── renderer/                       # Renderer process (React + Vite)
+    ├── assets/                     # Static assets
+    │   ├── fonts/                  # Font files
+    │   ├── icons/                  # Icon files
+    │   └── images/                 # Image files
+    ├── business-logic/             # Pure business logic
+    │   ├── dropdown-logic.ts       # Cascading dropdown rules
+    │   ├── timesheet-normalization.ts
+    │   └── timesheet-validation.ts # Validation rules
+    ├── components/                 # React components
+    │   ├── DatabaseViewer.tsx
+    │   ├── GridFactory.tsx         # Grid resolution
+    │   ├── Help.tsx
+    │   ├── ModernSegmentedNavigation.tsx
+    │   ├── TimesheetGrid.tsx       # Legacy grid (reference)
+    │   ├── TimesheetGridContainer.tsx
+    │   └── UserManual.tsx
+    ├── contexts/                   # React contexts
+    │   └── DataContext.tsx
+    ├── contracts/                  # UI contracts
+    │   ├── IGridAdapter.ts
+    │   └── ITimesheetGrid.ts
+    ├── hooks/                      # React hooks
+    │   └── useTheme.ts
+    ├── utils/                      # Frontend utilities
+    │   └── theme-manager.ts
+    ├── tests/                      # Frontend tests
+    ├── App.tsx                     # Main React component
+    ├── index.html                  # HTML entry point
+    ├── main.tsx                    # React entry point
+    ├── m3-tokens.css              # Material Design 3 tokens
+    ├── m3-components.css          # M3 component styles
+    ├── m3-mui-overrides.css       # M3 MUI overrides
+    ├── theme.css                  # Theme definitions
+    └── vite.config.ts             # Vite configuration
 
-├── renderer/                # Renderer process (React + Vite)
-    ├── src/
-    │   ├── components/      # UI components
-    │   ├── m3-tokens.css   # M3 design tokens
-    │   └── utils/          # Frontend utilities
-
-__tests__/                   # Test files
-build/                       # Build outputs
-docs/                        # This documentation
+__tests__/                          # Integration tests
+build/                              # Build outputs
+docs/                               # Documentation
+plugin-config.json                  # Plugin configuration
 ```
 
 ---
@@ -97,6 +151,7 @@ SheetPilot uses a comprehensive plugin architecture that makes all major compone
 ### Core Plugin System
 
 **Files:**
+
 - `src/shared/plugin-types.ts` - Base plugin interfaces and type definitions
 - `src/shared/plugin-registry.ts` - Central plugin management (singleton pattern)
 - `src/shared/plugin-config.ts` - Configuration loader with feature flags
@@ -104,6 +159,7 @@ SheetPilot uses a comprehensive plugin architecture that makes all major compone
 - `src/main/bootstrap-plugins.ts` - Plugin registration and initialization
 
 **Features:**
+
 - Namespace-based plugin organization
 - Active plugin selection per namespace
 - Feature flags for A/B testing
@@ -124,13 +180,16 @@ All services implement clean interface contracts:
 #### Implementations
 
 **Data Services:**
+
 - `sqlite-data-service` - Production SQLite persistence
 - `memory-data-service` - In-memory storage for testing
 
 **Credential Services:**
+
 - `sqlite-credential-service` - Production SQLite credential storage
 
 **Submission Services:**
+
 - `playwright-bot-service` - Production browser automation
 - `mock-submission-service` - Mock submission for testing
 
@@ -218,6 +277,7 @@ localStorage.setItem('sheetpilot_grid_type', 'simple-table');
 #### Example: Use Mock Submission for Testing
 
 Edit `plugin-config.json`:
+
 ```json
 {
   "plugins": {
@@ -231,6 +291,7 @@ Edit `plugin-config.json`:
 #### Example: Add New Data Service
 
 1. Create new service implementing `IDataService`:
+
 ```typescript
 export class PostgresDataService implements IDataService {
   // Implement all IDataService methods
@@ -238,11 +299,13 @@ export class PostgresDataService implements IDataService {
 ```
 
 2. Register in `bootstrap-plugins.ts`:
+
 ```typescript
 PluginRegistry.getInstance().register('data', 'postgres', new PostgresDataService());
 ```
 
 3. Update `plugin-config.json`:
+
 ```json
 {
   "plugins": {
@@ -388,11 +451,13 @@ All interactive elements use M3 state layers:
 ### Styling Rules
 
 ✅ **DO**:
+
 - Use design tokens for ALL visual properties
 - Apply M3 classes: `md-typescale-body-large`, `md-button`, etc.
 - Use `color-mix()` for state layers: `color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent)`
 
 ❌ **DO NOT**:
+
 - Use hardcoded colors in component files
 - Use inline `sx` props with colors
 - Create custom shadow/elevation values
@@ -667,6 +732,7 @@ npm run build
 ```
 
 This generates in `build/` directory:
+
 - `Sheetpilot-Setup.exe` - Windows installer
 - `Sheetpilot-Setup.exe.blockmap` - Delta update support
 - `latest.yml` - Update metadata with SHA512 hashes
@@ -796,6 +862,77 @@ networkTransport = (message: any) => {
   });
 };
 ```
+
+### Renderer-to-Main Logging Bridge
+
+Frontend logs are sent to the main process for file logging:
+
+**File:** `src/main/preload.ts`
+
+```typescript
+window.logger = {
+  error: (message, data?) => ipcRenderer.invoke('log:error', message, data),
+  warn: (message, data?) => ipcRenderer.invoke('log:warn', message, data),
+  info: (message, data?) => ipcRenderer.invoke('log:info', message, data),
+  verbose: (message, data?) => ipcRenderer.invoke('log:verbose', message, data),
+  debug: (message, data?) => ipcRenderer.invoke('log:debug', message, data),
+  userAction: (action, data?) => ipcRenderer.invoke('log:userAction', action, data)
+};
+```
+
+**File:** `main.ts`
+
+```typescript
+// IPC handlers route renderer logs to main process logger
+ipcMain.handle('log:error', (_, message, data) => {
+  ipcLogger.error(message, data);
+});
+
+ipcMain.handle('log:userAction', (_, action, data) => {
+  ipcLogger.info(`User action: ${action}`, data);
+});
+// ... other log level handlers
+```
+
+**Usage in Renderer:**
+
+```typescript
+// User interactions
+window.logger.userAction('submit-timesheet-clicked');
+window.logger.userAction('tab-change', { from: 0, to: 1 });
+
+// Informational
+window.logger.info('Submitting timesheet', { rowCount: rows.length });
+
+// Errors
+window.logger.error('Timesheet submission error', { error: err.message });
+```
+
+**Global Error Handlers:**
+
+```typescript
+// File: src/renderer/main.tsx
+window.addEventListener('error', (event) => {
+  window.logger.error('Uncaught error in renderer', {
+    message: event.message,
+    filename: event.filename,
+    lineno: event.lineno
+  });
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+  window.logger.error('Unhandled promise rejection', {
+    reason: event.reason
+  });
+});
+```
+
+**Benefits:**
+
+- Complete audit trail of all user actions
+- All frontend errors captured in log files
+- Troubleshooting without DevTools open
+- Compliance with SOC2/ISO9000 requirements
 
 #### Lazy Database Initialization
 
@@ -1010,6 +1147,7 @@ npm run build
 ### Verify Build
 
 ✅ Check `build/` directory contains:
+
 - `Sheetpilot Setup X.X.X.exe` (NOT portable)
 - `latest.yml`
 - Version matches `package.json`
@@ -1087,11 +1225,13 @@ Copy-Item "build\latest.yml" $networkPath
 **Fixes**:
 
 1. Verify import order in `index.css`:
+
    ```css
    @import './m3-tokens.css';
    @import './m3-components.css';
    @import './m3-mui-overrides.css';
    ```
+
 2. Check for hardcoded colors (should use tokens)
 3. Ensure `data-theme` attribute on `<html>`
 
@@ -1139,6 +1279,46 @@ If app feels slow:
 2. Verify database operations async
 3. Check for memory leaks (browser instances)
 4. Review Handsontable data size
+
+### Sophos Antivirus Configuration
+
+**Issue:** Sophos may flag SheetPilot as malicious due to browser automation features.
+
+**Solution: Add Exclusions**
+
+1. Navigate to Sophos Central > Global Settings > Exclusions
+2. Add path exclusions:
+   - `C:\Users\*\AppData\Local\Programs\Sheetpilot\**`
+   - `C:\Users\*\AppData\Roaming\SheetPilot\**`
+3. Add process exclusion: `Sheetpilot.exe`
+4. Scope: All scanning (on-access, on-demand)
+
+**Verification:**
+
+- Reinstall or run SheetPilot
+- Monitor Sophos Events log to confirm no further detections
+
+**Alternative: Submit False Positive Report**
+
+If exclusions are not feasible, submit report to Sophos:
+
+1. Visit: <https://support.sophos.com/support/s/filesubmission>
+2. Provide information:
+   - **Application**: Sheetpilot.exe
+   - **Developer**: SheetPilot Team
+   - **Purpose**: Business timesheet management and automation
+   - **Detection**: "Lockdown" behavioral prevention
+   - **Justification**: Legitimate Electron-based business application using Playwright for SmartSheet integration
+
+**Technical Details:**
+
+The "Lockdown" detection is a false positive triggered by:
+
+- Browser automation behavior patterns
+- Network file operations
+- Unsigned executable status
+
+SheetPilot is a legitimate business application for timesheet management and does not perform malicious activities.
 
 ---
 
@@ -1189,12 +1369,22 @@ npm run clean        # Clean build artifacts
 |---------|------|---------|
 | 1.0 | 2025-10-08 | Initial consolidated wiki |
 | 1.1 | 2025-10-20 | Added Handsontable sorting configuration documentation |
+| 2.0 | 2025-10-22 | Comprehensive consolidation: Updated auto-updates (GitHub), added plugin architecture, expanded logging system, added Sophos configuration |
 
-**Consolidated from**: 21 individual documentation files  
+**Consolidated from**:
+
+- AUTO_UPDATER.md
+- HANDSONTABLE_REQUIREMENTS.md
+- IMPLEMENTATION_SUMMARY.md (Plugin Architecture)
+- LOGGING_IMPROVEMENTS.md
+- PERFORMANCE_OPTIMIZATION_SUMMARY.md
+- PLUGIN_ARCHITECTURE_PROGRESS.md
+- SOPHOS_CONFIGURATION.md
+- TIMESHEET_FIXES_DOCUMENTATION.md
+
 **Maintained by**: Development Team
 
 ---
 
 **Need to add something?** Update this wiki when implementing new features or fixing bugs.  
 **Found an error?** Verify with source documentation and update accordingly.
-

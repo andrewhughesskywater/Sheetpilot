@@ -1,6 +1,6 @@
 # SheetPilot Documentation
 
-**Last Updated**: October 8, 2025
+**Last Updated**: October 22, 2025
 
 ## 📚 Start Here
 
@@ -10,24 +10,17 @@
 
 This wiki consolidates all essential information for developing SheetPilot, including:
 
-- Architecture overview
+- Architecture overview (including plugin architecture)
 - Critical configuration
 - Material Design 3 system
 - Handsontable integration
-- Auto-updates
+- Auto-updates (GitHub releases)
 - Performance optimizations
+- Logging system (renderer-to-main bridge)
 - Coding standards
 - Testing strategy
 - Deployment procedures
-- Troubleshooting guide
-
----
-
-## 📖 Additional Documentation
-
-### Consolidation Reference
-
-- **[DOCUMENTATION_CONSOLIDATION.md](./DOCUMENTATION_CONSOLIDATION.md)** - Explains the documentation consolidation process and what was included in the wiki
+- Troubleshooting guide (including Sophos configuration)
 
 ---
 
@@ -59,11 +52,11 @@ This wiki consolidates all essential information for developing SheetPilot, incl
 
 ### Living Document
 
-The DEVELOPER_WIKI.md is declarative and present tense [[memory:5067719]]. It describes **what is**, not **what was changed**.
+The DEVELOPER_WIKI.md is declarative and present tense. It describes **what is**, not **what was changed**.
 
-### Historical Context
+### Comprehensive Consolidation
 
-The DEVELOPER_WIKI.md consolidates information from 21 individual documents that were previously maintained separately. See DOCUMENTATION_CONSOLIDATION.md for the complete list of what was consolidated.
+The DEVELOPER_WIKI.md consolidates all essential SheetPilot documentation into a single, authoritative source. Historical implementation documents have been integrated or archived.
 
 ### Keep It Current
 
@@ -90,24 +83,22 @@ Check the **Troubleshooting** section for common issues and solutions.
 
 Use the **Quick Reference** for essential commands and patterns.
 
-### By Consolidation History
-
-See DOCUMENTATION_CONSOLIDATION.md to understand what information from the original 21 documents is now in the wiki.
-
 ---
 
 ## 📊 Documentation Coverage
 
 | Area | Wiki Section | Status |
 |------|-------------|--------|
-| **Architecture** | ✅ Overview | Consolidated |
-| **Auto-Updates** | ✅ Complete | Consolidated |
+| **Architecture** | ✅ Overview + Plugin Architecture | Consolidated |
+| **Auto-Updates** | ✅ Complete (GitHub Releases) | Consolidated |
 | **M3 Design** | ✅ Complete | Consolidated |
 | **Handsontable** | ✅ Complete | Consolidated |
-| **Performance** | ✅ Complete | Consolidated |
+| **Performance** | ✅ Complete (Startup Optimization) | Consolidated |
+| **Logging** | ✅ Complete (Renderer Bridge) | Consolidated |
 | **Standards** | ✅ Complete | Consolidated |
 | **Testing** | ✅ Complete | Consolidated |
 | **Deployment** | ✅ Complete | Consolidated |
+| **Troubleshooting** | ✅ Complete (Including Sophos) | Consolidated |
 
 ---
 
@@ -116,8 +107,7 @@ See DOCUMENTATION_CONSOLIDATION.md to understand what information from the origi
 1. **Check the wiki** - All essential information is consolidated there
 2. **Review related code** - Implementations show best practices
 3. **Check tests** - They document expected behavior
-4. **Check consolidation doc** - For information about what was included from original docs
-5. **Ask the team** - When documentation is unclear
+4. **Ask the team** - When documentation is unclear
 
 ---
 
