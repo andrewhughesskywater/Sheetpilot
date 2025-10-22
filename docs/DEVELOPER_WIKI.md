@@ -84,6 +84,181 @@ docs/                        # This documentation
 - **Logging**: Dual system (local + network, non-blocking)
 - **Data Persistence**: SQLite + localStorage backup
 - **Theme System**: CSS custom properties with M3 tokens
+- **Plugin Architecture**: Modular, replaceable components
+
+---
+
+## Plugin Architecture
+
+### Overview
+
+SheetPilot uses a comprehensive plugin architecture that makes all major components replaceable at runtime. This enables A/B testing, alternative implementations, and future-proofing.
+
+### Core Plugin System
+
+**Files:**
+- `src/shared/plugin-types.ts` - Base plugin interfaces and type definitions
+- `src/shared/plugin-registry.ts` - Central plugin management (singleton pattern)
+- `src/shared/plugin-config.ts` - Configuration loader with feature flags
+- `plugin-config.json` - Default plugin configuration
+- `src/main/bootstrap-plugins.ts` - Plugin registration and initialization
+
+**Features:**
+- Namespace-based plugin organization
+- Active plugin selection per namespace
+- Feature flags for A/B testing
+- Configuration from JSON or environment variables
+- User-based rollout percentages for gradual feature deployment
+
+### Service Layer Plugins
+
+#### Contracts (Interfaces)
+
+All services implement clean interface contracts:
+
+- `src/shared/contracts/IDataService.ts` - Data persistence operations
+- `src/shared/contracts/ICredentialService.ts` - Credential management
+- `src/shared/contracts/ISubmissionService.ts` - Timesheet submission
+- `src/shared/contracts/ILoggingService.ts` - Logging operations
+
+#### Implementations
+
+**Data Services:**
+- `sqlite-data-service` - Production SQLite persistence
+- `memory-data-service` - In-memory storage for testing
+
+**Credential Services:**
+- `sqlite-credential-service` - Production SQLite credential storage
+
+**Submission Services:**
+- `playwright-bot-service` - Production browser automation
+- `mock-submission-service` - Mock submission for testing
+
+### UI Layer Plugins
+
+#### Business Logic (Pure Functions)
+
+Extracted business logic is UI-independent and reusable:
+
+- `src/renderer/business-logic/timesheet-validation.ts` - All validation rules
+- `src/renderer/business-logic/dropdown-logic.ts` - Cascading dropdown rules
+- `src/renderer/business-logic/timesheet-normalization.ts` - Data normalization
+
+#### Grid Contracts
+
+- `src/renderer/contracts/ITimesheetGrid.ts` - Grid component interface
+- `src/renderer/contracts/IGridAdapter.ts` - Grid adapter pattern
+
+#### Grid Implementations
+
+- `HandsontableGridPlugin` - Production grid using Handsontable
+- Future: `SimpleTableGridPlugin`, `AGGridPlugin`, etc.
+
+#### Grid Factory
+
+- `src/renderer/components/GridFactory.tsx` - Resolves grid implementation
+- `src/renderer/components/TimesheetGridContainer.tsx` - Stable container
+
+### Configuration
+
+#### Plugin Configuration File
+
+**File:** `plugin-config.json`
+
+```json
+{
+  "plugins": {
+    "data": { 
+      "active": "sqlite", 
+      "alternatives": ["memory"] 
+    },
+    "credentials": { 
+      "active": "sqlite" 
+    },
+    "submission": { 
+      "active": "playwright", 
+      "alternatives": ["mock"] 
+    },
+    "ui": { 
+      "active": "handsontable", 
+      "alternatives": ["simple-table"] 
+    }
+  },
+  "featureFlags": {
+    "experimentalGrid": { 
+      "enabled": false, 
+      "variant": "simple-table" 
+    },
+    "mockSubmission": { 
+      "enabled": false 
+    }
+  }
+}
+```
+
+#### Environment Variable Override
+
+```bash
+# Override entire config
+export SHEETPILOT_PLUGIN_CONFIG='{"plugins":{"submission":{"active":"mock"}}}'
+
+# Override user ID for feature flag targeting
+export SHEETPILOT_USER_ID="test.user@company.com"
+```
+
+#### LocalStorage Override (Grid Only)
+
+```javascript
+// Switch grid implementation
+localStorage.setItem('sheetpilot_grid_type', 'simple-table');
+```
+
+### Swapping Implementations
+
+#### Example: Use Mock Submission for Testing
+
+Edit `plugin-config.json`:
+```json
+{
+  "plugins": {
+    "submission": {
+      "active": "mock"  // Changed from "playwright"
+    }
+  }
+}
+```
+
+#### Example: Add New Data Service
+
+1. Create new service implementing `IDataService`:
+```typescript
+export class PostgresDataService implements IDataService {
+  // Implement all IDataService methods
+}
+```
+
+2. Register in `bootstrap-plugins.ts`:
+```typescript
+PluginRegistry.getInstance().register('data', 'postgres', new PostgresDataService());
+```
+
+3. Update `plugin-config.json`:
+```json
+{
+  "plugins": {
+    "data": { "active": "postgres" }
+  }
+}
+```
+
+### Architecture Benefits
+
+- **Clean Separation**: Business logic decoupled from UI
+- **Testability**: Pure functions, mock implementations available
+- **Replaceability**: Components swappable via configuration
+- **Zero Vendor Lock-in**: Easy to migrate to different libraries
+- **A/B Testing**: Test alternatives without code changes
+- **Future-Proof**: New implementations added without breaking existing code
 
 ---
 
@@ -453,28 +628,62 @@ initialConfig: [
 
 ### How It Works
 
-1. **Startup Check**: App checks network drive for updates
-2. **Background Download**: Downloads new version if available
-3. **Auto-Install on Quit**: Installs when user closes app
-4. **Rollback Safety**: Reverts to previous version if update fails
+SheetPilot uses `electron-updater` with GitHub Releases for automatic updates:
 
-### Configuration Files
+1. **Startup Check**: App checks GitHub API for new releases
+2. **Version Comparison**: Compares installed version with latest release
+3. **Background Download**: Downloads new version if available
+4. **Verification**: Verifies SHA512 hash of downloaded installer
+5. **Auto-Install on Quit**: Installs when user closes app
+6. **Automatic Restart**: New version launches after installation
+
+### Configuration
 
 #### package.json
 
 ```json
 "publish": {
-  "provider": "generic",
-  "url": "file://\\\\swfl-file01\\Maintenance\\Python Programs\\SheetPilot"
+  "provider": "github",
+  "owner": "andrewhughesskywater",
+  "repo": "Sheetpilot"
 }
 ```
 
-#### dev-app-update.yml
+### Publishing a New Release
 
-```yaml
-provider: generic
-url: file://\\\\swfl-file01\\Maintenance\\Python Programs\\SheetPilot
+#### 1. Update Version
+
+```json
+// In package.json, increment the version
+"version": "1.1.3"
 ```
+
+**Important**: Do NOT include 'v' prefix in package.json version.
+
+#### 2. Build Application
+
+```bash
+npm run build
+```
+
+This generates in `build/` directory:
+- `Sheetpilot-Setup.exe` - Windows installer
+- `Sheetpilot-Setup.exe.blockmap` - Delta update support
+- `latest.yml` - Update metadata with SHA512 hashes
+
+#### 3. Create GitHub Release
+
+1. Go to GitHub repository releases
+2. Create new tag: `v1.1.3` (note: tag MUST have 'v' prefix)
+3. Set release title: `Sheetpilot v1.1.3`
+4. Add release notes
+5. Upload these files:
+   - `Sheetpilot-Setup.exe`
+   - `Sheetpilot-Setup.exe.blockmap`
+   - `latest.yml`
+6. Publish release
+
+**Critical**: Tag must be `v{version}`, package.json must be `{version}` (without 'v').
 
 ### Windows-Specific Behavior
 
@@ -503,32 +712,67 @@ autoUpdater.on('update-available', (info) => {
   autoUpdater.downloadUpdate();
 });
 
-autoUpdater.on('update-downloaded', (info) => {
-  appLogger.info('Update downloaded', { version: info.version });
+autoUpdater.on('update-not-available', (info) => {
+  appLogger.info('Update not available');
 });
 
-autoUpdater.on('before-quit-for-update', () => {
-  appLogger.info('Application quitting to install update');
+autoUpdater.on('download-progress', (progress) => {
+  // Logs download percentage, transferred bytes, total size
+});
+
+autoUpdater.on('update-downloaded', (info) => {
+  appLogger.info('Update downloaded', { version: info.version });
+  // Update installs on app quit
+});
+
+autoUpdater.on('error', (err) => {
+  appLogger.error('AutoUpdater encountered error', { error: err.message });
 });
 ```
 
-### Deployment Process
+### Testing Updates
 
-1. **Update version** in `package.json`
-2. **Build**: `npm run build`
-3. **Copy to network drive**:
-   - `Sheetpilot Setup X.X.X.exe`
-   - `latest.yml` (overwrites existing)
-4. **Test**: Install old version, verify update downloads
+#### Local Testing
+
+1. Install older version (e.g., 1.0.0)
+2. Create GitHub release for newer version (e.g., 1.0.1)
+3. Launch installed application
+4. Check logs: `%APPDATA%\sheetpilot\sheetpilot_*.log`
+
+#### Log Inspection
+
+```powershell
+# Find latest log file
+dir $env:APPDATA\sheetpilot\*.log | sort LastWriteTime -Descending | select -First 1
+
+# Search for update messages
+Select-String -Path "$env:APPDATA\sheetpilot\*.log" -Pattern "update|Update|AutoUpdater"
+```
 
 ### Troubleshooting Updates
 
 | Issue | Solution |
 |-------|----------|
 | Updates not detected | Verify version incremented in package.json |
-| Download fails | Check network path accessibility |
+| Tag format error | Tag must be `v1.1.3`, package.json must be `1.1.3` |
+| Download fails | Check GitHub release is published (not draft) |
 | Won't install | Ensure NSIS target (not portable) |
 | UAC prompts | Verify `perMachine: false` in nsis config |
+| SHA512 mismatch | Rebuild and re-upload all files together |
+
+### Delta Updates
+
+Delta updates download only changed portions of the installer:
+
+- Enabled by default through `.blockmap` files
+- Significantly reduces download size for minor updates
+- Requires both old and new `.blockmap` files on GitHub
+
+### Security
+
+- All downloads verified with SHA512 hashes stored in `latest.yml`
+- All update checks use HTTPS via GitHub API
+- Hash mismatch causes download rejection
 
 ---
 
@@ -774,7 +1018,7 @@ npm run build
 
 ```powershell
 $networkPath = "\\swfl-file01\Maintenance\Python Programs\SheetPilot"
-$version = "1.0.1"
+$version = "1.1.2"
 
 Copy-Item "build\Sheetpilot Setup $version.exe" $networkPath
 Copy-Item "build\latest.yml" $networkPath

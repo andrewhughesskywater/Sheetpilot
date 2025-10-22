@@ -56,7 +56,7 @@ function getLogUsername(): string {
 /**
  * Application version from package.json
  */
-const APP_VERSION = '1.0.1';
+const APP_VERSION = '1.1.2';
 
 /**
  * Environment type (development, production, test)
@@ -67,15 +67,14 @@ const ENVIRONMENT = process.env['NODE_ENV'] || 'production';
 /**
  * Configure electron-log with industry-standard settings
  * Writes to both local (15MB limit) and network drives
+ * Always uses verbose logging for internal tool debugging
  */
 export function configureLogger() {
     
     // Set log levels for different transports
-    // Production: info level to reduce noise and protect performance
-    // Development: verbose for detailed troubleshooting
-    const isProduction = ENVIRONMENT === 'production';
-    log.transports.file.level = isProduction ? 'info' : 'verbose';
-    log.transports.console.level = isProduction ? 'warn' : 'debug';
+    // Always verbose for internal tool - need full user interaction logs
+    log.transports.file.level = 'verbose';
+    log.transports.console.level = 'debug';
     
     // Configure LOCAL file transport with 15MB rotation limit
     const localLogPath = app ? app.getPath('userData') : process.cwd();
@@ -83,7 +82,8 @@ export function configureLogger() {
     const logFileName = `sheetpilot_${sanitizedUsername}_${SESSION_ID}.log`;
     
     log.transports.file.resolvePathFn = () => path.join(localLogPath, logFileName);
-    log.transports.file.maxSize = 15 * 1024 * 1024; // 15MB per file (local limit)
+    log.transports.file.maxSize = 15 * 1024 * 1024; // 15MB per file
+    // Note: maxFiles is not available in electron-log FileTransport, rotation happens automatically
     
     // Logs are now written locally only for better security and reliability
     appLogger.info('Local logging enabled', { localLogPath });
@@ -420,6 +420,9 @@ export function initializeLogging(): void {
         nodeVersion: process.version,
         localLogPath: actualLogPath,
         loggingMode: 'local-only',
+        logLevel: 'verbose',
+        maxFileSize: '15MB',
+        rotation: 'automatic'
     });
 }
 

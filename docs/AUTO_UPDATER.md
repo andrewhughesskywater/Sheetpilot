@@ -10,7 +10,7 @@ Sheetpilot uses `electron-updater` with GitHub Releases for automatic applicatio
 
 ```json
 {
-  "version": "1.0.1",
+  "version": "1.1.2",
   "repository": {
     "type": "git",
     "url": "https://github.com/andrewhughesskywater/Sheetpilot.git"
@@ -40,7 +40,7 @@ The auto-updater is configured in `main.ts`:
 
 ```bash
 # In package.json, increment the version
-"version": "1.0.2"
+"version": "1.1.2"
 ```
 
 ### 2. Build Application
@@ -72,8 +72,8 @@ This script:
 ### 4. Create GitHub Release
 
 1. Go to <https://github.com/andrewhughesskywater/Sheetpilot/releases/new>
-2. Create tag: `v1.0.2` (must match package.json version with 'v' prefix)
-3. Set release title: `Sheetpilot v1.0.2`
+2. Create tag: `v1.1.2` (must match package.json version with 'v' prefix)
+3. Set release title: `Sheetpilot v1.1.2`
 4. Add release notes from `build/release-v{version}/RELEASE_NOTES.md`
 5. Upload these files:
    - `Sheetpilot-Setup.exe`
@@ -176,7 +176,7 @@ Select-String -Path "$env:APPDATA\sheetpilot\*.log" -Pattern "update|Update|Auto
 
 ```json
 // Correct
-"version": "1.0.1"
+"version": "1.1.2"
 // Tag: v1.0.1
 
 // Incorrect

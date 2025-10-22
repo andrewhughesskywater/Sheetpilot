@@ -1,23 +1,23 @@
 {
   "name": "sheetpilot",
-  "version": "1.0.2",
+  "version": "1.1.2",
   "description": "Business timesheet management and reporting tool",
   "author": "SheetPilot Team",
   "repository": {
     "type": "git",
     "url": "https://github.com/andrewhughesskywater/Sheetpilot.git"
   },
-  "main": "build/dist/main.js",
+  "main": "build/dist/main/main.js",
   "scripts": {
     "postinstall": "electron-builder install-app-deps",
-    "electron": "ts-node main.ts",
-    "electron:compiled": "npm run rebuild && electron build/dist/main.js",
+    "electron": "ts-node src/main/main.ts",
+    "electron:compiled": "npm run rebuild && electron build/dist/main/main.js",
     "rebuild": "electron-rebuild -f -w better-sqlite3",
-    "build:main": "tsc main.ts src/main/preload.ts --outDir build/dist --target ES2022 --module CommonJS --moduleResolution Node --esModuleInterop --allowSyntheticDefaultImports",
+    "build:main": "tsc src/main/main.ts src/main/preload.ts --outDir build/dist --target ES2022 --module CommonJS --moduleResolution Node --esModuleInterop --allowSyntheticDefaultImports",
     "vite": "cd src/renderer && npm run dev",
     "dev": "concurrently -k -n VITE,ELECTRON -c auto \"npm:vite\" \"wait-on tcp:5173 && npm run build:main && npm run electron:compiled\"",
     "dev:hot": "concurrently -k -n VITE,ELECTRON -c auto \"npm:vite\" \"wait-on tcp:5173 && npm run build:main && npm run dev:main\"",
-    "dev:main": "nodemon --watch main.ts --watch src/main/preload.ts --exec \"npm run build:main && electron build/dist/main.js\"",
+    "dev:main": "nodemon --watch src/main/main.ts --watch src/main/preload.ts --exec \"npm run build:main && electron build/dist/main/main.js\"",
     "build:renderer": "cd src/renderer && npm run build",
     "build:bot": "cd src/services/bot && npm run build",
     "build": "npm run build:main && npm run build:renderer && npm run build:bot && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder",
@@ -32,12 +32,12 @@
     "appId": "com.sheetpilot.app",
     "productName": "Sheetpilot",
     "artifactName": "${productName}-Setup.${ext}",
-    "icon": "src/assets/images/icon.ico",
+    "icon": "src/renderer/assets/images/icon.ico",
     "files": [
       "build/dist/**/*",
       "src/services/bot/dist/**/*",
       "src/renderer/dist/**/*",
-      "src/assets/images/icon.ico",
+      "src/renderer/assets/images/icon.ico",
       "!node_modules/.cache/**",
       "!src/services/bot/node_modules/**",
       "!src/renderer/node_modules/**"
@@ -55,7 +55,7 @@
           "x64"
         ]
       },
-      "icon": "src/assets/images/icon.ico",
+      "icon": "src/renderer/assets/images/icon.ico",
       "forceCodeSigning": false,
       "signAndEditExecutable": false,
       "requestedExecutionLevel": "asInvoker"
@@ -66,10 +66,10 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "installerIcon": "src/assets/images/icon.ico",
-      "uninstallerIcon": "src/assets/images/icon.ico",
-      "installerHeader": "src/assets/images/icon.ico",
-      "installerHeaderIcon": "src/assets/images/icon.ico"
+      "installerIcon": "src/renderer/assets/images/icon.ico",
+      "uninstallerIcon": "src/renderer/assets/images/icon.ico",
+      "installerHeader": "src/renderer/assets/images/icon.ico",
+      "installerHeaderIcon": "src/renderer/assets/images/icon.ico"
     },
     "linux": {
       "target": "AppImage"

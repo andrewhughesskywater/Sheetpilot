@@ -34,7 +34,7 @@ If exclusions are not feasible, submit a false positive report to Sophos:
    - **Detection**: "Lockdown" behavioral prevention
    - **Justification**: Legitimate Electron-based business application using Playwright for SmartSheet integration
 
-3. **Files to submit**: Built executable from `build/Sheetpilot Setup 1.0.0.exe`
+3. **Files to submit**: Built executable from `build/Sheetpilot Setup 1.1.2.exe`
 
 ## Technical Details
 
