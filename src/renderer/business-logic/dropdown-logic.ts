@@ -29,7 +29,8 @@ export const toolsWithoutCharges = new Set([
   "Meeting",
   "Non Tool Related",
   "Admin",
-  "Training"
+  "Training",
+  "N/A"
 ]);
 
 /**

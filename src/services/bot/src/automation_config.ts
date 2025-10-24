@@ -10,11 +10,63 @@
  */
 
 // ============================================================================
+// TYPE DEFINITIONS
+// ============================================================================
+
+/** Validation function type */
+type ValidationFunction = (value: unknown) => boolean;
+
+/** Error message function type */
+type ErrorMessageFunction = (value: unknown) => string;
+
+/** Field definition interface */
+interface FieldDefinition {
+  label: string;
+  locator: string;
+  validation: ValidationFunction;
+  error_message: ErrorMessageFunction;
+  inject_value?: boolean;
+  optional?: boolean;
+}
+
+/** Login step interface */
+interface LoginStep {
+  name: string;
+  action: string;
+  locator?: string;
+  element_selector?: string;
+  value_key?: string;
+  wait_condition?: string;
+  expects_navigation?: boolean;
+  optional?: boolean;
+  sensitive?: boolean;
+}
+
+// ============================================================================
 // BASE CONFIGURATION
 // ============================================================================
 
 /** Base URL for the timesheet form */
 export const BASE_URL: string = process.env['TS_BASE_URL'] ?? "https://app.smartsheet.com/b/form/0197cbae7daf72bdb96b3395b500d414";
+
+/**
+ * Creates a configuration object with dynamic form URL and ID
+ * @param formUrl - The form URL to use
+ * @param formId - The form ID to use
+ * @returns Configuration object with dynamic values
+ */
+export function createFormConfig(formUrl: string, formId: string) {
+  return {
+    BASE_URL: formUrl,
+    FORM_ID: formId,
+    SUBMISSION_ENDPOINT: `https://forms.smartsheet.com/api/submit/${formId}`,
+    SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: [
+      `**forms.smartsheet.com/api/submit/${formId}`,
+      "**forms.smartsheet.com/**",
+      "**app.smartsheet.com/**",
+    ],
+  };
+}
 
 // ============================================================================
 // BROWSER CONFIGURATION
@@ -25,7 +77,7 @@ export const BROWSER: string = process.env['TS_BROWSER'] ?? "chromium";
 /** Whether to run browser in headless mode */
 export const BROWSER_HEADLESS: boolean = (process.env['TIME_KNIGHT_BROWSER_HEADLESS'] ?? "false").toLowerCase() === "true";
 /** Specific browser channel to use (e.g., 'chrome' for Chrome instead of Chromium) */
-export const BROWSER_CHANNEL: string = process.env['TIME_KNIGHT_BROWSER_CHANNEL'] ?? "chrome";
+export const BROWSER_CHANNEL: string = process.env['TIME_KNIGHT_BROWSER_CHANNEL'] ?? "chromium";
 
 // ============================================================================
 // TIMEOUT CONFIGURATION
@@ -229,7 +281,7 @@ export const BROWSER_VIEWPORT_HEIGHT = 1000;
 // ============================================================================
 
 /** Sequence of steps to perform during login process */
-export const LOGIN_STEPS: Array<Record<string, any>> = [
+export const LOGIN_STEPS: LoginStep[] = [
   { name: "Wait for Login Form", action: "wait", element_selector: "#loginEmail", wait_condition: "visible", optional: true },
   { name: "Email Input", action: "input", locator: "#loginEmail", value_key: "email", sensitive: true },
   { name: "Continue", action: "click", locator: "#formControl", expects_navigation: true, optional: true },
@@ -251,48 +303,48 @@ export const LOGIN_STEPS: Array<Record<string, any>> = [
 // ============================================================================
 
 /** Configuration for form fields including locators, validation, and behavior */
-export const FIELD_DEFINITIONS: Record<string, Record<string, any>> = {
+export const FIELD_DEFINITIONS: Record<string, FieldDefinition> = {
   project_code: {
     label: "Project",
     locator: "input[aria-label='Project']",
-    validation: (x: any) => x !== "DISALLOWED",
-    error_message: (x: any) => `Project code '${x}' is not allowed.`,
+    validation: (x: unknown) => x !== "DISALLOWED",
+    error_message: (x: unknown) => `Project code '${x}' is not allowed.`,
     inject_value: true,
   },
   date: {
     label: "Date",
     locator: "input[placeholder='mm/dd/yyyy']",
-    validation: (x: any) => Boolean(x),
-    error_message: (x: any) => `Date '${x}' must be mm/dd/yyyy`,
+    validation: (x: unknown) => Boolean(x),
+    error_message: (x: unknown) => `Date '${x}' must be mm/dd/yyyy`,
     inject_value: true,
   },
   hours: {
     label: "Hours",
     locator: "input[aria-label='Hours']",
-    validation: (x: any) => 0.0 <= Number(x) && Number(x) <= 24.0,
-    error_message: (_: any) => `Hours must be between 0.0 and 24.0`,
+    validation: (x: unknown) => 0.0 <= Number(x) && Number(x) <= 24.0,
+    error_message: (_: unknown) => `Hours must be between 0.0 and 24.0`,
     inject_value: true,
   },
   task_description: {
     label: "Task Description",
     locator: "role=textbox[name='Task Description']",
-    validation: (x: any) => Boolean(String(x).trim()),
-    error_message: (_: any) => "Task description is required",
+    validation: (x: unknown) => Boolean(String(x).trim()),
+    error_message: (_: unknown) => "Task description is required",
     inject_value: true,
   },
   tool: {
     label: "Tool",
     locator: "input[aria-label*='Tool']",
-    validation: (_: any) => true,
-    error_message: (_: any) => "Tool validation failed",
+    validation: (_: unknown) => true,
+    error_message: (_: unknown) => "Tool validation failed",
     optional: true,
     inject_value: true,
   },
   detail_code: {
     label: "Detail Charge Code",
     locator: "input[aria-label='Detail Charge Code']",
-    validation: (_: any) => true,
-    error_message: (x: any) => `Detail code '${x}' is not allowed.`,
+    validation: (_: unknown) => true,
+    error_message: (x: unknown) => `Detail code '${x}' is not allowed.`,
     optional: true,
     inject_value: true,
   },
@@ -474,17 +526,22 @@ export async function sleep(ms: number): Promise<void> {
         const element = page.locator(selector);
         
         // Quick check if element exists and is in desired state
-        const isInState = await element.evaluate((el: any, targetState: string) => {
+        const isInState = await element.evaluate((el: unknown, targetState: string) => {
           if (!el) return false;
-          const computedStyle = window.getComputedStyle(el);
-          const isVisible = computedStyle.display !== 'none' && computedStyle.visibility !== 'hidden' && computedStyle.opacity !== '0';
+          const domElement = el as { offsetWidth: number; offsetHeight: number; parentNode: unknown | null }; // DOM element in browser context
           
+          // Use Playwright's built-in element state checking instead of DOM APIs
           switch (targetState) {
-            case 'visible': return isVisible;
-            case 'hidden': return !isVisible;
-            case 'attached': return document.contains(el);
-            case 'detached': return !document.contains(el);
-            default: return isVisible;
+            case 'visible': 
+              return domElement.offsetWidth > 0 && domElement.offsetHeight > 0;
+            case 'hidden': 
+              return domElement.offsetWidth === 0 || domElement.offsetHeight === 0;
+            case 'attached': 
+              return domElement.parentNode !== null;
+            case 'detached': 
+              return domElement.parentNode === null;
+            default: 
+              return domElement.offsetWidth > 0 && domElement.offsetHeight > 0;
           }
         }, state).catch(() => false);
         

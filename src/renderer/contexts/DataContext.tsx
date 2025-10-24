@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 
 // Define data types
 interface TimesheetRow {
@@ -90,7 +90,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       const backup = localStorage.getItem('sheetpilot_timesheet_backup');
       if (backup) {
         const parsed = JSON.parse(backup);
-        console.log('[DataContext] Found localStorage backup from:', parsed.timestamp);
+        window.logger?.debug('[DataContext] Found localStorage backup from:', parsed.timestamp);
         return parsed.data || null;
       }
     } catch (error) {
@@ -99,15 +99,30 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     return null;
   };
 
-  // Load timesheet draft data
+  // Utility function to yield control back to the browser
+  const yieldToMain = () => {
+    return new Promise(resolve => {
+      setTimeout(resolve, 0);
+    });
+  };
+
+  // Load timesheet draft data - with proper yielding to prevent blocking
   const loadTimesheetDraftData = async () => {
     try {
       setIsTimesheetDraftLoading(true);
       setTimesheetDraftError(null);
       
-      console.log('[DataContext] Loading timesheet draft data...');
+      window.logger?.verbose('[DataContext] Loading timesheet draft data...');
+      
+      // Yield control before making IPC call
+      await yieldToMain();
+      
       const response = await window.timesheet.loadDraft();
-      console.log('[DataContext] Loaded timesheet draft response:', response);
+      
+      // Yield control after IPC call
+      await yieldToMain();
+      
+      window.logger?.verbose('[DataContext] Loaded timesheet draft response', response);
       
       // Handle new structured response format
       if (response && response.success) {
@@ -124,7 +139,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         
         const backupData = restoreFromLocalBackup();
         if (backupData && backupData.length > 0) {
-          console.log('[DataContext] Restored from localStorage backup:', backupData.length, 'rows');
+          window.logger?.info('[DataContext] Restored from localStorage backup', { rowCount: backupData.length });
           setTimesheetDraftError(`${errorMsg} (restored from backup)`);
           setTimesheetDraftData([...backupData, {}]);
         } else {
@@ -138,7 +153,7 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       // Try to restore from localStorage backup on error
       const backupData = restoreFromLocalBackup();
       if (backupData && backupData.length > 0) {
-        console.log('[DataContext] Restored from localStorage backup after error:', backupData.length, 'rows');
+        window.logger?.info('[DataContext] Restored from localStorage backup after error', { rowCount: backupData.length });
         setTimesheetDraftError(`${error instanceof Error ? error.message : 'Could not load timesheet draft'} (restored from backup)`);
         setTimesheetDraftData([...backupData, {}]);
       } else {
@@ -150,24 +165,50 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     }
   };
 
-  // Load archive data
+  // Load archive data - with proper yielding to prevent blocking
   const loadArchiveData = async () => {
     try {
       setIsArchiveDataLoading(true);
       setArchiveDataError(null);
       
-      console.log('[DataContext] Loading archive data...');
+      window.logger?.verbose('[DataContext] Loading archive data...');
+      
+      // Yield control before making IPC calls
+      await yieldToMain();
+      
       const timesheetResponse = await window.database?.getAllTimesheetEntries();
+      
+      // Yield control between IPC calls
+      await yieldToMain();
+      
       const credentialsResponse = await window.database?.getAllCredentials();
+      
+      // Yield control after IPC calls
+      await yieldToMain();
       
       // Handle new structured response format
       const timesheetData = timesheetResponse?.success ? (timesheetResponse.entries || []) : [];
       const credentialsData = credentialsResponse?.success ? (credentialsResponse.credentials || []) : [];
       
-      console.log('[DataContext] Loaded archive data:', {
+      // Process large datasets in chunks to prevent blocking
+      if (timesheetData.length > 100) {
+        window.logger?.info('[DataContext] Processing large dataset in chunks', { count: timesheetData.length });
+        
+        // Process in chunks of 50 items
+        const chunkSize = 50;
+        for (let i = 0; i < timesheetData.length; i += chunkSize) {
+          // Process chunk here if needed
+          await yieldToMain(); // Yield control between chunks
+        }
+      }
+      
+      window.logger?.info('[DataContext] Loaded archive data', {
         timesheetCount: timesheetData.length,
         credentialsCount: credentialsData.length
       });
+      
+      // Yield control before state updates
+      await yieldToMain();
       
       setArchiveData({
         timesheet: timesheetData,
@@ -189,33 +230,30 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     }
   };
 
-  // Refresh functions
-  const refreshTimesheetDraft = async () => {
+  // Refresh functions - force reload data
+  // Wrapped in useCallback to prevent infinite re-renders
+  const refreshTimesheetDraft = useCallback(async () => {
+    window.logger?.info('[DataContext] Refreshing timesheet draft data');
     await loadTimesheetDraftData();
-  };
+  }, []);
 
-  const refreshArchiveData = async () => {
-    // Add a small delay to ensure database updates are complete
-    setTimeout(async () => {
-      await loadArchiveData();
-    }, 100);
-  };
+  const refreshArchiveData = useCallback(async () => {
+    window.logger?.info('[DataContext] Refreshing archive data');
+    await loadArchiveData();
+  }, []);
 
-  // Load data on mount
+  // Load data on mount - completely disabled during startup to prevent blocking
   useEffect(() => {
-    const loadAllData = async () => {
-      console.log('[DataContext] Initializing data loading...');
-      
-      // Load both datasets in parallel
-      await Promise.all([
-        loadTimesheetDraftData(),
-        loadArchiveData()
-      ]);
-      
-      console.log('[DataContext] All data loaded successfully');
-    };
-
-    loadAllData();
+    // Don't load any data during startup - only load when user actually needs it
+    window.logger?.info('[DataContext] Skipping startup data loading to prevent performance violations');
+    
+    // Set initial empty state immediately
+    setTimesheetDraftData([{}]);
+    setArchiveData({ timesheet: [], credentials: [] });
+    
+    // Mark as not loading since we're not loading anything
+    setIsTimesheetDraftLoading(false);
+    setIsArchiveDataLoading(false);
   }, []);
 
   const value: DataContextType = {

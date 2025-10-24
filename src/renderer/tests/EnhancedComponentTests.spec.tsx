@@ -10,24 +10,43 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 
-// Mock Electron IPC
-const mockIpcRenderer = {
-  invoke: vi.fn(),
-  on: vi.fn(),
-  removeAllListeners: vi.fn()
+// Mock Electron IPC functions
+const mockTimesheet = {
+  submit: vi.fn(),
+  saveDraft: vi.fn(),
+  loadDraft: vi.fn(),
+  deleteDraft: vi.fn()
 };
 
-// Mock window.electronAPI
-Object.defineProperty(window, 'electronAPI', {
-  value: {
-    timesheet: mockIpcRenderer,
-    credentials: mockIpcRenderer,
-    database: mockIpcRenderer
-  },
+const mockCredentials = {
+  store: vi.fn(),
+  get: vi.fn(),
+  list: vi.fn(),
+  delete: vi.fn()
+};
+
+const mockDatabase = {
+  getAllTimesheetEntries: vi.fn(),
+  getAllCredentials: vi.fn(),
+  clearDatabase: vi.fn()
+};
+
+// Mock window APIs
+Object.defineProperty(window, 'timesheet', {
+  value: mockTimesheet,
+  writable: true
+});
+
+Object.defineProperty(window, 'credentials', {
+  value: mockCredentials,
+  writable: true
+});
+
+Object.defineProperty(window, 'database', {
+  value: mockDatabase,
   writable: true
 });
 
@@ -41,7 +60,7 @@ vi.mock('@handsontable/react-wrapper', async () => {
   const React = await import('react');
   
   // Create a simple mock component inside the factory
-  const MockHotTable = ({ colHeaders, data, afterChange, ..._props }: any) => {
+  const MockHotTable = ({ colHeaders, data, afterChange }: any) => {
     return React.createElement('div', {
       'data-testid': 'timesheet-grid',
       'data-col-headers': JSON.stringify(colHeaders),
@@ -333,16 +352,12 @@ describe('Enhanced Component Tests', () => {
 
   describe('IPC Communication', () => {
     it('should handle saveDraft IPC call', async () => {
-      mockIpcRenderer.invoke.mockResolvedValue({
+      mockTimesheet.saveDraft.mockResolvedValue({
         success: true,
         changes: 1
       });
 
-      const saveDraft = async (row: any) => {
-        return await window.electronAPI.timesheet.invoke('timesheet:saveDraft', row);
-      };
-
-      const result = await saveDraft({
+      const result = await window.timesheet.saveDraft({
         date: '2025-01-15',
         timeIn: '09:00',
         timeOut: '17:00',
@@ -352,7 +367,7 @@ describe('Enhanced Component Tests', () => {
 
       expect(result.success).toBe(true);
       expect(result.changes).toBe(1);
-      expect(mockIpcRenderer.invoke).toHaveBeenCalledWith('timesheet:saveDraft', {
+      expect(mockTimesheet.saveDraft).toHaveBeenCalledWith({
         date: '2025-01-15',
         timeIn: '09:00',
         timeOut: '17:00',
@@ -374,28 +389,24 @@ describe('Enhanced Component Tests', () => {
         }
       ];
 
-      mockIpcRenderer.invoke.mockResolvedValue({
+      mockTimesheet.loadDraft.mockResolvedValue({
         success: true,
         entries: mockData
       });
 
-      const loadDraft = async () => {
-        return await window.electronAPI.timesheet.invoke('timesheet:loadDraft');
-      };
-
-      const result = await loadDraft();
+      const result = await window.timesheet.loadDraft();
 
       expect(result.success).toBe(true);
       expect(result.entries).toEqual(mockData);
-      expect(mockIpcRenderer.invoke).toHaveBeenCalledWith('timesheet:loadDraft');
+      expect(mockTimesheet.loadDraft).toHaveBeenCalled();
     });
 
     it('should handle IPC errors gracefully', async () => {
-      mockIpcRenderer.invoke.mockRejectedValue(new Error('Database connection failed'));
+      mockTimesheet.saveDraft.mockRejectedValue(new Error('Database connection failed'));
 
       const saveDraft = async (row: any) => {
         try {
-          return await window.electronAPI.timesheet.invoke('timesheet:saveDraft', row);
+          return await window.timesheet.saveDraft(row);
         } catch (error) {
           return {
             success: false,
@@ -505,8 +516,8 @@ describe('Enhanced Component Tests', () => {
 
   describe('User Experience Features', () => {
     it('should provide user-friendly error messages', () => {
-      const getErrorMessage = (field: string, value: any) => {
-        const messages: Record<string, string> = {
+      const getErrorMessage = (field: string, value: any): string | null => {
+        const messages: Record<string, string | null> = {
           date: value ? 'Date must be like 2025-01-15' : 'Please enter a date',
           timeIn: value ? 'Time must be like 09:00 and in 15 minute steps' : 'Please enter start time',
           timeOut: value ? 'Time must be like 17:00 and in 15 minute steps' : 'Please enter end time',

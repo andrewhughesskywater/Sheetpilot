@@ -29,18 +29,20 @@ export * from './automation_config';
  * @param rows - Array of timesheet rows to submit
  * @param email - Email for authentication
  * @param password - Password for authentication
+ * @param formConfig - Optional form configuration for dynamic form URLs/IDs
  * @returns Promise with automation results
  */
 export async function runTimesheet(
   rows: Array<Record<string, any>>, 
   email: string, 
-  password: string
+  password: string,
+  formConfig?: { BASE_URL: string; FORM_ID: string; SUBMISSION_ENDPOINT: string; SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[] }
 ): Promise<{
   ok: boolean;
   submitted: number[];
   errors: Array<[number, string]>;
 }> {
-  const bot = new BotOrchestrator(Cfg, false); // Set headless to false to show browser
+  const bot = new BotOrchestrator(Cfg, false, null, undefined, formConfig); // Set headless to false to show browser
   
   try {
     // Initialize the browser before running automation

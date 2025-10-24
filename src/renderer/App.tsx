@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import {
   Box,
   Button,
@@ -25,7 +25,7 @@ import {
   Download as DownloadIcon
 } from '@mui/icons-material';
 import Archive from './components/DatabaseViewer';
-import TimesheetGrid from './components/TimesheetGrid';
+const TimesheetGrid = lazy(() => import('./components/TimesheetGrid'));
 import ModernSegmentedNavigation from './components/ModernSegmentedNavigation';
 import Help from './components/Help';
 import { DataProvider, useData } from './contexts/DataContext';
@@ -34,7 +34,9 @@ import logoImage from './assets/images/transparent-logo.svg';
 import './App.css';
 
 const AppContent: React.FC = () => {
+  console.log('=== APP CONTENT RENDERING ===');
   const [activeTab, setActiveTab] = useState(1);
+  console.log('Active tab:', activeTab);
   const [msg, setMsg] = useState('Ready');
   const [showCredentialsDialog, setShowCredentialsDialog] = useState(false);
   const [credentials, setCredentials] = useState({ email: '', password: '' });
@@ -46,7 +48,19 @@ const AppContent: React.FC = () => {
   const [isEmailFieldDisabled, setIsEmailFieldDisabled] = useState(false);
   
   // Use data context
-  const { refreshArchiveData: _refreshArchiveData } = useData();
+  const { refreshTimesheetDraft, refreshArchiveData } = useData();
+
+  // Load data when user navigates to tabs (on-demand loading)
+  useEffect(() => {
+    if (activeTab === 1) {
+      // User navigated to timesheet tab - load data now
+      refreshTimesheetDraft();
+    } else if (activeTab === 2) {
+      // User navigated to archive tab - load data now
+      refreshArchiveData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
 
   // Initialize theme on mount
   useEffect(() => {
@@ -140,12 +154,24 @@ const AppContent: React.FC = () => {
     }
   };
 
-  // Load credentials on component mount
+  // Load credentials on component mount - aggressively optimized for startup performance
   useEffect(() => {
-    loadStoredCredentials();
+    // Defer credential loading significantly to prevent blocking startup
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(() => {
+        loadStoredCredentials();
+      }, { timeout: 3000 });
+    } else {
+      setTimeout(() => {
+        loadStoredCredentials();
+      }, 2000);
+    }
   }, []);
 
   const exportToCSV = async () => {
+    // Prevent multiple simultaneous exports
+    if (isExporting) return;
+    
     window.logger.userAction('export-to-csv-clicked');
     setIsExporting(true);
     setMsg('Exporting timesheet data to CSV...');
@@ -174,7 +200,7 @@ const AppContent: React.FC = () => {
             src={logoImage} 
             alt="SheetPilot" 
             className="app-logo"
-            onLoad={() => console.log('Logo loaded successfully')}
+            onLoad={() => window.logger?.debug('Logo loaded successfully')}
             onError={(e) => console.error('Logo failed to load:', e)}
           />
           <button 
@@ -407,7 +433,17 @@ const AppContent: React.FC = () => {
       )}
 
       {activeTab === 1 && (
-        <TimesheetGrid />
+        <>
+          {console.log('[App] Rendering TimesheetGrid, activeTab:', activeTab)}
+          <Suspense fallback={
+            <>
+              {console.log('[App] Suspense fallback - loading timesheet')}
+              <div className="loading-fallback">Loading timesheet...</div>
+            </>
+          }>
+            <TimesheetGrid />
+          </Suspense>
+        </>
       )}
 
       {activeTab === 2 && (
@@ -459,6 +495,12 @@ const AppContent: React.FC = () => {
 };
 
 export default function App() {
+  // This should show in console immediately on app load
+  console.log('=== APP LOADING ===');
+  console.log('Environment:', process.env.NODE_ENV);
+  console.log('Window object:', typeof window);
+  console.log('Console available:', typeof console.log);
+  
   return (
     <DataProvider>
       <AppContent />

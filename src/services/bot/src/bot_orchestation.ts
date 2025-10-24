@@ -53,6 +53,8 @@ export class BotOrchestrator {
   login_manager: LoginManager;
   /** Optional callback for progress updates during automation */
   progress_callback: ((pct: number, msg: string) => void) | undefined;
+  /** Dynamic form configuration */
+  formConfig: { BASE_URL: string; FORM_ID: string; SUBMISSION_ENDPOINT: string; SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[] };
 
   /**
    * Creates a new BotOrchestrator instance
@@ -60,18 +62,26 @@ export class BotOrchestrator {
    * @param headless - Whether to run browser in headless mode (default: true)
    * @param browser - Browser type to use (default: 'chromium')
    * @param progress_callback - Optional callback for progress updates
+   * @param formConfig - Optional dynamic form configuration
    */
   constructor(
     injected_config: typeof Cfg,
     headless: boolean | null = true,
     browser: string | null = null,
     progress_callback?: (pct: number, msg: string) => void,
+    formConfig?: { BASE_URL: string; FORM_ID: string; SUBMISSION_ENDPOINT: string; SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[] }
   ) {
     this.cfg = injected_config;
     this.headless = headless === null ? Cfg.BROWSER_HEADLESS : Boolean(headless);
     this.browser_kind = browser ?? (this.cfg as any).BROWSER ?? 'chromium';
     this.progress_callback = progress_callback;
-    this.webform_filler = new WebformFiller(this.cfg, this.headless, this.browser_kind);
+    this.formConfig = formConfig || {
+      BASE_URL: Cfg.BASE_URL,
+      FORM_ID: Cfg.FORM_ID,
+      SUBMISSION_ENDPOINT: Cfg.SUBMISSION_ENDPOINT,
+      SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: Cfg.SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS
+    };
+    this.webform_filler = new WebformFiller(this.cfg, this.headless, this.browser_kind, this.formConfig);
     this.login_manager = new LoginManager(this.cfg, this.webform_filler);
   }
 

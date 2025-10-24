@@ -37,17 +37,31 @@ export class WebformFiller {
   context: BrowserContext | null = null;
   /** Playwright Page instance (null until started) */
   page: Page | null = null;
+  /** Dynamic form configuration */
+  formConfig: { BASE_URL: string; FORM_ID: string; SUBMISSION_ENDPOINT: string; SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[] };
 
   /**
    * Creates a new WebformFiller instance
    * @param config - Configuration object for automation settings
    * @param headless - Whether to run browser in headless mode (default: true)
    * @param browser_kind - Type of browser to use (default: 'chromium')
+   * @param formConfig - Optional dynamic form configuration
    */
-  constructor(config: typeof cfg, headless: boolean = true, browser_kind: string = 'chromium') {
+  constructor(
+    config: typeof cfg, 
+    headless: boolean = true, 
+    browser_kind: string = 'chromium',
+    formConfig?: { BASE_URL: string; FORM_ID: string; SUBMISSION_ENDPOINT: string; SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[] }
+  ) {
     this.cfg = config;
     this.headless = headless;
     this.browser_kind = browser_kind;
+    this.formConfig = formConfig || {
+      BASE_URL: cfg.BASE_URL,
+      FORM_ID: cfg.FORM_ID,
+      SUBMISSION_ENDPOINT: cfg.SUBMISSION_ENDPOINT,
+      SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: cfg.SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS
+    };
   }
 
   /**
@@ -219,7 +233,7 @@ export class WebformFiller {
    */
   async navigate_to_base(): Promise<void> {
     const page = this.require_page();
-    await page.goto(cfg.BASE_URL, { timeout: cfg.GLOBAL_TIMEOUT * 1000 });
+    await page.goto(this.formConfig.BASE_URL, { timeout: cfg.GLOBAL_TIMEOUT * 1000 });
   }
 
   /**
@@ -380,7 +394,7 @@ export class WebformFiller {
         response.url().includes('/api/submit/') && 
         response.url().includes('forms.smartsheet.com') &&
         // Check for the specific form ID
-        response.url().includes(cfg.FORM_ID)
+        response.url().includes(this.formConfig.FORM_ID)
       );
       
       // Also check for general Smartsheet responses as fallback

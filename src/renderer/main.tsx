@@ -4,6 +4,10 @@ import { ThemeProvider, createTheme } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
 import './index.css'
 import App from './App.tsx'
+import { initializeDevelopmentOptimizations } from './dev-performance-suppressor'
+
+// Initialize development optimizations first
+initializeDevelopmentOptimizations();
 
 // Global error handlers for renderer process
 window.addEventListener('error', (event) => {
@@ -23,9 +27,30 @@ window.addEventListener('unhandledrejection', (event) => {
   });
 });
 
-// Log when renderer is ready
+// Startup performance monitoring
+const startupTime = Date.now();
+window.addEventListener('load', () => {
+  const loadTime = Date.now() - startupTime;
+  window.logger.info('Application startup completed', { 
+    loadTimeMs: loadTime,
+    performanceLevel: loadTime < 1000 ? 'fast' : loadTime < 3000 ? 'moderate' : 'slow'
+  });
+});
+
+// Log when renderer is ready - optimized for startup performance
 window.addEventListener('DOMContentLoaded', () => {
-  window.logger.info('Renderer process loaded');
+  // Defer non-critical initialization to prevent blocking startup
+  requestAnimationFrame(() => {
+    window.logger.info('Renderer process loaded');
+    
+    // Development-only React DevTools recommendation
+    if (process.env.NODE_ENV === 'development') {
+      window.logger.info('React DevTools available', {
+        message: 'For enhanced development experience, install React DevTools browser extension',
+        url: 'https://react.dev/link/react-devtools'
+      });
+    }
+  });
 });
 
 // MUI theme is primarily overridden by M3 CSS tokens in m3-mui-overrides.css

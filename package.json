@@ -12,7 +12,7 @@
     "postinstall": "electron-builder install-app-deps",
     "electron": "ts-node src/main/main.ts",
     "electron:compiled": "npm run rebuild && electron build/dist/main/main.js",
-    "rebuild": "electron-rebuild -f -w better-sqlite3",
+    "rebuild": "npx @electron/rebuild -f -w better-sqlite3",
     "build:main": "tsc src/main/main.ts src/main/preload.ts --outDir build/dist --target ES2022 --module CommonJS --moduleResolution Node --esModuleInterop --allowSyntheticDefaultImports",
     "vite": "cd src/renderer && npm run dev",
     "dev": "concurrently -k -n VITE,ELECTRON -c auto \"npm:vite\" \"wait-on tcp:5173 && npm run build:main && npm run electron:compiled\"",
@@ -36,15 +36,17 @@
     "files": [
       "build/dist/**/*",
       "src/services/bot/dist/**/*",
+      "src/services/bot/node_modules/**/*",
       "src/renderer/dist/**/*",
       "src/renderer/assets/images/icon.ico",
       "!node_modules/.cache/**",
-      "!src/services/bot/node_modules/**",
-      "!src/renderer/node_modules/**"
+      "!src/renderer/node_modules/**",
+      "!src/services/bot/node_modules/.cache/**"
     ],
     "directories": {
       "output": "build"
     },
+    "extraResources": [],
     "mac": {
       "category": "public.app-category.productivity"
     },
@@ -85,7 +87,8 @@
     "better-sqlite3": "^12.4.1",
     "electron-log": "^5.4.3",
     "electron-updater": "^6.6.2",
-    "handsontable": "^16.1.1"
+    "handsontable": "^16.1.1",
+    "playwright": "^1.56.1"
   },
   "devDependencies": {
     "@electron/rebuild": "^4.0.1",
@@ -108,7 +111,6 @@
     "jsdom": "^27.0.0",
     "material": "^0.9.24",
     "nodemon": "^3.1.10",
-    "playwright": "^1.55.1",
     "png2icons": "^2.0.1",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",

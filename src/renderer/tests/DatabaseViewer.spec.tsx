@@ -2,11 +2,11 @@ import { describe, it, expect, vi } from 'vitest';
 import React from 'react';
 
 // Mock the entire DatabaseViewer component to avoid React hook issues
-vi.mock('../src/components/DatabaseViewer', () => ({
+vi.mock('../components/DatabaseViewer', () => ({
   default: () => React.createElement('div', { 'data-testid': 'archive-viewer' }, 'Archive'),
 }));
 
-import Archive from '../src/components/DatabaseViewer';
+import Archive from '../components/DatabaseViewer';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 

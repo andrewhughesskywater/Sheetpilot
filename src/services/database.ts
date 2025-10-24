@@ -108,9 +108,9 @@ export function openDb(opts?: BetterSqlite3.Options): BetterSqlite3.Database {
     fs.mkdirSync(dbDir, { recursive: true });
     
     dbLogger.verbose('Opening database connection', { dbPath: DB_PATH, options: opts });
-    const mod = loadBetterSqlite3() as any;
-    const DatabaseCtor = mod?.default ?? mod;
-    const db = new DatabaseCtor(DB_PATH, opts) as BetterSqlite3.Database;
+    const mod = loadBetterSqlite3() as unknown;
+    const DatabaseCtor = (mod as { default?: unknown })?.default ?? mod;
+    const db = new (DatabaseCtor as new (path: string, opts?: BetterSqlite3.Options) => BetterSqlite3.Database)(DB_PATH, opts);
     
     // Lazy initialization: ensure schema on first database open
     if (!schemaEnsured) {
@@ -351,16 +351,17 @@ export function insertTimesheetEntries(entries: Array<{
         let inserted = 0;
         let duplicates = 0;
         
-        const insertMany = db.transaction((entriesList: any[]) => {
+        const insertMany = db.transaction((entriesList: unknown[]) => {
             for (const entry of entriesList) {
+                const typedEntry = entry as Record<string, unknown>;
                 const result = insert.run(
-                    entry.date,
-                    entry.timeIn,
-                    entry.timeOut,
-                    entry.project,
-                    entry.tool || null,
-                    entry.detailChargeCode || null,
-                    entry.taskDescription
+                    typedEntry['date'],
+                    typedEntry['timeIn'],
+                    typedEntry['timeOut'],
+                    typedEntry['project'],
+                    typedEntry['tool'] || null,
+                    typedEntry['detailChargeCode'] || null,
+                    typedEntry['taskDescription']
                 );
                 
                 if (result.changes > 0) {

@@ -112,7 +112,9 @@ module.exports = [
         // Browser globals (for Playwright)
         window: 'readonly',
         document: 'readonly',
-        navigator: 'readonly'
+        navigator: 'readonly',
+        Notification: 'readonly',
+        PermissionStatus: 'readonly'
       }
     },
     plugins: {
@@ -152,10 +154,16 @@ module.exports = [
         localStorage: 'readonly',
         requestAnimationFrame: 'readonly',
         cancelAnimationFrame: 'readonly',
+        requestIdleCallback: 'readonly',
         HTMLInputElement: 'readonly',
         HTMLDivElement: 'readonly',
+        HTMLElement: 'readonly',
         CustomEvent: 'readonly',
-        Event: 'readonly'
+        Event: 'readonly',
+        Blob: 'readonly',
+        URL: 'readonly',
+        Notification: 'readonly',
+        PermissionStatus: 'readonly'
       }
     },
     plugins: {

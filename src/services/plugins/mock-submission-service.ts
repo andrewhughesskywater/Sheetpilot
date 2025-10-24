@@ -49,7 +49,7 @@ export class MockSubmissionService implements ISubmissionService {
   /**
    * Submit timesheet entries (mock implementation)
    */
-  public async submit(entries: TimesheetEntry[], credentials: Credentials): Promise<SubmissionResult> {
+  public async submit(entries: TimesheetEntry[], _credentials: Credentials): Promise<SubmissionResult> {
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 500));
 

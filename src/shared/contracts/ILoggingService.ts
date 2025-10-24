@@ -42,42 +42,42 @@ export interface ILoggingService extends IPlugin {
    * @param message Log message
    * @param data Optional structured data
    */
-  log(level: LogLevel, message: string, data?: any): void;
+  log(level: LogLevel, message: string, data?: unknown): void;
 
   /**
    * Log an error message
    * @param message Error message
    * @param data Optional error data
    */
-  error(message: string, data?: any): void;
+  error(message: string, data?: unknown): void;
 
   /**
    * Log a warning message
    * @param message Warning message
    * @param data Optional warning data
    */
-  warn(message: string, data?: any): void;
+  warn(message: string, data?: unknown): void;
 
   /**
    * Log an info message
    * @param message Info message
    * @param data Optional info data
    */
-  info(message: string, data?: any): void;
+  info(message: string, data?: unknown): void;
 
   /**
    * Log a verbose message
    * @param message Verbose message
    * @param data Optional verbose data
    */
-  verbose(message: string, data?: any): void;
+  verbose(message: string, data?: unknown): void;
 
   /**
    * Log a debug message
    * @param message Debug message
    * @param data Optional debug data
    */
-  debug(message: string, data?: any): void;
+  debug(message: string, data?: unknown): void;
 
   /**
    * Start a performance timer

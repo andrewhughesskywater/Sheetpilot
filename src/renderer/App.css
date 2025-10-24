@@ -1,5 +1,12 @@
 /* SheetPilot App Styles */
 
+/* Loading fallback styles */
+.loading-fallback {
+  padding: var(--space-4);
+  text-align: center;
+  color: var(--md-sys-color-on-surface);
+}
+
 /* About dialog logo styles */
 .about-dialog-logo {
   width: 256px;
@@ -77,8 +84,13 @@
 }
 
 .app-logo-button:hover {
-  background-color: rgba(255, 255, 255, 0.08); /* Fallback for color-mix */
-  background-color: color-mix(in srgb, var(--md-sys-color-on-primary) 8%, transparent);
+  background-color: rgba(255, 255, 255, 0.08); /* Fallback for browsers without color-mix support */
+}
+
+@supports (background-color: color-mix(in srgb, black 8%, transparent)) {
+  .app-logo-button:hover {
+    background-color: color-mix(in srgb, var(--md-sys-color-on-primary) 8%, transparent);
+  }
 }
 
 .app-logo-button:focus-visible {
@@ -219,9 +231,14 @@
 }
 
 .clear-credentials-button:hover {
-  background-color: rgba(186, 26, 26, 0.08) !important; /* Fallback for color-mix */
-  background-color: color-mix(in srgb, var(--md-sys-color-error) 8%, transparent) !important;
+  background-color: rgba(186, 26, 26, 0.08) !important; /* Fallback for browsers without color-mix support */
   border-color: var(--md-sys-color-error) !important;
+}
+
+@supports (background-color: color-mix(in srgb, black 8%, transparent)) {
+  .clear-credentials-button:hover {
+    background-color: color-mix(in srgb, var(--md-sys-color-error) 8%, transparent) !important;
+  }
 }
 
 /* ========================================

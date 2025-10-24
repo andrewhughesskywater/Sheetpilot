@@ -276,7 +276,10 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'), // Compiled preload script
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: true
+      sandbox: true,
+      webSecurity: true, // Enable web security
+      allowRunningInsecureContent: false, // Disable insecure content
+      experimentalFeatures: false // Disable experimental features
     }
   };
 
@@ -311,6 +314,20 @@ function createWindow() {
     }
   });
 
+  // Add error handling for failed loads
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+    console.error('Failed to load:', validatedURL);
+    console.error('Error code:', errorCode);
+    console.error('Error description:', errorDescription);
+    appLogger.error('Failed to load renderer', { errorCode, errorDescription, validatedURL });
+  });
+
+  // Add success logging
+  mainWindow.webContents.on('did-finish-load', () => {
+    console.log('Renderer loaded successfully');
+    appLogger.info('Renderer loaded successfully');
+  });
+
   // Save window state on resize/move
   mainWindow.on('resize', () => {
     if (!mainWindow?.isMaximized()) {
@@ -337,12 +354,18 @@ function createWindow() {
     saveWindowState();
   });
 
-  const isDev = !app.isPackaged;
+  // Check if we're in development mode by trying to connect to Vite dev server
+  const isDev = process.env.NODE_ENV === 'development' || process.env.ELECTRON_IS_DEV === '1';
   if (isDev) {
+    console.log('Loading development URL: http://localhost:5173');
     mainWindow.loadURL('http://localhost:5173');
   } else {
-    // In production, __dirname is 'dist/main/', so go up to root
-    mainWindow.loadFile(path.join(__dirname, '..', '..', '..', 'src', 'renderer', 'dist', 'index.html'));
+    // In production, load from the packaged renderer files
+    // __dirname is 'build/dist/main', so go up to project root
+    const htmlPath = path.join(__dirname, '..', '..', '..', 'src', 'renderer', 'dist', 'index.html');
+    console.log('Loading production HTML from:', htmlPath);
+    console.log('File exists:', require('fs').existsSync(htmlPath));
+    mainWindow.loadFile(htmlPath);
   }
 }
 
@@ -356,12 +379,15 @@ export function registerIPCHandlers() {
 
   // Handler for timesheet submission (submit pending data from database)
   ipcMain.handle('timesheet:submit', async () => {
+    console.log('[Main] timesheet:submit IPC handler called');
     const timer = ipcLogger.startTimer('timesheet-submit');
     ipcLogger.info('Timesheet submission initiated by user');
     
     try {
+      console.log('[Main] Checking credentials...');
       // Check credentials for submission
       const credentials = getCredentials('smartsheet');
+      console.log('[Main] Credentials check result:', credentials ? 'found' : 'not found');
       
       if (!credentials) {
         ipcLogger.warn('Submission: credentials not found', { service: 'smartsheet' });
@@ -375,9 +401,11 @@ export function registerIPCHandlers() {
         service: 'smartsheet',
         email: credentials.email 
       });
+      console.log('[Main] Calling submitTimesheets...');
       
       // Submit pending data from database
       const submitResult = await submitTimesheets(credentials.email, credentials.password);
+      console.log('[Main] submitTimesheets completed:', submitResult);
       
       ipcLogger.info('Timesheet submission completed successfully', { 
         submitResult,
@@ -912,28 +940,28 @@ export function registerIPCHandlers() {
   });
 
   // Renderer logging bridge - route renderer logs to main process logger
-  ipcMain.on('logger:error', (_event, message: string, data?: any) => {
+  ipcMain.on('logger:error', (_event, message: string, data?: unknown) => {
     ipcLogger.error(message, data);
   });
 
-  ipcMain.on('logger:warn', (_event, message: string, data?: any) => {
+  ipcMain.on('logger:warn', (_event, message: string, data?: unknown) => {
     ipcLogger.warn(message, data);
   });
 
-  ipcMain.on('logger:info', (_event, message: string, data?: any) => {
+  ipcMain.on('logger:info', (_event, message: string, data?: unknown) => {
     ipcLogger.info(message, data);
   });
 
-  ipcMain.on('logger:verbose', (_event, message: string, data?: any) => {
+  ipcMain.on('logger:verbose', (_event, message: string, data?: unknown) => {
     ipcLogger.verbose(message, data);
   });
 
-  ipcMain.on('logger:debug', (_event, message: string, data?: any) => {
+  ipcMain.on('logger:debug', (_event, message: string, data?: unknown) => {
     ipcLogger.debug(message, data);
   });
 
   // User action tracking
-  ipcMain.on('logger:user-action', (_event, action: string, data?: any) => {
+  ipcMain.on('logger:user-action', (_event, action: string, data?: unknown) => {
     ipcLogger.info(`User action: ${action}`, data);
   });
 

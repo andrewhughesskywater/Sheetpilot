@@ -23,6 +23,12 @@
   flex-shrink: 0;
 }
 
+.debug-state-display {
+  font-size: 10px;
+  color: #666;
+  margin-top: 4px;
+}
+
 .timesheet-table-container {
   width: 100%;
   max-width: 100%;

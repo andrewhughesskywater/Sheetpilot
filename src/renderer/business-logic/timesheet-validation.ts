@@ -10,6 +10,7 @@
  */
 
 import { projectNeedsTools, toolNeedsChargeCode } from './dropdown-logic';
+import { validateQuarterAvailability } from '../../services/bot/src/quarter_config';
 
 /**
  * Timesheet row interface
@@ -79,6 +80,7 @@ export function isValidTime(timeStr?: string): boolean {
   if (!timeRegex.test(formattedTime)) return false;
   
   const [hours, minutes] = formattedTime.split(':').map(Number);
+  if (hours === undefined || minutes === undefined) return false;
   const totalMinutes = hours * 60 + minutes;
   
   // Check if it's a multiple of 15 minutes
@@ -93,6 +95,10 @@ export function isTimeOutAfterTimeIn(timeIn?: string, timeOut?: string): boolean
   
   const [inHours, inMinutes] = timeIn.split(':').map(Number);
   const [outHours, outMinutes] = timeOut.split(':').map(Number);
+  
+  if (inHours === undefined || inMinutes === undefined || outHours === undefined || outMinutes === undefined) {
+    return true; // Let other validations handle invalid time formats
+  }
   
   const inTotalMinutes = inHours * 60 + inMinutes;
   const outTotalMinutes = outHours * 60 + outMinutes;
@@ -117,6 +123,17 @@ export function validateField(
     case 'date': {
       if (!value) return 'Please enter a date';
       if (!isValidDate(String(value))) return 'Date must be like 01/15/2024';
+      
+      // Convert mm/dd/yyyy to yyyy-mm-dd for quarter validation
+      const dateStr = String(value);
+      const [month, day, year] = dateStr.split('/');
+      if (!month || !day || !year) return 'Date must be like 01/15/2024';
+      const isoDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      
+      // Validate quarter availability
+      const quarterError = validateQuarterAvailability(isoDate);
+      if (quarterError) return quarterError;
+      
       return null;
     }
       

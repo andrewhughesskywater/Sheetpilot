@@ -38,7 +38,8 @@ const toolsWithoutCharges = new Set([
   "Meeting",
   "Non Tool Related",
   "Admin",
-  "Training"
+  "Training",
+  "N/A"
 ]);
 
 const projects = [
@@ -130,8 +131,27 @@ function projectNeedsTools(project?: string): boolean {
 // Validation helpers
 function isValidDate(dateStr?: string): boolean {
   if (!dateStr) return false;
-  const date = new Date(dateStr);
-  return !isNaN(date.getTime()) && !!dateStr.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/);
+  
+  // Check format first
+  const dateRegex = /^\d{1,2}\/\d{1,2}\/\d{4}$/;
+  if (!dateRegex.test(dateStr)) return false;
+  
+  // Parse the date components
+  const [monthStr, dayStr, yearStr] = dateStr.split('/');
+  const month = parseInt(monthStr, 10);
+  const day = parseInt(dayStr, 10);
+  const year = parseInt(yearStr, 10);
+  
+  // Basic range checks
+  if (month < 1 || month > 12) return false;
+  if (day < 1 || day > 31) return false;
+  if (year < 1900 || year > 2100) return false;
+  
+  // Create date object and verify it matches input
+  const date = new Date(year, month - 1, day);
+  return date.getFullYear() === year && 
+         date.getMonth() === month - 1 && 
+         date.getDate() === day;
 }
 
 // Helper function to format numeric time input (e.g., 800 -> 08:00, 1430 -> 14:30)
@@ -284,8 +304,11 @@ interface TimesheetGridProps {
 }
 
 const TimesheetGrid: React.FC<TimesheetGridProps> = ({ onChange }) => {
+  console.log('[TimesheetGrid] Component rendering');
   const hotTableRef = useRef<HotTableRef>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  
+  console.log('[TimesheetGrid] Current isProcessing state:', isProcessing);
   
   // Use preloaded data from context
   const { 
@@ -296,12 +319,27 @@ const TimesheetGrid: React.FC<TimesheetGridProps> = ({ onChange }) => {
     refreshTimesheetDraft,
     refreshArchiveData
   } = useData();
+  
+  console.log('[TimesheetGrid] Data state:', {
+    dataLength: timesheetDraftData.length,
+    isLoading: isTimesheetDraftLoading,
+    hasError: !!timesheetDraftError
+  });
+  
+  console.log('[TimesheetGrid] IPC Bridge available:', {
+    hasWindow: typeof window !== 'undefined',
+    hasTimesheet: typeof window.timesheet !== 'undefined',
+    hasSubmit: typeof window.timesheet?.submit === 'function'
+  });
 
   // Update data using updateData() to preserve table state (selection, scroll position)
   const updateTableData = useCallback((newData: TimesheetRow[]) => {
     if (hotTableRef.current?.hotInstance) {
-      console.log('[TimesheetGrid] Updating table data while preserving state');
-      hotTableRef.current.hotInstance.updateData(newData);
+      // Use requestAnimationFrame to prevent blocking the UI thread
+      requestAnimationFrame(() => {
+        window.logger?.debug('[TimesheetGrid] Updating table data while preserving state');
+        hotTableRef.current?.hotInstance?.updateData(newData);
+      });
     }
     onChange?.(newData);
   }, [onChange]);
@@ -336,7 +374,7 @@ const TimesheetGrid: React.FC<TimesheetGridProps> = ({ onChange }) => {
         data: dataToBackup,
         timestamp: new Date().toISOString()
       }));
-      console.log('[TimesheetGrid] Local backup saved', { rows: dataToBackup.length });
+      window.logger?.debug('[TimesheetGrid] Local backup saved', { rows: dataToBackup.length });
     } catch (error) {
       console.error('[TimesheetGrid] Could not save local backup:', error);
     }
@@ -378,9 +416,26 @@ const TimesheetGrid: React.FC<TimesheetGridProps> = ({ onChange }) => {
       const currentRow = next[rowIdx];
       const propStr = String(prop);
       
-      // Auto-format time inputs
+      // Auto-format time inputs and clear invalid entries
       if ((propStr === 'timeIn' || propStr === 'timeOut') && newVal !== oldVal && newVal) {
-        next[rowIdx] = { ...currentRow, [propStr]: formatTimeInput(String(newVal)) };
+        const formattedTime = formatTimeInput(String(newVal));
+        // If the formatted time is invalid, clear the field immediately
+        if (!isValidTime(formattedTime)) {
+          next[rowIdx] = { ...currentRow, [propStr]: '' };
+        } else {
+          next[rowIdx] = { ...currentRow, [propStr]: formattedTime };
+        }
+        continue;
+      }
+      
+      // Validate and clear invalid date entries
+      if (propStr === 'date' && newVal !== oldVal && newVal) {
+        // If the date is invalid, clear the field immediately
+        if (!isValidDate(String(newVal))) {
+          next[rowIdx] = { ...currentRow, [propStr]: '' };
+        } else {
+          next[rowIdx] = { ...currentRow, [propStr]: newVal };
+        }
         continue;
       }
       
@@ -487,84 +542,121 @@ const TimesheetGrid: React.FC<TimesheetGridProps> = ({ onChange }) => {
     }
   }, []);
 
-  // Load saved states on initialization (only once)
+  // Load saved states on initialization (only once) - completely disabled during startup
   useEffect(() => {
     if (!hotTableRef.current?.hotInstance || hasLoadedInitialStateRef.current) return;
 
     const hot = hotTableRef.current.hotInstance;
     hasLoadedInitialStateRef.current = true;
 
-    // Load column sorting state
-    try {
-      const savedSortConfig = localStorage.getItem('sheetpilot_columnSorting');
-      if (savedSortConfig) {
-        const sortPlugin = hot.getPlugin('columnSorting');
-        if (sortPlugin && typeof sortPlugin.setSortConfig === 'function') {
-          sortPlugin.setSortConfig(JSON.parse(savedSortConfig));
+    // Don't load any state during startup - defer indefinitely until user interaction
+    window.logger?.info('[TimesheetGrid] Skipping state loading during startup to prevent performance violations');
+    
+    // Only load state when user actually interacts with the table
+    const loadStateOnInteraction = () => {
+      try {
+        // Load column sorting state
+        const savedSortConfig = localStorage.getItem('sheetpilot_columnSorting');
+        if (savedSortConfig) {
+          const sortPlugin = hot.getPlugin('columnSorting');
+          if (sortPlugin && typeof sortPlugin.setSortConfig === 'function') {
+            sortPlugin.setSortConfig(JSON.parse(savedSortConfig));
+          }
         }
-      }
-    } catch (error) {
-      console.error('[TimesheetGrid] Could not load column sorting state:', error);
-    }
 
-    // Load column widths
-    try {
-      const savedWidths = localStorage.getItem('sheetpilot_columnWidths');
-      if (savedWidths) {
-        const widths = JSON.parse(savedWidths);
-        Object.entries(widths).forEach(([col, width]) => {
+        // Load column widths
+        const savedWidths = localStorage.getItem('sheetpilot_columnWidths');
+        if (savedWidths) {
+          const widths = JSON.parse(savedWidths);
           const manualColumnResize = hot.getPlugin('manualColumnResize');
           if (manualColumnResize && typeof manualColumnResize.setManualSize === 'function') {
-            manualColumnResize.setManualSize(Number(col), width as number);
+            Object.entries(widths).forEach(([col, width]) => {
+              manualColumnResize.setManualSize(Number(col), width as number);
+            });
           }
-        });
-        hot.render();
-      }
-    } catch (error) {
-      console.error('[TimesheetGrid] Could not load column widths:', error);
-    }
+        }
 
-    // Load row heights
-    try {
-      const savedHeights = localStorage.getItem('sheetpilot_rowHeights');
-      if (savedHeights) {
-        const heights = JSON.parse(savedHeights);
-        Object.entries(heights).forEach(([row, height]) => {
+        // Load row heights
+        const savedHeights = localStorage.getItem('sheetpilot_rowHeights');
+        if (savedHeights) {
+          const heights = JSON.parse(savedHeights);
           const manualRowResize = hot.getPlugin('manualRowResize');
           if (manualRowResize && typeof manualRowResize.setManualSize === 'function') {
-            manualRowResize.setManualSize(Number(row), height as number);
+            Object.entries(heights).forEach(([row, height]) => {
+              manualRowResize.setManualSize(Number(row), height as number);
+            });
           }
-        });
+        }
+        
+        // Single render call after all operations
         hot.render();
+      } catch (error) {
+        console.error('[TimesheetGrid] Could not load saved state:', error);
       }
-    } catch (error) {
-      console.error('[TimesheetGrid] Could not load row heights:', error);
-    }
+    };
+
+    // Load state only when user first interacts with the table
+    const handleFirstInteraction = () => {
+      loadStateOnInteraction();
+      // Remove the event listeners after first interaction
+      hot.removeHook('afterSelectionEnd', handleFirstInteraction);
+      hot.removeHook('afterColumnResize', handleFirstInteraction);
+      hot.removeHook('afterRowResize', handleFirstInteraction);
+    };
+
+    // Add event listeners for first interaction
+    hot.addHook('afterSelectionEnd', handleFirstInteraction);
+    hot.addHook('afterColumnResize', handleFirstInteraction);
+    hot.addHook('afterRowResize', handleFirstInteraction);
   }, []); // Only run once on mount
 
   // Submit timesheet functionality
   const submitTimesheet = async () => {
+    console.log('[TimesheetGrid] Submit button clicked');
+    window.logger?.info('[TimesheetGrid] Submit button clicked');
+    
+    // Prevent multiple simultaneous submissions
+    if (isProcessing) {
+      console.log('[TimesheetGrid] Already processing, ignoring click');
+      window.logger?.warn('[TimesheetGrid] Submit ignored - already processing');
+      return;
+    }
+    
+    console.log('[TimesheetGrid] Setting processing state to true');
     setIsProcessing(true);
     try {
+      console.log('[TimesheetGrid] Calling window.timesheet.submit()');
+      window.logger?.info('[TimesheetGrid] Starting timesheet submission');
       const res = await window.timesheet.submit();
+      console.log('[TimesheetGrid] Received response:', res);
+      
       if (res.error) {
-        console.error('Timesheet submission error:', res.error);
+        const errorMsg = `❌ Submission failed: ${res.error}`;
+        console.error('[TimesheetGrid] Timesheet submission error:', res.error);
+        window.logger?.error('Timesheet submission failed', { error: res.error });
+        alert(errorMsg);
         return;
       }
       
       const submitMsg = res.submitResult ? 
         `✅ Submitted ${res.submitResult.successCount}/${res.submitResult.totalProcessed} entries to SmartSheet` : 
         '✅ No pending entries to submit';
-      console.log(submitMsg);
+      window.logger?.info(submitMsg);
+      alert(submitMsg);
       
-      // Refresh data if entries were submitted
+      // Refresh data if entries were submitted - use requestAnimationFrame to avoid blocking
       if (res.submitResult && res.submitResult.successCount > 0) {
-        console.log('[TimesheetGrid] Triggering data refresh after successful submission');
-        await refreshTimesheetDraft();
-        await refreshArchiveData();
+        window.logger?.info('[TimesheetGrid] Triggering data refresh after successful submission');
+        requestAnimationFrame(async () => {
+          await refreshTimesheetDraft();
+          await refreshArchiveData();
+        });
       }
     } catch (error) {
+      const errorMsg = `❌ Unexpected error during submission: ${error instanceof Error ? error.message : String(error)}`;
       console.error('[TimesheetGrid] Unexpected error during submission:', error);
+      window.logger?.error('Unexpected error during submission', { error: error instanceof Error ? error.message : String(error) });
+      alert(errorMsg);
     } finally {
       setIsProcessing(false);
     }
@@ -622,6 +714,7 @@ const TimesheetGrid: React.FC<TimesheetGridProps> = ({ onChange }) => {
 
 
   if (isTimesheetDraftLoading) {
+    console.log('[TimesheetGrid] Rendering loading state');
     return (
       <div className="timesheet-page">
         <h2 className="md-typescale-headline-medium">Timesheet</h2>
@@ -631,6 +724,7 @@ const TimesheetGrid: React.FC<TimesheetGridProps> = ({ onChange }) => {
   }
 
   if (timesheetDraftError) {
+    console.log('[TimesheetGrid] Rendering error state:', timesheetDraftError);
     return (
       <div className="timesheet-page">
         <h2 className="md-typescale-headline-medium">Timesheet</h2>
@@ -641,7 +735,7 @@ const TimesheetGrid: React.FC<TimesheetGridProps> = ({ onChange }) => {
     );
   }
 
-
+  console.log('[TimesheetGrid] Rendering main view with submit button');
   return (
     <div className="timesheet-page">
       <div className="timesheet-header">
@@ -651,11 +745,19 @@ const TimesheetGrid: React.FC<TimesheetGridProps> = ({ onChange }) => {
           size="large"
           className="submit-timesheet-button"
           startIcon={isProcessing ? <CircularProgress size={20} color="inherit" /> : <PlayArrowIcon />}
-          onClick={submitTimesheet}
+          onClick={() => {
+            console.log('[TimesheetGrid] Button onClick fired, isProcessing:', isProcessing);
+            alert(`Button clicked! isProcessing: ${isProcessing}, IPC available: ${typeof window.timesheet?.submit === 'function'}`);
+            submitTimesheet();
+          }}
           disabled={isProcessing}
         >
           {isProcessing ? 'Submitting...' : 'Submit Timesheet'}
         </Button>
+        {/* Debug state display */}
+        <div className="debug-state-display">
+          Debug: isProcessing = {String(isProcessing)} | IPC: {typeof window.timesheet?.submit === 'function' ? 'OK' : 'FAIL'}
+        </div>
       </div>
       <HotTable
         ref={hotTableRef}

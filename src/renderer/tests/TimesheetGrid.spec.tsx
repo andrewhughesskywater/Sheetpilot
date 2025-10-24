@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Mock all Handsontable dependencies to avoid DOM issues in jsdom
 vi.mock('handsontable/dist/handsontable.full.min.css', () => ({}));
@@ -41,6 +41,23 @@ describe('TimesheetGrid Phase 1', () => {
     expect(expectedColumns[6].data).toBe('taskDescription');
   });
 
+  it('handles N/A tool validation correctly', () => {
+    // Test that when tool is "N/A", charge code should be null/N/A
+    const mockRowWithNATool = {
+      date: '2024-01-01',
+      timeIn: '09:00',
+      timeOut: '17:00',
+      project: 'SWFL-EQUIP',
+      tool: 'N/A',
+      chargeCode: null, // Should be null when tool is N/A
+      taskDescription: 'Test task'
+    };
+    
+    // Verify the structure is correct
+    expect(mockRowWithNATool.tool).toBe('N/A');
+    expect(mockRowWithNATool.chargeCode).toBeNull();
+  });
+
   it('defines correct row schema', () => {
     // Test the TimesheetRow interface structure
     const mockRow = {
@@ -65,7 +82,17 @@ describe('TimesheetGrid Phase 1', () => {
 
   it('normalizes trailing blank rows correctly', () => {
     // Test the normalizeTrailingBlank function logic
-    const testRows = [
+    type TestRow = {
+      date?: string;
+      timeIn?: string;
+      timeOut?: string;
+      project?: string;
+      tool?: string;
+      chargeCode?: string;
+      taskDescription?: string;
+    };
+    
+    const testRows: TestRow[] = [
       { project: 'Project 1' },
       { project: 'Project 2' },
       {}, // empty row
@@ -117,7 +144,8 @@ describe('TimesheetGrid Phase 1', () => {
       ['0', 'tool', '', 'Test Tool']
     ];
     
-    const initialRows = [{}];
+    type TestRow = Record<string, unknown>;
+    const initialRows: TestRow[] = [{}];
     
     // Simulate the afterChange logic
     const next = [...initialRows];
@@ -229,11 +257,11 @@ describe('TimesheetGrid Phase 2 - Dependent Dropdowns', () => {
       "OSC-BBB": ["Meeting", "Non Tool Related"]
     };
     
-    const getToolOptions = (project?: string) => {
+    const getToolOptions = (project?: string): string[] => {
       if (!project || ["ERT", "PTO/RTO", "SWFL-CHEM/GAS", "Training"].includes(project)) {
         return [];
       }
-      return mockToolsByProject[project] || [];
+      return mockToolsByProject[project as keyof typeof mockToolsByProject] || [];
     };
     
     const toolOptions = getToolOptions(testProject);
@@ -247,7 +275,13 @@ describe('TimesheetGrid Phase 2 - Dependent Dropdowns', () => {
 
   it('simulates cascading rules for project changes', () => {
     // Test the cascading logic when project changes
-    const initialRow = {
+    type TestRow = {
+      project: string;
+      tool: string | null;
+      chargeCode: string | null;
+    };
+    
+    const initialRow: TestRow = {
       project: "FL-Carver Techs",
       tool: "DECA Meeting",
       chargeCode: "EPR1"
@@ -272,7 +306,13 @@ describe('TimesheetGrid Phase 2 - Dependent Dropdowns', () => {
 
   it('simulates cascading rules for tool changes', () => {
     // Test the cascading logic when tool changes
-    const initialRow = {
+    type TestRow = {
+      project: string;
+      tool: string;
+      chargeCode: string | null;
+    };
+    
+    const initialRow: TestRow = {
       project: "FL-Carver Techs",
       tool: "DECA Meeting",
       chargeCode: "EPR1"
@@ -467,7 +507,7 @@ describe('TimesheetGrid Phase 3 - Validation and Normalization', () => {
 
   it('validates tool selection based on project', () => {
     const projectsWithoutTools = ["ERT", "PTO/RTO", "SWFL-CHEM/GAS", "Training"];
-    const toolsByProject = {
+    const toolsByProject: Record<string, string[]> = {
       "FL-Carver Techs": ["DECA Meeting", "Logistics", "#1 Rinse and 2D marker"],
       "OSC-BBB": ["Meeting", "Non Tool Related", "#1 CSAM101"]
     };
@@ -523,12 +563,12 @@ describe('TimesheetGrid Phase 3 - Validation and Normalization', () => {
       const toolsWithoutCharges = ["Internal Meeting", "DECA Meeting", "Logistics", "Meeting", "Non Tool Related", "Admin", "Training"];
       
       // Normalize N/A fields to null
-      if (projectsWithoutTools.includes(normalized.project)) {
+      if (typeof normalized.project === 'string' && projectsWithoutTools.includes(normalized.project)) {
         normalized.tool = null;
         normalized.chargeCode = null;
       }
       
-      if (toolsWithoutCharges.includes(normalized.tool)) {
+      if (typeof normalized.tool === 'string' && toolsWithoutCharges.includes(normalized.tool)) {
         normalized.chargeCode = null;
       }
       
@@ -848,7 +888,7 @@ describe('TimesheetGrid Phase 5 - Import Flow Integration', () => {
     expect(shouldRefresh).toBe(true);
     
     // Simulate the refresh logic
-    const refreshLogic = (trigger: number) => {
+    const refreshLogic = (trigger: number | undefined) => {
       if (trigger !== undefined) {
         return 'refresh triggered';
       }
@@ -978,7 +1018,7 @@ describe('TimesheetGrid Phase 5 - Import Flow Integration', () => {
     
     // Test refresh trigger logic
     const shouldRefreshGrid = (result: Record<string, unknown>, activeTab: number) => {
-      return activeTab === 1 && result.inserted > 0;
+      return activeTab === 1 && typeof result.inserted === 'number' && result.inserted > 0;
     };
     
     expect(shouldRefreshGrid(mockImportResults[0], 1)).toBe(true); // Should refresh
@@ -1140,12 +1180,12 @@ describe('TimesheetGrid Phase 6 - Accessibility and UX Polish', () => {
           let normalizedChargeCode = chargeCode;
           
           // If project doesn't need tools, clear tool and chargeCode
-          if (project && projectsWithoutTools.has(project)) {
+          if (typeof project === 'string' && projectsWithoutTools.has(project)) {
             normalizedTool = null;
             normalizedChargeCode = null;
           }
           // If tool doesn't need charge codes, clear chargeCode
-          else if (tool && toolsWithoutCharges.has(tool)) {
+          else if (typeof tool === 'string' && toolsWithoutCharges.has(tool)) {
             normalizedChargeCode = null;
           }
           

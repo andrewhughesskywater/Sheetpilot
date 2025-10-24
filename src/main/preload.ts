@@ -100,7 +100,7 @@ contextBridge.exposeInMainWorld('logs', {
         platform: string;
         nodeVersion: string;
       };
-      data?: any;
+      data?: unknown;
       raw?: string;
     }>;
     totalLines?: number;
@@ -117,23 +117,23 @@ contextBridge.exposeInMainWorld('logs', {
 
 // Renderer-to-main logging bridge
 contextBridge.exposeInMainWorld('logger', {
-  error: (message: string, data?: any): void => {
+  error: (message: string, data?: unknown): void => {
     ipcRenderer.send('logger:error', message, data);
   },
-  warn: (message: string, data?: any): void => {
+  warn: (message: string, data?: unknown): void => {
     ipcRenderer.send('logger:warn', message, data);
   },
-  info: (message: string, data?: any): void => {
+  info: (message: string, data?: unknown): void => {
     ipcRenderer.send('logger:info', message, data);
   },
-  verbose: (message: string, data?: any): void => {
+  verbose: (message: string, data?: unknown): void => {
     ipcRenderer.send('logger:verbose', message, data);
   },
-  debug: (message: string, data?: any): void => {
+  debug: (message: string, data?: unknown): void => {
     ipcRenderer.send('logger:debug', message, data);
   },
   // User interaction tracking
-  userAction: (action: string, data?: any): void => {
+  userAction: (action: string, data?: unknown): void => {
     ipcRenderer.send('logger:user-action', action, data);
   }
 });

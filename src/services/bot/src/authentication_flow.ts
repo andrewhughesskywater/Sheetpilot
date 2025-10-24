@@ -41,7 +41,7 @@ export class LoginManager {
   constructor(config: typeof C, browser_manager: WebformFiller) {
     this.cfg = config;
     this.browser_manager = browser_manager;
-    this._wait_s = Number((this.cfg as any).ELEMENT_WAIT_TIMEOUT ?? 10.0);
+    this._wait_s = Number(this.cfg.ELEMENT_WAIT_TIMEOUT ?? 10.0);
   }
 
   /**
@@ -105,7 +105,7 @@ export class LoginManager {
       });
       
       if (action === 'wait') {
-        await page.waitForSelector(step['element_selector'], { state: step['wait_condition'] ?? 'visible', timeout: C.GLOBAL_TIMEOUT * 1000 }).catch((err: any) => {
+        await page.waitForSelector(step['element_selector']!, { state: (step['wait_condition'] as 'visible' | 'hidden' | 'attached' | 'detached') ?? 'visible', timeout: C.GLOBAL_TIMEOUT * 1000 }).catch((err: Error) => {
           if (!step['optional']) {
             authLogger.error('Required element not found', { 
               selector: step['element_selector'],
@@ -116,7 +116,7 @@ export class LoginManager {
           authLogger.verbose('Optional element not found, continuing', { selector: step['element_selector'] });
         });
       } else if (action === 'input') {
-        const locator = page.locator(step['locator']);
+        const locator = page.locator(step['locator']!);
         const value_key = step['value_key'] as string;
         const val = value_key === 'email' ? email : value_key === 'password' ? password : String(value_key);
         authLogger.debug('Filling input field', { 
@@ -131,7 +131,7 @@ export class LoginManager {
         }
       } else if (action === 'click') {
         authLogger.debug('Clicking element', { locator: step['locator'] });
-        await page.locator(step['locator']).click();
+        await page.locator(step['locator']!).click();
         if (step['expects_navigation']) {
           authLogger.verbose('Waiting for navigation after click');
           await C.dynamic_wait_for_page_load(page, undefined, C.GLOBAL_TIMEOUT);
@@ -172,7 +172,7 @@ export class LoginManager {
       const page = this.browser_manager.require_page();
       // Check if current URL contains any configured success URL patterns
       const current_url = page.url();
-      const success_urls: string[] = ((this.cfg as any).LOGIN_SUCCESS_URLS ?? []) as string[];
+      const success_urls: string[] = (this.cfg as Record<string, unknown>)['LOGIN_SUCCESS_URLS'] as string[] ?? [];
       authLogger.verbose('Validating login state', { 
         currentUrl: current_url,
         successUrls: success_urls 

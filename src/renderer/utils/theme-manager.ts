@@ -78,7 +78,7 @@ export function applyTheme(mode: ThemeMode): void {
   });
   window.dispatchEvent(themeChangeEvent);
   
-  console.log('[ThemeManager] Applied theme:', effectiveTheme, '(mode:', mode, ')');
+  window.logger?.debug('[ThemeManager] Applied theme', { theme: effectiveTheme, mode });
 }
 
 /**

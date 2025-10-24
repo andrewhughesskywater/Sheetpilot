@@ -52,7 +52,7 @@ interface LogEntry {
     platform: string;
     nodeVersion: string;
   };
-  data?: any;
+  data?: unknown;
   raw?: string;
 }
 
@@ -448,7 +448,7 @@ const Help: React.FC = () => {
                 </Typography>
               </Box>
               
-              {selectedLogEntry.data && (
+              {selectedLogEntry.data !== undefined && selectedLogEntry.data !== null && (
                 <Box className="log-detail-item">
                   <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                     Additional Data

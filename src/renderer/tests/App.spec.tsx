@@ -4,20 +4,11 @@ import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 
 // Mock the entire App component to avoid React hook initialization issues
-vi.mock('../src/App', () => ({
+vi.mock('../App', () => ({
   default: () => React.createElement('div', { 'data-testid': 'app-root' }, 'SheetPilot App'),
 }));
 
-import App from '../src/App';
-
-declare global { 
-  interface Window { 
-    timesheet: Record<string, unknown>; 
-    excel: Record<string, unknown>; 
-    credentials: Record<string, unknown>; 
-    database: Record<string, unknown>; 
-  } 
-}
+import App from '../App';
 
 describe('App renderer', () => {
   it('renders without crashing', () => {
