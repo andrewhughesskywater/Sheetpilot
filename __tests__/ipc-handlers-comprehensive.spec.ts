@@ -75,7 +75,12 @@ vi.mock('electron', () => {
       on: vi.fn(),
       show: vi.fn(),
       getBounds: vi.fn(() => ({ x: 0, y: 0, width: 1200, height: 800 })),
-      isMaximized: vi.fn(() => false)
+      isMaximized: vi.fn(() => false),
+      webContents: {
+        on: vi.fn(),
+        once: vi.fn(),
+        send: vi.fn()
+      }
     }))
   };
 });
@@ -154,7 +159,7 @@ vi.mock('../src/shared/logger', () => ({
 }));
 
 // Import after mocks
-import { registerIPCHandlers } from '../main';
+import { registerIPCHandlers } from '../src/main/main';
 import * as db from '../src/services/database';
 import * as imp from '../src/services/timesheet_importer';
 
