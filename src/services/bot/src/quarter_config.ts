@@ -37,6 +37,22 @@ export interface QuarterDefinition {
  */
 export const QUARTER_DEFINITIONS: QuarterDefinition[] = [
   {
+    id: 'Q1-2025',
+    name: 'Q1 2025',
+    startDate: '2025-01-01',
+    endDate: '2025-03-31',
+    formUrl: 'https://app.smartsheet.com/b/form/q1-2025-placeholder',
+    formId: 'q1-2025-placeholder'
+  },
+  {
+    id: 'Q2-2025',
+    name: 'Q2 2025',
+    startDate: '2025-04-01',
+    endDate: '2025-06-30',
+    formUrl: 'https://app.smartsheet.com/b/form/q2-2025-placeholder',
+    formId: 'q2-2025-placeholder'
+  },
+  {
     id: 'Q3-2025',
     name: 'Q3 2025',
     startDate: '2025-07-01',
@@ -71,15 +87,46 @@ export function getQuarterForDate(dateStr: string): QuarterDefinition | null {
     return null;
   }
   
-  const targetDate = new Date(dateStr);
-  if (isNaN(targetDate.getTime())) {
+  // Parse date components and validate
+  const [yearStr, monthStr, dayStr] = dateStr.split('-');
+  const year = parseInt(yearStr!, 10);
+  const month = parseInt(monthStr!, 10);
+  const day = parseInt(dayStr!, 10);
+  
+  // Validate parsed values
+  if (isNaN(year) || isNaN(month) || isNaN(day)) {
+    return null;
+  }
+  
+  const targetDate = new Date(year, month - 1, day);
+  
+  // Check if the date is valid by comparing with original components
+  if (targetDate.getFullYear() !== year || 
+      targetDate.getMonth() !== month - 1 || 
+      targetDate.getDate() !== day) {
     return null;
   }
   
   // Check each quarter definition
   for (const quarter of QUARTER_DEFINITIONS) {
-    const startDate = new Date(quarter.startDate);
-    const endDate = new Date(quarter.endDate);
+    const [startYearStr, startMonthStr, startDayStr] = quarter.startDate.split('-');
+    const [endYearStr, endMonthStr, endDayStr] = quarter.endDate.split('-');
+    
+    const startYear = parseInt(startYearStr!, 10);
+    const startMonth = parseInt(startMonthStr!, 10);
+    const startDay = parseInt(startDayStr!, 10);
+    const endYear = parseInt(endYearStr!, 10);
+    const endMonth = parseInt(endMonthStr!, 10);
+    const endDay = parseInt(endDayStr!, 10);
+    
+    // Validate parsed values
+    if (isNaN(startYear) || isNaN(startMonth) || isNaN(startDay) || 
+        isNaN(endYear) || isNaN(endMonth) || isNaN(endDay)) {
+      continue;
+    }
+    
+    const startDate = new Date(startYear, startMonth - 1, startDay);
+    const endDate = new Date(endYear, endMonth - 1, endDay);
     
     if (targetDate >= startDate && targetDate <= endDate) {
       return quarter;

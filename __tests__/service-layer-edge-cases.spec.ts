@@ -24,7 +24,7 @@ vi.mock('better-sqlite3', () => {
   };
   
   return {
-    default: vi.fn().mockImplementation((dbPath: string, _opts?: any) => {
+    default: vi.fn().mockImplementation((dbPath: string, _opts?: unknown) => {
       if (dbPath.includes('invalid')) {
         throw new Error('Database connection failed');
       }
@@ -35,7 +35,7 @@ vi.mock('better-sqlite3', () => {
 
 // Mock the database module properly
 vi.mock('../src/services/database', async (importOriginal) => {
-  const actual = await importOriginal() as any;
+  const actual = await importOriginal() as Record<string, unknown>;
   return {
     ...actual,
     setDbPath: actual.setDbPath,  // Use actual implementation

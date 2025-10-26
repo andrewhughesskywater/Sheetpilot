@@ -61,6 +61,7 @@ interface DataContextType {
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useData = () => {
   const context = useContext(DataContext);
   if (context === undefined) {
@@ -116,6 +117,10 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
       
       // Yield control before making IPC call
       await yieldToMain();
+      
+      if (!window.timesheet?.loadDraft) {
+        throw new Error('Timesheet API not available');
+      }
       
       const response = await window.timesheet.loadDraft();
       

@@ -58,7 +58,7 @@ describe('Update Event Flow', () => {
     const updateInfo = { version: '1.0.1' };
     
     // Simulate update-available event handler
-    const handleUpdateAvailable = (info: any) => {
+    const handleUpdateAvailable = (info: { version: string; releaseNotes?: string }) => {
       mockDownloadUpdate();
       return info;
     };
@@ -69,7 +69,7 @@ describe('Update Event Flow', () => {
   });
   
   it('should handle null update info gracefully', () => {
-    const handleUpdateAvailable = (info: any) => {
+    const handleUpdateAvailable = (info: { version?: string } | null) => {
       const version = info?.version || 'unknown';
       return version;
     };
@@ -81,7 +81,7 @@ describe('Update Event Flow', () => {
   it('should log download progress', () => {
     const mockLogger = vi.fn();
     
-    const handleDownloadProgress = (progress: any) => {
+    const handleDownloadProgress = (progress: { percent: number; transferred: number; total: number }) => {
       mockLogger('Download progress', {
         percent: progress.percent.toFixed(2),
         transferred: progress.transferred,
@@ -109,7 +109,7 @@ describe('Error Handling', () => {
     
     try {
       await mockCheckForUpdates();
-    } catch (error: any) {
+    } catch (error: Error) {
       expect(error.message).toBe('Network error');
     }
     
@@ -120,7 +120,7 @@ describe('Error Handling', () => {
   it('should handle errors with missing stack trace', () => {
     const mockErrorLogger = vi.fn();
     
-    const handleError = (err: any) => {
+    const handleError = (err: Error) => {
       mockErrorLogger('AutoUpdater error', {
         error: err.message,
         stack: err.stack
@@ -128,7 +128,7 @@ describe('Error Handling', () => {
     };
     
     const errorNoStack = new Error('Simple error');
-    delete (errorNoStack as any).stack;
+    delete (errorNoStack as { stack?: string }).stack;
     
     handleError(errorNoStack);
     

@@ -59,7 +59,7 @@ const AppContent: React.FC = () => {
       // User navigated to archive tab - load data now
       refreshArchiveData();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [activeTab]);
 
   // Initialize theme on mount
@@ -71,11 +71,21 @@ const AppContent: React.FC = () => {
 
 
   const loadStoredCredentials = async () => {
-    const response = await window.credentials.list();
-    if (response.success) {
-      setStoredCredentials(response.credentials);
-    } else {
-      window.logger.error('Could not load credentials', { error: response.error });
+    if (!window.credentials?.list) {
+      window.logger?.warn('Credentials API not available', {});
+      setStoredCredentials([]);
+      return;
+    }
+    try {
+      const response = await window.credentials.list();
+      if (response?.success) {
+        setStoredCredentials(response.credentials || []);
+      } else {
+        window.logger?.error('Could not load credentials', { error: response?.error || 'Unknown error' });
+        setStoredCredentials([]);
+      }
+    } catch (error) {
+      window.logger?.error('Error loading credentials', { error: error instanceof Error ? error.message : 'Unknown error' });
       setStoredCredentials([]);
     }
   };
@@ -122,34 +132,46 @@ const AppContent: React.FC = () => {
       return;
     }
 
-    window.logger.userAction('save-credentials', { service: 'smartsheet', email: credentials.email });
+    if (!window.credentials?.store) {
+      window.logger?.warn('Credentials API not available', {});
+      setMsg('❌ Credentials API not available');
+      return;
+    }
+
+    window.logger?.userAction('save-credentials', { service: 'smartsheet', email: credentials.email });
     setMsg('Saving credentials…');
     const result = await window.credentials.store('smartsheet', credentials.email, credentials.password);
     
     if (result.success) {
-      window.logger.info('Credentials saved successfully', { service: 'smartsheet', email: credentials.email });
+      window.logger?.info('Credentials saved successfully', { service: 'smartsheet', email: credentials.email });
       setMsg(`✅ ${result.message}`);
       setCredentials({ email: '', password: '' });
       setShowCredentialsDialog(false);
       setIsEmailFieldDisabled(false);
       loadStoredCredentials();
     } else {
-      window.logger.error('Could not save credentials', { error: result.message });
+      window.logger?.error('Could not save credentials', { error: result.message });
       setMsg(`❌ ${result.message}`);
     }
   };
 
   const deleteCredential = async (service: string) => {
-    window.logger.userAction('delete-credential', { service });
+    if (!window.credentials?.delete) {
+      window.logger?.warn('Credentials API not available', {});
+      setMsg('❌ Credentials API not available');
+      return;
+    }
+
+    window.logger?.userAction('delete-credential', { service });
     setMsg('Deleting credentials…');
     const result = await window.credentials.delete(service);
     
     if (result.success) {
-      window.logger.info('Credential deleted successfully', { service });
+      window.logger?.info('Credential deleted successfully', { service });
       setMsg(`✅ ${result.message}`);
       loadStoredCredentials();
     } else {
-      window.logger.error('Could not delete credential', { service, error: result.message });
+      window.logger?.error('Could not delete credential', { service, error: result.message });
       setMsg(`❌ ${result.message}`);
     }
   };
@@ -172,17 +194,17 @@ const AppContent: React.FC = () => {
     // Prevent multiple simultaneous exports
     if (isExporting) return;
     
-    window.logger.userAction('export-to-csv-clicked');
+    window.logger?.userAction('export-to-csv-clicked');
     setIsExporting(true);
     setMsg('Exporting timesheet data to CSV...');
     
     try {
       // CSV export functionality not yet implemented
-      window.logger.info('CSV export requested');
+      window.logger?.info('CSV export requested');
       
       setMsg('CSV export functionality coming soon');
     } catch (error) {
-      window.logger.error('CSV export error', { error: error instanceof Error ? error.message : String(error) });
+      window.logger?.error('CSV export error', { error: error instanceof Error ? error.message : String(error) });
       setMsg(`❌ Export error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsExporting(false);
@@ -206,7 +228,7 @@ const AppContent: React.FC = () => {
           <button 
             className="app-logo-button"
             onClick={() => {
-              window.logger.userAction('about-dialog-opened');
+              window.logger?.userAction('about-dialog-opened');
               setShowAboutDialog(true);
             }}
             aria-label="About SheetPilot"
@@ -218,7 +240,7 @@ const AppContent: React.FC = () => {
         <ModernSegmentedNavigation 
           activeTab={activeTab} 
           onTabChange={(newTab) => {
-            window.logger.userAction('tab-change', { from: activeTab, to: newTab });
+            window.logger?.userAction('tab-change', { from: activeTab, to: newTab });
             setActiveTab(newTab);
           }}
         />
@@ -358,7 +380,7 @@ const AppContent: React.FC = () => {
                   className="add-credentials-button"
                   startIcon={<VpnKeyIcon />}
                   onClick={() => {
-                    window.logger.userAction('add-credentials-dialog-opened');
+                    window.logger?.userAction('add-credentials-dialog-opened');
                     setShowCredentialsDialog(true);
                   }}
                   style={{ flex: 1 }}
@@ -375,7 +397,13 @@ const AppContent: React.FC = () => {
                       return;
                     }
                     
-                    window.logger.userAction('clear-all-credentials', { count: storedCredentials.length });
+                    if (!window.credentials?.delete) {
+                      window.logger?.warn('Credentials API not available', {});
+                      setMsg('❌ Credentials API not available');
+                      return;
+                    }
+                    
+                    window.logger?.userAction('clear-all-credentials', { count: storedCredentials.length });
                     setMsg('Clearing all credentials…');
                     let successCount = 0;
                     
@@ -385,11 +413,11 @@ const AppContent: React.FC = () => {
                     }
                     
                     if (successCount === storedCredentials.length) {
-                      window.logger.info('Cleared all credentials successfully', { count: successCount });
+                      window.logger?.info('Cleared all credentials successfully', { count: successCount });
                       setMsg(`✅ Cleared ${successCount} credential${successCount > 1 ? 's' : ''}`);
                       loadStoredCredentials();
                     } else {
-                      window.logger.warn('Partially cleared credentials', { successCount, totalCount: storedCredentials.length });
+                      window.logger?.warn('Partially cleared credentials', { successCount, totalCount: storedCredentials.length });
                       setMsg(`⚠️ Cleared ${successCount}/${storedCredentials.length} credentials`);
                       loadStoredCredentials();
                     }
@@ -497,7 +525,7 @@ const AppContent: React.FC = () => {
 export default function App() {
   // This should show in console immediately on app load
   console.log('=== APP LOADING ===');
-  console.log('Environment:', process.env.NODE_ENV);
+  console.log('Environment:', import.meta.env.DEV ? 'development' : 'production');
   console.log('Window object:', typeof window);
   console.log('Console available:', typeof console.log);
   

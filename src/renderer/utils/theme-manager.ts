@@ -13,8 +13,18 @@ const THEME_STORAGE_KEY = 'sheetpilot-theme-mode';
 export function getSystemTheme(): 'light' | 'dark' {
   if (typeof window === 'undefined') return 'light';
   
-  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  return prefersDark ? 'dark' : 'light';
+  if (!window.matchMedia) {
+    return 'light';
+  }
+  
+  try {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const prefersDark = mediaQuery?.matches || false;
+    return prefersDark ? 'dark' : 'light';
+  } catch (error) {
+    // Fallback to light theme if matchMedia fails
+    return 'light';
+  }
 }
 
 /**
@@ -92,15 +102,22 @@ export function initializeTheme(): ThemeMode {
   applyTheme(mode);
   
   // Listen for system theme changes when in auto mode
-  if (typeof window !== 'undefined') {
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    
-    mediaQuery.addEventListener('change', () => {
-      const currentMode = getStoredTheme() || 'auto';
-      if (currentMode === 'auto') {
-        applyTheme('auto');
+  if (typeof window !== 'undefined' && window.matchMedia) {
+    try {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      
+      if (mediaQuery && typeof mediaQuery.addEventListener === 'function') {
+        mediaQuery.addEventListener('change', () => {
+          const currentMode = getStoredTheme() || 'auto';
+          if (currentMode === 'auto') {
+            applyTheme('auto');
+          }
+        });
       }
-    });
+    } catch (error) {
+      // Silently fail if media query listener setup fails
+      console.warn('[ThemeManager] Could not set up theme change listener:', error);
+    }
   }
   
   return mode;

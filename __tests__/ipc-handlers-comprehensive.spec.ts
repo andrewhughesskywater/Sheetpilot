@@ -35,9 +35,9 @@ vi.mock('electron', () => {
   }
   
   const ipcMain = {
-    handle: vi.fn((channel: string, fn: any) => {
+    handle: vi.fn((channel: string, fn: (...args: unknown[]) => unknown) => {
       // Wrap handler to skip the event parameter when called from tests
-      globalThis.__test_handlers[channel] = async (...args: any[]) => {
+      globalThis.__test_handlers[channel] = async (...args: unknown[]) => {
         // Call the actual handler with null event and the provided args
         return fn(null, ...args);
       };
@@ -75,7 +75,12 @@ vi.mock('electron', () => {
       on: vi.fn(),
       show: vi.fn(),
       getBounds: vi.fn(() => ({ x: 0, y: 0, width: 1200, height: 800 })),
-      isMaximized: vi.fn(() => false)
+      isMaximized: vi.fn(() => false),
+      webContents: {
+        on: vi.fn(),
+        send: vi.fn(),
+        executeJavaScript: vi.fn()
+      }
     }))
   };
 });
@@ -154,7 +159,7 @@ vi.mock('../src/shared/logger', () => ({
 }));
 
 // Import after mocks
-import { registerIPCHandlers } from '../main';
+import { registerIPCHandlers } from '../src/main/main';
 import * as db from '../src/services/database';
 import * as imp from '../src/services/timesheet_importer';
 
@@ -179,7 +184,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
     mockDbInstance.close = vi.fn();
     
     // Re-setup openDb mock to return mockDbInstance
-    (db as any).openDb.mockImplementation(() => mockDbInstance);
+    (db as { openDb: { mockImplementation: (fn: () => unknown) => void } }).openDb.mockImplementation(() => mockDbInstance);
     
     // Setup handlers for testing
     if (!globalThis.__test_handlers) {
@@ -221,7 +226,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
 
   describe('credentials:store handler', () => {
     it('should store credentials successfully', async () => {
-      (db as any).storeCredentials.mockReturnValue({
+      (db as { storeCredentials: { mockReturnValue: (value: unknown) => void } }).storeCredentials.mockReturnValue({
         success: true,
         message: 'Credentials stored successfully',
         changes: 1
@@ -231,11 +236,11 @@ describe('IPC Handlers Comprehensive Tests', () => {
       
       expect(result.success).toBe(true);
       expect(result.message).toBe('Credentials stored successfully');
-      expect((db as any).storeCredentials).toHaveBeenCalledWith('test-service', 'user@test.com', 'password123');
+      expect((db as { storeCredentials: { toHaveBeenCalledWith: (...args: unknown[]) => void } }).storeCredentials).toHaveBeenCalledWith('test-service', 'user@test.com', 'password123');
     });
 
     it('should handle storage failure', async () => {
-      (db as any).storeCredentials.mockReturnValue({
+      (db as { storeCredentials: { mockReturnValue: (value: unknown) => void } }).storeCredentials.mockReturnValue({
         success: false,
         message: 'Database error',
         changes: 0
@@ -257,7 +262,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
 
   describe('credentials:get handler', () => {
     it('should retrieve credentials successfully', async () => {
-      (db as any).getCredentials.mockReturnValue({
+      (db as { getCredentials: { mockReturnValue: (value: unknown) => void } }).getCredentials.mockReturnValue({
         email: 'user@test.com',
         password: 'password123'
       });
@@ -266,11 +271,11 @@ describe('IPC Handlers Comprehensive Tests', () => {
       
       expect(result.success).toBe(true);
       expect(result.credentials.email).toBe('user@test.com');
-      expect((db as any).getCredentials).toHaveBeenCalledWith('test-service');
+      expect((db as { getCredentials: { toHaveBeenCalledWith: (...args: unknown[]) => void } }).getCredentials).toHaveBeenCalledWith('test-service');
     });
 
     it('should handle missing credentials', async () => {
-      (db as any).getCredentials.mockReturnValue(null);
+      (db as { getCredentials: { mockReturnValue: (value: unknown) => void } }).getCredentials.mockReturnValue(null);
 
       const result = await handlers['credentials:get']('test-service');
       
@@ -292,17 +297,17 @@ describe('IPC Handlers Comprehensive Tests', () => {
         { id: 1, service: 'service1', email: 'user1@test.com', created_at: '2025-01-01' },
         { id: 2, service: 'service2', email: 'user2@test.com', created_at: '2025-01-02' }
       ];
-      (db as any).listCredentials.mockReturnValue(mockCredentials);
+      (db as { listCredentials: { mockReturnValue: (value: unknown) => void } }).listCredentials.mockReturnValue(mockCredentials);
 
       const result = await handlers['credentials:list']();
       
       expect(result.success).toBe(true);
       expect(result.credentials).toEqual(mockCredentials);
-      expect((db as any).listCredentials).toHaveBeenCalled();
+      expect((db as { listCredentials: { toHaveBeenCalled: () => void } }).listCredentials).toHaveBeenCalled();
     });
 
     it('should handle empty credentials list', async () => {
-      (db as any).listCredentials.mockReturnValue([]);
+      (db as { listCredentials: { mockReturnValue: (value: unknown) => void } }).listCredentials.mockReturnValue([]);
 
       const result = await handlers['credentials:list']();
       
@@ -313,7 +318,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
 
   describe('credentials:delete handler', () => {
     it('should delete credentials successfully', async () => {
-      (db as any).deleteCredentials.mockReturnValue({
+      (db as { deleteCredentials: { mockReturnValue: (value: unknown) => void } }).deleteCredentials.mockReturnValue({
         success: true,
         message: 'Credentials deleted successfully',
         changes: 1
@@ -323,11 +328,11 @@ describe('IPC Handlers Comprehensive Tests', () => {
       
       expect(result.success).toBe(true);
       expect(result.message).toBe('Credentials deleted successfully');
-      expect((db as any).deleteCredentials).toHaveBeenCalledWith('test-service');
+      expect((db as { deleteCredentials: { toHaveBeenCalledWith: (...args: unknown[]) => void } }).deleteCredentials).toHaveBeenCalledWith('test-service');
     });
 
     it('should handle deletion failure', async () => {
-      (db as any).deleteCredentials.mockReturnValue({
+      (db as { deleteCredentials: { mockReturnValue: (value: unknown) => void } }).deleteCredentials.mockReturnValue({
         success: false,
         message: 'Database error',
         changes: 0
@@ -428,7 +433,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
           submitted_at: '2025-01-15 17:00:00'
         }
       ];
-      (db as any).getSubmittedTimesheetEntriesForExport.mockReturnValue(mockEntries);
+      (db as { getSubmittedTimesheetEntriesForExport: { mockReturnValue: (value: unknown) => void } }).getSubmittedTimesheetEntriesForExport.mockReturnValue(mockEntries);
 
       const result = await handlers['timesheet:exportToCSV']();
       
@@ -438,7 +443,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
     });
 
     it('should handle empty data export', async () => {
-      (db as any).getSubmittedTimesheetEntriesForExport.mockReturnValue([]);
+      (db as { getSubmittedTimesheetEntriesForExport: { mockReturnValue: (value: unknown) => void } }).getSubmittedTimesheetEntriesForExport.mockReturnValue([]);
 
       const result = await handlers['timesheet:exportToCSV']();
       
@@ -447,7 +452,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
     });
 
     it('should handle export errors', async () => {
-      (db as any).getSubmittedTimesheetEntriesForExport.mockImplementation(() => {
+      (db as { getSubmittedTimesheetEntriesForExport: { mockImplementation: (fn: () => unknown) => void } }).getSubmittedTimesheetEntriesForExport.mockImplementation(() => {
         throw new Error('Export failed');
       });
 
@@ -464,7 +469,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
         exec: vi.fn(),
         close: vi.fn()
       };
-      (db as any).openDb.mockReturnValue(mockDb);
+      (db as { openDb: { mockReturnValue: (value: unknown) => void } }).openDb.mockReturnValue(mockDb);
 
       const result = await handlers['database:clearDatabase']();
       
@@ -482,7 +487,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
         }),
         close: vi.fn()
       };
-      (db as any).openDb.mockReturnValue(mockDb);
+      (db as { openDb: { mockReturnValue: (value: unknown) => void } }).openDb.mockReturnValue(mockDb);
 
       const result = await handlers['database:clearDatabase']();
       
@@ -734,11 +739,11 @@ describe('IPC Handlers Comprehensive Tests', () => {
 
   describe('timesheet:submit handler', () => {
     it('should submit timesheets with valid credentials', async () => {
-      (db as any).getCredentials.mockReturnValue({
+      (db as { getCredentials: { mockReturnValue: (value: unknown) => void } }).getCredentials.mockReturnValue({
         email: 'user@test.com',
         password: 'password123'
       });
-      (imp as any).submitTimesheets.mockResolvedValue({
+      (imp as { submitTimesheets: { mockResolvedValue: (value: unknown) => void } }).submitTimesheets.mockResolvedValue({
         ok: true,
         submittedIds: [1, 2],
         removedIds: [],
@@ -751,24 +756,24 @@ describe('IPC Handlers Comprehensive Tests', () => {
       
       expect(result.submitResult.ok).toBe(true);
       expect(result.submitResult.successCount).toBe(2);
-      expect((imp as any).submitTimesheets).toHaveBeenCalledWith('user@test.com', 'password123');
+      expect((imp as { submitTimesheets: { toHaveBeenCalledWith: (...args: unknown[]) => void } }).submitTimesheets).toHaveBeenCalledWith('user@test.com', 'password123');
     });
 
     it('should handle missing credentials', async () => {
-      (db as any).getCredentials.mockReturnValue(null);
+      (db as { getCredentials: { mockReturnValue: (value: unknown) => void } }).getCredentials.mockReturnValue(null);
 
       const result = await handlers['timesheet:submit']();
       
       expect(result.error).toContain('credentials not found');
-      expect((imp as any).submitTimesheets).not.toHaveBeenCalled();
+      expect((imp as { submitTimesheets: { not: { toHaveBeenCalled: () => void } } }).submitTimesheets).not.toHaveBeenCalled();
     });
 
     it('should handle submission failures', async () => {
-      (db as any).getCredentials.mockReturnValue({
+      (db as { getCredentials: { mockReturnValue: (value: unknown) => void } }).getCredentials.mockReturnValue({
         email: 'user@test.com',
         password: 'password123'
       });
-      (imp as any).submitTimesheets.mockResolvedValue({
+      (imp as { submitTimesheets: { mockResolvedValue: (value: unknown) => void } }).submitTimesheets.mockResolvedValue({
         ok: false,
         submittedIds: [],
         removedIds: [1, 2],

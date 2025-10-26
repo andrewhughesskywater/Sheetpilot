@@ -1,20 +1,40 @@
 import { describe, it, expect, vi } from 'vitest';
 import React from 'react';
 
-// Mock the entire DatabaseViewer component to avoid React hook issues
-vi.mock('../components/DatabaseViewer', () => ({
-  default: () => React.createElement('div', { 'data-testid': 'archive-viewer' }, 'Archive'),
+// Mock the DataContext to provide test data
+vi.mock('../contexts/DataContext', () => ({
+  useData: () => ({
+    archiveData: {
+      timesheet: [],
+      credentials: []
+    },
+    isArchiveDataLoading: false,
+    archiveDataError: null
+  })
 }));
 
-import Archive from '../components/DatabaseViewer';
+// Mock Handsontable to avoid complex rendering issues
+vi.mock('@handsontable/react-wrapper', () => ({
+  HotTable: ({ data, columns }: { data: unknown[]; columns: unknown[] }) => 
+    React.createElement('div', { 
+      'data-testid': 'hot-table',
+      'data-rows': data.length,
+      'data-columns': columns.length 
+    }, 'Mocked Handsontable')
+}));
+
+import Archive from '../../src/renderer/components/DatabaseViewer';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 
 describe('DatabaseViewer', () => {
   it('renders without crashing', () => {
     render(<Archive />);
-    expect(screen.getByTestId('archive-viewer')).toBeInTheDocument();
+    // Check for the main heading
     expect(screen.getByText('Archive')).toBeInTheDocument();
+    // Check for the data info
+    expect(screen.getByText(/Timesheet entries: 0/)).toBeInTheDocument();
+    expect(screen.getByText(/Credentials: 0/)).toBeInTheDocument();
   });
 });
 

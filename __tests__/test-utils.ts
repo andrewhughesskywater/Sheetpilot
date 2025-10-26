@@ -34,7 +34,7 @@ export function createTestDatabase(): string {
  * @param {string} [sheetName='Timesheet'] - Name of the sheet to create
  * @returns {string} Path to the temporary Excel file
  */
-export function createTestExcelFile(data: any[][], sheetName = 'Timesheet'): string {
+export function createTestExcelFile(data: unknown[][], sheetName = 'Timesheet'): string {
     const testExcelPath = path.join(os.tmpdir(), `test-timesheet-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.xlsx`);
     
     const wb = XLSX.utils.book_new();
@@ -153,7 +153,7 @@ export function getDatabaseStats(): { count: number; projects: string[]; dateRan
  * @param {any} entry - Timesheet entry to validate
  * @returns {boolean} True if entry is valid
  */
-export function isValidTimesheetEntry(entry: any): boolean {
+export function isValidTimesheetEntry(entry: unknown): boolean {
     return (
         entry &&
         typeof entry.date === 'string' &&

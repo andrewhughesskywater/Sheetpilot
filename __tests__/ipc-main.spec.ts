@@ -22,9 +22,13 @@ vi.mock('electron', () => {
   
   // Minimal BrowserWindow stub
   class BrowserWindow {
-    public webContents: any;
-    constructor(_opts: any) {
-      this.webContents = {};
+    public webContents: { on: unknown; send: unknown };
+    constructor(_opts: unknown) {
+      this.webContents = {
+        on: vi.fn(),
+        send: vi.fn(),
+        executeJavaScript: vi.fn()
+      };
     }
     loadURL = vi.fn();
     loadFile = vi.fn();
@@ -34,7 +38,7 @@ vi.mock('electron', () => {
   }
 
   const ipcMain = {
-    handle: vi.fn((channel: string, fn: any) => {
+    handle: vi.fn((channel: string, fn: (...args: unknown[]) => unknown) => {
       // Store handlers in global scope
       globalThis.__test_handlers[channel] = fn;
       return undefined;
@@ -68,7 +72,7 @@ vi.mock('electron', () => {
     quit: vi.fn()
   };
 
-  return { app, BrowserWindow, ipcMain, dialog, shell };
+  return { app, BrowserWindow, ipcMain, dialog, shell, process: { on: vi.fn(), env: { NODE_ENV: 'test', ELECTRON_IS_DEV: 'true' } } };
 });
 
 // Mock backend modules used by main.ts
@@ -120,7 +124,7 @@ vi.mock('../src/shared/logger', () => {
 });
 
 // Import main.ts AFTER mocks so its side-effects (handler registration) use our stubs
-import { registerIPCHandlers } from '../main';
+import { registerIPCHandlers } from '../src/main/main';
 
 // Re-get typed references to mocked modules for assertions
 import * as db from '../src/services/database';
@@ -132,8 +136,8 @@ const handlers = globalThis.__test_handlers;
 describe('Electron IPC Handlers (main.ts)', () => {
   beforeEach(() => {
     // Reset stub return values between tests
-    (imp as any).submitTimesheets.mockClear?.();
-    (db as any).getCredentials.mockReset?.();
+    (imp as { submitTimesheets: { mockClear?: () => void } }).submitTimesheets.mockClear?.();
+    (db as { getCredentials: { mockReset?: () => void } }).getCredentials.mockReset?.();
   });
 
   beforeAll(() => {
@@ -142,15 +146,15 @@ describe('Electron IPC Handlers (main.ts)', () => {
   });
 
   it('timesheet:submit returns error if credentials missing', async () => {
-    (db as any).getCredentials.mockReturnValue(null);
+    (db as { getCredentials: { mockReturnValue: (value: unknown) => void } }).getCredentials.mockReturnValue(null);
     const res = await handlers['timesheet:submit']();
     expect(res.error).toMatch(/credentials not found/i);
   });
 
   it('timesheet:submit submits with stored credentials', async () => {
-    (db as any).getCredentials.mockReturnValue({ email: 'user@test', password: 'pw' });
+    (db as { getCredentials: { mockReturnValue: (value: unknown) => void } }).getCredentials.mockReturnValue({ email: 'user@test', password: 'pw' });
     const res = await handlers['timesheet:submit']();
-    expect((imp as any).submitTimesheets).toHaveBeenCalledWith('user@test', 'pw');
+    expect((imp as { submitTimesheets: { toHaveBeenCalledWith: (...args: unknown[]) => void } }).submitTimesheets).toHaveBeenCalledWith('user@test', 'pw');
     expect(res.submitResult?.ok).toBe(true);
   });
 });

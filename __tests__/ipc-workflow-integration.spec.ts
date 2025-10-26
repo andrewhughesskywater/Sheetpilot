@@ -58,7 +58,7 @@ describe('IPC Workflow Integration', () => {
         
         // Even if submission fails (expected in test), it should not fail with browser init error
         if (!result.ok && result.errors) {
-            const errorMessages = result.errors?.map((e: any) => e[1]).join(' ').toLowerCase();
+            const errorMessages = result.errors?.map((e: [string, string]) => e[1]).join(' ').toLowerCase();
             expect(errorMessages).not.toContain('page is not available');
             expect(errorMessages).not.toContain('call start() first');
         }

@@ -26,7 +26,7 @@ declare global {
 
 // Suppress performance violation warnings in development
 export function suppressDevelopmentPerformanceWarnings() {
-  if (process.env['NODE_ENV'] !== 'development') {
+  if (!(import.meta as { env?: { DEV?: boolean } }).env?.DEV) {
     return;
   }
 
@@ -85,7 +85,7 @@ export function suppressDevelopmentPerformanceWarnings() {
 
 // Optimize React development mode
 export function optimizeReactDevelopmentMode() {
-  if (process.env['NODE_ENV'] !== 'development') {
+  if (!import.meta.env.DEV) {
     return;
   }
 
@@ -105,7 +105,7 @@ export function optimizeReactDevelopmentMode() {
 
 // Optimize Vite dev server
 export function optimizeViteDevServer() {
-  if (process.env['NODE_ENV'] !== 'development') {
+  if (!import.meta.env.DEV) {
     return;
   }
 
@@ -119,7 +119,7 @@ export function optimizeViteDevServer() {
 
 // Initialize all development optimizations
 export function initializeDevelopmentOptimizations() {
-  if (process.env['NODE_ENV'] !== 'development') {
+  if (!import.meta.env.DEV) {
     return;
   }
 

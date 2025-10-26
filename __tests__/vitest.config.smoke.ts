@@ -5,10 +5,17 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: 'jsdom',
-    include: ['__tests__/**/*.spec.ts', 'src/renderer/tests/**/*.spec.tsx'],
+    include: ['__tests__/smoke/**/*.spec.ts'],
     passWithNoTests: false,
     globals: true,
     setupFiles: ['./__tests__/setup.ts'],
-    testTimeout: 30000 // 30 seconds for browser automation tests
+    testTimeout: 10000, // 10 seconds for smoke tests
+    // Run tests in sequence for smoke tests to ensure stability
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        singleFork: true
+      }
+    }
   }
 });

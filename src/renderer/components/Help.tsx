@@ -300,7 +300,7 @@ const Help: React.FC = () => {
                           <Chip
                             label={log.level || 'unknown'}
                             size="small"
-                            color={getLogLevelColor(log.level) as any}
+                            color={getLogLevelColor(log.level) as 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'}
                             sx={{ mr: 1 }}
                           />
                           <Typography variant="body2" color="text.secondary">
@@ -395,7 +395,7 @@ const Help: React.FC = () => {
                   </Typography>
                   <Chip
                     label={selectedLogEntry.level || 'unknown'}
-                    color={getLogLevelColor(selectedLogEntry.level) as any}
+                    color={getLogLevelColor(selectedLogEntry.level) as 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'}
                     size="small"
                   />
                 </Box>
