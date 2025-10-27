@@ -6,6 +6,30 @@
 import '@testing-library/jest-dom/vitest';
 import { vi } from 'vitest';
 
+// Mock better-sqlite3 to avoid NODE_MODULE_VERSION mismatch
+// Tests run on Node.js (v127) but better-sqlite3 is compiled for Electron (v139)
+vi.mock('better-sqlite3', () => {
+  const mockStmt = {
+    run: (..._args: any[]) => ({ changes: 1 }),
+    get: (..._args: any[]) => null,
+    all: (..._args: any[]) => [],
+    bind: (..._args: any[]) => mockStmt
+  };
+
+  function MockDatabase(this: any, _path: string, _opts?: unknown) {
+    this.path = _path;
+    this.prepare = () => mockStmt;
+    this.transaction = (callback: (...args: unknown[]) => unknown) => (...args: any[]) => callback(...args);
+    this.exec = () => this;
+    this.close = () => this;
+  }
+
+  // Return function that will be called with new
+  MockDatabase.prototype.prepare = () => mockStmt;
+  
+  return MockDatabase;
+});
+
 // Mock ResizeObserver immediately (must be before any code that uses it)
 const ResizeObserverMock = class ResizeObserver {
   observe = vi.fn();

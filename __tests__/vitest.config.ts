@@ -9,18 +9,18 @@ export default defineConfig({
     passWithNoTests: false,
     globals: true,
     setupFiles: ['./__tests__/setup.ts'],
-    testTimeout: 10000, // Reduced to 10 seconds to prevent hanging
-    // Prevent resource-intensive operations - use threads with minimal concurrency
+    testTimeout: 5000, // Reduced to 5 seconds for faster test runs
+    // Enable parallelization now that better-sqlite3 is mocked
     pool: 'threads',
     poolOptions: {
       threads: {
-        maxThreads: 1,
+        maxThreads: 4,  // Enable parallelization
         minThreads: 1,
         useAtomics: true
       }
     },
-    maxConcurrency: 1, // Limit concurrent tests to prevent EMFILE errors on Windows
-    fileParallelism: false // Disable file parallelism to reduce file handle usage
+    maxConcurrency: 4, // Allow concurrent tests for better performance
+    fileParallelism: true // Enable file parallelism
   },
   define: {
     'import.meta.env': JSON.stringify({

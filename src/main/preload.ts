@@ -137,3 +137,33 @@ contextBridge.exposeInMainWorld('logger', {
     ipcRenderer.send('logger:user-action', action, data);
   }
 });
+
+// Update events IPC bridge
+contextBridge.exposeInMainWorld('updates', {
+  // Listen for update available
+  onUpdateAvailable: (callback: (version: string) => void) => {
+    ipcRenderer.on('update-available', (_event, version) => callback(version));
+  },
+  // Listen for download progress
+  onDownloadProgress: (callback: (progress: { percent: number; transferred: number; total: number }) => void) => {
+    ipcRenderer.on('download-progress', (_event, progress) => callback(progress));
+  },
+  // Listen for update downloaded
+  onUpdateDownloaded: (callback: (version: string) => void) => {
+    ipcRenderer.on('update-downloaded', (_event, version) => callback(version));
+  },
+  // Cancel update
+  cancelUpdate: (): void => {
+    ipcRenderer.send('cancel-update');
+  },
+  // Quit and install
+  quitAndInstall: (): void => {
+    ipcRenderer.send('quit-and-install');
+  },
+  // Remove all listeners
+  removeAllListeners: (): void => {
+    ipcRenderer.removeAllListeners('update-available');
+    ipcRenderer.removeAllListeners('download-progress');
+    ipcRenderer.removeAllListeners('update-downloaded');
+  }
+});

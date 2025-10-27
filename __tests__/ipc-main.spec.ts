@@ -63,6 +63,7 @@ vi.mock('electron', () => {
   const app = {
     isPackaged: false,
     getPath: vi.fn((key: string) => (key === 'userData' ? 'C:/tmp/sheetpilot-userdata' : 'C:/tmp')),
+    getAppPath: vi.fn(() => 'C:\\Local\\Sheetpilot'),
     // Make whenReady return a thenable that immediately executes the callback
     whenReady: vi.fn(() => ({
       then: (callback: () => void) => {

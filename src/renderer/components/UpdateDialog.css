@@ -1,0 +1,28 @@
+/* Update Dialog Styles */
+
+/* Ensure the dialog backdrop blocks all interaction */
+.MuiBackdrop-root {
+  background-color: rgba(0, 0, 0, 0.8) !important;
+  pointer-events: auto !important;
+}
+
+/* Ensure the dialog cannot be closed */
+.MuiDialog-root {
+  pointer-events: none;
+}
+
+.MuiDialog-paper {
+  pointer-events: auto !important;
+}
+
+/* Style the progress bar */
+.MuiLinearProgress-root {
+  height: 8px;
+  border-radius: 4px;
+  background-color: var(--md-sys-color-surface-container-highest);
+}
+
+.MuiLinearProgress-bar {
+  background-color: var(--md-sys-color-primary);
+}
+

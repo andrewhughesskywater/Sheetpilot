@@ -29,16 +29,14 @@ describe('Auto-Updater Module', () => {
 });
 
 describe('Auto-Updater Configuration (Integration)', () => {
-  it('configures atomic updates with autoInstallOnAppQuit', () => {
+  it('configures manual download with UI control', () => {
     // This tests the intended configuration
-    // In production, autoInstallOnAppQuit should be true for seamless updates
+    // autoDownload should be false to allow UI to show before downloading
     const expectedConfig = {
-      autoDownload: false, // Manual trigger for better control
-      autoInstallOnAppQuit: true // Atomic updates on app quit
+      autoDownload: false // Manual trigger to show dialog first
     };
     
     expect(expectedConfig.autoDownload).toBe(false);
-    expect(expectedConfig.autoInstallOnAppQuit).toBe(true);
   });
   
   it('should only check for updates in production mode', () => {
@@ -52,19 +50,23 @@ describe('Auto-Updater Configuration (Integration)', () => {
 });
 
 describe('Update Event Flow', () => {
-  it('should download update when available', () => {
-    // Mock the update flow
+  it('should send IPC event and download update when available', () => {
+    // Mock the update flow with IPC communication
+    const mockSendIpc = vi.fn();
     const mockDownloadUpdate = vi.fn();
     const updateInfo = { version: '1.0.1' };
     
     // Simulate update-available event handler
     const handleUpdateAvailable = (info: { version: string; releaseNotes?: string }) => {
+      const version = info?.version || 'unknown';
+      mockSendIpc('update-available', version);
       mockDownloadUpdate();
-      return info;
+      return version;
     };
     
     handleUpdateAvailable(updateInfo);
     
+    expect(mockSendIpc).toHaveBeenCalledWith('update-available', '1.0.1');
     expect(mockDownloadUpdate).toHaveBeenCalled();
   });
   
@@ -78,12 +80,19 @@ describe('Update Event Flow', () => {
     expect(result).toBe('unknown');
   });
   
-  it('should log download progress', () => {
+  it('should send IPC event and log download progress', () => {
+    const mockSendIpc = vi.fn();
     const mockLogger = vi.fn();
     
     const handleDownloadProgress = (progress: { percent: number; transferred: number; total: number }) => {
       mockLogger('Download progress', {
         percent: progress.percent.toFixed(2),
+        transferred: progress.transferred,
+        total: progress.total
+      });
+      
+      mockSendIpc('download-progress', {
+        percent: progress.percent,
         transferred: progress.transferred,
         total: progress.total
       });
@@ -100,6 +109,37 @@ describe('Update Event Flow', () => {
       transferred: 1234567,
       total: 2700000
     });
+    
+    expect(mockSendIpc).toHaveBeenCalledWith('download-progress', {
+      percent: 45.67,
+      transferred: 1234567,
+      total: 2700000
+    });
+  });
+  
+  it('should send IPC event when update is downloaded and wait before installing', () => {
+    const mockSendIpc = vi.fn();
+    const mockQuitAndInstall = vi.fn();
+    const mockLogger = vi.fn();
+    
+    const handleUpdateDownloaded = (info: { version: string }) => {
+      const version = info?.version || 'unknown';
+      mockLogger('Update downloaded', { version });
+      mockSendIpc('update-downloaded', version);
+      
+      // Wait 3 seconds before installing
+      setTimeout(() => {
+        mockQuitAndInstall();
+      }, 3000);
+      
+      return version;
+    };
+    
+    const updateInfo = { version: '1.0.1' };
+    handleUpdateDownloaded(updateInfo);
+    
+    expect(mockLogger).toHaveBeenCalledWith('Update downloaded', { version: '1.0.1' });
+    expect(mockSendIpc).toHaveBeenCalledWith('update-downloaded', '1.0.1');
   });
 });
 
@@ -147,12 +187,19 @@ describe('Update Strategy', () => {
     expect(config.autoDownload).toBe(false);
   });
   
-  it('installs updates automatically on app quit', () => {
-    const config = {
-      autoInstallOnAppQuit: true
+  it('sends IPC events for UI interaction', () => {
+    const handlers = {
+      cancelUpdate: vi.fn(),
+      quitAndInstall: vi.fn()
     };
     
-    expect(config.autoInstallOnAppQuit).toBe(true);
+    // Simulate cancel update handler
+    handlers.cancelUpdate();
+    expect(handlers.cancelUpdate).toHaveBeenCalled();
+    
+    // Simulate quit and install handler
+    handlers.quitAndInstall();
+    expect(handlers.quitAndInstall).toHaveBeenCalled();
   });
   
   it('should check version before downloading', () => {

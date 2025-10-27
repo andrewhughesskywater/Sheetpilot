@@ -151,9 +151,8 @@ process.on('rejectionHandled', () => {
 
 // Configure auto-updater
 function configureAutoUpdater() {
-  // Disable auto-download initially - we'll trigger it after checking
+  // Keep manual control of downloads to show UI before downloading
   autoUpdater.autoDownload = false;
-  autoUpdater.autoInstallOnAppQuit = true;
   
   // Configure logging
   autoUpdater.logger = {
@@ -169,8 +168,15 @@ function configureAutoUpdater() {
   });
 
   autoUpdater.on('update-available', (info) => {
-    appLogger.info('Update available', { version: info?.version || 'unknown' });
-    // Automatically download the update
+    const version = info?.version || 'unknown';
+    appLogger.info('Update available', { version });
+    
+    // Send IPC event to renderer to show update dialog
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('update-available', version);
+    }
+    
+    // Start downloading the update
     autoUpdater.downloadUpdate();
   });
 
@@ -184,17 +190,52 @@ function configureAutoUpdater() {
       transferred: progress.transferred,
       total: progress.total
     });
+    
+    // Send progress to renderer
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('download-progress', {
+        percent: progress.percent,
+        transferred: progress.transferred,
+        total: progress.total
+      });
+    }
   });
 
   autoUpdater.on('update-downloaded', (info) => {
-    appLogger.info('Update downloaded', { version: info?.version || 'unknown' });
-    appLogger.info('Update will be installed on app quit');
-    // The update will be installed automatically when the app quits
-    // due to autoInstallOnAppQuit = true
+    const version = info?.version || 'unknown';
+    appLogger.info('Update downloaded', { version });
+    
+    // Send IPC event to renderer to show installing status
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('update-downloaded', version);
+    }
+    
+    // Wait 3 seconds for user to see completion, then install
+    setTimeout(() => {
+      appLogger.info('Installing update and restarting');
+      autoUpdater.quitAndInstall();
+    }, 3000);
   });
 
   autoUpdater.on('error', (err) => {
     appLogger.error('AutoUpdater error', { error: err.message, stack: err.stack });
+    
+    // Send error to renderer if window exists
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('update-error', err.message);
+    }
+  });
+  
+  // IPC handler to cancel update
+  ipcMain.on('cancel-update', () => {
+    appLogger.info('Update cancelled by user');
+    // Download will be cancelled on app close, will resume on next launch
+  });
+  
+  // IPC handler to force quit and install
+  ipcMain.on('quit-and-install', () => {
+    appLogger.info('Quitting and installing update');
+    autoUpdater.quitAndInstall();
   });
 }
 
@@ -256,12 +297,36 @@ async function bootstrapDatabaseAsync() {
 function createWindow() {
   const windowState = getWindowState();
   
+  // Get icon path - works in both dev and production builds
+  let iconPath: string | undefined;
+  if (app.isPackaged) {
+    // In production, try extraResources location first
+    iconPath = path.join(process.resourcesPath, '..', 'resources', 'icon.ico');
+    if (!fs.existsSync(iconPath)) {
+      // Fallback to packaged location
+      iconPath = path.join(process.resourcesPath, 'src', 'renderer', 'assets', 'images', 'icon.ico');
+    }
+  } else {
+    // In development, use path relative to compiled main.js location
+    // __dirname points to build/dist/main in development
+    iconPath = path.join(__dirname, '..', '..', '..', 'src', 'renderer', 'assets', 'images', 'icon.ico');
+  }
+  
+  // Log icon path and existence for debugging
+  if (iconPath) {
+    const iconExists = fs.existsSync(iconPath);
+    appLogger.debug('Window icon', { iconPath, exists: iconExists });
+    if (!iconExists) {
+      appLogger.warn('Icon file not found at expected path', { iconPath });
+    }
+  }
+  
   const windowOptions: Electron.BrowserWindowConstructorOptions = {
     width: windowState.width,
     height: windowState.height,
     show: false, // Don't show until ready
     backgroundColor: '#ffffff', // Prevent white flash
-    icon: path.join(__dirname, '..', '..', 'renderer', 'assets', 'images', 'icon.ico'), // Set window icon
+    icon: iconPath, // Set window icon
     autoHideMenuBar: true, // Hide the menu bar
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'), // Compiled preload script

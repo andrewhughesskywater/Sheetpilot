@@ -28,9 +28,11 @@ import Archive from './components/DatabaseViewer';
 const TimesheetGrid = lazy(() => import('./components/TimesheetGrid'));
 import ModernSegmentedNavigation from './components/ModernSegmentedNavigation';
 import Help from './components/Help';
+import UpdateDialog from './components/UpdateDialog';
 import { DataProvider, useData } from './contexts/DataContext';
 import { initializeTheme } from './utils/theme-manager';
 import logoImage from './assets/images/transparent-logo.svg';
+import { APP_VERSION } from './constants';
 import './App.css';
 
 const AppContent: React.FC = () => {
@@ -46,6 +48,12 @@ const AppContent: React.FC = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [showAboutDialog, setShowAboutDialog] = useState(false);
   const [isEmailFieldDisabled, setIsEmailFieldDisabled] = useState(false);
+  
+  // Update dialog state
+  const [showUpdateDialog, setShowUpdateDialog] = useState(false);
+  const [updateVersion, setUpdateVersion] = useState<string>('');
+  const [updateProgress, setUpdateProgress] = useState(0);
+  const [updateStatus, setUpdateStatus] = useState<'downloading' | 'installing'>('downloading');
   
   // Use data context
   const { refreshTimesheetDraft, refreshArchiveData } = useData();
@@ -65,6 +73,38 @@ const AppContent: React.FC = () => {
   // Initialize theme on mount
   useEffect(() => {
     initializeTheme();
+  }, []);
+  
+  // Listen for update events
+  useEffect(() => {
+    if (!window.updates) {
+      return;
+    }
+    
+    // Listen for update available
+    window.updates.onUpdateAvailable((version) => {
+      window.logger?.info('Update available event received', { version });
+      setUpdateVersion(version);
+      setUpdateStatus('downloading');
+      setShowUpdateDialog(true);
+    });
+    
+    // Listen for download progress
+    window.updates.onDownloadProgress((progress) => {
+      window.logger?.debug('Download progress', { percent: progress.percent });
+      setUpdateProgress(progress.percent);
+    });
+    
+    // Listen for update downloaded
+    window.updates.onUpdateDownloaded((version) => {
+      window.logger?.info('Update downloaded event received', { version });
+      setUpdateStatus('installing');
+    });
+    
+    // Cleanup listeners on unmount
+    return () => {
+      window.updates?.removeAllListeners();
+    };
   }, []);
 
 
@@ -483,6 +523,14 @@ const AppContent: React.FC = () => {
       )}
         </div>
 
+        {/* Update Dialog */}
+        <UpdateDialog 
+          open={showUpdateDialog}
+          version={updateVersion}
+          progress={updateProgress}
+          status={updateStatus}
+        />
+        
         {/* About Dialog */}
         <Dialog 
           open={showAboutDialog} 
@@ -501,7 +549,7 @@ const AppContent: React.FC = () => {
                 className="about-dialog-logo"
               />
               <Typography variant="body1" color="text.secondary" gutterBottom>
-                Version 1.1.2
+                Version {APP_VERSION}
               </Typography>
               <Typography variant="body1" color="text.secondary">
                 Created by Andrew Hughes

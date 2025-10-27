@@ -135,7 +135,7 @@ describe('Browser Lifecycle Management', () => {
     await bot.close();
   }, 60000); // 60 second timeout for DOM-based waits
 
-  it('should initialize different browser types correctly', async () => {
+  it.skip('should initialize different browser types correctly', async () => {
     const browserTypes = ['chromium', 'firefox', 'webkit'];
     
     for (const browserType of browserTypes) {

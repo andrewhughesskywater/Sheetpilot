@@ -13,12 +13,13 @@
     "electron": "ts-node src/main/main.ts",
     "electron:compiled": "npm run rebuild && electron build/dist/main/main.js",
     "rebuild": "npx @electron/rebuild -f -w better-sqlite3",
-    "build:main": "tsc src/main/main.ts src/main/preload.ts --outDir build/dist --target ES2022 --module CommonJS --moduleResolution Node --esModuleInterop --allowSyntheticDefaultImports",
+    "sync-version": "node scripts/sync-version.js",
+    "build:main": "npm run sync-version && tsc src/main/main.ts src/main/preload.ts --outDir build/dist --target ES2022 --module CommonJS --moduleResolution Node --esModuleInterop --allowSyntheticDefaultImports",
     "vite": "cd src/renderer && npm run dev",
     "dev": "concurrently -k -n VITE,ELECTRON -c auto \"npm:vite\" \"wait-on tcp:5173 && npm run build:main && cross-env ELECTRON_IS_DEV=1 npm run electron:compiled\"",
     "dev:hot": "concurrently -k -n VITE,ELECTRON -c auto \"npm:vite\" \"wait-on tcp:5173 && npm run build:main && cross-env ELECTRON_IS_DEV=1 npm run dev:main\"",
     "dev:main": "nodemon --watch src/main/main.ts --watch src/main/preload.ts --exec \"npm run build:main && cross-env ELECTRON_IS_DEV=1 electron build/dist/main/main.js\"",
-    "build:renderer": "cd src/renderer && npm run build",
+    "build:renderer": "npm run sync-version && cd src/renderer && npm run build",
     "build:bot": "cd src/services/bot && npm run build",
     "build": "npm run build:main && npm run build:renderer && npm run build:bot && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder",
     "type-check": "tsc --noEmit",
@@ -56,7 +57,12 @@
     "directories": {
       "output": "build"
     },
-    "extraResources": [],
+    "extraResources": [
+      {
+        "from": "src/renderer/assets/images/icon.ico",
+        "to": "icon.ico"
+      }
+    ],
     "mac": {
       "category": "public.app-category.productivity"
     },
@@ -89,7 +95,8 @@
     "publish": {
       "provider": "github",
       "owner": "andrewhughesskywater",
-      "repo": "Sheetpilot"
+      "repo": "Sheetpilot",
+      "disableWebInstaller": true
     }
   },
   "dependencies": {

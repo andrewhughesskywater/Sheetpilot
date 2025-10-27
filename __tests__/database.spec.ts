@@ -10,10 +10,31 @@
  * @since 2025
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+
+// Mock better-sqlite3 BEFORE importing database module
+vi.mock('better-sqlite3', () => {
+  const mockStmt = {
+    run: (..._args: any[]) => ({ changes: 1 }),
+    get: (..._args: any[]) => null,
+    all: (..._args: any[]) => [],
+    bind: (..._args: any[]) => mockStmt
+  };
+
+  function MockDatabase(this: any, _path: string, _opts?: unknown) {
+    this.path = _path;
+    this.prepare = () => mockStmt;
+    this.transaction = (callback: (...args: unknown[]) => unknown) => (...args: any[]) => callback(...args);
+    this.exec = () => this;
+    this.close = () => this;
+  }
+
+  return MockDatabase;
+});
+
 import {
     setDbPath,
     getDbPath,

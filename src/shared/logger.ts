@@ -22,6 +22,7 @@ import log from 'electron-log';
 import * as path from 'path';
 import * as os from 'os';
 import { app } from 'electron';
+import { APP_VERSION } from './constants';
 
 // ============================================================================
 // LOGGER CONFIGURATION
@@ -54,9 +55,8 @@ function getLogUsername(): string {
 }
 
 /**
- * Application version from package.json
+ * Application version imported from constants
  */
-const APP_VERSION = '1.1.2';
 
 /**
  * Environment type (development, production, test)

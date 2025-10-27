@@ -9,10 +9,13 @@
 
 import { describe, it, expect } from 'vitest';
 import { runTimesheet } from '../../../src/services/bot/src/index';
+import { createFormConfig } from '../../../src/services/bot/src/automation_config';
 
 describe('runTimesheet wrapper function', () => {
+  const testFormConfig = createFormConfig('https://test.forms.smartsheet.com/test', 'test-form-id');
+
   it('should handle empty rows array gracefully', async () => {
-    const result = await runTimesheet([], 'test@example.com', 'password123');
+    const result = await runTimesheet([], 'test@example.com', 'password123', testFormConfig);
     
     expect(result).toBeDefined();
     expect(result.submitted).toHaveLength(0);
@@ -32,7 +35,7 @@ describe('runTimesheet wrapper function', () => {
       }
     ];
     
-    const result = await runTimesheet(testRows, 'test@example.com', 'password123');
+    const result = await runTimesheet(testRows, 'test@example.com', 'password123', testFormConfig);
     
     // Should return proper error structure, not throw
     expect(result).toBeDefined();
@@ -55,7 +58,7 @@ describe('runTimesheet wrapper function', () => {
       }
     ];
     
-    const result = await runTimesheet(testRows, '', '');
+    const result = await runTimesheet(testRows, '', '', testFormConfig);
     
     expect(result).toBeDefined();
     expect(result.ok).toBe(false);
@@ -78,7 +81,7 @@ describe('runTimesheet wrapper function', () => {
       }
     ];
     
-    const result = await runTimesheet(testRows, 'test@example.com', 'password123');
+    const result = await runTimesheet(testRows, 'test@example.com', 'password123', testFormConfig);
     
     expect(result).toBeDefined();
     expect(result.errors).toBeDefined();

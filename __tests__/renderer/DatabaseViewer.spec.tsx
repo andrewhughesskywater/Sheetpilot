@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import React from 'react';
 
 // Mock the DataContext to provide test data
-vi.mock('../contexts/DataContext', () => ({
+vi.mock('../../src/renderer/contexts/DataContext', () => ({
   useData: () => ({
     archiveData: {
       timesheet: [],
@@ -10,7 +10,8 @@ vi.mock('../contexts/DataContext', () => ({
     },
     isArchiveDataLoading: false,
     archiveDataError: null
-  })
+  }),
+  DataProvider: ({ children }: { children: React.ReactNode }) => React.createElement('div', {}, children)
 }));
 
 // Mock Handsontable to avoid complex rendering issues

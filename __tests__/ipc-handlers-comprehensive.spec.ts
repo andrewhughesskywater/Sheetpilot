@@ -59,6 +59,7 @@ vi.mock('electron', () => {
   return {
     app: {
       getPath: vi.fn((key: string) => (key === 'userData' ? 'C:/tmp/sheetpilot-userdata' : 'C:/tmp')),
+      getAppPath: vi.fn(() => 'C:\\Local\\Sheetpilot'),
       isPackaged: false,
       whenReady: vi.fn(() => ({
         then: (_callback: () => void) => {

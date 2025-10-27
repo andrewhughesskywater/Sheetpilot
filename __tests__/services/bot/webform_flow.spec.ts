@@ -16,7 +16,7 @@ describe('WebformFiller against mock form', () => {
 
     // Serve file:// mock page
     const mockPath = path.resolve(__dirname, './fixtures/mock-form.html');
-    process.env['TIME_KNIGHT_BASE_URL'] = 'file:///' + mockPath.replace(/\\/g, '/');
+    process.env['TS_BASE_URL'] = 'file:///' + mockPath.replace(/\\/g, '/');
 
     filler = new WebformFiller(cfg as typeof cfg, true, 'chromium');
     await filler.start();

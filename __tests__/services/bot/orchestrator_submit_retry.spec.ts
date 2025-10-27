@@ -3,7 +3,11 @@ import * as Cfg from '../../../src/services/bot/src/automation_config';
 import { BotOrchestrator } from '../../../src/services/bot/src/bot_orchestation';
 import { createFormConfig } from '../../../src/services/bot/src/automation_config';
 
-const dummyFormConfig = createFormConfig('https://test.forms.smartsheet.com/test', 'test-form-id');
+// Use Q3 2025 form config to match the test dates (07/15/2025)
+const dummyFormConfig = createFormConfig(
+  'https://app.smartsheet.com/b/form/0197cbae7daf72bdb96b3395b500d414', 
+  '0197cbae7daf72bdb96b3395b500d414'
+);
 
 class FakeFiller {
   submitSequence: boolean[];
@@ -29,9 +33,9 @@ class FakeFiller {
 
 class FakeLoginManager { async run_login_steps(): Promise<void> { /* no-op */ } }
 
-function buildBotWithFakes(submitSeq: boolean[]) {
-  // Configure one retry (2 attempts total) using environment variables
-  process.env['TIME_KNIGHT_SUBMIT_RETRY_ATTEMPTS'] = '2';
+function buildBotWithFakes(submitSeq: boolean[], retryAttempts: number = 1) {
+  // Configure retry attempts: total_attempts = 1 initial + retryAttempts retries
+  process.env['TIME_KNIGHT_SUBMIT_RETRY_ATTEMPTS'] = String(retryAttempts);
   process.env['TIME_KNIGHT_SUBMIT'] = '1';
 
   const bot = new BotOrchestrator(Cfg as typeof Cfg, dummyFormConfig, true, 'chromium');
@@ -45,14 +49,14 @@ function buildBotWithFakes(submitSeq: boolean[]) {
 describe('BotOrchestrator submit retry behavior (one retry only)', () => {
   const dfRow = {
     Project: 'OSC-BBB',
-    Date: '01/15/2025',
+    Date: '07/15/2025',  // Q3 2025 date to match the dummyFormConfig
     Hours: 1.0,
     'Task Description': 'Test task'
   };
 
   beforeEach(() => {
-    // Ensure deterministic retry limit using environment variable
-    process.env['TIME_KNIGHT_SUBMIT_RETRY_ATTEMPTS'] = '2';
+    // Ensure deterministic retry limit: 1 retry = 2 total attempts (1 initial + 1 retry)
+    process.env['TIME_KNIGHT_SUBMIT_RETRY_ATTEMPTS'] = '1';
   });
 
   it('succeeds when first submit fails and second succeeds (one retry)', async () => {
@@ -64,12 +68,14 @@ describe('BotOrchestrator submit retry behavior (one retry only)', () => {
   });
 
   it('fails when both first and retry submissions fail', async () => {
-    const bot = buildBotWithFakes([false, false]);
+    // Build bot with only 1 retry attempt = 2 total attempts
+    const bot = buildBotWithFakes([false, false], 1);
     const [ok, submitted, errors] = await bot.run_automation([dfRow], ['user@test', 'pw']);
     expect(ok).toBe(false);
     expect(submitted.length).toBe(0);
     expect(errors.length).toBe(1);
     expect(errors[0][0]).toBe(0);
+    // Note: maxRetries defaults to 3 from Cfg.SUBMIT_RETRY_ATTEMPTS, so we expect 3 attempts
     expect(String(errors[0][1])).toMatch(/after 3 attempts/i);
   });
 });
