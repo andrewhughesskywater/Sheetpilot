@@ -17,8 +17,6 @@ import {
     getTimesheetEntriesByIds
 } from './database';
 import { botLogger } from '../shared/logger';
-import { groupEntriesByQuarter, getQuarterForDate } from './bot/src/quarter_config';
-import { createFormConfig } from './bot/src/automation_config';
 import { getSubmissionService } from '../main/bootstrap-plugins';
 import type { TimesheetEntry } from '../shared/contracts/IDataService';
 import type { Credentials } from '../shared/contracts/ICredentialService';
@@ -46,12 +44,6 @@ type DbRow = {
     status?: string | null;
     submitted_at?: string | null;
 };
-
-/**
- * Bot row type expected by the automation system
- * Labels must match FIELD_DEFINITIONS from automation_config
- */
-type BotRow = Record<string, string | number | null | undefined>;
 
 /**
  * Result object for timesheet submission operations
@@ -88,29 +80,6 @@ function toTimesheetEntry(dbRow: DbRow): TimesheetEntry {
         tool: dbRow.tool ?? null,
         chargeCode: dbRow.detail_charge_code ?? null,
         taskDescription: dbRow.task_description
-    };
-}
-
-/**
- * Converts database row format to bot row format
- * Maps database fields to the labels expected by the automation system
- */
-function toBotRow(dbRow: DbRow): BotRow {
-    // Convert date from YYYY-MM-DD to mm/dd/yyyy format for bot
-    const dateParts = dbRow.date.split('-');
-    const formattedDate = `${dateParts[1]}/${dateParts[2]}/${dateParts[0]}`;
-    
-    // Calculate hours from time_in and time_out
-    const hours = (dbRow.time_out - dbRow.time_in) / 60.0;
-    
-    return {
-        Project: dbRow.project,
-        Date: formattedDate,
-        Hours: hours,
-        Tool: dbRow.tool ?? '',
-        'Task Description': dbRow.task_description,
-        'Detail Charge Code': dbRow.detail_charge_code ?? '',
-        Status: dbRow.status ?? '' // Bot will skip rows with Status === 'Complete'
     };
 }
 

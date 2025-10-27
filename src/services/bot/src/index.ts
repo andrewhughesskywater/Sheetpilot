@@ -45,7 +45,7 @@ export async function runTimesheet(
   submitted: number[];
   errors: Array<[number, string]>;
 }> {
-  const bot = new BotOrchestrator(Cfg, false, null, undefined, formConfig); // Set headless to false to show browser
+  const bot = new BotOrchestrator(Cfg, formConfig, false, null, undefined); // Set headless to false to show browser
   
   try {
     // Handle empty rows array - should succeed immediately

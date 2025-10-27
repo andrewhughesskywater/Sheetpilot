@@ -11,7 +11,6 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { BotOrchestrator } from '../src/services/bot/src/bot_orchestation';
-import { LoginManager } from '../src/services/bot/src/authentication_flow';
 import { WebformFiller } from '../src/services/bot/src/webform_flow';
 import { createFormConfig } from '../src/services/bot/src/automation_config';
 import * as Cfg from '../src/services/bot/src/automation_config';
@@ -108,31 +107,31 @@ describe('Quarter Routing Integration', () => {
     it('should require formConfig parameter (no longer optional)', () => {
       expect(() => {
         // @ts-expect-error - Testing that formConfig is required
-        new BotOrchestrator(Cfg, false, null, undefined, undefined);
+        new BotOrchestrator(Cfg, undefined as any, false, null, undefined);
       }).toThrow('formConfig is required');
     });
 
     it('should throw error if formConfig is missing', () => {
       expect(() => {
         // @ts-expect-error - Testing that formConfig is required
-        new BotOrchestrator(Cfg, false, null, undefined);
+        new BotOrchestrator(Cfg, undefined as any, false, null, undefined);
       }).toThrow('formConfig is required');
     });
 
     it('should accept valid formConfig for Q3', () => {
-      const orchestrator = new BotOrchestrator(Cfg, false, null, undefined, q3FormConfig);
+      const orchestrator = new BotOrchestrator(Cfg, q3FormConfig, false, null, undefined);
       expect(orchestrator.formConfig.BASE_URL).toBe(QUARTER_DEFINITIONS[0].formUrl);
       expect(orchestrator.formConfig.FORM_ID).toBe(QUARTER_DEFINITIONS[0].formId);
     });
 
     it('should accept valid formConfig for Q4', () => {
-      const orchestrator = new BotOrchestrator(Cfg, false, null, undefined, q4FormConfig);
+      const orchestrator = new BotOrchestrator(Cfg, q4FormConfig, false, null, undefined);
       expect(orchestrator.formConfig.BASE_URL).toBe(QUARTER_DEFINITIONS[1].formUrl);
       expect(orchestrator.formConfig.FORM_ID).toBe(QUARTER_DEFINITIONS[1].formId);
     });
 
     it('should pass formConfig to WebformFiller', () => {
-      new BotOrchestrator(Cfg, false, null, undefined, q3FormConfig);
+      new BotOrchestrator(Cfg, q3FormConfig, false, null, undefined);
       
       expect(WebformFiller).toHaveBeenCalledWith(
         expect.anything(), // config
@@ -150,7 +149,7 @@ describe('Quarter Routing Integration', () => {
         QUARTER_DEFINITIONS[0].formId
       );
 
-      const orchestrator = new BotOrchestrator(Cfg, false, null, undefined, q3FormConfig);
+      const orchestrator = new BotOrchestrator(Cfg, q3FormConfig, false, null, undefined);
       const loginManager = orchestrator.login_manager;
 
       // LoginManager should have access to formConfig through WebformFiller
@@ -163,11 +162,11 @@ describe('Quarter Routing Integration', () => {
         QUARTER_DEFINITIONS[0].formId
       );
 
-      const orchestrator = new BotOrchestrator(Cfg, false, null, undefined, q3Config);
+      const orchestrator = new BotOrchestrator(Cfg, q3Config, false, null, undefined);
       
       // Mock the page.goto method to verify it's called with correct URL
       const mockGoto = vi.fn(() => Promise.resolve());
-      const page = { goto: mockGoto, url: vi.fn(() => QUARTER_DEFINITIONS[0].formUrl) };
+      const _page = { goto: mockGoto, url: vi.fn(() => QUARTER_DEFINITIONS[0].formUrl) };
       
       // The LoginManager should use orchestrator.webform_filler.require_page()
       // which has access to formConfig
@@ -180,7 +179,7 @@ describe('Quarter Routing Integration', () => {
         QUARTER_DEFINITIONS[1].formId
       );
 
-      const orchestrator = new BotOrchestrator(Cfg, false, null, undefined, q4Config);
+      const orchestrator = new BotOrchestrator(Cfg, q4Config, false, null, undefined);
       
       expect(orchestrator.formConfig.BASE_URL).toBe(QUARTER_DEFINITIONS[1].formUrl);
     });
@@ -233,7 +232,7 @@ describe('Quarter Routing Integration', () => {
         QUARTER_DEFINITIONS[0].formId
       );
 
-      const orchestrator = new BotOrchestrator(Cfg, false, null, undefined, q3Config);
+      const orchestrator = new BotOrchestrator(Cfg, q3Config, false, null, undefined);
 
       // Q3 dates should be valid with Q3 form config
       expect(orchestrator.formConfig.FORM_ID).toBe(QUARTER_DEFINITIONS[0].formId);
@@ -245,7 +244,7 @@ describe('Quarter Routing Integration', () => {
         QUARTER_DEFINITIONS[1].formId
       );
 
-      const orchestrator = new BotOrchestrator(Cfg, false, null, undefined, q4Config);
+      const orchestrator = new BotOrchestrator(Cfg, q4Config, false, null, undefined);
 
       // Q4 dates should be valid with Q4 form config
       expect(orchestrator.formConfig.FORM_ID).toBe(QUARTER_DEFINITIONS[1].formId);
@@ -259,7 +258,7 @@ describe('Quarter Routing Integration', () => {
         QUARTER_DEFINITIONS[1].formId
       );
 
-      const orchestrator = new BotOrchestrator(Cfg, false, null, undefined, q4Config);
+      const orchestrator = new BotOrchestrator(Cfg, q4Config, false, null, undefined);
 
       // The validation happens in _run_automation_internal
       // We expect Q4 config to reject Q3 dates
@@ -272,7 +271,7 @@ describe('Quarter Routing Integration', () => {
         QUARTER_DEFINITIONS[0].formId
       );
 
-      const orchestrator = new BotOrchestrator(Cfg, false, null, undefined, q3Config);
+      const orchestrator = new BotOrchestrator(Cfg, q3Config, false, null, undefined);
 
       // The validation happens in _run_automation_internal
       // We expect Q3 config to reject Q4 dates

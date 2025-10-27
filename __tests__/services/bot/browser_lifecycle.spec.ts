@@ -8,6 +8,9 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { BotOrchestrator } from '../../../src/services/bot/src/bot_orchestation';
 import * as Cfg from '../../../src/services/bot/src/automation_config';
+import { createFormConfig } from '../../../src/services/bot/src/automation_config';
+
+const dummyFormConfig = createFormConfig('https://test.forms.smartsheet.com/test', 'test-form-id');
 
 describe('Browser Lifecycle Management', () => {
   let bot: BotOrchestrator;
@@ -24,7 +27,7 @@ describe('Browser Lifecycle Management', () => {
   });
 
   it('should allow start() to be called multiple times safely', async () => {
-    bot = new BotOrchestrator(Cfg as typeof Cfg, true, 'chromium');
+    bot = new BotOrchestrator(Cfg as typeof Cfg, dummyFormConfig, true, 'chromium');
     
     await bot.start();
     
@@ -41,7 +44,7 @@ describe('Browser Lifecycle Management', () => {
   });
 
   it('should allow close() to be called multiple times safely', async () => {
-    bot = new BotOrchestrator(Cfg as typeof Cfg, true, 'chromium');
+    bot = new BotOrchestrator(Cfg as typeof Cfg, dummyFormConfig, true, 'chromium');
     
     await bot.start();
     await bot.close();
@@ -51,14 +54,14 @@ describe('Browser Lifecycle Management', () => {
   });
 
   it('should handle close() when start() was never called', async () => {
-    bot = new BotOrchestrator(Cfg as typeof Cfg, true, 'chromium');
+    bot = new BotOrchestrator(Cfg as typeof Cfg, dummyFormConfig, true, 'chromium');
     
     // Closing without starting should be safe
     await expect(bot.close()).resolves.not.toThrow();
   });
 
   it('should prevent operations after close()', async () => {
-    bot = new BotOrchestrator(Cfg as typeof Cfg, true, 'chromium');
+    bot = new BotOrchestrator(Cfg as typeof Cfg, dummyFormConfig, true, 'chromium');
     
     await bot.start();
     await bot.close();
@@ -83,7 +86,7 @@ describe('Browser Lifecycle Management', () => {
   }, 30000); // 30 second timeout for DOM-based waits
 
   it('should properly cleanup resources on automation error', async () => {
-    bot = new BotOrchestrator(Cfg as typeof Cfg, true, 'chromium');
+    bot = new BotOrchestrator(Cfg as typeof Cfg, dummyFormConfig, true, 'chromium');
     
     await bot.start();
     
@@ -105,7 +108,7 @@ describe('Browser Lifecycle Management', () => {
   }, 45000); // 45 second timeout for DOM-based waits
 
   it('should handle concurrent automation attempts gracefully', async () => {
-    bot = new BotOrchestrator(Cfg as Record<string, unknown>, true, 'chromium');
+    bot = new BotOrchestrator(Cfg as Record<string, unknown>, dummyFormConfig, true, 'chromium');
     
     await bot.start();
     
@@ -136,7 +139,7 @@ describe('Browser Lifecycle Management', () => {
     const browserTypes = ['chromium', 'firefox', 'webkit'];
     
     for (const browserType of browserTypes) {
-      const testBot = new BotOrchestrator(Cfg as typeof Cfg, true, browserType);
+      const testBot = new BotOrchestrator(Cfg as typeof Cfg, dummyFormConfig, true, browserType);
       
       try {
         await testBot.start();
@@ -156,12 +159,12 @@ describe('Browser Lifecycle Management', () => {
 
   it('should handle headless mode configuration correctly', async () => {
     // Test headless mode
-    const headlessBot = new BotOrchestrator(Cfg as typeof Cfg, true, 'chromium');
+    const headlessBot = new BotOrchestrator(Cfg as typeof Cfg, dummyFormConfig, true, 'chromium');
     await headlessBot.start();
     await headlessBot.close();
     
     // Test headed mode (might fail in CI, but shouldn't crash)
-    const headedBot = new BotOrchestrator(Cfg as typeof Cfg, false, 'chromium');
+    const headedBot = new BotOrchestrator(Cfg as typeof Cfg, dummyFormConfig, false, 'chromium');
     try {
       await headedBot.start();
       await headedBot.close();

@@ -2,10 +2,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import App from '../../src/renderer/App';
 
-// Import the actual implementations for testing
-import { initializeLoggerFallback } from '../../src/renderer/utils/logger-fallback';
-import { initializeAPIFallback } from '../../src/renderer/utils/api-fallback';
-
 describe('End-to-End Blank Screen Prevention Tests', () => {
   beforeEach(() => {
     // Clear all mocks

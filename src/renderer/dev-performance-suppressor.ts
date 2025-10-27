@@ -85,7 +85,7 @@ export function suppressDevelopmentPerformanceWarnings() {
 
 // Optimize React development mode
 export function optimizeReactDevelopmentMode() {
-  if (!import.meta.env.DEV) {
+  if (!(import.meta as { env?: { DEV?: boolean } }).env?.DEV) {
     return;
   }
 
@@ -105,7 +105,7 @@ export function optimizeReactDevelopmentMode() {
 
 // Optimize Vite dev server
 export function optimizeViteDevServer() {
-  if (!import.meta.env.DEV) {
+  if (!(import.meta as { env?: { DEV?: boolean } }).env?.DEV) {
     return;
   }
 
@@ -119,7 +119,7 @@ export function optimizeViteDevServer() {
 
 // Initialize all development optimizations
 export function initializeDevelopmentOptimizations() {
-  if (!import.meta.env.DEV) {
+  if (!(import.meta as { env?: { DEV?: boolean } }).env?.DEV) {
     return;
   }
 

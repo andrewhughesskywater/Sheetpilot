@@ -60,17 +60,17 @@ export class BotOrchestrator {
   /**
    * Creates a new BotOrchestrator instance
    * @param injected_config - Configuration object for automation settings
+   * @param formConfig - Dynamic form configuration (required)
    * @param headless - Whether to run browser in headless mode (default: true)
    * @param browser - Browser type to use (default: 'chromium')
    * @param progress_callback - Optional callback for progress updates
-   * @param formConfig - Dynamic form configuration (required)
    */
   constructor(
     injected_config: typeof Cfg,
+    formConfig: { BASE_URL: string; FORM_ID: string; SUBMISSION_ENDPOINT: string; SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[] },
     headless: boolean | null = true,
     browser: string | null = null,
-    progress_callback?: (pct: number, msg: string) => void,
-    formConfig: { BASE_URL: string; FORM_ID: string; SUBMISSION_ENDPOINT: string; SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[] }
+    progress_callback?: (pct: number, msg: string) => void
   ) {
     if (!formConfig) {
       throw new Error('formConfig is required. Use createFormConfig() to create a valid form configuration.');
@@ -246,24 +246,26 @@ export class BotOrchestrator {
           }
 
           // Validate that entry date matches the quarter of the configured form
-          if (fields.date) {
+          if (fields['date']) {
             // Convert date from mm/dd/yyyy to yyyy-mm-dd for quarter validation
-            const dateStr = String(fields.date);
+            const dateStr = String(fields['date']);
             const [month, day, year] = dateStr.split('/');
             // Pad month and day to ensure proper formatting
-            const isoDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-            const quarterDef = getQuarterForDate(isoDate);
-            
-            if (quarterDef && quarterDef.formId !== this.formConfig.FORM_ID) {
-              botLogger.error('Quarter mismatch detected', { 
-                rowIndex: idx, 
-                entryDate: fields.date,
-                entryQuarter: quarterDef.id,
-                configuredFormId: this.formConfig.FORM_ID,
-                expectedFormId: quarterDef.formId
-              });
-              failed_rows.push([idx, `Date ${fields.date} belongs to ${quarterDef.name} but form configured for different quarter`]);
-              continue;
+            if (month && day && year) {
+              const isoDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+              const quarterDef = getQuarterForDate(isoDate);
+              
+              if (quarterDef && quarterDef.formId !== this.formConfig.FORM_ID) {
+                botLogger.error('Quarter mismatch detected', { 
+                  rowIndex: idx, 
+                  entryDate: fields['date'],
+                  entryQuarter: quarterDef.id,
+                  configuredFormId: this.formConfig.FORM_ID,
+                  expectedFormId: quarterDef.formId
+                });
+                failed_rows.push([idx, `Date ${fields['date']} belongs to ${quarterDef.name} but form configured for different quarter`]);
+                continue;
+              }
             }
           }
 

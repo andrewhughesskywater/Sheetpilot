@@ -10,13 +10,17 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./__tests__/setup.ts'],
     testTimeout: 10000, // Reduced to 10 seconds to prevent hanging
-    // Prevent resource-intensive operations
-    pool: 'forks',
+    // Prevent resource-intensive operations - use threads with minimal concurrency
+    pool: 'threads',
     poolOptions: {
-      forks: {
-        singleFork: true
+      threads: {
+        maxThreads: 1,
+        minThreads: 1,
+        useAtomics: true
       }
-    }
+    },
+    maxConcurrency: 1, // Limit concurrent tests to prevent EMFILE errors on Windows
+    fileParallelism: false // Disable file parallelism to reduce file handle usage
   },
   define: {
     'import.meta.env': JSON.stringify({

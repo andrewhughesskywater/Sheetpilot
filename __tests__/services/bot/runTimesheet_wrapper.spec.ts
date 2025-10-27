@@ -7,7 +7,7 @@
  * NOTE: These tests use mocked authentication to avoid hitting real production URLs.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { runTimesheet } from '../../../src/services/bot/src/index';
 
 describe('runTimesheet wrapper function', () => {

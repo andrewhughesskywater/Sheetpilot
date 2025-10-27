@@ -21,7 +21,7 @@ export function getSystemTheme(): 'light' | 'dark' {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     const prefersDark = mediaQuery?.matches || false;
     return prefersDark ? 'dark' : 'light';
-  } catch (error) {
+  } catch {
     // Fallback to light theme if matchMedia fails
     return 'light';
   }
@@ -38,8 +38,8 @@ export function getStoredTheme(): ThemeMode | null {
     if (stored === 'light' || stored === 'dark' || stored === 'auto') {
       return stored;
     }
-  } catch (error) {
-    console.error('[ThemeManager] Failed to read stored theme:', error);
+  } catch {
+    // Ignore localStorage errors
   }
   
   return null;

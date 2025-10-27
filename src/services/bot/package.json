@@ -1,6 +1,6 @@
 {
   "name": "sheetpilot-bot",
-  "version": "1.0.0",
+  "version": "1.2.1",
   "description": "Timesheet automation bot for Sheetpilot",
   "main": "dist/index.js",
   "scripts": {

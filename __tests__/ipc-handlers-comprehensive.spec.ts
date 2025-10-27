@@ -82,7 +82,8 @@ vi.mock('electron', () => {
       webContents: {
         on: vi.fn(),
         once: vi.fn(),
-        send: vi.fn()
+        send: vi.fn(),
+        executeJavaScript: vi.fn()
       },
       loadURL: vi.fn(),
       loadFile: vi.fn(),
@@ -91,12 +92,7 @@ vi.mock('electron', () => {
       show: vi.fn(),
       maximize: vi.fn(),
       getBounds: vi.fn(() => ({ x: 0, y: 0, width: 1200, height: 800 })),
-      isMaximized: vi.fn(() => false),
-      webContents: {
-        on: vi.fn(),
-        send: vi.fn(),
-        executeJavaScript: vi.fn()
-      }
+      isMaximized: vi.fn(() => false)
     }))
   };
 });

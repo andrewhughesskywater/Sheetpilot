@@ -45,10 +45,6 @@ vi.mock('vite', () => ({
   defineConfig: vi.fn()
 }));
 
-// Import the actual implementations for testing
-import { initializeLoggerFallback } from '../../src/renderer/utils/logger-fallback';
-import { initializeAPIFallback } from '../../src/renderer/utils/api-fallback';
-
 describe('App Rendering Tests - Blank Screen Prevention', () => {
   beforeEach(() => {
     // Reset all mocks

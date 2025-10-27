@@ -1,6 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import * as Cfg from '../../../src/services/bot/src/automation_config';
 import { BotOrchestrator } from '../../../src/services/bot/src/bot_orchestation';
+import { createFormConfig } from '../../../src/services/bot/src/automation_config';
+
+const dummyFormConfig = createFormConfig('https://test.forms.smartsheet.com/test', 'test-form-id');
 
 class FakeFiller {
   submitSequence: boolean[];
@@ -31,7 +34,7 @@ function buildBotWithFakes(submitSeq: boolean[]) {
   process.env['TIME_KNIGHT_SUBMIT_RETRY_ATTEMPTS'] = '2';
   process.env['TIME_KNIGHT_SUBMIT'] = '1';
 
-  const bot = new BotOrchestrator(Cfg as typeof Cfg, true, 'chromium');
+  const bot = new BotOrchestrator(Cfg as typeof Cfg, dummyFormConfig, true, 'chromium');
   // @ts-ignore override collaborators for isolated testing
   (bot as Record<string, unknown>).webform_filler = new FakeFiller(submitSeq);
   // @ts-ignore override login
