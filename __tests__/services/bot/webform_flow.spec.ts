@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import path from 'path';
 import { Page } from 'playwright';
-import * as cfg from '../src/automation_config';
-import { WebformFiller } from '../src/webform_flow';
+import * as cfg from '../../../src/services/bot/src/automation_config';
+import { WebformFiller } from '../../../src/services/bot/src/webform_flow';
 
 describe('WebformFiller against mock form', () => {
   let filler: WebformFiller;
@@ -18,7 +18,7 @@ describe('WebformFiller against mock form', () => {
     const mockPath = path.resolve(__dirname, './fixtures/mock-form.html');
     process.env['TIME_KNIGHT_BASE_URL'] = 'file:///' + mockPath.replace(/\\/g, '/');
 
-    filler = new WebformFiller(cfg as any, true, 'chromium');
+    filler = new WebformFiller(cfg as typeof cfg, true, 'chromium');
     await filler.start();
     page = filler.require_page();
 

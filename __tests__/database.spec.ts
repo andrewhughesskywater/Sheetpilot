@@ -119,7 +119,7 @@ describe('Database Module', () => {
             
             // Check table structure
             const columns = db.prepare("PRAGMA table_info(timesheet)").all();
-            const columnNames = columns.map((col: any) => col.name);
+            const columnNames = columns.map((col: { name: string }) => col.name);
             
             expect(columnNames).toContain('id');
             expect(columnNames).toContain('date');
@@ -132,7 +132,7 @@ describe('Database Module', () => {
             
             // Check if hours column exists (generated columns might not show in PRAGMA table_info)
             const tableSchema = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='timesheet'").get();
-            expect((tableSchema as any).sql).toContain('hours');
+            expect((tableSchema as { sql: string }).sql).toContain('hours');
             
             db.close();
         });
@@ -142,7 +142,7 @@ describe('Database Module', () => {
             
             // Check for indexes
             const indexes = db.prepare("SELECT name FROM sqlite_master WHERE type='index'").all();
-            const indexNames = indexes.map((idx: any) => idx.name);
+            const indexNames = indexes.map((idx: { name: string }) => idx.name);
             
             expect(indexNames).toContain('idx_timesheet_date');
             expect(indexNames).toContain('idx_timesheet_project');
@@ -161,8 +161,8 @@ describe('Database Module', () => {
             `).get();
             
             expect(uniqueIndex).toBeDefined();
-            expect((uniqueIndex as any).sql).toContain('UNIQUE');
-            expect((uniqueIndex as any).sql).toContain('date, time_in, project, task_description');
+            expect((uniqueIndex as { sql: string }).sql).toContain('UNIQUE');
+            expect((uniqueIndex as { sql: string }).sql).toContain('date, time_in, project, task_description');
             
             db.close();
         });
@@ -194,7 +194,7 @@ describe('Database Module', () => {
             const entry = db.prepare('SELECT hours FROM timesheet WHERE project = ?').get(sampleEntry.project);
             db.close();
             
-            expect((entry as any).hours).toBe(1.0); // 60 minutes = 1 hour
+            expect((entry as { hours: number }).hours).toBe(1.0); // 60 minutes = 1 hour
         });
 
         it('should handle optional fields correctly', () => {
@@ -211,8 +211,8 @@ describe('Database Module', () => {
             const entry = db.prepare('SELECT tool, detail_charge_code FROM timesheet WHERE project = ?').get(sampleEntry.project);
             db.close();
             
-            expect((entry as any).tool).toBeNull();
-            expect((entry as any).detail_charge_code).toBeNull();
+            expect((entry as { tool: string | null; detail_charge_code: string | null }).tool).toBeNull();
+            expect((entry as { tool: string | null; detail_charge_code: string | null }).detail_charge_code).toBeNull();
         });
 
         it('should validate time constraints', () => {

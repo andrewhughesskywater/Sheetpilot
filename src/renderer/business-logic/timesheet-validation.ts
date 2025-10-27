@@ -31,8 +31,34 @@ export interface TimesheetRow {
  */
 export function isValidDate(dateStr?: string): boolean {
   if (!dateStr) return false;
-  const date = new Date(dateStr);
-  return !isNaN(date.getTime()) && !!dateStr.match(/^\d{1,2}\/\d{1,2}\/\d{4}$/);
+  
+  // Must match mm/dd/yyyy format
+  const formatMatch = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!formatMatch) return false;
+  
+  const month = parseInt(formatMatch[1]!, 10);
+  const day = parseInt(formatMatch[2]!, 10);
+  const year = parseInt(formatMatch[3]!, 10);
+  
+  // Validate ranges
+  if (month < 1 || month > 12) return false;
+  if (day < 1 || day > 31) return false;
+  if (year < 1900 || year > 2100) return false;
+  
+  // Create date object using ISO format to avoid locale issues
+  // Note: month is 0-indexed in Date constructor
+  const date = new Date(year, month - 1, day);
+  
+  // Check if the date is valid
+  if (isNaN(date.getTime())) return false;
+  
+  // Verify the date components match what we parsed
+  // This catches issues like Feb 29 in non-leap years
+  const actualMonth = date.getMonth() + 1; // getMonth() returns 0-11
+  const actualDay = date.getDate();
+  const actualYear = date.getFullYear();
+  
+  return actualMonth === month && actualDay === day && actualYear === year;
 }
 
 /**
@@ -40,10 +66,26 @@ export function isValidDate(dateStr?: string): boolean {
  */
 export function formatTimeInput(timeStr: unknown): string {
   if (typeof timeStr !== 'string') return String(timeStr || '');
-  // Remove any non-numeric characters
+  
+  // If already in HH:MM format, normalize it to ensure proper padding
+  if (timeStr.includes(':')) {
+    const parts = timeStr.split(':');
+    if (parts.length === 2) {
+      const [hours, minutes] = parts;
+      if (hours && minutes !== undefined) {
+        const normalizedHours = hours.padStart(2, '0');
+        const normalizedMinutes = minutes.padStart(2, '0');
+        return `${normalizedHours}:${normalizedMinutes}`;
+      }
+    }
+    // For invalid formats like HH:MM:SS, return original input
+    return timeStr;
+  }
+  
+  // Remove any non-numeric characters for pure numeric input
   const numericOnly = timeStr.replace(/\D/g, '');
   
-  // Handle different input formats
+  // Handle different numeric input formats
   if (numericOnly.length === 3) {
     // 800 -> 08:00
     const hours = numericOnly.substring(0, 1);
@@ -55,7 +97,7 @@ export function formatTimeInput(timeStr: unknown): string {
     const minutes = numericOnly.substring(2, 4);
     return `${hours}:${minutes}`;
   } else if (numericOnly.length === 2) {
-    // 08 -> 08:00
+    // Two-digit input: treat as hours (08 -> 08:00, 12 -> 12:00)
     return `${numericOnly}:00`;
   } else if (numericOnly.length === 1) {
     // 8 -> 08:00
@@ -121,7 +163,7 @@ export function validateField(
   
   switch (prop) {
     case 'date': {
-      if (!value) return 'Please enter a date';
+      if (!value) return 'Date is required - please enter a date';
       if (!isValidDate(String(value))) return 'Date must be like 01/15/2024';
       
       // Convert mm/dd/yyyy to yyyy-mm-dd for quarter validation
@@ -138,20 +180,20 @@ export function validateField(
     }
       
     case 'timeIn': {
-      if (!value) return 'Please enter start time';
+      if (!value) return 'Start time is required - please enter start time';
       if (!isValidTime(String(value))) return 'Time must be like 09:00, 800, or 1430 and in 15 minute steps';
       return null;
     }
       
     case 'timeOut': {
-      if (!value) return 'Please enter end time';
+      if (!value) return 'End time is required - please enter end time';
       if (!isValidTime(String(value))) return 'Time must be like 17:00, 1700, or 530 and in 15 minute steps';
       if (!isTimeOutAfterTimeIn(rowData?.timeIn, String(value))) return 'End time must be after start time';
       return null;
     }
       
     case 'project':
-      if (!value) return 'Please pick a project';
+      if (!value) return 'Project is required - please pick a project';
       if (!projects.includes(String(value))) return 'Please pick from the list';
       return null;
       
@@ -178,7 +220,7 @@ export function validateField(
     }
       
     case 'taskDescription':
-      if (!value) return 'Please describe what you did';
+      if (!value) return 'Task description is required - please describe what you did';
       return null;
       
     default:

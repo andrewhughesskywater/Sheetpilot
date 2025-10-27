@@ -1492,7 +1492,7 @@ describe('TimesheetGrid Phase 7 - Cell Interactivity', () => {
 });
 
 describe('TimesheetGrid Row Deletion Functionality', () => {
-  let mockWindow: any;
+  let mockWindow: Record<string, unknown>;
 
   beforeEach(() => {
     // Mock the window.timesheet API
@@ -1505,7 +1505,7 @@ describe('TimesheetGrid Row Deletion Functionality', () => {
     };
     
     // Set up global mock
-    (global as any).window = mockWindow;
+    (global as Record<string, unknown>).window = mockWindow;
   });
 
   afterEach(() => {
@@ -1514,7 +1514,7 @@ describe('TimesheetGrid Row Deletion Functionality', () => {
 
   it('should handle row deletion with valid ID', async () => {
     // Mock successful deletion
-    mockWindow.timesheet.deleteDraft.mockResolvedValue({ success: true });
+    (mockWindow.timesheet as { deleteDraft: { mockResolvedValue: (value: unknown) => void } }).deleteDraft.mockResolvedValue({ success: true });
 
     // Simulate the handleAfterRemoveRow function logic
     const handleAfterRemoveRow = async (index: number, amount: number) => {
@@ -1540,12 +1540,12 @@ describe('TimesheetGrid Row Deletion Functionality', () => {
 
     await handleAfterRemoveRow(0, 1);
     
-    expect(mockWindow.timesheet.deleteDraft).toHaveBeenCalledWith(1);
-    expect(mockWindow.timesheet.deleteDraft).toHaveBeenCalledTimes(1);
+    expect((mockWindow.timesheet as { deleteDraft: { toHaveBeenCalledWith: (...args: unknown[]) => void; toHaveBeenCalledTimes: (times: number) => void } }).deleteDraft).toHaveBeenCalledWith(1);
+    expect((mockWindow.timesheet as { deleteDraft: { toHaveBeenCalledWith: (...args: unknown[]) => void; toHaveBeenCalledTimes: (times: number) => void } }).deleteDraft).toHaveBeenCalledTimes(1);
   });
 
   it('should handle multiple row deletions', async () => {
-    mockWindow.timesheet.deleteDraft.mockResolvedValue({ success: true });
+    (mockWindow.timesheet as { deleteDraft: { mockResolvedValue: (value: unknown) => void } }).deleteDraft.mockResolvedValue({ success: true });
 
     const handleAfterRemoveRow = async (index: number, amount: number) => {
       const removedRows = [
@@ -1571,13 +1571,13 @@ describe('TimesheetGrid Row Deletion Functionality', () => {
 
     await handleAfterRemoveRow(0, 2);
     
-    expect(mockWindow.timesheet.deleteDraft).toHaveBeenCalledWith(1);
-    expect(mockWindow.timesheet.deleteDraft).toHaveBeenCalledWith(2);
-    expect(mockWindow.timesheet.deleteDraft).toHaveBeenCalledTimes(2);
+    expect((mockWindow.timesheet as { deleteDraft: { toHaveBeenCalledWith: (...args: unknown[]) => void; toHaveBeenCalledTimes: (times: number) => void } }).deleteDraft).toHaveBeenCalledWith(1);
+    expect((mockWindow.timesheet as { deleteDraft: { toHaveBeenCalledWith: (...args: unknown[]) => void; toHaveBeenCalledTimes: (times: number) => void } }).deleteDraft).toHaveBeenCalledWith(2);
+    expect((mockWindow.timesheet as { deleteDraft: { toHaveBeenCalledWith: (...args: unknown[]) => void; toHaveBeenCalledTimes: (times: number) => void } }).deleteDraft).toHaveBeenCalledTimes(2);
   });
 
   it('should handle deletion errors gracefully', async () => {
-    mockWindow.timesheet.deleteDraft.mockResolvedValue({ 
+    (mockWindow.timesheet as { deleteDraft: { mockResolvedValue: (value: unknown) => void } }).deleteDraft.mockResolvedValue({ 
       success: false, 
       error: 'Database connection failed' 
     });
@@ -1608,7 +1608,7 @@ describe('TimesheetGrid Row Deletion Functionality', () => {
     await handleAfterRemoveRow(0, 1);
     
     expect(consoleSpy).toHaveBeenCalledWith('Failed to delete draft row:', 'Database connection failed');
-    expect(mockWindow.timesheet.deleteDraft).toHaveBeenCalledWith(1);
+    expect((mockWindow.timesheet as { deleteDraft: { toHaveBeenCalledWith: (...args: unknown[]) => void } }).deleteDraft).toHaveBeenCalledWith(1);
     
     consoleSpy.mockRestore();
   });
@@ -1639,8 +1639,8 @@ describe('TimesheetGrid Row Deletion Functionality', () => {
     await handleAfterRemoveRow(0, 2);
     
     // Should only call deleteDraft for the row with ID
-    expect(mockWindow.timesheet.deleteDraft).toHaveBeenCalledWith(2);
-    expect(mockWindow.timesheet.deleteDraft).toHaveBeenCalledTimes(1);
+    expect((mockWindow.timesheet as { deleteDraft: { toHaveBeenCalledWith: (...args: unknown[]) => void } }).deleteDraft).toHaveBeenCalledWith(2);
+    expect((mockWindow.timesheet as { deleteDraft: { toHaveBeenCalledTimes: (times: number) => void } }).deleteDraft).toHaveBeenCalledTimes(1);
   });
 
   it('should validate that afterRemoveRow handler is configured', () => {

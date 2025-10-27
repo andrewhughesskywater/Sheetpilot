@@ -21,16 +21,24 @@ import {
 
 describe('Quarter Configuration', () => {
   describe('Quarter Definitions', () => {
-    it('should have Q3 and Q4 2025 defined', () => {
-      expect(QUARTER_DEFINITIONS).toHaveLength(2);
-      expect(QUARTER_DEFINITIONS[0].id).toBe('Q3-2025');
-      expect(QUARTER_DEFINITIONS[1].id).toBe('Q4-2025');
+    it('should have Q1, Q2, Q3 and Q4 2025 defined', () => {
+      expect(QUARTER_DEFINITIONS).toHaveLength(4);
+      expect(QUARTER_DEFINITIONS[0].id).toBe('Q1-2025');
+      expect(QUARTER_DEFINITIONS[1].id).toBe('Q2-2025');
+      expect(QUARTER_DEFINITIONS[2].id).toBe('Q3-2025');
+      expect(QUARTER_DEFINITIONS[3].id).toBe('Q4-2025');
     });
 
     it('should have correct date ranges', () => {
-      const q3 = QUARTER_DEFINITIONS[0];
-      const q4 = QUARTER_DEFINITIONS[1];
+      const q1 = QUARTER_DEFINITIONS[0];
+      const q2 = QUARTER_DEFINITIONS[1];
+      const q3 = QUARTER_DEFINITIONS[2];
+      const q4 = QUARTER_DEFINITIONS[3];
       
+      expect(q1.startDate).toBe('2025-01-01');
+      expect(q1.endDate).toBe('2025-03-31');
+      expect(q2.startDate).toBe('2025-04-01');
+      expect(q2.endDate).toBe('2025-06-30');
       expect(q3.startDate).toBe('2025-07-01');
       expect(q3.endDate).toBe('2025-09-30');
       expect(q4.startDate).toBe('2025-10-01');
@@ -38,9 +46,13 @@ describe('Quarter Configuration', () => {
     });
 
     it('should have different form URLs and IDs', () => {
-      const q3 = QUARTER_DEFINITIONS[0];
-      const q4 = QUARTER_DEFINITIONS[1];
+      const q1 = QUARTER_DEFINITIONS[0];
+      const q2 = QUARTER_DEFINITIONS[1];
+      const q3 = QUARTER_DEFINITIONS[2];
+      const q4 = QUARTER_DEFINITIONS[3];
       
+      expect(q1.formUrl).not.toBe(q2.formUrl);
+      expect(q1.formId).not.toBe(q2.formId);
       expect(q3.formUrl).not.toBe(q4.formUrl);
       expect(q3.formId).not.toBe(q4.formId);
       expect(q3.formId).toBe('0197cbae7daf72bdb96b3395b500d414');
@@ -86,9 +98,8 @@ describe('Quarter Configuration', () => {
     });
 
     it('should return null for dates outside quarters', () => {
-      expect(getQuarterForDate('2025-01-15')).toBeNull(); // Q1
-      expect(getQuarterForDate('2025-04-15')).toBeNull(); // Q2
       expect(getQuarterForDate('2026-01-15')).toBeNull(); // Next year
+      expect(getQuarterForDate('2024-12-31')).toBeNull(); // Previous year
     });
 
     it('should handle edge dates correctly', () => {
@@ -120,8 +131,10 @@ describe('Quarter Configuration', () => {
     });
 
     it('should return error message for invalid dates', () => {
-      const error = validateQuarterAvailability('2025-01-15');
+      const error = validateQuarterAvailability('2026-01-15');
       expect(error).toContain('Date must be in');
+      expect(error).toContain('Q1 2025');
+      expect(error).toContain('Q2 2025');
       expect(error).toContain('Q3 2025');
       expect(error).toContain('Q4 2025');
     });
@@ -160,7 +173,7 @@ describe('Quarter Configuration', () => {
     it('should skip entries with invalid dates', () => {
       const entries = [
         { date: '2025-07-15', project: 'Valid' },
-        { date: '2025-01-15', project: 'Invalid' }, // Outside quarters
+        { date: '2026-01-15', project: 'Invalid' }, // Outside quarters
         { date: 'invalid', project: 'Invalid' },
       ];
 
@@ -174,7 +187,7 @@ describe('Quarter Configuration', () => {
   describe('Utility Functions', () => {
     it('should return available quarter IDs', () => {
       const ids = getAvailableQuarterIds();
-      expect(ids).toEqual(['Q3-2025', 'Q4-2025']);
+      expect(ids).toEqual(['Q1-2025', 'Q2-2025', 'Q3-2025', 'Q4-2025']);
     });
 
     it('should get quarter by ID', () => {
@@ -194,9 +207,9 @@ describe('Quarter Configuration', () => {
       // We'll just verify it returns a valid quarter or null
       const current = getCurrentQuarter();
       if (current) {
-        expect(['Q3-2025', 'Q4-2025']).toContain(current.id);
+        expect(['Q1-2025', 'Q2-2025', 'Q3-2025', 'Q4-2025']).toContain(current.id);
       }
-      // If current is null, that's also valid (if today is outside Q3/Q4 2025)
+      // If current is null, that's also valid (if today is outside 2025 quarters)
     });
   });
 });

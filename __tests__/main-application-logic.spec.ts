@@ -177,7 +177,22 @@ describe('Main Application Logic Tests', () => {
 
   describe('Quarter Validation', () => {
     const isDateInCurrentQuarter = (dateStr: string): boolean => {
-      const date = new Date(dateStr);
+      // First validate the date format and ensure it's actually valid
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!dateRegex.test(dateStr)) {
+        return false;
+      }
+      
+      const [year, month, day] = dateStr.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      
+      // Check if the date is actually valid (not auto-corrected)
+      if (date.getFullYear() !== year || 
+          date.getMonth() !== month - 1 || 
+          date.getDate() !== day) {
+        return false;
+      }
+      
       const now = new Date();
       
       // Get current quarter (1-4)
@@ -195,14 +210,14 @@ describe('Main Application Logic Tests', () => {
       // Mock the current date to be in Q1 2025
       const originalDate = Date;
       global.Date = class extends Date {
-        constructor(...args: any[]) {
+        constructor(...args: unknown[]) {
           if (args.length === 0) {
             super(2025, 0, 15); // January 15, 2025
           } else {
             super(...args);
           }
         }
-      } as any;
+      } as typeof Date;
       
       expect(isDateInCurrentQuarter(testDate)).toBe(true);
       
@@ -272,9 +287,9 @@ describe('Main Application Logic Tests', () => {
   });
 
   describe('Window State Management', () => {
-    const mockFs = fs as any;
+    const mockFs = fs as typeof fs & { readFileSync: vi.Mock; writeFileSync: vi.Mock };
 
-    const getWindowState = (): any => {
+    const getWindowState = (): { width: number; height: number; x?: number; y?: number } => {
       const defaultWidth = 1200;
       const defaultHeight = Math.round(defaultWidth * 1.618);
       
@@ -323,7 +338,7 @@ describe('Main Application Logic Tests', () => {
       };
     };
 
-    const saveWindowState = (state: any): void => {
+    const saveWindowState = (state: { width: number; height: number; x?: number; y?: number }): void => {
       try {
         const userDataPath = '/tmp/sheetpilot-userdata';
         mockFs.mkdirSync(userDataPath, { recursive: true });
@@ -509,18 +524,26 @@ describe('Main Application Logic Tests', () => {
 
     it('should handle invalid date parsing gracefully', () => {
       const isDateInCurrentQuarter = (dateStr: string): boolean => {
-        try {
-          const date = new Date(dateStr);
-          if (isNaN(date.getTime())) {
-            return false; // Return false instead of throwing
-          }
-          const now = new Date();
-          const currentQuarter = Math.floor(now.getMonth() / 3) + 1;
-          const dateQuarter = Math.floor(date.getMonth() / 3) + 1;
-          return date.getFullYear() === now.getFullYear() && dateQuarter === currentQuarter;
-        } catch {
-          return false; // Return false for any errors
+        // First validate the date format and ensure it's actually valid
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dateRegex.test(dateStr)) {
+          return false;
         }
+        
+        const [year, month, day] = dateStr.split('-').map(Number);
+        const date = new Date(year, month - 1, day);
+        
+        // Check if the date is actually valid (not auto-corrected)
+        if (date.getFullYear() !== year || 
+            date.getMonth() !== month - 1 || 
+            date.getDate() !== day) {
+          return false;
+        }
+        
+        const now = new Date();
+        const currentQuarter = Math.floor(now.getMonth() / 3) + 1;
+        const dateQuarter = Math.floor(date.getMonth() / 3) + 1;
+        return date.getFullYear() === now.getFullYear() && dateQuarter === currentQuarter;
       };
 
       const invalidDates = ['invalid', '2025-13-01', '2025-02-30'];
@@ -535,7 +558,7 @@ describe('Main Application Logic Tests', () => {
   describe('Draft Deletion Logic', () => {
     it('should validate ID parameter for draft deletion', () => {
       // Test the ID validation logic that would be used in the deleteDraft handler
-      const validateId = (id: any): boolean => {
+      const validateId = (id: unknown): boolean => {
         return id !== undefined && id !== null && typeof id === 'number' && id > 0;
       };
 

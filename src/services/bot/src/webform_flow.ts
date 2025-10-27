@@ -9,7 +9,7 @@
  * @since 2025
  */
 
-import { chromium, firefox, webkit, Browser, BrowserContext, Page } from 'playwright';
+import { chromium, firefox, webkit, Browser, BrowserContext, Page, Locator } from 'playwright';
 import * as cfg from './automation_config';
 import { botLogger } from '../../../shared/logger';
 
@@ -102,7 +102,7 @@ export class WebformFiller {
     } else {
       // Use specific channel if configured (e.g., 'chrome' for Chrome instead of Chromium)
       const channel = cfg.BROWSER_CHANNEL && cfg.BROWSER_CHANNEL !== 'chromium' ? cfg.BROWSER_CHANNEL : undefined;
-      const launchOptions: any = {
+      const launchOptions: Record<string, unknown> = {
         headless: this.headless,
         args: [
           '--no-sandbox', 
@@ -126,7 +126,7 @@ export class WebformFiller {
         ]
       };
       if (channel) {
-        launchOptions.channel = channel;
+        launchOptions['channel'] = channel;
       }
       botLogger.verbose('Browser launch options', { channel, headless: this.headless });
       this.browser = await chromium.launch(launchOptions);
@@ -289,9 +289,12 @@ export class WebformFiller {
    * @returns Promise that resolves when field is filled
    * @throws Error if field locator is missing or field doesn't become visible
    */
-  async inject_field_value(spec: Record<string, any>, value: string): Promise<void> {
-    const locatorSel = spec?.['locator'];
-    const fieldName = spec?.['label'] ?? 'Unknown Field';
+  async inject_field_value(spec: Record<string, unknown>, value: string): Promise<void> {
+    const fieldName = String(spec?.['label'] ?? 'Unknown Field');
+    const locatorSel = spec?.['locator'] as string;
+    if (!locatorSel) {
+      throw new Error(`Field locator is missing for field: ${fieldName}`);
+    }
     const fieldType = spec?.['type'] ?? 'text';
     
     botLogger.verbose('Injecting field value', { 
@@ -341,7 +344,7 @@ export class WebformFiller {
     await field.fill(String(value));
 
       // Handle dropdown/combobox fields for SmartSheets
-    if (this._is_dropdown_field(spec, field)) {
+    if (await this._is_dropdown_field(spec, field)) {
         botLogger.info('Handling dropdown field with SmartSheets navigation', { fieldName });
         await this._handle_smartsheets_dropdown(field, fieldName);
       }
@@ -586,7 +589,7 @@ export class WebformFiller {
    * @param field - Field locator for checking attributes
    * @returns True if field is identified as a dropdown, false otherwise
    */
-  private _is_dropdown_field(spec: Record<string, any>, field: any): boolean {
+  private async _is_dropdown_field(spec: Record<string, unknown>, field: Locator): Promise<boolean> {
     // Check field name patterns that are known dropdowns
     const fieldName = String(spec?.['label'] ?? '').toLowerCase();
     const dropdownFields = ['project', 'tool', 'detail charge code'];
@@ -597,13 +600,13 @@ export class WebformFiller {
     
     // Check HTML attributes that indicate dropdown behavior
     try {
-      const role = field.getAttribute?.('role');
+      const role = await field.getAttribute('role');
       if (role && ['combobox', 'listbox'].includes(role)) {
         return true;
       }
       
       // Check for aria-haspopup which indicates dropdown
-      const haspopup = field.getAttribute?.('aria-haspopup');
+      const haspopup = await field.getAttribute('aria-haspopup');
       if (haspopup && ['listbox', 'menu', 'true'].includes(haspopup)) {
         return true;
       }
@@ -620,10 +623,10 @@ export class WebformFiller {
    * @param field - Field locator element
    * @param fieldName - Name of the field for logging
    */
-  private async _handle_smartsheets_dropdown(field: any, fieldName: string): Promise<void> {
+  private async _handle_smartsheets_dropdown(field: Locator, fieldName: string): Promise<void> {
     try {
       // Wait for dropdown options to populate after typing (with fallback)
-      const dropdownSelector = await field.getAttribute('id') || await field.evaluate((el: any) => el.getAttribute('data-testid')) || 'input';
+      const dropdownSelector = await field.getAttribute('id') || await field.evaluate((el: { getAttribute: (attr: string) => string | null }) => el.getAttribute('data-testid')) || 'input';
       await cfg.wait_for_dropdown_options(this.require_page(), `#${dropdownSelector}`);
       
       // Press Down Arrow to select the first filtered option
@@ -682,12 +685,12 @@ export class WebformFiller {
    * @param field - Field locator element
    * @param fieldName - Name of the field for logging
    */
-  private async _check_field_validation_errors(field: any, fieldName: string): Promise<void> {
+  private async _check_field_validation_errors(field: Locator, fieldName: string): Promise<void> {
     try {
       const page = this.require_page();
       
       // Wait briefly for validation state to stabilize, but proceed if no activity
-      const fieldId = await field.getAttribute('id') || await field.evaluate((el: any) => el.getAttribute('data-testid')) || 'input';
+      const fieldId = await field.getAttribute('id') || await field.evaluate((el: { getAttribute: (attr: string) => string | null }) => el.getAttribute('data-testid')) || 'input';
       await cfg.wait_for_validation_stability(this.require_page(), `#${fieldId}`);
       
       // Look for common validation error patterns

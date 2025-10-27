@@ -77,7 +77,7 @@ export class BotOrchestrator {
     }
     this.cfg = injected_config;
     this.headless = headless === null ? Cfg.BROWSER_HEADLESS : Boolean(headless);
-    this.browser_kind = browser ?? (this.cfg as any).BROWSER ?? 'chromium';
+    this.browser_kind = browser ?? (this.cfg as Record<string, unknown>)['BROWSER'] as string ?? 'chromium';
     this.progress_callback = progress_callback;
     this.formConfig = formConfig;
     this.webform_filler = new WebformFiller(this.cfg, this.headless, this.browser_kind, this.formConfig);
@@ -106,7 +106,7 @@ export class BotOrchestrator {
    * @param creds - Tuple containing [email, password] for authentication
    * @returns Promise resolving to [success, submitted_indices, errors] tuple
    */
-  async run_automation(df: Array<Record<string, any>>, creds: [string, string]): Promise<[boolean, number[], Array<[number,string]>]> {
+  async run_automation(df: Array<Record<string, unknown>>, creds: [string, string]): Promise<[boolean, number[], Array<[number,string]>]> {
     const result = await this._run_automation_internal(df, creds);
     return [result.success, result.submitted_indices, result.errors];
   }
@@ -159,7 +159,7 @@ export class BotOrchestrator {
    * @param fields - Object containing field values
    * @returns True if field should be processed, false otherwise
    */
-  private _should_process_field(field_key: string, fields: Record<string, any>): boolean {
+  private _should_process_field(field_key: string, fields: Record<string, unknown>): boolean {
     const fieldValue = fields[field_key];
     if (fieldValue === null || fieldValue === undefined) {
       return false;
@@ -198,7 +198,7 @@ export class BotOrchestrator {
    * @param creds - Authentication credentials [email, password]
    * @returns Promise resolving to detailed automation results
    */
-  private async _run_automation_internal(df: Array<Record<string, any>>, creds: [string, string]): Promise<AutomationResult> {
+  private async _run_automation_internal(df: Array<Record<string, unknown>>, creds: [string, string]): Promise<AutomationResult> {
     const [email, password] = creds;
     const submitted: number[] = [];
     const failed_rows: Array<[number, string]> = [];
@@ -215,8 +215,8 @@ export class BotOrchestrator {
       botLogger.info('Login complete', { progress: 20 });
       this.progress_callback?.(20, 'Login complete');
 
-      const status_col = (this.cfg as any).STATUS_COLUMN_NAME ?? 'Status';
-      const complete_val = (this.cfg as any).STATUS_COMPLETE ?? 'Complete';
+      const status_col = ((this.cfg as Record<string, unknown>)['STATUS_COLUMN_NAME'] as string) ?? 'Status';
+      const complete_val = (this.cfg as Record<string, unknown>)['STATUS_COMPLETE'] ?? 'Complete';
       botLogger.info('Processing rows', { totalRows: total_rows, statusColumn: status_col, completeValue: complete_val });
 
       for (let i = 0; i < df.length; i++) {
@@ -225,7 +225,7 @@ export class BotOrchestrator {
         if (!row) continue;
         try {
           // Skip completed rows
-          if (status_col in row && String(row[status_col] ?? '').trim() === complete_val) {
+          if (status_col in row && String(row[status_col as string] ?? '').trim() === complete_val) {
             const progress = 20 + Math.floor(60 * (i+1) / total_rows);
             botLogger.verbose('Skipping completed row', { rowIndex: i+1, totalRows: total_rows, progress });
             this.progress_callback?.(progress, `Skipping completed row ${i+1}`);
@@ -331,8 +331,8 @@ export class BotOrchestrator {
           botLogger.info('Row completed successfully', { rowIndex: idx });
           
           this.progress_callback?.(20 + Math.floor(60 * (i+1) / total_rows), `Completed row ${i+1}`);
-        } catch (e: any) {
-          const errorMsg = String(e?.message ?? e);
+        } catch (e: unknown) {
+          const errorMsg = String((e as Error)?.message ?? e);
           botLogger.error('Row processing encountered error', { rowIndex: idx, error: errorMsg });
           
           failed_rows.push([idx, errorMsg]);
@@ -366,11 +366,11 @@ export class BotOrchestrator {
         success_count: submitted.length,
         failure_count: failed_rows.length,
       };
-    } catch (e: any) {
+    } catch (e: unknown) {
       return {
         success: false,
         submitted_indices: [],
-        errors: [[-1, `Automation failed: ${String(e?.message ?? e)}`]],
+        errors: [[-1, `Automation failed: ${String((e as Error)?.message ?? e)}`]],
         total_rows,
         success_count: 0,
         failure_count: total_rows,
@@ -384,8 +384,8 @@ export class BotOrchestrator {
    * @param row - Data row containing column label -> value mappings
    * @returns Object with field keys mapped to their values
    */
-  private _build_fields_from_row(row: Record<string, any>): Record<string, any> {
-    const fields: Record<string, any> = {};
+  private _build_fields_from_row(row: Record<string, unknown>): Record<string, unknown> {
+    const fields: Record<string, unknown> = {};
     for (const key of Cfg.FIELD_ORDER) {
       const spec = Cfg.FIELD_DEFINITIONS[key];
       if (!spec) continue;
@@ -402,15 +402,15 @@ export class BotOrchestrator {
    * @param fields - Object containing field keys and their values
    * @returns Promise that resolves when all fields are filled
    */
-  private async _fill_fields(fields: Record<string, any>): Promise<void> {
+  private async _fill_fields(fields: Record<string, unknown>): Promise<void> {
     botLogger.verbose('Processing fields for form filling', { fieldCount: Object.keys(fields).length, fields });
     
     for (const [field_key, value] of Object.entries(fields)) {
-      let specBase: Record<string, any> | undefined;
+      let specBase: Record<string, unknown> | undefined;
       try {
         botLogger.debug('Processing field', { fieldKey: field_key, value });
         
-        specBase = Cfg.FIELD_DEFINITIONS[field_key];
+        specBase = Cfg.FIELD_DEFINITIONS[field_key] as unknown as Record<string, unknown>;
         if (!specBase) {
           botLogger.debug('Skipping field', { fieldKey: field_key, reason: 'No specification found' });
           continue;
@@ -478,7 +478,7 @@ export class BotOrchestrator {
    * @param _idx - Row index (unused but kept for interface consistency)
    * @returns True if all required fields are valid, false otherwise
    */
-  private _validate_required_fields(fields: Record<string, any>, _idx: number): boolean {
+  private _validate_required_fields(fields: Record<string, unknown>, _idx: number): boolean {
     for (const field_key of ['hours','project_code','date']) {
       if (!(field_key in fields)) return false;
       const v = fields[field_key];

@@ -1,27 +1,27 @@
 import { describe, it, expect } from 'vitest';
-import * as Cfg from '../src/automation_config';
-import { BotOrchestrator } from '../src/bot_orchestation';
+import * as Cfg from '../../../src/services/bot/src/automation_config';
+import { BotOrchestrator } from '../../../src/services/bot/src/bot_orchestation';
 
 describe('BotOrchestrator small logic', () => {
   it('validate required fields logic', async () => {
-    const bot = new BotOrchestrator(Cfg as any, true, 'chromium');
+    const bot = new BotOrchestrator(Cfg as typeof Cfg, true, 'chromium');
     // @ts-ignore access private for test via any
-    const ok1 = (bot as any)._validate_required_fields({ hours: 1, project_code: 'P', date: '01/01/2025' }, 0);
+    const ok1 = (bot as Record<string, unknown>)._validate_required_fields({ hours: 1, project_code: 'P', date: '01/01/2025' }, 0);
     expect(ok1).toBe(true);
     // missing project_code
-    const ok2 = (bot as any)._validate_required_fields({ hours: 1, date: '01/01/2025' }, 0);
+    const ok2 = (bot as Record<string, unknown>)._validate_required_fields({ hours: 1, date: '01/01/2025' }, 0);
     expect(ok2).toBe(false);
   });
 
   it('project-specific tool locator resolution', async () => {
-    const bot = new BotOrchestrator(Cfg as any, true, 'chromium');
+    const bot = new BotOrchestrator(Cfg as typeof Cfg, true, 'chromium');
     // @ts-ignore private
-    const selKnown = (bot as any).get_project_specific_tool_locator('OSC-BBB');
+    const selKnown = (bot as Record<string, unknown>).get_project_specific_tool_locator('OSC-BBB');
     expect(typeof selKnown === 'string' || selKnown === null).toBe(true);
   });
 
   it('should return error when run_automation is called without start()', async () => {
-    const bot = new BotOrchestrator(Cfg as any, true, 'chromium');
+    const bot = new BotOrchestrator(Cfg as typeof Cfg, true, 'chromium');
     
     // Attempt to run automation without calling start() first
     const testRows = [
@@ -43,7 +43,7 @@ describe('BotOrchestrator small logic', () => {
   }, 30000); // 30 second timeout for DOM-based waits
 
   it('should work when start() is called before run_automation()', async () => {
-    const bot = new BotOrchestrator(Cfg as any, true, 'chromium');
+    const bot = new BotOrchestrator(Cfg as typeof Cfg, true, 'chromium');
     
     try {
       // Start the browser first

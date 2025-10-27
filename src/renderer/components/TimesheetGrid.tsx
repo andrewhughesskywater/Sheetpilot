@@ -384,6 +384,11 @@ const TimesheetGrid: React.FC<TimesheetGridProps> = ({ onChange }) => {
   const autosaveRow = useCallback(async (row: TimesheetRow) => {
     if (!row.date || !row.timeIn || !row.timeOut || !row.project || !row.taskDescription) return;
     
+    if (!window.timesheet?.saveDraft) {
+      console.warn('[TimesheetGrid] Autosave skipped - timesheet API not available');
+      return;
+    }
+    
     try {
       const result = await window.timesheet.saveDraft({
         id: row.id,
@@ -625,16 +630,35 @@ const TimesheetGrid: React.FC<TimesheetGridProps> = ({ onChange }) => {
     console.log('[TimesheetGrid] Setting processing state to true');
     setIsProcessing(true);
     try {
+      if (!window.timesheet?.submit) {
+        const errorMsg = '❌ Timesheet API not available';
+        window.logger?.warn('[TimesheetGrid] Submit not available');
+        window.alert(errorMsg);
+        return;
+      }
+      
       console.log('[TimesheetGrid] Calling window.timesheet.submit()');
       window.logger?.info('[TimesheetGrid] Starting timesheet submission');
       const res = await window.timesheet.submit();
       console.log('[TimesheetGrid] Received response:', res);
+      console.log('[TimesheetGrid] Full submitResult:', JSON.stringify(res.submitResult, null, 2));
       
       if (res.error) {
         const errorMsg = `❌ Submission failed: ${res.error}`;
         console.error('[TimesheetGrid] Timesheet submission error:', res.error);
         window.logger?.error('Timesheet submission failed', { error: res.error });
-        alert(errorMsg);
+        window.alert(errorMsg);
+        return;
+      }
+      
+      // Check if submission was successful
+      if (res.submitResult && !res.submitResult.ok) {
+        console.log('[TimesheetGrid] Detailed submission result:', JSON.stringify(res.submitResult, null, 2));
+        const submitResultAny = res.submitResult as any;
+        const errorMsg = `❌ Submission failed: ${res.submitResult.successCount}/${res.submitResult.totalProcessed} entries processed, ${res.submitResult.removedCount} failed. Error: ${submitResultAny.error || 'Unknown error'}`;
+        console.error('[TimesheetGrid] Timesheet submission failed:', res.submitResult);
+        window.logger?.error('Timesheet submission failed', { submitResult: res.submitResult });
+        window.alert(errorMsg);
         return;
       }
       
@@ -642,7 +666,7 @@ const TimesheetGrid: React.FC<TimesheetGridProps> = ({ onChange }) => {
         `✅ Submitted ${res.submitResult.successCount}/${res.submitResult.totalProcessed} entries to SmartSheet` : 
         '✅ No pending entries to submit';
       window.logger?.info(submitMsg);
-      alert(submitMsg);
+      window.alert(submitMsg);
       
       // Refresh data if entries were submitted - use requestAnimationFrame to avoid blocking
       if (res.submitResult && res.submitResult.successCount > 0) {
@@ -656,7 +680,7 @@ const TimesheetGrid: React.FC<TimesheetGridProps> = ({ onChange }) => {
       const errorMsg = `❌ Unexpected error during submission: ${error instanceof Error ? error.message : String(error)}`;
       console.error('[TimesheetGrid] Unexpected error during submission:', error);
       window.logger?.error('Unexpected error during submission', { error: error instanceof Error ? error.message : String(error) });
-      alert(errorMsg);
+      window.alert(errorMsg);
     } finally {
       setIsProcessing(false);
     }
@@ -747,17 +771,12 @@ const TimesheetGrid: React.FC<TimesheetGridProps> = ({ onChange }) => {
           startIcon={isProcessing ? <CircularProgress size={20} color="inherit" /> : <PlayArrowIcon />}
           onClick={() => {
             console.log('[TimesheetGrid] Button onClick fired, isProcessing:', isProcessing);
-            alert(`Button clicked! isProcessing: ${isProcessing}, IPC available: ${typeof window.timesheet?.submit === 'function'}`);
             submitTimesheet();
           }}
           disabled={isProcessing}
         >
           {isProcessing ? 'Submitting...' : 'Submit Timesheet'}
         </Button>
-        {/* Debug state display */}
-        <div className="debug-state-display">
-          Debug: isProcessing = {String(isProcessing)} | IPC: {typeof window.timesheet?.submit === 'function' ? 'OK' : 'FAIL'}
-        </div>
       </div>
       <HotTable
         ref={hotTableRef}

@@ -1,14 +1,14 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import * as Cfg from '../src/automation_config';
-import { BotOrchestrator } from '../src/bot_orchestation';
+import * as Cfg from '../../../src/services/bot/src/automation_config';
+import { BotOrchestrator } from '../../../src/services/bot/src/bot_orchestation';
 
 class FakeFiller {
   submitSequence: boolean[];
   submissions: number = 0;
   constructor(seq: boolean[]) { this.submitSequence = seq; }
   async wait_for_form_ready(): Promise<void> { /* no-op */ }
-  async inject_field_value(_spec: Record<string, any>, _v: string): Promise<void> { /* no-op */ }
-  require_page(): any { 
+  async inject_field_value(_spec: Record<string, unknown>, _v: string): Promise<void> { /* no-op */ }
+  require_page(): { waitForTimeout: (ms: number) => Promise<void> } { 
     return {
       waitForTimeout: async (_ms: number) => { /* no-op */ }
     }; 
@@ -31,11 +31,11 @@ function buildBotWithFakes(submitSeq: boolean[]) {
   process.env['TIME_KNIGHT_SUBMIT_RETRY_ATTEMPTS'] = '2';
   process.env['TIME_KNIGHT_SUBMIT'] = '1';
 
-  const bot = new BotOrchestrator(Cfg as any, true, 'chromium');
+  const bot = new BotOrchestrator(Cfg as typeof Cfg, true, 'chromium');
   // @ts-ignore override collaborators for isolated testing
-  (bot as any).webform_filler = new FakeFiller(submitSeq);
+  (bot as Record<string, unknown>).webform_filler = new FakeFiller(submitSeq);
   // @ts-ignore override login
-  (bot as any).login_manager = new FakeLoginManager();
+  (bot as Record<string, unknown>).login_manager = new FakeLoginManager();
   return bot;
 }
 

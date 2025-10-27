@@ -104,7 +104,7 @@ Configuration files:
 
 - `package.json`: Application metadata and build configuration
 - `tsconfig.json`: TypeScript configuration
-- `vitest.config.ts`: Test configuration
+- `__tests__/vitest.config.ts`: Test configuration
 - `eslint.config.js`: ESLint configuration
 
 ## Antivirus Compatibility

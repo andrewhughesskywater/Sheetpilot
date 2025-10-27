@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain, screen } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import * as path from 'path';
+import * as fs from 'fs';
 import {
   setDbPath,
   ensureSchema,
@@ -78,10 +79,9 @@ function getWindowState(): WindowState {
 async function restoreWindowState(window: BrowserWindow): Promise<void> {
   try {
     const userDataPath = app.getPath('userData');
-    const fs = require('fs').promises;
     const windowStatePath = path.join(userDataPath, 'window-state.json');
     
-    const data = await fs.readFile(windowStatePath, 'utf8');
+    const data = await fs.promises.readFile(windowStatePath, 'utf8');
     const savedState = JSON.parse(data);
     
     // Validate saved state and ensure it's within screen bounds
@@ -123,7 +123,6 @@ function saveWindowState() {
   
   try {
     const userDataPath = app.getPath('userData');
-    const fs = require('fs');
     const windowStatePath = path.join(userDataPath, 'window-state.json');
     
     const bounds = mainWindow.getBounds();
@@ -315,11 +314,11 @@ function createWindow() {
   });
 
   // Add error handling for failed loads
-  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+  mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
     console.error('Failed to load:', validatedURL);
     console.error('Error code:', errorCode);
     console.error('Error description:', errorDescription);
-    appLogger.error('Failed to load renderer', { errorCode, errorDescription, validatedURL });
+    appLogger.error('Could not load renderer', { errorCode, errorDescription, validatedURL });
   });
 
   // Add success logging
@@ -355,7 +354,7 @@ function createWindow() {
   });
 
   // Check if we're in development mode by trying to connect to Vite dev server
-  const isDev = process.env.NODE_ENV === 'development' || process.env.ELECTRON_IS_DEV === '1';
+  const isDev = process.env['NODE_ENV'] === 'development' || process.env['ELECTRON_IS_DEV'] === '1';
   if (isDev) {
     console.log('Loading development URL: http://localhost:5173');
     mainWindow.loadURL('http://localhost:5173');
@@ -364,7 +363,7 @@ function createWindow() {
     // __dirname is 'build/dist/main', so go up to project root
     const htmlPath = path.join(__dirname, '..', '..', '..', 'src', 'renderer', 'dist', 'index.html');
     console.log('Loading production HTML from:', htmlPath);
-    console.log('File exists:', require('fs').existsSync(htmlPath));
+    console.log('File exists:', fs.existsSync(htmlPath));
     mainWindow.loadFile(htmlPath);
   }
 }
@@ -406,6 +405,16 @@ export function registerIPCHandlers() {
       // Submit pending data from database
       const submitResult = await submitTimesheets(credentials.email, credentials.password);
       console.log('[Main] submitTimesheets completed:', submitResult);
+      
+      // Check if submission was successful
+      if (!submitResult.ok) {
+        ipcLogger.warn('Timesheet submission failed', { 
+          submitResult,
+          successCount: submitResult.successCount,
+          removedCount: submitResult.removedCount,
+          totalProcessed: submitResult.totalProcessed
+        });
+      }
       
       ipcLogger.info('Timesheet submission completed successfully', { 
         submitResult,
@@ -624,7 +633,6 @@ export function registerIPCHandlers() {
   ipcMain.handle('logs:getLogPath', async () => {
     try {
       const userDataPath = app.getPath('userData');
-      const fs = require('fs');
       const logFiles = fs.readdirSync(userDataPath).filter((file: string) => file.startsWith('sheetpilot_') && file.endsWith('.log'));
       
       if (logFiles.length === 0) {
@@ -645,7 +653,6 @@ export function registerIPCHandlers() {
   // Handler for reading log file contents
   ipcMain.handle('logs:readLogFile', async (_event, logPath: string) => {
     try {
-      const fs = require('fs');
       const logContent = fs.readFileSync(logPath, 'utf8');
       const lines = logContent.split('\n').filter((line: string) => line.trim() !== '');
       
@@ -669,7 +676,6 @@ export function registerIPCHandlers() {
   // Handler for exporting logs
   ipcMain.handle('logs:exportLogs', async (_event, logPath: string, exportFormat: 'json' | 'txt' = 'txt') => {
     try {
-      const fs = require('fs');
       const logContent = fs.readFileSync(logPath, 'utf8');
       
       if (exportFormat === 'json') {

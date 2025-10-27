@@ -5,9 +5,17 @@ import CssBaseline from '@mui/material/CssBaseline'
 import './index.css'
 import App from './App.tsx'
 import { initializeDevelopmentOptimizations } from './dev-performance-suppressor'
+import { initializeLoggerFallback } from './utils/logger-fallback'
+import { initializeAPIFallback } from './utils/api-fallback'
 
 // Initialize development optimizations first
 initializeDevelopmentOptimizations();
+
+// Initialize logger fallback for development mode
+initializeLoggerFallback();
+
+// Initialize API fallbacks for development mode
+initializeAPIFallback();
 
 // Global error handlers for renderer process
 window.addEventListener('error', (event) => {
@@ -44,7 +52,7 @@ window.addEventListener('DOMContentLoaded', () => {
     window.logger.info('Renderer process loaded');
     
     // Development-only React DevTools recommendation
-    if (process.env.NODE_ENV === 'development') {
+    if (import.meta.env.DEV) {
       window.logger.info('React DevTools available', {
         message: 'For enhanced development experience, install React DevTools browser extension',
         url: 'https://react.dev/link/react-devtools'

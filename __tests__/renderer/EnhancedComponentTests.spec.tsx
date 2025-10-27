@@ -9,7 +9,7 @@
  * @since 2025
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 
@@ -60,7 +60,7 @@ vi.mock('@handsontable/react-wrapper', async () => {
   const React = await import('react');
   
   // Create a simple mock component inside the factory
-  const MockHotTable = ({ colHeaders, data, afterChange }: any) => {
+  const MockHotTable = ({ colHeaders, data, afterChange }: { colHeaders: string[]; data: unknown[][]; afterChange: (changes: unknown) => void }) => {
     return React.createElement('div', {
       'data-testid': 'timesheet-grid',
       'data-col-headers': JSON.stringify(colHeaders),
@@ -90,6 +90,11 @@ describe('Enhanced Component Tests', () => {
     vi.clearAllMocks();
   });
 
+  afterEach(() => {
+    // Clear the DOM after each test to prevent multiple elements
+    document.body.innerHTML = '';
+  });
+
   describe('TimesheetGrid Component Integration', () => {
     it('should render with correct column headers', () => {
       const mockProps = {
@@ -117,8 +122,9 @@ describe('Enhanced Component Tests', () => {
 
       render(<HotTable {...mockProps} />);
 
-      const grid = screen.getByTestId('timesheet-grid');
-      fireEvent.click(grid);
+      const grids = screen.getAllByTestId('timesheet-grid');
+      // Use the first grid
+      fireEvent.click(grids[0]);
 
       expect(mockAfterChange).toHaveBeenCalledWith([
         ['0', 'project', '', 'Test Project'],
@@ -135,15 +141,16 @@ describe('Enhanced Component Tests', () => {
 
       render(<HotTable {...mockProps} />);
 
-      const grid = screen.getByTestId('timesheet-grid');
-      const initialData = JSON.parse(grid.getAttribute('data-initial-data') || '[]');
+      const grids = screen.getAllByTestId('timesheet-grid');
+      // Use the first grid
+      const initialData = JSON.parse(grids[0].getAttribute('data-initial-data') || '[]');
       expect(initialData).toEqual([{}]);
     });
   });
 
   describe('Data Validation Logic', () => {
     it('should validate required fields correctly', () => {
-      const validateRequiredFields = (row: any) => {
+      const validateRequiredFields = (row: Record<string, unknown>) => {
         const errors: string[] = [];
         if (!row.date) errors.push('Date is required');
         if (!row.timeIn) errors.push('Start Time is required');
@@ -294,7 +301,7 @@ describe('Enhanced Component Tests', () => {
     });
 
     it('should handle cascading field updates', () => {
-      const updateRowForProjectChange = (row: any, newProject: string) => {
+      const updateRowForProjectChange = (row: Record<string, unknown>, newProject: string) => {
         const projectsWithoutTools = ["ERT", "PTO/RTO", "SWFL-CHEM/GAS", "Training"];
         
         if (projectsWithoutTools.includes(newProject)) {
@@ -314,7 +321,7 @@ describe('Enhanced Component Tests', () => {
         };
       };
 
-      const updateRowForToolChange = (row: any, newTool: string) => {
+      const updateRowForToolChange = (row: Record<string, unknown>, newTool: string) => {
         const toolsWithoutCharges = ["Internal Meeting", "DECA Meeting", "Logistics", "Meeting", "Non Tool Related", "Admin", "Training"];
         
         if (toolsWithoutCharges.includes(newTool)) {
@@ -404,7 +411,16 @@ describe('Enhanced Component Tests', () => {
     it('should handle IPC errors gracefully', async () => {
       mockTimesheet.saveDraft.mockRejectedValue(new Error('Database connection failed'));
 
-      const saveDraft = async (row: any) => {
+      const saveDraft = async (row: {
+        id?: number;
+        date: string;
+        timeIn: string;
+        timeOut: string;
+        project: string;
+        tool?: string | null;
+        chargeCode?: string | null;
+        taskDescription: string;
+      }) => {
         try {
           return await window.timesheet.saveDraft(row);
         } catch (error) {
@@ -430,7 +446,7 @@ describe('Enhanced Component Tests', () => {
 
   describe('Data Normalization', () => {
     it('should normalize trailing blank rows', () => {
-      const normalizeTrailingBlankRows = (rows: any[]) => {
+      const normalizeTrailingBlankRows = (rows: Record<string, unknown>[]) => {
         let lastNonEmptyIndex = -1;
         
         // Find the last non-empty row
@@ -462,20 +478,20 @@ describe('Enhanced Component Tests', () => {
     });
 
     it('should normalize N/A fields to null', () => {
-      const normalizeRowData = (row: any) => {
+      const normalizeRowData = (row: Record<string, unknown>) => {
         const projectsWithoutTools = ["ERT", "PTO/RTO", "SWFL-CHEM/GAS", "Training"];
         const toolsWithoutCharges = ["Internal Meeting", "DECA Meeting", "Logistics", "Meeting", "Non Tool Related", "Admin", "Training"];
         
         const normalized = { ...row };
         
         // If project doesn't need tools, clear tool and chargeCode
-        if (projectsWithoutTools.includes(normalized.project)) {
+        if (projectsWithoutTools.includes(normalized.project as string)) {
           normalized.tool = null;
           normalized.chargeCode = null;
         }
         
         // If tool doesn't need charge codes, clear chargeCode
-        if (toolsWithoutCharges.includes(normalized.tool)) {
+        if (toolsWithoutCharges.includes(normalized.tool as string)) {
           normalized.chargeCode = null;
         }
         
@@ -516,7 +532,7 @@ describe('Enhanced Component Tests', () => {
 
   describe('User Experience Features', () => {
     it('should provide user-friendly error messages', () => {
-      const getErrorMessage = (field: string, value: any): string | null => {
+      const getErrorMessage = (field: string, value: string): string | null => {
         const messages: Record<string, string | null> = {
           date: value ? 'Date must be like 2025-01-15' : 'Please enter a date',
           timeIn: value ? 'Time must be like 09:00 and in 15 minute steps' : 'Please enter start time',

@@ -36,7 +36,7 @@ export * from './quarter_config';
  * @returns Promise with automation results
  */
 export async function runTimesheet(
-  rows: Array<Record<string, any>>, 
+  rows: Array<Record<string, unknown>>, 
   email: string, 
   password: string,
   formConfig: { BASE_URL: string; FORM_ID: string; SUBMISSION_ENDPOINT: string; SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[] }
@@ -48,10 +48,24 @@ export async function runTimesheet(
   const bot = new BotOrchestrator(Cfg, false, null, undefined, formConfig); // Set headless to false to show browser
   
   try {
-    // Initialize the browser before running automation
-    await bot.start();
+    // Handle empty rows array - should succeed immediately
+    if (rows.length === 0) {
+      console.log('[Bot] No rows to process, returning success');
+      return {
+        ok: true,
+        submitted: [],
+        errors: []
+      };
+    }
     
+    // Initialize the browser before running automation
+    console.log('[Bot] Starting browser initialization...');
+    await bot.start();
+    console.log('[Bot] Browser started successfully');
+    
+    console.log('[Bot] Starting automation with', rows.length, 'rows');
     const [success, submitted_indices, errors] = await bot.run_automation(rows, [email, password]);
+    console.log('[Bot] Automation completed:', { success, submittedCount: submitted_indices.length, errorCount: errors.length });
     
     return {
       ok: success,
@@ -59,15 +73,15 @@ export async function runTimesheet(
       errors: errors
     };
   } catch (error) {
-    return {
-      ok: false,
-      submitted: [],
-      errors: [[-1, error instanceof Error ? error.message : 'Unknown error']]
-    };
+    console.error('[Bot] Error during automation:', error);
+    // Re-throw the error so it can be properly handled by the calling code
+    throw error;
   } finally {
     // Always clean up the browser, even if automation fails
     try {
+      console.log('[Bot] Closing browser...');
       await bot.close();
+      console.log('[Bot] Browser closed successfully');
     } catch (closeError) {
       // Log but don't throw - we don't want cleanup errors to mask the real error
       console.error('Error closing bot browser:', closeError);
