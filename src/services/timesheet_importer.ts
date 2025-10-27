@@ -133,7 +133,7 @@ export async function submitTimesheets(email: string, password: string): Promise
     console.log('[SubmitTimesheets] Entry dates:', entries.map(e => ({ id: e.id, date: e.date })));
     
     // Get the active submission service from the plugin system
-    const submissionService = getSubmissionService() as any;
+    const submissionService = getSubmissionService<import('../shared/contracts/ISubmissionService').ISubmissionService>();
     console.log('[SubmitTimesheets] Retrieved submission service:', {
         hasService: !!submissionService,
         serviceName: submissionService?.metadata?.name,

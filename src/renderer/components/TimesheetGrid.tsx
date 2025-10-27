@@ -654,8 +654,8 @@ const TimesheetGrid: React.FC<TimesheetGridProps> = ({ onChange }) => {
       // Check if submission was successful
       if (res.submitResult && !res.submitResult.ok) {
         console.log('[TimesheetGrid] Detailed submission result:', JSON.stringify(res.submitResult, null, 2));
-        const submitResultAny = res.submitResult as any;
-        const errorMsg = `❌ Submission failed: ${res.submitResult.successCount}/${res.submitResult.totalProcessed} entries processed, ${res.submitResult.removedCount} failed. Error: ${submitResultAny.error || 'Unknown error'}`;
+        const submitResult = res.submitResult as { ok: boolean; successCount: number; removedCount: number; totalProcessed: number; error?: string };
+        const errorMsg = `❌ Submission failed: ${res.submitResult.successCount}/${res.submitResult.totalProcessed} entries processed, ${res.submitResult.removedCount} failed. Error: ${submitResult.error || 'Unknown error'}`;
         console.error('[TimesheetGrid] Timesheet submission failed:', res.submitResult);
         window.logger?.error('Timesheet submission failed', { submitResult: res.submitResult });
         window.alert(errorMsg);
