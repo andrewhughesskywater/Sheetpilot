@@ -39,17 +39,9 @@ function formatMinutesToTime(minutes: number): string {
   return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
 }
 
-function isDateInCurrentQuarter(dateStr: string): boolean {
-  const date = new Date(dateStr);
-  const now = new Date();
-  
-  // Get current quarter (1-4)
-  const currentQuarter = Math.floor(now.getMonth() / 3) + 1;
-  const dateQuarter = Math.floor(date.getMonth() / 3) + 1;
-  
-  // Check if date is in current quarter and current year
-  return date.getFullYear() === now.getFullYear() && dateQuarter === currentQuarter;
-}
+// Note: isDateInCurrentQuarter removed
+// Quarter validation is now handled during submission routing, not at save time
+// This allows users to enter historical data from any quarter
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -768,10 +760,8 @@ export function registerIPCHandlers() {
         timeOutMinutes 
       });
       
-      // Validate date is in current quarter
-      if (!isDateInCurrentQuarter(row.date)) {
-        throw new Error(`Date ${row.date} is not in the current quarter`);
-      }
+      // Note: Quarter validation happens during submission routing, not at save time
+      // This allows users to enter historical data from any quarter
       
       // Validate times are 15-minute increments
       if (timeInMinutes % 15 !== 0 || timeOutMinutes % 15 !== 0) {
