@@ -46,11 +46,22 @@ interface LoginStep {
 // BASE CONFIGURATION
 // ============================================================================
 
-/** Base URL for the timesheet form */
-export const BASE_URL: string = process.env['TS_BASE_URL'] ?? "https://app.smartsheet.com/b/form/0197cbae7daf72bdb96b3395b500d414";
+/**
+ * DEPRECATED: Do not use BASE_URL constant directly.
+ * 
+ * The system now uses dynamic quarter-based form routing.
+ * Use createFormConfig() to create a proper form configuration.
+ * 
+ * @deprecated Use createFormConfig() or quarter_config instead
+ */
+export const BASE_URL: string = process.env['TS_BASE_URL'] ?? "DEPRECATED_USE_DYNAMIC_CONFIG";
 
 /**
  * Creates a configuration object with dynamic form URL and ID
+ * 
+ * This is the proper way to configure form URLs. The system uses quarter-based
+ * routing to automatically select the correct form based on entry dates.
+ * 
  * @param formUrl - The form URL to use
  * @param formId - The form ID to use
  * @returns Configuration object with dynamic values
@@ -151,16 +162,37 @@ export const SUBMIT_VERIFY_TIMEOUT_MS: number = Number(process.env['TIME_KNIGHT_
 export const SUBMIT_SUCCESS_MIN_STATUS: number = Number(process.env['TIME_KNIGHT_SUBMIT_MIN_STATUS'] ?? "200");
 /** Maximum HTTP status code considered successful for submission */
 export const SUBMIT_SUCCESS_MAX_STATUS: number = Number(process.env['TIME_KNIGHT_SUBMIT_MAX_STATUS'] ?? "299");
-/** URL patterns that indicate successful form submission */
+/**
+ * DEPRECATED: Do not use SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS constant directly.
+ * 
+ * The system now uses dynamic quarter-based form routing.
+ * URL patterns come from createFormConfig() or quarter_config.
+ * 
+ * @deprecated Use createFormConfig() or quarter_config instead
+ */
 export const SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[] = [
-  "**forms.smartsheet.com/api/submit/0197cbae7daf72bdb96b3395b500d414",
+  "**forms.smartsheet.com/api/submit/DEPRECATED",
   "**forms.smartsheet.com/**",
   "**app.smartsheet.com/**",
 ];
 
-/** Unique identifier for the timesheet form */
-export const FORM_ID = "0197cbae7daf72bdb96b3395b500d414";
-/** Full endpoint URL for form submission */
+/**
+ * DEPRECATED: Do not use FORM_ID constant directly.
+ * 
+ * The system now uses dynamic quarter-based form routing.
+ * Form IDs come from createFormConfig() or quarter_config.
+ * 
+ * @deprecated Use createFormConfig() or quarter_config instead
+ */
+export const FORM_ID = "DEPRECATED_USE_DYNAMIC_CONFIG";
+/**
+ * DEPRECATED: Do not use SUBMISSION_ENDPOINT constant directly.
+ * 
+ * The system now uses dynamic quarter-based form routing.
+ * Endpoints come from createFormConfig() or quarter_config.
+ * 
+ * @deprecated Use createFormConfig() or quarter_config instead
+ */
 export const SUBMISSION_ENDPOINT = `https://forms.smartsheet.com/api/submit/${FORM_ID}`;
 
 /** Whether to validate response content for submission success */

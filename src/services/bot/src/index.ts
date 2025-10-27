@@ -23,20 +23,23 @@ export { WebformFiller, BotNotStartedError } from './webform_flow';
 // Configuration constants and utilities
 export * from './automation_config';
 
+// Quarter configuration and routing
+export * from './quarter_config';
+
 /**
  * Simple interface function for running timesheet automation
  * 
  * @param rows - Array of timesheet rows to submit
  * @param email - Email for authentication
  * @param password - Password for authentication
- * @param formConfig - Optional form configuration for dynamic form URLs/IDs
+ * @param formConfig - Form configuration for dynamic form URLs/IDs (required)
  * @returns Promise with automation results
  */
 export async function runTimesheet(
   rows: Array<Record<string, any>>, 
   email: string, 
   password: string,
-  formConfig?: { BASE_URL: string; FORM_ID: string; SUBMISSION_ENDPOINT: string; SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[] }
+  formConfig: { BASE_URL: string; FORM_ID: string; SUBMISSION_ENDPOINT: string; SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[] }
 ): Promise<{
   ok: boolean;
   submitted: number[];

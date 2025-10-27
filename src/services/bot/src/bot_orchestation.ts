@@ -13,6 +13,7 @@ import * as Cfg from './automation_config';
 import { WebformFiller } from './webform_flow';
 import { LoginManager } from './authentication_flow';
 import { botLogger } from '../../../shared/logger';
+import { getQuarterForDate } from './quarter_config';
 
 /**
  * Result object returned after automation execution
@@ -62,25 +63,23 @@ export class BotOrchestrator {
    * @param headless - Whether to run browser in headless mode (default: true)
    * @param browser - Browser type to use (default: 'chromium')
    * @param progress_callback - Optional callback for progress updates
-   * @param formConfig - Optional dynamic form configuration
+   * @param formConfig - Dynamic form configuration (required)
    */
   constructor(
     injected_config: typeof Cfg,
     headless: boolean | null = true,
     browser: string | null = null,
     progress_callback?: (pct: number, msg: string) => void,
-    formConfig?: { BASE_URL: string; FORM_ID: string; SUBMISSION_ENDPOINT: string; SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[] }
+    formConfig: { BASE_URL: string; FORM_ID: string; SUBMISSION_ENDPOINT: string; SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[] }
   ) {
+    if (!formConfig) {
+      throw new Error('formConfig is required. Use createFormConfig() to create a valid form configuration.');
+    }
     this.cfg = injected_config;
     this.headless = headless === null ? Cfg.BROWSER_HEADLESS : Boolean(headless);
     this.browser_kind = browser ?? (this.cfg as any).BROWSER ?? 'chromium';
     this.progress_callback = progress_callback;
-    this.formConfig = formConfig || {
-      BASE_URL: Cfg.BASE_URL,
-      FORM_ID: Cfg.FORM_ID,
-      SUBMISSION_ENDPOINT: Cfg.SUBMISSION_ENDPOINT,
-      SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: Cfg.SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS
-    };
+    this.formConfig = formConfig;
     this.webform_filler = new WebformFiller(this.cfg, this.headless, this.browser_kind, this.formConfig);
     this.login_manager = new LoginManager(this.cfg, this.webform_filler);
   }
@@ -244,6 +243,28 @@ export class BotOrchestrator {
             botLogger.warn('Row skipped', { rowIndex: idx, reason: 'Missing required fields' });
             failed_rows.push([idx, 'Missing required fields']);
             continue;
+          }
+
+          // Validate that entry date matches the quarter of the configured form
+          if (fields.date) {
+            // Convert date from mm/dd/yyyy to yyyy-mm-dd for quarter validation
+            const dateStr = String(fields.date);
+            const [month, day, year] = dateStr.split('/');
+            // Pad month and day to ensure proper formatting
+            const isoDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+            const quarterDef = getQuarterForDate(isoDate);
+            
+            if (quarterDef && quarterDef.formId !== this.formConfig.FORM_ID) {
+              botLogger.error('Quarter mismatch detected', { 
+                rowIndex: idx, 
+                entryDate: fields.date,
+                entryQuarter: quarterDef.id,
+                configuredFormId: this.formConfig.FORM_ID,
+                expectedFormId: quarterDef.formId
+              });
+              failed_rows.push([idx, `Date ${fields.date} belongs to ${quarterDef.name} but form configured for different quarter`]);
+              continue;
+            }
           }
 
           // Ensure page stability using webform_filler

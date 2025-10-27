@@ -24,13 +24,20 @@ vi.mock('electron', () => {
   class BrowserWindow {
     public webContents: any;
     constructor(_opts: any) {
-      this.webContents = {};
+      this.webContents = {
+        on: vi.fn(),
+        once: vi.fn(),
+        send: vi.fn()
+      };
     }
     loadURL = vi.fn();
     loadFile = vi.fn();
     once = vi.fn();
     on = vi.fn();
     show = vi.fn();
+    maximize = vi.fn();
+    getBounds = vi.fn(() => ({ x: 0, y: 0, width: 1200, height: 800 }));
+    isMaximized = vi.fn(() => false);
   }
 
   const ipcMain = {
@@ -68,7 +75,13 @@ vi.mock('electron', () => {
     quit: vi.fn()
   };
 
-  return { app, BrowserWindow, ipcMain, dialog, shell };
+  const screen = {
+    getPrimaryDisplay: vi.fn(() => ({
+      workAreaSize: { width: 1920, height: 1080 }
+    }))
+  };
+
+  return { app, BrowserWindow, ipcMain, dialog, shell, screen };
 });
 
 // Mock backend modules used by main.ts
@@ -120,7 +133,7 @@ vi.mock('../src/shared/logger', () => {
 });
 
 // Import main.ts AFTER mocks so its side-effects (handler registration) use our stubs
-import { registerIPCHandlers } from '../main';
+import { registerIPCHandlers } from '../src/main/main';
 
 // Re-get typed references to mocked modules for assertions
 import * as db from '../src/services/database';

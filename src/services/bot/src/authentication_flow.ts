@@ -32,6 +32,8 @@ export class LoginManager {
   browser_manager: WebformFiller;
   /** Wait timeout in seconds for element operations */
   _wait_s: number;
+  /** Dynamic form configuration */
+  private formConfig: { BASE_URL: string; FORM_ID: string; SUBMISSION_ENDPOINT: string; SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[] };
 
   /**
    * Creates a new LoginManager instance
@@ -42,6 +44,8 @@ export class LoginManager {
     this.cfg = config;
     this.browser_manager = browser_manager;
     this._wait_s = Number(this.cfg.ELEMENT_WAIT_TIMEOUT ?? 10.0);
+    // Use the dynamic form configuration from WebformFiller
+    this.formConfig = browser_manager.formConfig;
   }
 
   /**
@@ -57,7 +61,7 @@ export class LoginManager {
    */
   async run_login_steps(email: string, password: string): Promise<void> {
     const timer = authLogger.startTimer('login-flow');
-    authLogger.info('Starting login process', { email, baseUrl: this.cfg.BASE_URL });
+    authLogger.info('Starting login process', { email, baseUrl: this.formConfig.BASE_URL });
     
     const max_navigation_retries = 3;
     let navigation_attempt = 0;
@@ -80,10 +84,10 @@ export class LoginManager {
         if (navigation_attempt >= max_navigation_retries) {
           authLogger.error('All navigation attempts failed', { 
             maxRetries: max_navigation_retries,
-            baseUrl: this.cfg.BASE_URL,
+            baseUrl: this.formConfig.BASE_URL,
             error: String(e) 
           });
-          throw new BotNavigationError(`Could not navigate to ${this.cfg.BASE_URL} after ${max_navigation_retries} attempts: ${String(e)}`);
+          throw new BotNavigationError(`Could not navigate to ${this.formConfig.BASE_URL} after ${max_navigation_retries} attempts: ${String(e)}`);
         }
         // Wait for page to be stable after navigation failure
         const page = this.browser_manager.require_page();
@@ -153,10 +157,10 @@ export class LoginManager {
   private async _navigate_to_base(page: Page, timeout_ms?: number): Promise<void> {
     const timeout = timeout_ms ?? this._wait_s * 1000;
     authLogger.verbose('Navigating to base URL', { 
-      baseUrl: this.cfg.BASE_URL,
+      baseUrl: this.formConfig.BASE_URL,
       timeoutMs: timeout 
     });
-    await page.goto(this.cfg.BASE_URL, { timeout });
+    await page.goto(this.formConfig.BASE_URL, { timeout });
   }
 
   /**

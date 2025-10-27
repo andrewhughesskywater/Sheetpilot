@@ -48,6 +48,14 @@ vi.mock('electron', () => {
     removeListener: vi.fn()
   };
 
+  const dialog = {
+    showOpenDialog: vi.fn()
+  };
+
+  const shell = {
+    openPath: vi.fn()
+  };
+
   return {
     app: {
       getPath: vi.fn((key: string) => (key === 'userData' ? 'C:/tmp/sheetpilot-userdata' : 'C:/tmp')),
@@ -68,12 +76,20 @@ vi.mock('electron', () => {
       }))
     },
     ipcMain,
+    dialog,
+    shell,
     BrowserWindow: vi.fn().mockImplementation(() => ({
+      webContents: {
+        on: vi.fn(),
+        once: vi.fn(),
+        send: vi.fn()
+      },
       loadURL: vi.fn(),
       loadFile: vi.fn(),
       once: vi.fn(),
       on: vi.fn(),
       show: vi.fn(),
+      maximize: vi.fn(),
       getBounds: vi.fn(() => ({ x: 0, y: 0, width: 1200, height: 800 })),
       isMaximized: vi.fn(() => false)
     }))
@@ -154,7 +170,7 @@ vi.mock('../src/shared/logger', () => ({
 }));
 
 // Import after mocks
-import { registerIPCHandlers } from '../main';
+import { registerIPCHandlers } from '../src/main/main';
 import * as db from '../src/services/database';
 import * as imp from '../src/services/timesheet_importer';
 
