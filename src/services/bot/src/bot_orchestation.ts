@@ -46,7 +46,7 @@ export class BotOrchestrator {
   cfg: typeof Cfg;
   /** Whether to run browser in headless mode */
   headless: boolean;
-  /** Type of browser to use (chromium, firefox, webkit) */
+  /** Type of browser to use (chromium only) */
   browser_kind: string;
   /** Webform filler instance for form interaction */
   webform_filler: WebformFiller;
@@ -62,7 +62,7 @@ export class BotOrchestrator {
    * @param injected_config - Configuration object for automation settings
    * @param formConfig - Dynamic form configuration (required)
    * @param headless - Whether to run browser in headless mode (default: true)
-   * @param browser - Browser type to use (default: 'chromium')
+   * @param browser - Browser type to use (must be 'chromium')
    * @param progress_callback - Optional callback for progress updates
    */
   constructor(

@@ -74,7 +74,7 @@ export function configureLogger() {
     // Set log levels for different transports
     // Reduce console noise in development while maintaining file logging
     log.transports.file.level = 'verbose';
-    log.transports.console.level = process.env['NODE_ENV'] === 'development' ? 'warn' : 'debug';
+    log.transports.console.level = process.env['NODE_ENV'] === 'development' ? (process.env['DEBUG_BROWSER'] === 'true' ? 'verbose' : 'info') : 'debug';
     
     // Configure LOCAL file transport with 15MB rotation limit
     const localLogPath = app ? app.getPath('userData') : process.cwd();

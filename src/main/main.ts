@@ -19,6 +19,18 @@ import {
   dbLogger,
   ipcLogger
 } from '../shared/logger';
+
+// CRITICAL: Configure Playwright BEFORE importing any modules that use it
+// This must happen before bootstrap-plugins, which imports PlaywrightBotService
+if (app.isPackaged) {
+  const browserPath = path.join(process.resourcesPath, 'playwright-browsers');
+  process.env['PLAYWRIGHT_BROWSERS_PATH'] = browserPath;
+  console.log('[Setup] Playwright browsers path configured:', browserPath);
+  console.log('[Setup] Environment variable set:', process.env['PLAYWRIGHT_BROWSERS_PATH']);
+} else {
+  console.log('[Setup] Development mode - using local Playwright browsers from node_modules');
+}
+
 import { registerDefaultPlugins } from './bootstrap-plugins';
 function parseTimeToMinutes(timeStr: string): number {
   const parts = timeStr.split(':');
@@ -1049,12 +1061,6 @@ export function registerIPCHandlers() {
 
 // Initialize app when running as main entry point
 app.whenReady().then(() => {
-  // Configure Playwright to use bundled browsers
-  if (app.isPackaged) {
-    const browserPath = path.join(process.resourcesPath, 'playwright-browsers');
-    process.env.PLAYWRIGHT_BROWSERS_PATH = browserPath;
-  }
-  
   // Initialize logging first (fast, non-blocking)
   initializeLogging();
   appLogger.info('Application startup initiated');

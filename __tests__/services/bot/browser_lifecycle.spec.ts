@@ -135,25 +135,22 @@ describe('Browser Lifecycle Management', () => {
     await bot.close();
   }, 60000); // 60 second timeout for DOM-based waits
 
-  it.skip('should initialize different browser types correctly', async () => {
-    const browserTypes = ['chromium', 'firefox', 'webkit'];
+  it('should initialize chromium browser correctly', async () => {
+    // Only test chromium since firefox and webkit are no longer supported
+    const testBot = new BotOrchestrator(Cfg as typeof Cfg, dummyFormConfig, true, 'chromium');
     
-    for (const browserType of browserTypes) {
-      const testBot = new BotOrchestrator(Cfg as typeof Cfg, dummyFormConfig, true, browserType);
+    try {
+      await testBot.start();
       
-      try {
-        await testBot.start();
-        
-        // Verify browser is actually started by checking if page operations work
-        const page = testBot.require_page();
-        expect(page).toBeDefined();
-        
-        await testBot.close();
-      } catch {
-        // Some browsers might not be installed in CI/test environment
-        // That's okay, but initialization shouldn't crash
-        await testBot.close();
-      }
+      // Verify browser is actually started by checking if page operations work
+      const page = testBot.require_page();
+      expect(page).toBeDefined();
+      
+      await testBot.close();
+    } catch (error) {
+      // If browser fails to start, should still cleanup properly
+      await testBot.close();
+      throw error;
     }
   });
 

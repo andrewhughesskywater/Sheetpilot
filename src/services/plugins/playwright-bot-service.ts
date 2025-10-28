@@ -28,7 +28,7 @@ import { botLogger } from '../../shared/logger';
 export class PlaywrightBotService implements ISubmissionService {
   public readonly metadata: PluginMetadata = {
     name: 'playwright',
-    version: '1.1.2',
+    version: '1.2.5',
     author: 'Andrew Hughes',
     description: 'Playwright-based browser automation submission service'
   };

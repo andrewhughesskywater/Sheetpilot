@@ -83,7 +83,7 @@ export function createFormConfig(formUrl: string, formId: string) {
 // BROWSER CONFIGURATION
 // ============================================================================
 
-/** Browser type to use for automation (chromium|firefox|webkit) */
+/** Browser type to use for automation (chromium only) */
 export const BROWSER: string = process.env['TS_BROWSER'] ?? "chromium";
 /** Whether to run browser in headless mode */
 export const BROWSER_HEADLESS: boolean = (process.env['TIME_KNIGHT_BROWSER_HEADLESS'] ?? "false").toLowerCase() === "true";

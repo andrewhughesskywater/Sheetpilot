@@ -1,0 +1,69 @@
+---
+description: Project file structure and organization guidelines
+alwaysApply: true
+---
+
+# File Structure Guidelines
+
+## Project Organization
+
+```text
+app/
+├── backend/        # Server-side (API, database, business logic)
+├── frontend/       # Client-side (UI, browser code)
+├── shared/         # Code shared between backend & frontend (types, utils)
+├── .env            # Environment variables (API keys, DB URIs, secrets)
+├── package.json    # Node.js project file (if using JavaScript/TypeScript)
+└── README.md       # Project overview & setup instructions
+```
+
+## Backend Structure
+
+```text
+backend/
+├── src/
+│   ├── index.ts          # Main entry point (starts the server)
+│   ├── routes/           # API endpoints (organized by feature)
+│   ├── controllers/      # Route handlers (business logic)
+│   ├── models/           # Database schemas (e.g., User, Product)
+│   ├── services/         # Reusable backend logic (email, auth, etc.)
+│   ├── middleware/       # Auth, logging, validation
+│   ├── utils/            # Helper functions
+│   └── config/           # Environment & database setup
+└── tests/                # Backend test files
+```
+
+## Frontend Structure
+
+```text
+frontend/
+├── public/              # Static assets (index.html, favicon, images)
+├── src/
+│   ├── components/      # Reusable UI pieces (buttons, forms)
+│   ├── pages/           # Full-page views (Dashboard, Settings)
+│   ├── hooks/           # Custom React hooks (e.g. useAuth)
+│   ├── context/         # Global state (AuthContext, ThemeContext)
+│   ├── services/        # API clients, data fetching
+│   ├── utils/           # Frontend helpers
+│   ├── styles/          # CSS / Tailwind / Sass
+│   ├── App.tsx
+│   └── main.tsx
+└── tests/
+```
+
+## Shared Structure
+
+```text
+shared/
+├── types/
+│   ├── user.d.ts
+│   └── api.d.ts
+└── utils/
+```
+
+## Layer Responsibilities
+
+- **Frontend** — presentation layer (UI)
+- **Backend** — logic & data layer
+- **Database** — persistence layer
+- **Shared** — types/utilities between both

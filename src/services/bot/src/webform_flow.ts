@@ -9,7 +9,7 @@
  * @since 2025
  */
 
-import { chromium, firefox, webkit, Browser, BrowserContext, Page, Locator } from 'playwright';
+import { chromium, Browser, BrowserContext, Page, Locator } from 'playwright';
 import * as cfg from './automation_config';
 import { botLogger } from '../../../shared/logger';
 
@@ -22,14 +22,14 @@ export class BotNotStartedError extends Error {}
  * Manages browser automation and form interaction for timesheet submission
  * 
  * Handles browser lifecycle, form field filling, submission detection,
- * and response validation. Supports multiple browser types and configurations.
+ * and response validation. Uses Chromium browser exclusively.
  */
 export class WebformFiller {
   /** Configuration object containing automation settings */
   cfg: typeof cfg;
   /** Whether to run browser in headless mode */
   headless: boolean;
-  /** Type of browser to use (chromium, firefox, webkit) */
+  /** Type of browser to use (chromium only) */
   browser_kind: string;
   /** Playwright Browser instance (null until started) */
   browser: Browser | null = null;
@@ -44,7 +44,7 @@ export class WebformFiller {
    * Creates a new WebformFiller instance
    * @param config - Configuration object for automation settings
    * @param headless - Whether to run browser in headless mode (default: true)
-   * @param browser_kind - Type of browser to use (default: 'chromium')
+   * @param browser_kind - Type of browser to use (must be 'chromium')
    * @param formConfig - Optional dynamic form configuration
    */
   constructor(
@@ -90,47 +90,77 @@ export class WebformFiller {
 
   /**
    * Launches the configured browser type
+   * Attempts to use user's installed browser (Chrome/Edge) first, falls back to bundled Chromium
    * @private
    * @returns Promise that resolves when browser is launched
    */
   private async _launch_browser(): Promise<void> {
     botLogger.verbose('Launching browser', { browserKind: this.browser_kind });
-    if (this.browser_kind === 'firefox') {
-      this.browser = await firefox.launch({ headless: this.headless });
-    } else if (this.browser_kind === 'webkit') {
-      this.browser = await webkit.launch({ headless: this.headless });
-    } else {
-      // Use specific channel if configured (e.g., 'chrome' for Chrome instead of Chromium)
-      const channel = cfg.BROWSER_CHANNEL && cfg.BROWSER_CHANNEL !== 'chromium' ? cfg.BROWSER_CHANNEL : undefined;
-      const launchOptions: Record<string, unknown> = {
-        headless: this.headless,
-        args: [
-          '--no-sandbox', 
-          '--disable-dev-shm-usage',
-          '--disable-gpu',
-          '--disable-extensions',
-          '--disable-plugins',
-          '--disable-images',
-          '--disable-javascript-harmony-shipping',
-          '--disable-background-timer-throttling',
-          '--disable-backgrounding-occluded-windows',
-          '--disable-renderer-backgrounding',
-          '--disable-features=TranslateUI',
-          '--disable-ipc-flooding-protection',
-          '--aggressive-cache-discard',
-          '--memory-pressure-off',
-          // Stealth configuration to reduce AV detection
-          '--disable-blink-features=AutomationControlled',
-          '--disable-web-security',
-          '--disable-features=VizDisplayCompositor'
-        ]
-      };
-      if (channel) {
-        launchOptions['channel'] = channel;
+    
+    // Try user's browser first, fallback to bundled Chromium
+    const launchOptions: Record<string, unknown> = {
+      headless: this.headless,
+      args: [
+        '--no-sandbox', 
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--disable-extensions',
+        '--disable-plugins',
+        '--disable-images',
+        '--disable-javascript-harmony-shipping',
+        '--disable-background-timer-throttling',
+        '--disable-backgrounding-occluded-windows',
+        '--disable-renderer-backgrounding',
+        '--disable-features=TranslateUI',
+        '--disable-ipc-flooding-protection',
+        '--aggressive-cache-discard',
+        '--memory-pressure-off',
+        // Stealth configuration to reduce AV detection
+        '--disable-blink-features=AutomationControlled',
+        '--disable-web-security',
+        '--disable-features=VizDisplayCompositor'
+      ]
+    };
+
+    // Strategy: Try system browsers in order, fallback to bundled Chromium
+    // Allow forcing a specific browser via environment variable for testing
+    const forceChannel = process.env['SHEETPILOT_FORCE_BROWSER'];
+    let systemChannels = ['chrome', 'msedge']; // Try Chrome first, then Edge
+    
+    // If forcing a specific browser, use only that one
+    if (forceChannel && (forceChannel === 'chrome' || forceChannel === 'msedge' || forceChannel === 'bundled')) {
+      if (forceChannel === 'bundled') {
+        // Force use bundled browser only
+        systemChannels = [];
+        botLogger.info('Testing mode: Forcing bundled browser only');
+      } else {
+        // Force use specific system browser
+        systemChannels = [forceChannel];
+        botLogger.info('Testing mode: Forcing specific browser', { channel: forceChannel });
       }
-      botLogger.verbose('Browser launch options', { channel, headless: this.headless });
-      this.browser = await chromium.launch(launchOptions);
     }
+    
+    let launched = false;
+    for (const channel of systemChannels) {
+      try {
+        botLogger.verbose('Attempting to launch system browser', { channel, headless: this.headless });
+        this.browser = await chromium.launch({ ...launchOptions, channel });
+        botLogger.info('Successfully launched system browser', { channel });
+        launched = true;
+        break;
+      } catch (error) {
+        botLogger.verbose('Could not launch system browser', { channel, error: error instanceof Error ? error.message : String(error) });
+        // Continue to next browser or fallback
+      }
+    }
+
+    // Fallback to bundled Chromium if no system browser worked
+    if (!launched) {
+      botLogger.verbose('No system browser available, using bundled Chromium', { headless: this.headless });
+      this.browser = await chromium.launch(launchOptions);
+      botLogger.info('Launched bundled Chromium browser');
+    }
+    
     botLogger.verbose('Browser launched successfully');
   }
 
