@@ -88,7 +88,7 @@ module.exports = [
     }
   },
   {
-    files: ['src/services/bot/**/*.ts'],
+    files: ['app/backend/src/services/bot/**/*.ts'],
     languageOptions: {
       parser: typescriptParser,
       parserOptions: {
@@ -131,7 +131,7 @@ module.exports = [
     }
   },
   {
-    files: ['src/renderer/**/*.{ts,tsx}'],
+    files: ['app/frontend/src/**/*.{ts,tsx}'],
     languageOptions: {
       parser: typescriptParser,
       parserOptions: {

@@ -4,7 +4,7 @@
     "module": "ES2022",
     "lib": ["ES2022", "DOM"],
     "outDir": "build/dist",
-    "rootDir": "src",
+    "rootDir": "app",
     "moduleResolution": "bundler",
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
@@ -37,19 +37,15 @@
     "tsBuildInfoFile": "build/dist/.tsbuildinfo"
   },
   "include": [
-    "src/**/*.ts"
+    "app/**/*.ts"
   ],
   "exclude": [
     "node_modules",
     "build",
     "release",
-    "src/services/bot/node_modules",
-    "src/renderer/node_modules",
+    "app/backend/src/services/bot/node_modules",
+    "app/frontend/src/node_modules",
     "**/*.spec.ts",
     "**/*.test.ts"
-  ],
-  "ts-node": {
-    "esm": false,
-    "experimentalSpecifierResolution": "node"
-  }
+  ]
 }

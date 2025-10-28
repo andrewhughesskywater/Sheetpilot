@@ -2,65 +2,63 @@
   "name": "sheetpilot",
   "version": "1.2.5",
   "description": "Business timesheet management and reporting tool",
-  "author": "SheetPilot Team",
+  "author": "Andrew Hughes",
   "repository": {
     "type": "git",
     "url": "https://github.com/andrewhughesskywater/Sheetpilot.git"
   },
-  "main": "build/dist/main/main.js",
+  "main": "build/dist/backend/src/main.js",
   "scripts": {
     "postinstall": "electron-builder install-app-deps",
-    "electron": "ts-node src/main/main.ts",
-    "electron:compiled": "npm run rebuild && electron build/dist/main/main.js",
+    "electron:compiled": "npm run rebuild && electron build/dist/backend/src/main.js",
     "rebuild": "npx @electron/rebuild -f -w better-sqlite3",
     "sync-version": "node scripts/sync-version.js",
-    "build:main": "npm run sync-version && tsc src/main/main.ts src/main/preload.ts --outDir build/dist --target ES2022 --module CommonJS --moduleResolution Node --esModuleInterop --allowSyntheticDefaultImports",
-    "vite": "cd src/renderer && npm run dev",
+    "build:main": "npm run sync-version && tsc app/backend/src/main.ts app/backend/src/preload.ts --outDir build/dist/backend/src --target ES2022 --module CommonJS --moduleResolution Node --esModuleInterop --allowSyntheticDefaultImports",
+    "vite": "cd app/frontend && npm run dev",
     "dev": "concurrently -k -n VITE,ELECTRON -c auto \"npm:vite\" \"wait-on tcp:5173 && npm run build:main && cross-env ELECTRON_IS_DEV=1 npm run electron:compiled\"",
     "dev:hot": "concurrently -k -n VITE,ELECTRON -c auto \"npm:vite\" \"wait-on tcp:5173 && npm run build:main && cross-env ELECTRON_IS_DEV=1 npm run dev:main\"",
-    "dev:main": "nodemon --watch src/main/main.ts --watch src/main/preload.ts --exec \"npm run build:main && cross-env ELECTRON_IS_DEV=1 electron build/dist/main/main.js\"",
-    "build:renderer": "npm run sync-version && cd src/renderer && npm run build",
-    "build:bot": "cd src/services/bot && npm run build",
+    "dev:main": "nodemon --watch app/backend/src/main.ts --watch app/backend/src/preload.ts --exec \"npm run build:main && cross-env ELECTRON_IS_DEV=1 electron build/dist/backend/src/main.js\"",
+    "build:renderer": "npm run sync-version && cd app/frontend && npm run build",
+    "build:bot": "cd app/backend/src/services/bot && npm run build",
     "install:browsers": "cross-env PLAYWRIGHT_BROWSERS_PATH=build/playwright-browsers npx playwright install chromium",
     "build": "npm run build:main && npm run build:renderer && npm run build:bot && npm run install:browsers && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder",
     "type-check": "tsc --noEmit",
     "lint": "eslint . --ext .ts,.tsx",
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
-    "test": "cross-env VITEST=true vitest run --config __tests__/vitest.config.ts",
-    "test:watch": "cross-env VITEST=true vitest --config __tests__/vitest.config.ts",
-    "test:e2e": "cross-env VITEST=true vitest run --config __tests__/vitest.config.e2e.ts",
-    "test:integration": "cross-env VITEST=true vitest run --config __tests__/vitest.config.integration.ts",
-    "test:smoke": "cross-env VITEST=true vitest run --config __tests__/vitest.config.smoke.ts",
-    "test:blank-screen": "cd src/renderer && npm test -- --config ../../__tests__/vitest.config.blank-screen-prevention.ts",
-    "test:blank-screen:watch": "cd src/renderer && npm test -- --config ../../__tests__/vitest.config.blank-screen-prevention.ts --watch",
-    "test:renderer": "cd src/renderer && npm test",
-    "test:renderer:watch": "cd src/renderer && npm test -- --watch",
-    "test:bot": "cd src/services/bot && npm test",
-    "install:bot": "cd src/services/bot && npm install",
-    "clean": "rimraf build/dist && cd src/services/bot && npm run clean",
-    "generate-icon": "node scripts/generate-icon.js"
+    "test": "cross-env VITEST=true vitest run --config app/backend/tests/vitest.config.ts",
+    "test:watch": "cross-env VITEST=true vitest --config app/backend/tests/vitest.config.ts",
+    "test:e2e": "cross-env VITEST=true vitest run --config app/backend/tests/vitest.config.e2e.ts",
+    "test:integration": "cross-env VITEST=true vitest run --config app/backend/tests/vitest.config.integration.ts",
+    "test:smoke": "cross-env VITEST=true vitest run --config app/backend/tests/vitest.config.smoke.ts",
+    "test:blank-screen": "cd app/frontend && npm test -- --config ../tests/vitest.config.blank-screen-prevention.ts",
+    "test:blank-screen:watch": "cd app/frontend && npm test -- --config ../tests/vitest.config.blank-screen-prevention.ts --watch",
+    "test:renderer": "cd app/frontend && npm test",
+    "test:renderer:watch": "cd app/frontend && npm test -- --watch",
+    "test:bot": "cd app/backend/src/services/bot && npm test",
+    "install:bot": "cd app/backend/src/services/bot && npm install",
+    "clean": "rimraf build/dist && cd app/backend/src/services/bot && npm run clean"
   },
   "build": {
     "appId": "com.sheetpilot.app",
     "productName": "Sheetpilot",
     "artifactName": "${productName}-Setup.${ext}",
-    "icon": "src/renderer/assets/images/icon.ico",
+    "icon": "app/frontend/src/assets/images/icon.ico",
     "files": [
       "build/dist/**/*",
-      "src/services/bot/dist/**/*",
-      "src/services/bot/node_modules/**/*",
-      "src/renderer/dist/**/*",
-      "src/renderer/assets/images/icon.ico",
+      "app/backend/src/services/bot/dist/**/*",
+      "app/backend/src/services/bot/node_modules/**/*",
+      "app/frontend/dist/**/*",
+      "app/frontend/src/assets/images/icon.ico",
       "!node_modules/.cache/**",
-      "!src/renderer/node_modules/**",
-      "!src/services/bot/node_modules/.cache/**"
+      "!app/frontend/node_modules/**",
+      "!app/backend/src/services/bot/node_modules/.cache/**"
     ],
     "directories": {
       "output": "build"
     },
     "extraResources": [
       {
-        "from": "src/renderer/assets/images/icon.ico",
+        "from": "app/frontend/src/assets/images/icon.ico",
         "to": "icon.ico"
       },
       {
@@ -73,13 +71,13 @@
       "category": "public.app-category.productivity"
     },
     "win": {
-      "target": {
-        "target": "nsis",
-        "arch": [
-          "x64"
-        ]
-      },
-      "icon": "src/renderer/assets/images/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "app/frontend/src/assets/images/icon.ico",
       "forceCodeSigning": false,
       "signAndEditExecutable": false,
       "requestedExecutionLevel": "asInvoker"
@@ -89,10 +87,10 @@
       "perMachine": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "installerIcon": "src/renderer/assets/images/icon.ico",
-      "uninstallerIcon": "src/renderer/assets/images/icon.ico",
-      "installerHeader": "src/renderer/assets/images/icon.ico",
-      "installerHeaderIcon": "src/renderer/assets/images/icon.ico"
+      "installerIcon": "app/frontend/src/assets/images/icon.ico",
+      "uninstallerIcon": "app/frontend/src/assets/images/icon.ico",
+      "installerHeader": "app/frontend/src/assets/images/icon.ico",
+      "installerHeaderIcon": "app/frontend/src/assets/images/icon.ico"
     },
     "linux": {
       "target": "AppImage"
@@ -128,18 +126,12 @@
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^6.1.1",
     "eslint-plugin-react-refresh": "^0.4.23",
-    "happy-dom": "^20.0.8",
     "jsdom": "^27.0.0",
-    "material": "^0.9.24",
     "nodemon": "^3.1.10",
-    "png2icons": "^2.0.1",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "rimraf": "^6.0.1",
-    "sharp": "^0.34.4",
-    "ts-node": "^10.9.2",
     "typescript": "^5.9.2",
-    "ui": "^0.2.4",
     "vite": "^7.1.7",
     "vitest": "^3.2.4",
     "wait-on": "^9.0.1"

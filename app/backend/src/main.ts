@@ -10,15 +10,23 @@ import {
   getCredentials,
   listCredentials,
   deleteCredentials,
-  openDb
-} from '../services/database';
-import { submitTimesheets } from '../services/timesheet_importer';
+  shutdownDatabase
+} from './services/database';
+import { submitTimesheets } from './services/timesheet_importer';
 import {
   initializeLogging,
   appLogger,
   dbLogger,
   ipcLogger
-} from '../shared/logger';
+} from '../../shared/logger';
+import {
+  CredentialsNotFoundError,
+  CredentialsStorageError,
+  SubmissionServiceUnavailableError,
+  createUserFriendlyMessage,
+  extractErrorCode,
+  isAppError
+} from '../../shared/errors';
 
 // CRITICAL: Configure Playwright BEFORE importing any modules that use it
 // This must happen before bootstrap-plugins, which imports PlaywrightBotService
@@ -31,7 +39,7 @@ if (app.isPackaged) {
   console.log('[Setup] Development mode - using local Playwright browsers from node_modules');
 }
 
-import { registerDefaultPlugins } from './bootstrap-plugins';
+import { registerDefaultPlugins } from './middleware/bootstrap-plugins';
 function parseTimeToMinutes(timeStr: string): number {
   const parts = timeStr.split(':');
   if (parts.length !== 2 || !parts[0] || !parts[1]) {
@@ -316,12 +324,12 @@ function createWindow() {
     iconPath = path.join(process.resourcesPath, '..', 'resources', 'icon.ico');
     if (!fs.existsSync(iconPath)) {
       // Fallback to packaged location
-      iconPath = path.join(process.resourcesPath, 'src', 'renderer', 'assets', 'images', 'icon.ico');
+      iconPath = path.join(process.resourcesPath, 'app', 'frontend', 'src', 'assets', 'images', 'icon.ico');
     }
   } else {
     // In development, use path relative to compiled main.js location
-    // __dirname points to build/dist/main in development
-    iconPath = path.join(__dirname, '..', '..', '..', 'src', 'renderer', 'assets', 'images', 'icon.ico');
+    // __dirname points to build/dist/backend/src in development
+    iconPath = path.join(__dirname, '..', '..', '..', '..', 'app', 'frontend', 'src', 'assets', 'images', 'icon.ico');
   }
   
   // Log icon path and existence for debugging
@@ -496,9 +504,18 @@ export function registerIPCHandlers() {
         dbPath: getDbPath() 
       };
     } catch (err: unknown) {
-      ipcLogger.error('Timesheet submission failed', err);
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      timer.done({ outcome: 'error', error: errorMessage });
+      const errorCode = extractErrorCode(err);
+      const errorMessage = createUserFriendlyMessage(err);
+      const errorDetails = err instanceof Error ? {
+        code: errorCode,
+        message: errorMessage,
+        name: err.name,
+        stack: err.stack
+      } : { code: errorCode, message: errorMessage };
+      
+      ipcLogger.error('Timesheet submission failed', errorDetails);
+      timer.done({ outcome: 'error', errorCode });
+      
       return { error: errorMessage };
     }
   });
@@ -517,9 +534,19 @@ export function registerIPCHandlers() {
       ipcLogger.info('Credentials stored successfully', { service, email, changes: result.changes });
       return result;
     } catch (err: unknown) {
-      ipcLogger.error('Could not store credentials', err);
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      return { success: false, error: errorMessage, changes: 0 };
+      // Check if this is a credentials error for audit logging
+      const isCredentialsError = err instanceof Error && err.name.includes('Credentials');
+      
+      if (isCredentialsError) {
+        ipcLogger.security('credentials-storage-error', 'Could not store credentials', { service, error: err });
+      } else {
+        ipcLogger.error('Could not store credentials', err);
+      }
+      
+      throw new CredentialsStorageError(service, {
+        error: err instanceof Error ? err.message : String(err),
+        originalError: err instanceof Error ? err.name : 'Unknown'
+      });
     }
   });
 
@@ -533,11 +560,21 @@ export function registerIPCHandlers() {
     try {
       const credentials = getCredentials(service);
       if (!credentials) {
-        return { success: false, error: 'Credentials not found for service: ' + service };
+        throw new CredentialsNotFoundError(service);
       }
       return { success: true, credentials };
     } catch (err: unknown) {
+      if (isAppError(err)) {
+        ipcLogger.error('Credentials retrieval failed', {
+          code: err.code,
+          category: err.category,
+          context: err.context
+        });
+        return { success: false, error: err.toUserMessage() };
+      }
+      
       const errorMessage = err instanceof Error ? err.message : String(err);
+      ipcLogger.error('Could not retrieve credentials', { error: errorMessage });
       return { success: false, error: errorMessage };
     }
   });
