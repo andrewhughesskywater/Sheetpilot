@@ -1,6 +1,6 @@
 {
   "name": "sheetpilot",
-  "version": "1.2.1",
+  "version": "1.2.3",
   "description": "Business timesheet management and reporting tool",
   "author": "SheetPilot Team",
   "repository": {
@@ -21,7 +21,8 @@
     "dev:main": "nodemon --watch src/main/main.ts --watch src/main/preload.ts --exec \"npm run build:main && cross-env ELECTRON_IS_DEV=1 electron build/dist/main/main.js\"",
     "build:renderer": "npm run sync-version && cd src/renderer && npm run build",
     "build:bot": "cd src/services/bot && npm run build",
-    "build": "npm run build:main && npm run build:renderer && npm run build:bot && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder",
+    "install:browsers": "cross-env PLAYWRIGHT_BROWSERS_PATH=build/playwright-browsers npx playwright install chromium",
+    "build": "npm run build:main && npm run build:renderer && npm run build:bot && npm run install:browsers && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder",
     "type-check": "tsc --noEmit",
     "lint": "eslint . --ext .ts,.tsx",
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
@@ -61,6 +62,11 @@
       {
         "from": "src/renderer/assets/images/icon.ico",
         "to": "icon.ico"
+      },
+      {
+        "from": "build/playwright-browsers",
+        "to": "playwright-browsers",
+        "filter": ["**/*"]
       }
     ],
     "mac": {
@@ -95,8 +101,7 @@
     "publish": {
       "provider": "github",
       "owner": "andrewhughesskywater",
-      "repo": "Sheetpilot",
-      "disableWebInstaller": true
+      "repo": "Sheetpilot"
     }
   },
   "dependencies": {

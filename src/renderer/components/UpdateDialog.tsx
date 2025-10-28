@@ -23,15 +23,15 @@ const UpdateDialog: React.FC<UpdateDialogProps> = ({ open, version, progress, st
     <Dialog 
       open={open} 
       disableEscapeKeyDown
-      onClose={(event, reason) => {
-        // Prevent closing dialog
+      onClose={(_event, reason) => {
+        // Prevent closing dialog during update
         if (reason === 'backdropClick' || reason === 'escapeKeyDown') {
-          event.preventDefault();
+          // Dialog should not close during update
+          return;
         }
       }}
       maxWidth="sm"
       fullWidth
-      disableBackdropClick
       PaperProps={{
         style: {
           pointerEvents: 'auto'

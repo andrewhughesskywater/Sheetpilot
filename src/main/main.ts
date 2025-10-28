@@ -1049,6 +1049,12 @@ export function registerIPCHandlers() {
 
 // Initialize app when running as main entry point
 app.whenReady().then(() => {
+  // Configure Playwright to use bundled browsers
+  if (app.isPackaged) {
+    const browserPath = path.join(process.resourcesPath, 'playwright-browsers');
+    process.env.PLAYWRIGHT_BROWSERS_PATH = browserPath;
+  }
+  
   // Initialize logging first (fast, non-blocking)
   initializeLogging();
   appLogger.info('Application startup initiated');

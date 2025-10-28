@@ -20,7 +20,7 @@ import { botLogger } from '../shared/logger';
 import { getSubmissionService } from '../main/bootstrap-plugins';
 import type { TimesheetEntry } from '../shared/contracts/IDataService';
 import type { Credentials } from '../shared/contracts/ICredentialService';
-import type { SubmissionResult } from '../shared/contracts/ISubmissionService';
+import type { SubmissionResult, ISubmissionService } from '../shared/contracts/ISubmissionService';
 // Dynamic import to avoid top-level async operations during module loading
 
 
@@ -133,7 +133,7 @@ export async function submitTimesheets(email: string, password: string): Promise
     console.log('[SubmitTimesheets] Entry dates:', entries.map(e => ({ id: e.id, date: e.date })));
     
     // Get the active submission service from the plugin system
-    const submissionService = getSubmissionService<import('../shared/contracts/ISubmissionService').ISubmissionService>();
+    const submissionService = getSubmissionService() as ISubmissionService | null;
     console.log('[SubmitTimesheets] Retrieved submission service:', {
         hasService: !!submissionService,
         serviceName: submissionService?.metadata?.name,
