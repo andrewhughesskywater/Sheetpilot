@@ -1,6 +1,6 @@
 {
   "name": "sheetpilot",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "description": "Business timesheet management and reporting tool",
   "author": "SheetPilot Team",
   "repository": {
@@ -85,9 +85,8 @@
       "requestedExecutionLevel": "asInvoker"
     },
     "nsis": {
-      "oneClick": false,
+      "oneClick": true,
       "perMachine": false,
-      "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "installerIcon": "src/renderer/assets/images/icon.ico",
