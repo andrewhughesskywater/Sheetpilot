@@ -1390,16 +1390,16 @@ describe('TimesheetGrid Phase 7 - Cell Interactivity', () => {
       if (col === 4) { // tool column
         const project = row?.project;
         if (project && projectsWithoutTools.includes(project)) {
-          cellProps.readOnly = true;
-          cellProps.className = 'htDimmed';
-          cellProps.placeholder = 'N/A for this project';
+          cellProps['readOnly'] = true;
+          cellProps['className'] = 'htDimmed';
+          cellProps['placeholder'] = 'N/A for this project';
         }
       } else if (col === 5) { // chargeCode column
         const tool = row?.tool;
         if (tool && toolsWithoutCharges.includes(tool)) {
-          cellProps.readOnly = true;
-          cellProps.className = 'htDimmed';
-          cellProps.placeholder = 'N/A for this tool';
+          cellProps['readOnly'] = true;
+          cellProps['className'] = 'htDimmed';
+          cellProps['placeholder'] = 'N/A for this tool';
         }
       }
       
@@ -1409,24 +1409,24 @@ describe('TimesheetGrid Phase 7 - Cell Interactivity', () => {
     // Test that tool column is read-only for projects without tools
     const row1 = { project: 'PTO/RTO' };
     const toolCellProps = getCellProperties(row1, 4);
-    expect(toolCellProps.readOnly).toBe(true);
-    expect(toolCellProps.className).toBe('htDimmed');
+    expect(toolCellProps['readOnly']).toBe(true);
+    expect(toolCellProps['className']).toBe('htDimmed');
     
     // Test that tool column is editable for projects with tools
     const row2 = { project: 'FL-Carver Techs' };
     const toolCellProps2 = getCellProperties(row2, 4);
-    expect(toolCellProps2.readOnly).toBeUndefined();
+    expect(toolCellProps2['readOnly']).toBeUndefined();
     
     // Test that chargeCode column is read-only for tools without charges
     const row3 = { project: 'FL-Carver Techs', tool: 'Meeting' };
     const chargeCellProps = getCellProperties(row3, 5);
-    expect(chargeCellProps.readOnly).toBe(true);
-    expect(chargeCellProps.className).toBe('htDimmed');
+    expect(chargeCellProps['readOnly']).toBe(true);
+    expect(chargeCellProps['className']).toBe('htDimmed');
     
     // Test that chargeCode column is editable for tools with charges
     const row4 = { project: 'FL-Carver Techs', tool: '#1 Rinse and 2D marker' };
     const chargeCellProps2 = getCellProperties(row4, 5);
-    expect(chargeCellProps2.readOnly).toBeUndefined();
+    expect(chargeCellProps2['readOnly']).toBeUndefined();
   });
 
   it('validates that all non-dimmed cells are clickable and focusable', () => {
@@ -1505,7 +1505,7 @@ describe('TimesheetGrid Row Deletion Functionality', () => {
     };
     
     // Set up global mock
-    (global as Record<string, unknown>).window = mockWindow;
+    (global as Record<string, unknown>)['window'] = mockWindow;
   });
 
   afterEach(() => {
@@ -1514,7 +1514,7 @@ describe('TimesheetGrid Row Deletion Functionality', () => {
 
   it('should handle row deletion with valid ID', async () => {
     // Mock successful deletion
-    (mockWindow.timesheet as { deleteDraft: { mockResolvedValue: (value: unknown) => void } }).deleteDraft.mockResolvedValue({ success: true });
+    ((mockWindow['timesheet'] as { deleteDraft: { mockResolvedValue: (value: unknown) => void } })['deleteDraft']).mockResolvedValue({ success: true });
 
     // Simulate the handleAfterRemoveRow function logic
     const handleAfterRemoveRow = async (index: number, amount: number) => {
@@ -1525,7 +1525,7 @@ describe('TimesheetGrid Row Deletion Functionality', () => {
       for (const row of removedRows) {
         if (row.id !== undefined && row.id !== null) {
           try {
-            const result = await window.timesheet.deleteDraft(row.id);
+            const result = await window.timesheet?.deleteDraft(row.id);
             if (result && result.success) {
               console.log('Successfully deleted draft row:', row.id);
             } else {
@@ -1540,12 +1540,12 @@ describe('TimesheetGrid Row Deletion Functionality', () => {
 
     await handleAfterRemoveRow(0, 1);
     
-    expect((mockWindow.timesheet as { deleteDraft: { toHaveBeenCalledWith: (...args: unknown[]) => void; toHaveBeenCalledTimes: (times: number) => void } }).deleteDraft).toHaveBeenCalledWith(1);
-    expect((mockWindow.timesheet as { deleteDraft: { toHaveBeenCalledWith: (...args: unknown[]) => void; toHaveBeenCalledTimes: (times: number) => void } }).deleteDraft).toHaveBeenCalledTimes(1);
+    expect(((mockWindow['timesheet'] as { deleteDraft: { toHaveBeenCalledWith: (...args: unknown[]) => void; toHaveBeenCalledTimes: (times: number) => void } })['deleteDraft'])).toHaveBeenCalledWith(1);
+    expect(((mockWindow['timesheet'] as { deleteDraft: { toHaveBeenCalledWith: (...args: unknown[]) => void; toHaveBeenCalledTimes: (times: number) => void } })['deleteDraft'])).toHaveBeenCalledTimes(1);
   });
 
   it('should handle multiple row deletions', async () => {
-    (mockWindow.timesheet as { deleteDraft: { mockResolvedValue: (value: unknown) => void } }).deleteDraft.mockResolvedValue({ success: true });
+    ((mockWindow['timesheet'] as { deleteDraft: { mockResolvedValue: (value: unknown) => void } })['deleteDraft']).mockResolvedValue({ success: true });
 
     const handleAfterRemoveRow = async (index: number, amount: number) => {
       const removedRows = [
@@ -1556,7 +1556,7 @@ describe('TimesheetGrid Row Deletion Functionality', () => {
       for (const row of removedRows) {
         if (row.id !== undefined && row.id !== null) {
           try {
-            const result = await window.timesheet.deleteDraft(row.id);
+            const result = await window.timesheet?.deleteDraft(row.id);
             if (result && result.success) {
               console.log('Successfully deleted draft row:', row.id);
             } else {
@@ -1571,13 +1571,13 @@ describe('TimesheetGrid Row Deletion Functionality', () => {
 
     await handleAfterRemoveRow(0, 2);
     
-    expect((mockWindow.timesheet as { deleteDraft: { toHaveBeenCalledWith: (...args: unknown[]) => void; toHaveBeenCalledTimes: (times: number) => void } }).deleteDraft).toHaveBeenCalledWith(1);
-    expect((mockWindow.timesheet as { deleteDraft: { toHaveBeenCalledWith: (...args: unknown[]) => void; toHaveBeenCalledTimes: (times: number) => void } }).deleteDraft).toHaveBeenCalledWith(2);
-    expect((mockWindow.timesheet as { deleteDraft: { toHaveBeenCalledWith: (...args: unknown[]) => void; toHaveBeenCalledTimes: (times: number) => void } }).deleteDraft).toHaveBeenCalledTimes(2);
+    expect(((mockWindow['timesheet'] as { deleteDraft: { toHaveBeenCalledWith: (...args: unknown[]) => void; toHaveBeenCalledTimes: (times: number) => void } })['deleteDraft'])).toHaveBeenCalledWith(1);
+    expect(((mockWindow['timesheet'] as { deleteDraft: { toHaveBeenCalledWith: (...args: unknown[]) => void; toHaveBeenCalledTimes: (times: number) => void } })['deleteDraft'])).toHaveBeenCalledWith(2);
+    expect(((mockWindow['timesheet'] as { deleteDraft: { toHaveBeenCalledWith: (...args: unknown[]) => void; toHaveBeenCalledTimes: (times: number) => void } })['deleteDraft'])).toHaveBeenCalledTimes(2);
   });
 
   it('should handle deletion errors gracefully', async () => {
-    (mockWindow.timesheet as { deleteDraft: { mockResolvedValue: (value: unknown) => void } }).deleteDraft.mockResolvedValue({ 
+    ((mockWindow['timesheet'] as { deleteDraft: { mockResolvedValue: (value: unknown) => void } })['deleteDraft']).mockResolvedValue({ 
       success: false, 
       error: 'Database connection failed' 
     });
@@ -1592,7 +1592,7 @@ describe('TimesheetGrid Row Deletion Functionality', () => {
       for (const row of removedRows) {
         if (row.id !== undefined && row.id !== null) {
           try {
-            const result = await window.timesheet.deleteDraft(row.id);
+            const result = await window.timesheet?.deleteDraft(row.id);
             if (result && result.success) {
               console.log('Successfully deleted draft row:', row.id);
             } else {
@@ -1608,7 +1608,7 @@ describe('TimesheetGrid Row Deletion Functionality', () => {
     await handleAfterRemoveRow(0, 1);
     
     expect(consoleSpy).toHaveBeenCalledWith('Failed to delete draft row:', 'Database connection failed');
-    expect((mockWindow.timesheet as { deleteDraft: { toHaveBeenCalledWith: (...args: unknown[]) => void } }).deleteDraft).toHaveBeenCalledWith(1);
+    expect(((mockWindow['timesheet'] as { deleteDraft: { toHaveBeenCalledWith: (...args: unknown[]) => void } })['deleteDraft'])).toHaveBeenCalledWith(1);
     
     consoleSpy.mockRestore();
   });
@@ -1623,7 +1623,7 @@ describe('TimesheetGrid Row Deletion Functionality', () => {
       for (const row of removedRows) {
         if (row.id !== undefined && row.id !== null) {
           try {
-            const result = await window.timesheet.deleteDraft(row.id);
+            const result = await window.timesheet?.deleteDraft(row.id);
             if (result && result.success) {
               console.log('Successfully deleted draft row:', row.id);
             } else {
@@ -1639,8 +1639,8 @@ describe('TimesheetGrid Row Deletion Functionality', () => {
     await handleAfterRemoveRow(0, 2);
     
     // Should only call deleteDraft for the row with ID
-    expect((mockWindow.timesheet as { deleteDraft: { toHaveBeenCalledWith: (...args: unknown[]) => void } }).deleteDraft).toHaveBeenCalledWith(2);
-    expect((mockWindow.timesheet as { deleteDraft: { toHaveBeenCalledTimes: (times: number) => void } }).deleteDraft).toHaveBeenCalledTimes(1);
+    expect(((mockWindow['timesheet'] as { deleteDraft: { toHaveBeenCalledWith: (...args: unknown[]) => void } })['deleteDraft'])).toHaveBeenCalledWith(2);
+    expect(((mockWindow['timesheet'] as { deleteDraft: { toHaveBeenCalledTimes: (times: number) => void } })['deleteDraft'])).toHaveBeenCalledTimes(1);
   });
 
   it('should validate that afterRemoveRow handler is configured', () => {

@@ -9,6 +9,7 @@
 
     /* Bundler mode */
     "moduleResolution": "bundler",
+    "resolvePackageJsonExports": true,
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "moduleDetection": "force",
@@ -23,5 +24,8 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src/config/vite.config.ts"]
+  "include": [
+    "src/config/vite.config.ts",
+    "tests/vitest.config.blank-screen-prevention.ts"
+  ]
 }

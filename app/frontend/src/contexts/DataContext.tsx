@@ -74,7 +74,7 @@ interface DataProviderProps {
   children: ReactNode;
 }
 
-export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
+export function DataProvider({ children }: DataProviderProps) {
   // Timesheet draft data state
   const [timesheetDraftData, setTimesheetDraftData] = useState<TimesheetRow[]>([{}]);
   const [isTimesheetDraftLoading, setIsTimesheetDraftLoading] = useState(true);

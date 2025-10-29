@@ -12,10 +12,9 @@ interface ModernSegmentedNavigationProps {
 }
 
 const navigationItems = [
-  { label: 'Credentials', index: 0 },
-  { label: 'Timesheet', index: 1 },
-  { label: 'Archive', index: 2 },
-  { label: 'Help', index: 3 }
+  { label: 'Timesheet', index: 0 },
+  { label: 'Archive', index: 1 },
+  { label: 'Help', index: 2 }
 ];
 
 export default function ModernSegmentedNavigation({ 

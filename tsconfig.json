@@ -45,6 +45,8 @@
     "release",
     "app/backend/src/services/bot/node_modules",
     "app/frontend/src/node_modules",
+    "app/frontend/src/config/vite.config.ts",
+    "app/frontend/tests/vitest.config.blank-screen-prevention.ts",
     "**/*.spec.ts",
     "**/*.test.ts"
   ]

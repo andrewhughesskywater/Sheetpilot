@@ -41,32 +41,29 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 200px;
-  height: 60px;
+  width: 75px;
+  height: 75px;
   border-radius: var(--md-sys-shape-corner-medium);
-  background: var(--md-sys-color-primary);
+  background: transparent;
   transition: all var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard);
-  box-shadow: var(--md-sys-elevation-level1);
 }
 
 .app-branding:hover {
-  background: var(--md-sys-color-primary);
-  box-shadow: var(--md-sys-elevation-level2);
+  background: transparent;
   transform: translateY(-1px);
   filter: brightness(1.05);
 }
 
 .app-branding:active {
   transform: translateY(0);
-  box-shadow: var(--md-sys-elevation-level1);
 }
 
 .app-logo {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  max-width: 180px;
-  max-height: 50px;
+  max-width: 100px;
+  max-height: 100px;
 }
 
 /* Invisible button overlay for logo click */
@@ -84,17 +81,17 @@
 }
 
 .app-logo-button:hover {
-  background-color: rgba(255, 255, 255, 0.08); /* Fallback for browsers without color-mix support */
+  background-color: rgba(0, 0, 0, 0.04); /* Fallback for browsers without color-mix support */
 }
 
 @supports (background-color: color-mix(in srgb, black 8%, transparent)) {
   .app-logo-button:hover {
-    background-color: color-mix(in srgb, var(--md-sys-color-on-primary) 8%, transparent);
+    background-color: color-mix(in srgb, var(--md-sys-color-on-surface) 4%, transparent);
   }
 }
 
 .app-logo-button:focus-visible {
-  outline: 3px solid var(--md-sys-color-on-primary);
+  outline: 3px solid var(--md-sys-color-primary);
   outline-offset: 2px;
 }
 

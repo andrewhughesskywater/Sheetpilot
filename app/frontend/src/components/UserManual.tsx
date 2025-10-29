@@ -35,7 +35,6 @@ import {
   BugReport as BugReportIcon,
   ContactSupport as ContactSupportIcon
 } from '@mui/icons-material';
-import './UserManual.css';
 
 export default function UserManual() {
   const [expandedSection, setExpandedSection] = useState<string | false>('getting-started');
@@ -384,13 +383,12 @@ export default function UserManual() {
                 <ListItemText 
                   primary="Invalid credentials error"
                   secondary={
-                    <Box>
-                      <Typography variant="body2" className="manual-body-text">
-                        <strong>Solution:</strong> Verify your SmartSheet email and password are correct. 
-                        If you recently changed your password, update your stored credentials in the Home tab.
-                      </Typography>
-                    </Box>
+                    <>
+                      <strong>Solution:</strong> Verify your SmartSheet email and password are correct. 
+                      If you recently changed your password, update your stored credentials in the Home tab.
+                    </>
                   }
+                  secondaryTypographyProps={{ className: 'manual-body-text' }}
                 />
               </ListItem>
               <ListItem>
@@ -400,13 +398,12 @@ export default function UserManual() {
                 <ListItemText 
                   primary="Connection timeout"
                   secondary={
-                    <Box>
-                      <Typography variant="body2" className="manual-body-text">
-                        <strong>Solution:</strong> Check your internet connection and ensure SmartSheet is accessible. 
-                        Try again in a few minutes if the issue persists.
-                      </Typography>
-                    </Box>
+                    <>
+                      <strong>Solution:</strong> Check your internet connection and ensure SmartSheet is accessible. 
+                      Try again in a few minutes if the issue persists.
+                    </>
                   }
+                  secondaryTypographyProps={{ className: 'manual-body-text' }}
                 />
               </ListItem>
             </List>
@@ -424,13 +421,12 @@ export default function UserManual() {
                 <ListItemText 
                   primary="Some entries failed to submit"
                   secondary={
-                    <Box>
-                      <Typography variant="body2" className="manual-body-text">
-                        <strong>Solution:</strong> Check the error messages in the status area. Common causes include 
-                        missing project codes, invalid time formats, or duplicate entries. Fix the issues and try again.
-                      </Typography>
-                    </Box>
+                    <>
+                      <strong>Solution:</strong> Check the error messages in the status area. Common causes include 
+                      missing project codes, invalid time formats, or duplicate entries. Fix the issues and try again.
+                    </>
                   }
+                  secondaryTypographyProps={{ className: 'manual-body-text' }}
                 />
               </ListItem>
               <ListItem>
@@ -440,13 +436,12 @@ export default function UserManual() {
                 <ListItemText 
                   primary="No entries to submit"
                   secondary={
-                    <Box>
-                      <Typography variant="body2" className="manual-body-text">
-                        <strong>Solution:</strong> Ensure you have timesheet entries for the current week. 
-                        Check that entries are not already submitted (they won&apos;t appear in the submission queue).
-                      </Typography>
-                    </Box>
+                    <>
+                      <strong>Solution:</strong> Ensure you have timesheet entries for the current week. 
+                      Check that entries are not already submitted (they won&apos;t appear in the submission queue).
+                    </>
                   }
+                  secondaryTypographyProps={{ className: 'manual-body-text' }}
                 />
               </ListItem>
             </List>
@@ -464,13 +459,12 @@ export default function UserManual() {
                 <ListItemText 
                   primary="Application won't start"
                   secondary={
-                    <Box>
-                      <Typography variant="body2" className="manual-body-text">
-                        <strong>Solution:</strong> Restart your computer and try again. If the issue persists, 
-                        contact your system administrator for assistance.
-                      </Typography>
-                    </Box>
+                    <>
+                      <strong>Solution:</strong> Restart your computer and try again. If the issue persists, 
+                      contact your system administrator for assistance.
+                    </>
                   }
+                  secondaryTypographyProps={{ className: 'manual-body-text' }}
                 />
               </ListItem>
               <ListItem>
@@ -480,13 +474,12 @@ export default function UserManual() {
                 <ListItemText 
                   primary="Data not loading"
                   secondary={
-                    <Box>
-                      <Typography variant="body2" className="manual-body-text">
-                        <strong>Solution:</strong> Check if the database file is accessible and not corrupted. 
-                        The application stores data locally in a SQLite database file.
-                      </Typography>
-                    </Box>
+                    <>
+                      <strong>Solution:</strong> Check if the database file is accessible and not corrupted. 
+                      The application stores data locally in a SQLite database file.
+                    </>
                   }
+                  secondaryTypographyProps={{ className: 'manual-body-text' }}
                 />
               </ListItem>
             </List>

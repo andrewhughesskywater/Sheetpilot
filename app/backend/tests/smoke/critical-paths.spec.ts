@@ -111,7 +111,7 @@ describe('Critical Path Smoke Tests', () => {
 
     it('should register IPC handlers successfully', async () => {
       // Import the main module to trigger IPC handler registration
-      await import('../../src/main/main');
+      await import('../../src/main');
       
       const { ipcMain } = await import('electron');
       

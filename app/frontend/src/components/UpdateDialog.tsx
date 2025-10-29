@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -18,7 +17,7 @@ interface UpdateDialogProps {
   status: 'downloading' | 'installing';
 }
 
-const UpdateDialog: React.FC<UpdateDialogProps> = ({ open, version, progress, status }) => {
+function UpdateDialog({ open, version, progress, status }: UpdateDialogProps) {
   return (
     <Dialog 
       open={open} 

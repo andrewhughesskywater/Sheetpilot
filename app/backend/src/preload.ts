@@ -5,11 +5,11 @@ contextBridge.exposeInMainWorld('api', {
 });
 
 contextBridge.exposeInMainWorld('timesheet', {
-  submit: (): Promise<{
+  submit: (token: string): Promise<{
     submitResult?: { ok: boolean; successCount: number; removedCount: number; totalProcessed: number };
     dbPath?: string; 
     error?: string;
-  }> => ipcRenderer.invoke('timesheet:submit'),
+  }> => ipcRenderer.invoke('timesheet:submit', token),
   saveDraft: (row: {
     date: string;
     timeIn: string;
@@ -60,6 +60,34 @@ contextBridge.exposeInMainWorld('credentials', {
   delete: (service: string): Promise<{
     success: boolean; message: string; changes: number;
   }> => ipcRenderer.invoke('credentials:delete', service)
+});
+
+contextBridge.exposeInMainWorld('auth', {
+  login: (email: string, password: string, stayLoggedIn: boolean): Promise<{
+    success: boolean;
+    token?: string;
+    isAdmin?: boolean;
+    error?: string;
+  }> => ipcRenderer.invoke('auth:login', email, password, stayLoggedIn),
+  validateSession: (token: string): Promise<{
+    valid: boolean;
+    email?: string;
+    isAdmin?: boolean;
+  }> => ipcRenderer.invoke('auth:validateSession', token),
+  logout: (token: string): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('auth:logout', token),
+  getCurrentSession: (token: string): Promise<{
+    email: string;
+    token: string;
+    isAdmin: boolean;
+  } | null> => ipcRenderer.invoke('auth:getCurrentSession', token)
+});
+
+contextBridge.exposeInMainWorld('admin', {
+  clearCredentials: (token: string): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('admin:clearCredentials', token),
+  rebuildDatabase: (token: string): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('admin:rebuildDatabase', token)
 });
 
 contextBridge.exposeInMainWorld('database', {

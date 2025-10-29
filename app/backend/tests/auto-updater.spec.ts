@@ -149,8 +149,8 @@ describe('Error Handling', () => {
     
     try {
       await mockCheckForUpdates();
-    } catch (error: Error) {
-      expect(error.message).toBe('Network error');
+    } catch (error: unknown) {
+      expect(error instanceof Error ? error.message : String(error)).toBe('Network error');
     }
     
     // Error should be caught and logged, not thrown

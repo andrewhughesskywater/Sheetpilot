@@ -36,7 +36,7 @@ interface Credential {
 //   credentials: Credential[];
 // }
 
-const Archive: React.FC = () => {
+function Archive() {
   const [activeTab] = useState<'timesheet' | 'credentials'>('timesheet');
   
   // Use preloaded data from context

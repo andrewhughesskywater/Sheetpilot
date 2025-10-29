@@ -18,8 +18,7 @@
   color: var(--md-sys-color-on-surface-variant);
 }
 
-.log-management-card,
-.support-card {
+.log-management-card {
   margin-bottom: var(--sp-space-6);
 }
 
@@ -35,101 +34,25 @@
   gap: var(--sp-space-2);
 }
 
-.log-controls {
+.credentials-management-card {
+  margin-bottom: var(--sp-space-6);
+}
+
+.credentials-management-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: var(--sp-space-4);
 }
 
-.log-export-actions {
-  display: flex;
-  gap: var(--sp-space-2);
-  margin-top: var(--sp-space-4);
+.admin-section-card {
+  margin-bottom: var(--sp-space-6);
 }
 
-.log-loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: var(--sp-space-8);
-}
-
-.log-entries {
-  margin-top: var(--sp-space-4);
-}
-
-.log-list {
-  max-height: 600px;
-  overflow-y: auto;
-  border: 1px solid var(--md-sys-color-outline-variant);
-  border-radius: var(--md-sys-shape-corner-medium);
-}
-
-.log-entry {
-  border-bottom: 1px solid var(--md-sys-color-outline-variant);
-  transition: background-color 0.2s ease;
-}
-
-.log-entry:hover {
-  background-color: var(--md-sys-color-surface-container-highest);
-}
-
-.log-entry:last-child {
-  border-bottom: none;
-}
-
-.log-entry-icon {
-  margin-right: var(--sp-space-3);
+.admin-section-header {
   display: flex;
   align-items: center;
-}
-
-.log-entry-header {
-  display: flex;
-  align-items: center;
-  margin-bottom: var(--sp-space-1);
-}
-
-.log-entry-message {
-  font-family: 'Roboto Mono', monospace;
-  font-size: 0.875rem;
-  line-height: 1.4;
-  word-break: break-word;
-}
-
-.log-detail-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: var(--sp-space-4);
   margin-bottom: var(--sp-space-4);
-}
-
-.log-detail-item {
-  margin-bottom: var(--sp-space-3);
-}
-
-.log-detail-value {
-  font-family: 'Roboto Mono', monospace;
-  font-size: 0.875rem;
-  word-break: break-all;
-}
-
-.log-detail-message {
-  font-family: 'Roboto Mono', monospace;
-  font-size: 0.875rem;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  word-break: break-word;
-  background-color: var(--md-sys-color-surface-container-low);
-  padding: var(--sp-space-3);
-  border-radius: var(--md-sys-shape-corner-small);
-  border: 1px solid var(--md-sys-color-outline-variant);
-}
-
-.support-card .MuiListItem-root {
-  padding-left: 0;
-}
-
-.support-card .MuiListItemText-root {
-  margin-left: var(--sp-space-2);
 }
 
 /* Responsive adjustments */
@@ -144,11 +67,9 @@
     gap: var(--sp-space-2);
   }
   
-  .log-export-actions {
+  .credentials-management-header {
     flex-direction: column;
-  }
-  
-  .log-detail-grid {
-    grid-template-columns: 1fr;
+    align-items: flex-start;
+    gap: var(--sp-space-2);
   }
 }

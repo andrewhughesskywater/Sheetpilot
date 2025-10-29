@@ -538,6 +538,19 @@ function ensureSchemaInternal(db: BetterSqlite3.Database) {
         
         -- Index for credentials lookups
         CREATE INDEX IF NOT EXISTS idx_credentials_service ON credentials(service);
+        
+        -- Sessions table for managing user login sessions
+        CREATE TABLE IF NOT EXISTS sessions(
+            session_token TEXT PRIMARY KEY,
+            email TEXT NOT NULL,
+            expires_at DATETIME,
+            is_admin BOOLEAN DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+        
+        -- Indexes for session lookups
+        CREATE INDEX IF NOT EXISTS idx_sessions_email ON sessions(email);
+        CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
     `);
 }
 
@@ -900,5 +913,270 @@ export function deleteCredentials(service: string) {
             message: error instanceof Error ? error.message : 'Unknown error',
             changes: 0
         };
+    }
+}
+
+// ============================================================================
+// SESSION MANAGEMENT FUNCTIONS
+// ============================================================================
+
+/**
+ * Creates a new session for a user
+ * 
+ * @param email - User email address
+ * @param stayLoggedIn - If true, session expires in 30 days; if false, no expiry (session-only)
+ * @param isAdmin - Whether this is an admin session
+ * @returns Session token (UUID)
+ */
+export function createSession(email: string, stayLoggedIn: boolean, isAdmin: boolean = false): string {
+    const timer = dbLogger.startTimer('create-session');
+    const db = getDb();
+    
+    try {
+        // Generate UUID v4 for session token
+        const crypto = require('crypto');
+        const sessionToken = crypto.randomUUID();
+        
+        // Calculate expiry: 30 days from now if stayLoggedIn, otherwise NULL
+        const expiresAt = stayLoggedIn 
+            ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+            : null;
+        
+        dbLogger.verbose('Creating session', { email, stayLoggedIn, isAdmin });
+        
+        const insert = db.prepare(`
+            INSERT INTO sessions (session_token, email, expires_at, is_admin)
+            VALUES (?, ?, ?, ?)
+        `);
+        
+        insert.run(sessionToken, email, expiresAt, isAdmin ? 1 : 0);
+        
+        dbLogger.info('Session created successfully', { email, isAdmin });
+        timer.done({ sessionCreated: true });
+        
+        return sessionToken;
+    } catch (error) {
+        dbLogger.error('Could not create session', error);
+        timer.done({ outcome: 'error' });
+        throw error;
+    }
+}
+
+/**
+ * Validates a session token and returns session info if valid
+ * 
+ * @param token - Session token to validate
+ * @returns Object with validation result and email if valid
+ */
+export function validateSession(token: string): { valid: boolean; email?: string; isAdmin?: boolean } {
+    const timer = dbLogger.startTimer('validate-session');
+    const db = getDb();
+    
+    try {
+        dbLogger.verbose('Validating session', { token: token.substring(0, 8) + '...' });
+        
+        const getSession = db.prepare(`
+            SELECT email, expires_at, is_admin
+            FROM sessions
+            WHERE session_token = ?
+        `);
+        
+        const session = getSession.get(token) as { email: string; expires_at: string | null; is_admin: number } | undefined;
+        
+        if (!session) {
+            dbLogger.verbose('Session not found');
+            timer.done({ valid: false });
+            return { valid: false };
+        }
+        
+        // Check if session has expired (only if expires_at is not NULL)
+        if (session.expires_at) {
+            const expiresAt = new Date(session.expires_at);
+            const now = new Date();
+            
+            if (now > expiresAt) {
+                dbLogger.verbose('Session expired', { email: session.email });
+                // Clean up expired session
+                clearSession(token);
+                timer.done({ valid: false, reason: 'expired' });
+                return { valid: false };
+            }
+        }
+        
+        dbLogger.verbose('Session validated successfully', { email: session.email });
+        timer.done({ valid: true });
+        
+        return {
+            valid: true,
+            email: session.email,
+            isAdmin: session.is_admin === 1
+        };
+    } catch (error) {
+        dbLogger.error('Could not validate session', error);
+        timer.done({ outcome: 'error' });
+        return { valid: false };
+    }
+}
+
+/**
+ * Clears a specific session by token
+ * 
+ * @param token - Session token to clear
+ */
+export function clearSession(token: string): void {
+    const timer = dbLogger.startTimer('clear-session');
+    const db = getDb();
+    
+    try {
+        dbLogger.verbose('Clearing session', { token: token.substring(0, 8) + '...' });
+        
+        const deleteSession = db.prepare(`
+            DELETE FROM sessions
+            WHERE session_token = ?
+        `);
+        
+        const result = deleteSession.run(token);
+        
+        if (result.changes > 0) {
+            dbLogger.info('Session cleared successfully');
+        } else {
+            dbLogger.verbose('Session not found to clear');
+        }
+        timer.done({ changes: result.changes });
+    } catch (error) {
+        dbLogger.error('Could not clear session', error);
+        timer.done({ outcome: 'error' });
+    }
+}
+
+/**
+ * Clears all sessions for a specific user
+ * 
+ * @param email - User email whose sessions should be cleared
+ */
+export function clearUserSessions(email: string): void {
+    const timer = dbLogger.startTimer('clear-user-sessions');
+    const db = getDb();
+    
+    try {
+        dbLogger.verbose('Clearing user sessions', { email });
+        
+        const deleteSessions = db.prepare(`
+            DELETE FROM sessions
+            WHERE email = ?
+        `);
+        
+        const result = deleteSessions.run(email);
+        
+        dbLogger.info('User sessions cleared', { email, count: result.changes });
+        timer.done({ changes: result.changes });
+    } catch (error) {
+        dbLogger.error('Could not clear user sessions', error);
+        timer.done({ outcome: 'error' });
+    }
+}
+
+/**
+ * Gets an active session for a user email
+ * 
+ * @param email - User email to look up
+ * @returns Session token if found and valid, null otherwise
+ */
+export function getSessionByEmail(email: string): string | null {
+    const timer = dbLogger.startTimer('get-session-by-email');
+    const db = getDb();
+    
+    try {
+        dbLogger.verbose('Getting session by email', { email });
+        
+        const getSession = db.prepare(`
+            SELECT session_token, expires_at
+            FROM sessions
+            WHERE email = ?
+            ORDER BY created_at DESC
+            LIMIT 1
+        `);
+        
+        const session = getSession.get(email) as { session_token: string; expires_at: string | null } | undefined;
+        
+        if (!session) {
+            timer.done({ found: false });
+            return null;
+        }
+        
+        // Check if expired
+        if (session.expires_at) {
+            const expiresAt = new Date(session.expires_at);
+            const now = new Date();
+            
+            if (now > expiresAt) {
+                clearSession(session.session_token);
+                timer.done({ found: false, reason: 'expired' });
+                return null;
+            }
+        }
+        
+        timer.done({ found: true });
+        return session.session_token;
+    } catch (error) {
+        dbLogger.error('Could not get session by email', error);
+        timer.done({ outcome: 'error' });
+        return null;
+    }
+}
+
+/**
+ * Clears all credentials from the database
+ * Used by admin for recovery purposes
+ */
+export function clearAllCredentials(): void {
+    const timer = dbLogger.startTimer('clear-all-credentials');
+    const db = getDb();
+    
+    try {
+        dbLogger.info('Clearing all credentials');
+        
+        const deleteAll = db.prepare('DELETE FROM credentials');
+        const result = deleteAll.run();
+        
+        dbLogger.info('All credentials cleared', { count: result.changes });
+        timer.done({ changes: result.changes });
+    } catch (error) {
+        dbLogger.error('Could not clear all credentials', error);
+        timer.done({ outcome: 'error' });
+        throw error;
+    }
+}
+
+/**
+ * Rebuilds the database by dropping and recreating all tables
+ * Used by admin for recovery purposes
+ */
+export function rebuildDatabase(): void {
+    const timer = dbLogger.startTimer('rebuild-database');
+    const db = getDb();
+    
+    try {
+        dbLogger.warn('Rebuilding database - dropping all tables');
+        
+        // Drop all tables
+        db.exec(`
+            DROP TABLE IF EXISTS timesheet;
+            DROP TABLE IF EXISTS credentials;
+            DROP TABLE IF EXISTS sessions;
+        `);
+        
+        // Reset schema initialized flag to force recreation
+        schemaInitialized = false;
+        
+        // Recreate schema
+        ensureSchema();
+        
+        dbLogger.info('Database rebuilt successfully');
+        timer.done();
+    } catch (error) {
+        dbLogger.error('Could not rebuild database', error);
+        timer.done({ outcome: 'error' });
+        throw error;
     }
 }

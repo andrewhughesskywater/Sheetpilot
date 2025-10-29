@@ -2,11 +2,12 @@ import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { HotTable } from '@handsontable/react-wrapper';
 import { registerAllModules } from 'handsontable/registry';
 import type { HotTableRef } from '@handsontable/react-wrapper';
-import { Button, CircularProgress } from '@mui/material';
+import { Button, CircularProgress, Alert } from '@mui/material';
 import { PlayArrow as PlayArrowIcon } from '@mui/icons-material';
 import 'handsontable/styles/handsontable.css';
 import 'handsontable/styles/ht-theme-horizon.css';
 import { useData } from '../contexts/DataContext';
+import { useSession } from '../contexts/SessionContext';
 import './TimesheetGrid.css';
 
 // Register all Handsontable modules
@@ -303,10 +304,11 @@ interface TimesheetGridProps {
   onChange?: (rows: TimesheetRow[]) => void;
 }
 
-const TimesheetGrid: React.FC<TimesheetGridProps> = ({ onChange }) => {
+function TimesheetGrid({ onChange }: TimesheetGridProps) {
   console.log('[TimesheetGrid] Component rendering');
   const hotTableRef = useRef<HotTableRef>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const { token, isAdmin } = useSession();
   
   console.log('[TimesheetGrid] Current isProcessing state:', isProcessing);
   
@@ -418,6 +420,41 @@ const TimesheetGrid: React.FC<TimesheetGridProps> = ({ onChange }) => {
       console.error('[TimesheetGrid] Autosave error:', error);
     }
   }, []);
+
+  // Block manual edits to inactive tool/charge code columns, but allow paste operations
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleBeforeChange = useCallback((changes: any, source: string) => {
+    // Allow all changes from paste operations and data loads
+    if (!changes || source === 'loadData' || (typeof source === 'string' && source.toLowerCase().includes('paste'))) {
+      return true;
+    }
+
+    // For manual edits, check if tool/charge code columns are active
+    for (const change of changes) {
+      const [rowIdx, prop, _oldVal, _newVal] = change;
+      const propStr = String(prop);
+      
+      // Block manual edits to tool column if project is not selected
+      if (propStr === 'tool') {
+        const rowData = timesheetDraftData[rowIdx];
+        const project = rowData?.project;
+        if (!project || !projectNeedsTools(project)) {
+          return false; // Block the change
+        }
+      }
+      
+      // Block manual edits to charge code column if tool is not selected
+      if (propStr === 'chargeCode') {
+        const rowData = timesheetDraftData[rowIdx];
+        const tool = rowData?.tool;
+        if (!tool || !toolNeedsChargeCode(tool)) {
+          return false; // Block the change
+        }
+      }
+    }
+    
+    return true; // Allow the change
+  }, [timesheetDraftData]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleAfterChange = useCallback((changes: any, source: string) => {
@@ -650,6 +687,19 @@ const TimesheetGrid: React.FC<TimesheetGridProps> = ({ onChange }) => {
       window.logger?.warn('[TimesheetGrid] Submit ignored - already processing');
       return;
     }
+
+    // Check if admin (admins cannot submit)
+    if (isAdmin) {
+      window.alert('❌ Admin users cannot submit timesheet entries to SmartSheet.');
+      window.logger?.warn('Admin attempted timesheet submission');
+      return;
+    }
+
+    if (!token) {
+      window.alert('❌ Session token is required. Please log in again.');
+      window.logger?.warn('Submit attempted without session token');
+      return;
+    }
     
     console.log('[TimesheetGrid] Setting processing state to true');
     setIsProcessing(true);
@@ -663,7 +713,7 @@ const TimesheetGrid: React.FC<TimesheetGridProps> = ({ onChange }) => {
       
       console.log('[TimesheetGrid] Calling window.timesheet.submit()');
       window.logger?.info('[TimesheetGrid] Starting timesheet submission');
-      const res = await window.timesheet.submit();
+      const res = await window.timesheet.submit(token);
       console.log('[TimesheetGrid] Received response:', res);
       console.log('[TimesheetGrid] Full submitResult:', JSON.stringify(res.submitResult, null, 2));
       
@@ -725,24 +775,28 @@ const TimesheetGrid: React.FC<TimesheetGridProps> = ({ onChange }) => {
     }
     
     // Tool column - dynamic dropdown based on selected project
+    // Note: readOnly is not set here to allow paste operations
+    // Manual edits are blocked via beforeChange hook
     if (col === 4) {
       const project = rowData?.project;
       if (!project) {
-        return { readOnly: true, className: 'htDimmed', placeholder: '' };
+        return { className: 'htDimmed', placeholder: '' };
       }
       return !projectNeedsTools(project)
-        ? { readOnly: true, className: 'htDimmed', placeholder: 'N/A' }
+        ? { className: 'htDimmed', placeholder: 'N/A' }
         : { source: getToolOptions(project), placeholder: 'Pick a Tool' };
     }
     
     // Charge code column - conditional based on selected tool
+    // Note: readOnly is not set here to allow paste operations
+    // Manual edits are blocked via beforeChange hook
     if (col === 5) {
       const tool = rowData?.tool;
       if (!tool) {
-        return { readOnly: true, className: 'htDimmed', placeholder: '' };
+        return { className: 'htDimmed', placeholder: '' };
       }
       if (!toolNeedsChargeCode(tool)) {
-        return { readOnly: true, className: 'htDimmed', placeholder: 'N/A' };
+        return { className: 'htDimmed', placeholder: 'N/A' };
       }
       return { placeholder: 'Pick a Charge Code' };
     }
@@ -798,6 +852,11 @@ const TimesheetGrid: React.FC<TimesheetGridProps> = ({ onChange }) => {
     <div className="timesheet-page">
       <div className="timesheet-header">
         <h2 className="md-typescale-headline-medium">Timesheet</h2>
+        {isAdmin && (
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            Admin users cannot submit timesheet entries to SmartSheet.
+          </Alert>
+        )}
         <Button
           variant="contained"
           size="large"
@@ -807,7 +866,7 @@ const TimesheetGrid: React.FC<TimesheetGridProps> = ({ onChange }) => {
             console.log('[TimesheetGrid] Button onClick fired, isProcessing:', isProcessing);
             submitTimesheet();
           }}
-          disabled={isProcessing}
+          disabled={isProcessing || isAdmin}
         >
           {isProcessing ? 'Submitting...' : 'Submit Timesheet'}
         </Button>
@@ -818,6 +877,7 @@ const TimesheetGrid: React.FC<TimesheetGridProps> = ({ onChange }) => {
         data={timesheetDraftData}
         columns={columnDefinitions}
         cells={cellsFunction}
+        beforeChange={handleBeforeChange}
         afterChange={handleAfterChange}
         afterRemoveRow={handleAfterRemoveRow}
         beforeValidate={handleBeforeValidate}

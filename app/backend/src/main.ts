@@ -10,7 +10,13 @@ import {
   getCredentials,
   listCredentials,
   deleteCredentials,
-  getDb
+  getDb,
+  createSession,
+  validateSession,
+  clearSession,
+  clearUserSessions,
+  clearAllCredentials,
+  rebuildDatabase
 } from './services/database';
 import { submitTimesheets } from './services/timesheet_importer';
 import {
@@ -36,6 +42,15 @@ if (app.isPackaged) {
   console.log('[Setup] Environment variable set:', process.env['PLAYWRIGHT_BROWSERS_PATH']);
 } else {
   console.log('[Setup] Development mode - using local Playwright browsers from node_modules');
+}
+
+// Add backend node_modules to module resolution path for development
+if (!app.isPackaged) {
+  const pathModule = require('path');
+  const backendNodeModules = pathModule.resolve(__dirname, '..', '..', '..', '..', 'app', 'backend', 'node_modules');
+  const currentPath = process.env['NODE_PATH'] || '';
+  process.env['NODE_PATH'] = currentPath ? `${backendNodeModules}${pathModule.delimiter}${currentPath}` : backendNodeModules;
+  require('module').Module._initPaths();
 }
 
 import { registerDefaultPlugins } from './middleware/bootstrap-plugins';
@@ -453,12 +468,37 @@ export function registerIPCHandlers() {
   
 
   // Handler for timesheet submission (submit pending data from database)
-  ipcMain.handle('timesheet:submit', async () => {
+  ipcMain.handle('timesheet:submit', async (_event, token: string) => {
     console.log('[Main] timesheet:submit IPC handler called');
     const timer = ipcLogger.startTimer('timesheet-submit');
     ipcLogger.info('Timesheet submission initiated by user');
     
     try {
+      // Validate session and check if admin
+      if (!token) {
+        timer.done({ outcome: 'error', reason: 'no-session' });
+        return { 
+          error: 'Session token is required. Please log in to submit timesheets.'
+        };
+      }
+
+      const session = validateSession(token);
+      if (!session.valid) {
+        timer.done({ outcome: 'error', reason: 'invalid-session' });
+        return { 
+          error: 'Session is invalid or expired. Please log in again.'
+        };
+      }
+
+      // Reject submission if admin
+      if (session.isAdmin) {
+        ipcLogger.warn('Admin attempted timesheet submission', { email: session.email });
+        timer.done({ outcome: 'error', reason: 'admin-not-allowed' });
+        return { 
+          error: 'Admin users cannot submit timesheet entries to SmartSheet.'
+        };
+      }
+
       console.log('[Main] Checking credentials...');
       // Check credentials for submission
       const credentials = getCredentials('smartsheet');
@@ -605,6 +645,171 @@ export function registerIPCHandlers() {
       ipcLogger.error('Could not delete credentials', err);
       const errorMessage = err instanceof Error ? err.message : String(err);
       return { success: false, error: errorMessage, changes: 0 };
+    }
+  });
+
+  // ============================================================================
+  // AUTHENTICATION HANDLERS
+  // ============================================================================
+
+  // Admin credentials constants
+  const ADMIN_USERNAME = 'Admin';
+  const ADMIN_PASSWORD = 'SWFL_ADMIN';
+
+  // Handler for user login
+  ipcMain.handle('auth:login', async (_event, email: string, password: string, stayLoggedIn: boolean) => {
+    // Validate parameters
+    if (!email || !password) {
+      return { success: false, error: 'Email and password are required' };
+    }
+
+    ipcLogger.audit('login-attempt', 'User attempting login', { email });
+    
+    try {
+      let isAdmin = false;
+      
+      // Check if this is an admin login
+      if (email === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+        isAdmin = true;
+        ipcLogger.info('Admin login successful', { email });
+      } else {
+        // For regular users, store credentials (service: 'smartsheet')
+        ipcLogger.verbose('Storing user credentials', { email });
+        const storeResult = storeCredentials('smartsheet', email, password);
+        if (!storeResult.success) {
+          return { success: false, error: storeResult.message };
+        }
+      }
+
+      // Create session
+      const sessionToken = createSession(email, stayLoggedIn, isAdmin);
+      
+      ipcLogger.info('Login successful', { email, isAdmin });
+      return {
+        success: true,
+        token: sessionToken,
+        isAdmin
+      };
+    } catch (err: unknown) {
+      ipcLogger.error('Could not login', err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      return { success: false, error: errorMessage };
+    }
+  });
+
+  // Handler for session validation
+  ipcMain.handle('auth:validateSession', async (_event, token: string) => {
+    if (!token) {
+      return { valid: false };
+    }
+
+    try {
+      const result = validateSession(token);
+      return result;
+    } catch (err: unknown) {
+      ipcLogger.error('Could not validate session', err);
+      return { valid: false };
+    }
+  });
+
+  // Handler for logout
+  ipcMain.handle('auth:logout', async (_event, token: string) => {
+    if (!token) {
+      return { success: false, error: 'Session token is required' };
+    }
+
+    ipcLogger.audit('logout', 'User logging out', { token: token.substring(0, 8) + '...' });
+    
+    try {
+      // Get session info before clearing
+      const session = validateSession(token);
+      if (session.valid && session.email) {
+        clearUserSessions(session.email);
+        ipcLogger.info('Logout successful', { email: session.email });
+      } else {
+        clearSession(token);
+      }
+      
+      return { success: true };
+    } catch (err: unknown) {
+      ipcLogger.error('Could not logout', err);
+      return { success: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  });
+
+  // Handler for getting current session
+  ipcMain.handle('auth:getCurrentSession', async (_event, token: string) => {
+    if (!token) {
+      return null;
+    }
+
+    try {
+      const session = validateSession(token);
+      if (session.valid && session.email) {
+        return {
+          email: session.email,
+          token,
+          isAdmin: session.isAdmin || false
+        };
+      }
+      return null;
+    } catch (err: unknown) {
+      ipcLogger.error('Could not get current session', err);
+      return null;
+    }
+  });
+
+  // ============================================================================
+  // ADMIN HANDLERS
+  // ============================================================================
+
+  // Handler for admin to clear all credentials
+  ipcMain.handle('admin:clearCredentials', async (_event, token: string) => {
+    // Validate admin session
+    if (!token) {
+      return { success: false, error: 'Session token is required' };
+    }
+
+    const session = validateSession(token);
+    if (!session.valid || !session.isAdmin) {
+      ipcLogger.security('admin-action-denied', 'Unauthorized admin action attempted', { token: token.substring(0, 8) + '...' });
+      return { success: false, error: 'Unauthorized: Admin access required' };
+    }
+
+    ipcLogger.audit('admin-clear-credentials', 'Admin clearing all credentials', { email: session.email });
+    
+    try {
+      clearAllCredentials();
+      ipcLogger.info('All credentials cleared by admin', { email: session.email });
+      return { success: true };
+    } catch (err: unknown) {
+      ipcLogger.error('Could not clear credentials', err);
+      return { success: false, error: err instanceof Error ? err.message : String(err) };
+    }
+  });
+
+  // Handler for admin to rebuild database
+  ipcMain.handle('admin:rebuildDatabase', async (_event, token: string) => {
+    // Validate admin session
+    if (!token) {
+      return { success: false, error: 'Session token is required' };
+    }
+
+    const session = validateSession(token);
+    if (!session.valid || !session.isAdmin) {
+      ipcLogger.security('admin-action-denied', 'Unauthorized admin action attempted', { token: token.substring(0, 8) + '...' });
+      return { success: false, error: 'Unauthorized: Admin access required' };
+    }
+
+    ipcLogger.audit('admin-rebuild-database', 'Admin rebuilding database', { email: session.email });
+    
+    try {
+      rebuildDatabase();
+      ipcLogger.info('Database rebuilt by admin', { email: session.email });
+      return { success: true };
+    } catch (err: unknown) {
+      ipcLogger.error('Could not rebuild database', err);
+      return { success: false, error: err instanceof Error ? err.message : String(err) };
     }
   });
 

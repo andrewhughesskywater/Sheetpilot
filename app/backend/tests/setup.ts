@@ -45,6 +45,7 @@ const ResizeObserverMock = class ResizeObserver {
   disconnect = vi.fn();
 };
 
+// eslint-disable-next-line no-undef
 global.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
 
 // Mock other browser APIs that might be missing

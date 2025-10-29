@@ -8,6 +8,7 @@ const ResizeObserverMock = class ResizeObserver {
   disconnect = vi.fn();
 };
 
+// eslint-disable-next-line no-undef
 global.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
 
 // Mock Vite environment variables
@@ -116,6 +117,7 @@ beforeEach(() => {
   
   // Re-install ResizeObserver mock (in case it was cleaned up)
   if (!global.ResizeObserver) {
+    // eslint-disable-next-line no-undef
     global.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
   }
   

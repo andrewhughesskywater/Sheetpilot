@@ -1,14 +1,33 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
+import path from 'path';
 
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, '../src'),
+    }
+  },
   test: {
     environment: 'jsdom',
-    include: ['__tests__/integration/**/*.spec.ts'],
+    root: path.resolve(__dirname, '../../..'),
+    include: [
+      'app/backend/tests/auto-updater.spec.ts',
+      'app/backend/tests/database.spec.ts',
+      'app/backend/tests/deprecated-constants.spec.ts',
+      'app/backend/tests/ipc-handlers-comprehensive.spec.ts',
+      'app/backend/tests/ipc-main.spec.ts',
+      'app/backend/tests/ipc-workflow-integration.spec.ts',
+      'app/backend/tests/main-application-logic.spec.ts',
+      'app/backend/tests/quarter-config.spec.ts',
+      'app/backend/tests/quarter-routing-integration.spec.ts',
+      'app/backend/tests/timesheet_submission_integration.spec.ts',
+      'app/backend/tests/services/**/*.spec.ts'
+    ],
     passWithNoTests: false,
     globals: true,
-    setupFiles: ['./__tests__/setup.ts'],
+    setupFiles: [path.resolve(__dirname, 'setup.ts')],
     testTimeout: 120000, // 2 minutes for integration tests
     // Allow parallel execution for integration tests
     pool: 'threads',

@@ -1,0 +1,19 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "skipLibCheck": true
+  },
+  "include": [
+    "app/**/*.ts",
+    "app/**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules",
+    "build",
+    "release",
+    "app/backend/src/services/bot/node_modules",
+    "app/frontend/node_modules",
+    "app/frontend/src/config/vite.config.ts",
+    "app/frontend/tests/vitest.config.blank-screen-prevention.ts"
+  ]
+}

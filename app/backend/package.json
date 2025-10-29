@@ -1,0 +1,23 @@
+{
+  "name": "sheetpilot-backend",
+  "private": true,
+  "version": "1.3.5",
+  "description": "Sheetpilot Electron main process and backend services",
+  "main": "src/main.ts",
+  "scripts": {
+    "migration": "echo 'Backend dependencies managed here - use root scripts for building'"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.4.1",
+    "electron-log": "^5.4.3",
+    "electron-updater": "^6.6.2",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^24.5.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
