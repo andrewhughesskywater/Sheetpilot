@@ -9,7 +9,7 @@
  * @since 2025
  */
 
-import type { TimesheetRow } from '../../../backend/src/business-logic/timesheet-validation';
+import type { TimesheetRow } from '../../../backend/src/logic/timesheet-validation';
 
 /**
  * Column definition for grid

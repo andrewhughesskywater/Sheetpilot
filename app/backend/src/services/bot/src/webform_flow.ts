@@ -11,7 +11,7 @@
 
 import { chromium, Browser, BrowserContext, Page, Locator } from 'playwright';
 import * as cfg from './automation_config';
-import { botLogger } from '../../../shared/logger';
+import { botLogger } from '../../../../../shared/logger';
 
 /**
  * Error thrown when browser operations are attempted before initialization

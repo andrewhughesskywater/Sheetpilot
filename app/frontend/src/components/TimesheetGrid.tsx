@@ -390,6 +390,12 @@ const TimesheetGrid: React.FC<TimesheetGridProps> = ({ onChange }) => {
     }
     
     try {
+      window.logger?.verbose('[TimesheetGrid] Autosaving row to database', { 
+        id: row.id,
+        date: row.date,
+        project: row.project 
+      });
+      
       const result = await window.timesheet.saveDraft({
         id: row.id,
         date: row.date,
@@ -400,10 +406,15 @@ const TimesheetGrid: React.FC<TimesheetGridProps> = ({ onChange }) => {
         chargeCode: row.chargeCode,
         taskDescription: row.taskDescription
       });
+      
       if (!result.success) {
+        window.logger?.error('Autosave failed', { error: result.error });
         console.error('[TimesheetGrid] Autosave failed:', result.error);
+      } else {
+        window.logger?.debug('Row autosaved successfully', { changes: result.changes });
       }
     } catch (error) {
+      window.logger?.error('Autosave error', { error: error instanceof Error ? error.message : String(error) });
       console.error('[TimesheetGrid] Autosave error:', error);
     }
   }, []);
@@ -466,9 +477,22 @@ const TimesheetGrid: React.FC<TimesheetGridProps> = ({ onChange }) => {
     onChange?.(normalizedRows);
     saveLocalBackup(normalizedRows);
     
-    // Autosave first changed row
-    if (changes.length > 0 && normalizedRows[changes[0][0]]) {
-      autosaveRow(normalizedRows[changes[0][0]]);
+    // Autosave ALL changed rows (not just the first one)
+    // Process in batches to avoid overwhelming the backend
+    const rowsToSave = [];
+    for (const change of changes) {
+      const rowIdx = change[0];
+      if (normalizedRows[rowIdx]) {
+        rowsToSave.push(normalizedRows[rowIdx]);
+      }
+    }
+    
+    // Save all rows sequentially to avoid overwhelming the database
+    if (rowsToSave.length > 0) {
+      window.logger?.info('[TimesheetGrid] Autosaving multiple rows', { count: rowsToSave.length });
+      for (const row of rowsToSave) {
+        autosaveRow(row);
+      }
     }
   }, [timesheetDraftData, setTimesheetDraftData, onChange, autosaveRow, saveLocalBackup]);
 
@@ -688,7 +712,17 @@ const TimesheetGrid: React.FC<TimesheetGridProps> = ({ onChange }) => {
 
   // Cell-level configuration (cascades over column config)
   const cellsFunction = useCallback((row: number, col: number) => {
+    // Add bounds checking to prevent out-of-bounds access
+    if (row < 0 || row >= timesheetDraftData.length) {
+      window.logger?.warn('[TimesheetGrid] Row index out of bounds', { row, dataLength: timesheetDraftData.length });
+      return {};
+    }
+    
     const rowData = timesheetDraftData[row];
+    if (!rowData) {
+      window.logger?.warn('[TimesheetGrid] Row data is undefined', { row });
+      return {};
+    }
     
     // Tool column - dynamic dropdown based on selected project
     if (col === 4) {
@@ -811,6 +845,7 @@ const TimesheetGrid: React.FC<TimesheetGridProps> = ({ onChange }) => {
         disableVisualSelection={false}
         selectionMode="multiple"
         outsideClickDeselects={true}
+        viewportRowRenderingOffset={200}
         columnSorting={{
           initialConfig: [
             { column: 0, sortOrder: 'asc' },  // Date: least recent to most recent

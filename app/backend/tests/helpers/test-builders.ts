@@ -9,8 +9,8 @@
  * @since 2025
  */
 
-import type { TimesheetRow } from '../../src/renderer/business-logic/timesheet-validation';
-import type { DbTimesheetEntry } from '../../src/shared/contracts/IDataService';
+import type { TimesheetRow } from '../../src/logic/timesheet-validation';
+import type { DbTimesheetEntry } from '../../../shared/contracts/IDataService';
 
 /**
  * Builder for TimesheetRow test data
@@ -177,9 +177,7 @@ export class DbTimesheetEntryBuilder {
     project: 'FL-Carver Techs',
     tool: '#1 Rinse and 2D marker',
     detail_charge_code: 'EPR1',
-    task_description: 'Test task description',
-    status: null,
-    submitted_at: null
+    task_description: 'Test task description'
   };
 
   static create(): DbTimesheetEntryBuilder {
@@ -214,12 +212,20 @@ export class DbTimesheetEntryBuilder {
   }
 
   withTool(tool: string | null): DbTimesheetEntryBuilder {
-    this.data.tool = tool;
+    if (tool) {
+      this.data.tool = tool;
+    } else {
+      delete this.data.tool;
+    }
     return this;
   }
 
   withDetailChargeCode(chargeCode: string | null): DbTimesheetEntryBuilder {
-    this.data.detail_charge_code = chargeCode;
+    if (chargeCode) {
+      this.data.detail_charge_code = chargeCode;
+    } else {
+      delete this.data.detail_charge_code;
+    }
     return this;
   }
 
@@ -229,18 +235,28 @@ export class DbTimesheetEntryBuilder {
   }
 
   withStatus(status: string | null): DbTimesheetEntryBuilder {
-    this.data.status = status;
+    if (status) {
+      this.data.status = status;
+    } else {
+      delete this.data.status;
+    }
     return this;
   }
 
   withSubmittedAt(submittedAt: string | null): DbTimesheetEntryBuilder {
-    this.data.submitted_at = submittedAt;
+    if (submittedAt) {
+      this.data.submitted_at = submittedAt;
+    } else {
+      delete this.data.submitted_at;
+    }
     return this;
   }
 
   // Convenience methods
   asPending(): DbTimesheetEntryBuilder {
-    return this.withStatus(null);
+    delete this.data.status;
+    delete this.data.submitted_at;
+    return this;
   }
 
   asComplete(): DbTimesheetEntryBuilder {
@@ -305,58 +321,58 @@ export class IPCPayloadBuilder {
   }
 
   withId(id: number): IPCPayloadBuilder {
-    this.data.id = id;
+    this.data['id'] = id;
     return this;
   }
 
   withDate(date: string): IPCPayloadBuilder {
-    this.data.date = date;
+    this.data['date'] = date;
     return this;
   }
 
   withTimeIn(timeIn: string): IPCPayloadBuilder {
-    this.data.timeIn = timeIn;
+    this.data['timeIn'] = timeIn;
     return this;
   }
 
   withTimeOut(timeOut: string): IPCPayloadBuilder {
-    this.data.timeOut = timeOut;
+    this.data['timeOut'] = timeOut;
     return this;
   }
 
   withProject(project: string): IPCPayloadBuilder {
-    this.data.project = project;
+    this.data['project'] = project;
     return this;
   }
 
   withTool(tool: string | null): IPCPayloadBuilder {
-    this.data.tool = tool;
+    this.data['tool'] = tool;
     return this;
   }
 
   withChargeCode(chargeCode: string | null): IPCPayloadBuilder {
-    this.data.chargeCode = chargeCode;
+    this.data['chargeCode'] = chargeCode;
     return this;
   }
 
   withTaskDescription(taskDescription: string): IPCPayloadBuilder {
-    this.data.taskDescription = taskDescription;
+    this.data['taskDescription'] = taskDescription;
     return this;
   }
 
   // Methods for creating invalid payloads
   withMissingDate(): IPCPayloadBuilder {
-    delete this.data.date;
+    delete this.data['date'];
     return this;
   }
 
   withMissingProject(): IPCPayloadBuilder {
-    delete this.data.project;
+    delete this.data['project'];
     return this;
   }
 
   withMissingTaskDescription(): IPCPayloadBuilder {
-    delete this.data.taskDescription;
+    delete this.data['taskDescription'];
     return this;
   }
 
@@ -370,9 +386,9 @@ export class IPCPayloadBuilder {
   }
 
   asInvalidPayload(): IPCPayloadBuilder {
-    this.data.date = '';
-    this.data.project = '';
-    this.data.taskDescription = '';
+    this.data['date'] = '';
+    this.data['project'] = '';
+    this.data['taskDescription'] = '';
     return this;
   }
 
@@ -390,29 +406,35 @@ export class TestDataUtils {
    */
   static timesheetRowToDbEntry(row: TimesheetRow): DbTimesheetEntry {
     const parseTimeToMinutes = (timeStr: string): number => {
-      const [hours, minutes] = timeStr.split(':').map(Number);
+      const parts = timeStr.split(':').map(Number);
+      const hours = parts[0] ?? 0;
+      const minutes = parts[1] ?? 0;
       return hours * 60 + minutes;
     };
 
     const timeInMinutes = parseTimeToMinutes(row.timeIn || '09:00');
     const timeOutMinutes = parseTimeToMinutes(row.timeOut || '17:00');
 
-    return {
+    const entry: DbTimesheetEntry = {
       id: row.id || 1,
       date: row.date ? (() => {
-        const [month, day, year] = row.date.split('/').map(Number);
+        const parts = row.date.split('/').map(Number);
+        const month = parts[0] ?? 1;
+        const day = parts[1] ?? 1;
+        const year = parts[2] ?? 2025;
         return `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
       })() : '2025-01-15',
       time_in: timeInMinutes,
       time_out: timeOutMinutes,
       hours: (timeOutMinutes - timeInMinutes) / 60.0,
       project: row.project || 'FL-Carver Techs',
-      tool: row.tool || null,
-      detail_charge_code: row.chargeCode || null,
-      task_description: row.taskDescription || 'Test task',
-      status: null,
-      submitted_at: null
+      task_description: row.taskDescription || 'Test task'
     };
+    
+    if (row.tool) entry.tool = row.tool;
+    if (row.chargeCode) entry.detail_charge_code = row.chargeCode;
+    
+    return entry;
   }
 
   /**
@@ -431,8 +453,8 @@ export class TestDataUtils {
       timeIn: minutesToTimeString(entry.time_in),
       timeOut: minutesToTimeString(entry.time_out),
       project: entry.project,
-      tool: entry.tool,
-      chargeCode: entry.detail_charge_code,
+      tool: entry.tool ?? null,
+      chargeCode: entry.detail_charge_code ?? null,
       taskDescription: entry.task_description
     };
   }

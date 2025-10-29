@@ -10,7 +10,7 @@ import {
   getCredentials,
   listCredentials,
   deleteCredentials,
-  shutdownDatabase
+  getDb
 } from './services/database';
 import { submitTimesheets } from './services/timesheet_importer';
 import {
@@ -22,7 +22,6 @@ import {
 import {
   CredentialsNotFoundError,
   CredentialsStorageError,
-  SubmissionServiceUnavailableError,
   createUserFriendlyMessage,
   extractErrorCode,
   isAppError
@@ -613,10 +612,9 @@ export function registerIPCHandlers() {
   ipcMain.handle('database:getAllTimesheetEntries', async () => {
     ipcLogger.verbose('Fetching all timesheet entries (Archive - Complete only)');
     try {
-      const db = openDb();
+      const db = getDb();
       const getAll = db.prepare('SELECT * FROM timesheet WHERE status = \'Complete\' ORDER BY date ASC, time_in ASC');
       const entries = getAll.all();
-      db.close();
       ipcLogger.verbose('Archive timesheet entries retrieved', { count: entries.length });
       return { success: true, entries };
     } catch (err: unknown) {
@@ -630,10 +628,9 @@ export function registerIPCHandlers() {
   ipcMain.handle('database:getAllCredentials', async () => {
     ipcLogger.verbose('Fetching all credentials');
     try {
-      const db = openDb();
+      const db = getDb();
       const getAll = db.prepare('SELECT id, service, email, created_at, updated_at FROM credentials ORDER BY service');
       const credentials = getAll.all();
-      db.close();
       ipcLogger.verbose('Credentials retrieved', { count: credentials.length });
       return { success: true, credentials };
     } catch (err: unknown) {
@@ -647,7 +644,7 @@ export function registerIPCHandlers() {
   ipcMain.handle('timesheet:exportToCSV', async () => {
     ipcLogger.verbose('Exporting timesheet data to CSV');
     try {
-      const { getSubmittedTimesheetEntriesForExport } = await import('../services/database');
+      const { getSubmittedTimesheetEntriesForExport } = await import('./services/database');
       const entries = getSubmittedTimesheetEntriesForExport();
       
       if (entries.length === 0) {
@@ -820,10 +817,9 @@ export function registerIPCHandlers() {
   ipcMain.handle('database:clearDatabase', async () => {
     ipcLogger.audit('clear-database', 'User clearing entire database');
     try {
-      const db = openDb();
+      const db = getDb();
       db.exec('DELETE FROM timesheet');
       db.exec('DELETE FROM credentials');
-      db.close();
       ipcLogger.warn('Database cleared - all data removed');
       return { success: true, message: 'Database cleared successfully' };
     } catch (err: unknown) {
@@ -887,7 +883,7 @@ export function registerIPCHandlers() {
         throw new Error('Time Out must be after Time In');
       }
       
-      const db = openDb();
+      const db = getDb();
       let result;
       
       // If row has an id, UPDATE the existing row
@@ -937,13 +933,11 @@ export function registerIPCHandlers() {
           row.project,
           row.tool || null,
           row.chargeCode || null,
-          row.taskDescription
-        );
-      }
-      
-      db.close();
-      
-      ipcLogger.info('Draft timesheet entry saved', { 
+        row.taskDescription
+      );
+    }
+    
+    ipcLogger.info('Draft timesheet entry saved', {
         id: row.id,
         changes: result.changes,
         date: row.date,
@@ -969,14 +963,13 @@ export function registerIPCHandlers() {
 
       ipcLogger.verbose('Deleting draft timesheet entry', { id });
       
-      const db = openDb();
+      const db = getDb();
       const deleteStmt = db.prepare(`
         DELETE FROM timesheet 
         WHERE id = ? AND status IS NULL
       `);
       
       const result = deleteStmt.run(id);
-      db.close();
       
       if (result.changes === 0) {
         ipcLogger.warn('No draft entry found to delete', { id });
@@ -1004,7 +997,7 @@ export function registerIPCHandlers() {
     try {
       ipcLogger.verbose('Loading draft timesheet entries');
       
-      const db = openDb();
+      const db = getDb();
       const getPending = db.prepare(`
         SELECT * FROM timesheet 
         WHERE status IS NULL
@@ -1021,7 +1014,6 @@ export function registerIPCHandlers() {
         detail_charge_code?: string;
         task_description: string;
       }>;
-      db.close();
       
       // Convert database format to grid format
       const gridData = entries.map((entry) => ({

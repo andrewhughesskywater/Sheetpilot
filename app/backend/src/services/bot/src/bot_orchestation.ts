@@ -12,7 +12,7 @@
 import * as Cfg from './automation_config';
 import { WebformFiller } from './webform_flow';
 import { LoginManager } from './authentication_flow';
-import { botLogger } from '../../../shared/logger';
+import { botLogger } from '../../../../../shared/logger';
 import { getQuarterForDate } from './quarter_config';
 
 /**

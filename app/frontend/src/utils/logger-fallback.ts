@@ -51,11 +51,13 @@ export function initializeLoggerFallback(): void {
   const isDev = (import.meta as { env?: { DEV?: boolean; MODE?: string } }).env?.DEV === true || 
                 (import.meta as { env?: { DEV?: boolean; MODE?: string } }).env?.MODE === 'development';
   
-  if (isDev && !window.logger) {
+  const win = window as unknown as Record<string, unknown>;
+  
+  if (isDev && !win['logger']) {
     console.log('[LoggerFallback] Initializing development logger fallback');
     
     // Create a fallback logger that uses console methods
-    window.logger = developmentLogger;
+    win['logger'] = developmentLogger;
     
     console.log('[LoggerFallback] Development logger fallback initialized');
   }

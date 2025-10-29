@@ -13,14 +13,14 @@ import type {
   ISubmissionService,
   SubmissionResult,
   ValidationResult
-} from '../../shared/contracts/ISubmissionService';
-import type { TimesheetEntry } from '../../shared/contracts/IDataService';
-import type { Credentials } from '../../shared/contracts/ICredentialService';
-import type { PluginMetadata } from '../../shared/plugin-types';
+} from '../../../../shared/contracts/ISubmissionService';
+import type { TimesheetEntry } from '../../../../shared/contracts/IDataService';
+import type { Credentials } from '../../../../shared/contracts/ICredentialService';
+import type { PluginMetadata } from '../../../../shared/plugin-types';
 import { runTimesheet } from '../bot/src/index';
 import { groupEntriesByQuarter, getQuarterForDate } from '../bot/src/quarter_config';
 import { createFormConfig } from '../bot/src/automation_config';
-import { botLogger } from '../../shared/logger';
+import { botLogger } from '../../../../shared/logger';
 
 /**
  * Playwright-based submission service using browser automation

@@ -10,7 +10,7 @@
  */
 
 import type { ReactElement } from 'react';
-import type { TimesheetRow } from '../../../backend/src/business-logic/timesheet-validation';
+import type { TimesheetRow } from '../../../backend/src/logic/timesheet-validation';
 import type { IPlugin } from '../../../shared/plugin-types';
 
 /**

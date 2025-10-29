@@ -15,8 +15,8 @@ import type {
   CredentialListResult,
   CredentialGetResult,
   CredentialRecord
-} from '../../shared/contracts/ICredentialService';
-import type { PluginMetadata } from '../../shared/plugin-types';
+} from '../../../../shared/contracts/ICredentialService';
+import type { PluginMetadata } from '../../../../shared/plugin-types';
 import {
   storeCredentials,
   getCredentials,

@@ -9,7 +9,7 @@
  * @since 2025
  */
 
-import type { DbTimesheetEntry } from '../../src/shared/contracts/IDataService';
+import type { DbTimesheetEntry } from '../../../shared/contracts/IDataService';
 
 /**
  * In-memory database for testing
@@ -62,34 +62,37 @@ export class MockDatabase {
         if (sql.includes('INSERT INTO timesheet')) {
           const entry: DbTimesheetEntry = {
             id: this.nextId++,
-            date: params[0],
-            time_in: params[1],
-            time_out: params[2],
-            hours: (params[2] - params[1]) / 60.0,
-            project: params[3],
-            tool: params[4] || null,
-            detail_charge_code: params[5] || null,
-            task_description: params[6],
-            status: params[7] || null,
-            submitted_at: params[8] || null
+            date: params[0] as string,
+            time_in: params[1] as number,
+            time_out: params[2] as number,
+            hours: ((params[2] as number) - (params[1] as number)) / 60.0,
+            project: params[3] as string,
+            task_description: params[6] as string,
+            ...((params[4] as string) ? { tool: params[4] as string } : {}),
+            ...((params[5] as string) ? { detail_charge_code: params[5] as string } : {}),
+            ...((params[7] as string) ? { status: params[7] as string } : {}),
+            ...((params[8] as string) ? { submitted_at: params[8] as string } : {})
           };
           this.timesheetEntries.push(entry);
           return { changes: 1, lastInsertRowid: entry.id };
         }
         if (sql.includes('UPDATE timesheet')) {
-          const id = params[0];
+          const id = params[0] as number;
           const entryIndex = this.timesheetEntries.findIndex(e => e.id === id);
           if (entryIndex >= 0) {
-            this.timesheetEntries[entryIndex] = {
-              ...this.timesheetEntries[entryIndex],
-              ...params[1]
-            };
+            if (params[1] && typeof params[1] === 'object') {
+              const updates = params[1] as Partial<DbTimesheetEntry>;
+              this.timesheetEntries[entryIndex] = {
+                ...this.timesheetEntries[entryIndex],
+                ...updates
+              } as DbTimesheetEntry;
+            }
             return { changes: 1 };
           }
           return { changes: 0 };
         }
         if (sql.includes('DELETE FROM timesheet')) {
-          const id = params[0];
+          const id = params[0] as number;
           const initialLength = this.timesheetEntries.length;
           this.timesheetEntries = this.timesheetEntries.filter(e => e.id !== id);
           return { changes: initialLength - this.timesheetEntries.length };
@@ -97,9 +100,9 @@ export class MockDatabase {
         if (sql.includes('INSERT INTO credentials')) {
           const credential = {
             id: this.nextId++,
-            service: params[0],
-            email: params[1],
-            password: params[2],
+            service: params[0] as string,
+            email: params[1] as string,
+            password: params[2] as string,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           };

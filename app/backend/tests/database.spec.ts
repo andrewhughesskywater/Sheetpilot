@@ -18,16 +18,16 @@ import * as os from 'os';
 // Mock better-sqlite3 BEFORE importing database module
 vi.mock('better-sqlite3', () => {
   const mockStmt = {
-    run: (..._args: any[]) => ({ changes: 1 }),
-    get: (..._args: any[]) => null,
-    all: (..._args: any[]) => [],
-    bind: (..._args: any[]) => mockStmt
+    run: (..._args: unknown[]) => ({ changes: 1 }),
+    get: (..._args: unknown[]) => null,
+    all: (..._args: unknown[]) => [],
+    bind: (..._args: unknown[]) => mockStmt
   };
 
-  function MockDatabase(this: any, _path: string, _opts?: unknown) {
+  function MockDatabase(this: { path: string; prepare: () => typeof mockStmt; transaction: unknown; exec: () => typeof this; close: () => typeof this }, _path: string, _opts?: unknown) {
     this.path = _path;
     this.prepare = () => mockStmt;
-    this.transaction = (callback: (...args: unknown[]) => unknown) => (...args: any[]) => callback(...args);
+    this.transaction = (callback: (...args: unknown[]) => unknown) => (...args: unknown[]) => callback(...args);
     this.exec = () => this;
     this.close = () => this;
   }

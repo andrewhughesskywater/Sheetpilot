@@ -88,7 +88,8 @@ export function applyTheme(mode: ThemeMode): void {
   });
   window.dispatchEvent(themeChangeEvent);
   
-  window.logger?.debug('[ThemeManager] Applied theme', { theme: effectiveTheme, mode });
+  const win = window as unknown as { logger?: { debug: (msg: string, data?: unknown) => void } };
+  win.logger?.debug('[ThemeManager] Applied theme', { theme: effectiveTheme, mode });
 }
 
 /**

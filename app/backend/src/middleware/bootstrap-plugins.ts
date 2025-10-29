@@ -9,13 +9,13 @@
  * @since 2025
  */
 
-import { PluginRegistry } from '../../shared/plugin-registry';
-import { loadPluginConfig } from '../../shared/plugin-config';
-import { SQLiteDataService } from './services/plugins/sqlite-data-service';
-import { MemoryDataService } from './services/plugins/memory-data-service';
-import { SQLiteCredentialService } from './services/plugins/sqlite-credential-service';
-import { PlaywrightBotService } from './services/plugins/playwright-bot-service';
-import { MockSubmissionService } from './services/plugins/mock-submission-service';
+import { PluginRegistry } from '../../../shared/plugin-registry';
+import { loadPluginConfig } from '../../../shared/plugin-config';
+import { SQLiteDataService } from '../services/plugins/sqlite-data-service';
+import { MemoryDataService } from '../services/plugins/memory-data-service';
+import { SQLiteCredentialService } from '../services/plugins/sqlite-credential-service';
+import { PlaywrightBotService } from '../services/plugins/playwright-bot-service';
+import { MockSubmissionService } from '../services/plugins/mock-submission-service';
 import * as path from 'path';
 
 /**

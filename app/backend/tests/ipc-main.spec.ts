@@ -22,8 +22,13 @@ vi.mock('electron', () => {
   
   // Minimal BrowserWindow stub
   class BrowserWindow {
-    public webContents: any;
-    constructor(_opts: any) {
+    public webContents: {
+      on: ReturnType<typeof vi.fn>;
+      once: ReturnType<typeof vi.fn>;
+      send: ReturnType<typeof vi.fn>;
+      executeJavaScript: ReturnType<typeof vi.fn>;
+    };
+    constructor(_opts: Record<string, unknown>) {
       this.webContents = {
         on: vi.fn(),
         once: vi.fn(),

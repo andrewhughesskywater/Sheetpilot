@@ -9,9 +9,10 @@
  * @since 2025
  */
 
-import type { TimesheetRow } from '../../src/renderer/business-logic/timesheet-validation';
-import type { DbTimesheetEntry } from '../../src/shared/contracts/IDataService';
-import { isValidDate, isValidTime, isTimeOutAfterTimeIn } from '../../src/renderer/business-logic/timesheet-validation.ts';
+import { expect } from 'vitest';
+import type { TimesheetRow } from '../../src/logic/timesheet-validation';
+import type { DbTimesheetEntry } from '../../../shared/contracts/IDataService';
+import { isValidDate, isValidTime, isTimeOutAfterTimeIn } from '../../src/logic/timesheet-validation';
 
 /**
  * Assert that a timesheet row has valid required fields
@@ -78,12 +79,17 @@ export function assertInvalidTimesheetRow(row: TimesheetRow, expectedMissingFiel
 export function assertValidDateFormat(dateStr: string): void {
   expect(dateStr).toMatch(/^\d{1,2}\/\d{1,2}\/\d{4}$/);
   
-  const [month, day, year] = dateStr.split('/').map(Number);
-  const date = new Date(year, month - 1, day);
+  const parts = dateStr.split('/').map(Number);
+  const month = parts[0];
+  const day = parts[1];
+  const year = parts[2];
   
-  expect(date.getFullYear()).toBe(year);
-  expect(date.getMonth()).toBe(month - 1);
-  expect(date.getDate()).toBe(day);
+  if (month && day && year) {
+    const date = new Date(year, month - 1, day);
+    expect(date.getFullYear()).toBe(year);
+    expect(date.getMonth()).toBe(month - 1);
+    expect(date.getDate()).toBe(day);
+  }
 }
 
 /**
@@ -92,23 +98,33 @@ export function assertValidDateFormat(dateStr: string): void {
 export function assertValidTimeFormat(timeStr: string): void {
   expect(timeStr).toMatch(/^([01]?[0-9]|2[0-3]):([0-5][0-9])$/);
   
-  const [hours, minutes] = timeStr.split(':').map(Number);
-  const totalMinutes = hours * 60 + minutes;
+  const parts = timeStr.split(':').map(Number);
+  const hours = parts[0];
+  const minutes = parts[1];
   
-  expect(totalMinutes % 15).toBe(0);
+  if (hours !== undefined && minutes !== undefined) {
+    const totalMinutes = hours * 60 + minutes;
+    expect(totalMinutes % 15).toBe(0);
+  }
 }
 
 /**
  * Assert that time out is after time in
  */
 export function assertTimeOutAfterTimeIn(timeIn: string, timeOut: string): void {
-  const [inHours, inMinutes] = timeIn.split(':').map(Number);
-  const [outHours, outMinutes] = timeOut.split(':').map(Number);
+  const inParts = timeIn.split(':').map(Number);
+  const outParts = timeOut.split(':').map(Number);
+  const inHours = inParts[0];
+  const inMinutes = inParts[1];
+  const outHours = outParts[0];
+  const outMinutes = outParts[1];
   
-  const inTotalMinutes = inHours * 60 + inMinutes;
-  const outTotalMinutes = outHours * 60 + outMinutes;
-  
-  expect(outTotalMinutes).toBeGreaterThan(inTotalMinutes);
+  if (inHours !== undefined && inMinutes !== undefined && outHours !== undefined && outMinutes !== undefined) {
+    const inTotalMinutes = inHours * 60 + inMinutes;
+    const outTotalMinutes = outHours * 60 + outMinutes;
+    
+    expect(outTotalMinutes).toBeGreaterThan(inTotalMinutes);
+  }
 }
 
 /**
@@ -160,12 +176,12 @@ export function assertCascadingRulesApplied(row: TimesheetRow): void {
   ];
   
   if (projectsWithoutTools.includes(row.project || '')) {
-    expect(row.tool).toBeNull();
-    expect(row.chargeCode).toBeNull();
+    expect(row['tool']).toBeNull();
+    expect(row['chargeCode']).toBeNull();
   }
   
-  if (toolsWithoutCharges.includes(row.tool || '')) {
-    expect(row.chargeCode).toBeNull();
+  if (toolsWithoutCharges.includes(row['tool'] || '')) {
+    expect(row['chargeCode']).toBeNull();
   }
 }
 
@@ -190,20 +206,29 @@ export function assertValidDbEntry(entry: DbTimesheetEntry): void {
  * Assert that time conversion is consistent
  */
 export function assertTimeConversionConsistency(timeStr: string, minutes: number): void {
-  const [hours, minutesFromStr] = timeStr.split(':').map(Number);
-  const expectedMinutes = hours * 60 + minutesFromStr;
+  const parts = timeStr.split(':').map(Number);
+  const hours = parts[0];
+  const minutesFromStr = parts[1];
   
-  expect(minutes).toBe(expectedMinutes);
+  if (hours !== undefined && minutesFromStr !== undefined) {
+    const expectedMinutes = hours * 60 + minutesFromStr;
+    expect(minutes).toBe(expectedMinutes);
+  }
 }
 
 /**
  * Assert that date conversion is consistent
  */
 export function assertDateConversionConsistency(dateStr: string, isoDate: string): void {
-  const [month, day, year] = dateStr.split('/').map(Number);
-  const expectedIsoDate = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+  const parts = dateStr.split('/').map(Number);
+  const month = parts[0];
+  const day = parts[1];
+  const year = parts[2];
   
-  expect(isoDate).toBe(expectedIsoDate);
+  if (month && day && year) {
+    const expectedIsoDate = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+    expect(isoDate).toBe(expectedIsoDate);
+  }
 }
 
 /**
@@ -217,11 +242,11 @@ export function assertValidIPCPayload(payload: Record<string, unknown>): void {
   expect(payload).toHaveProperty('taskDescription');
   
   // Optional fields can be null
-  if (payload.tool !== undefined) {
-    expect(typeof payload.tool === 'string' || payload.tool === null).toBe(true);
+  if (payload['tool'] !== undefined) {
+    expect(typeof payload['tool'] === 'string' || payload['tool'] === null).toBe(true);
   }
-  if (payload.chargeCode !== undefined) {
-    expect(typeof payload.chargeCode === 'string' || payload.chargeCode === null).toBe(true);
+  if (payload['chargeCode'] !== undefined) {
+    expect(typeof payload['chargeCode'] === 'string' || payload['chargeCode'] === null).toBe(true);
   }
 }
 
@@ -253,18 +278,24 @@ export function assertUserFriendlyErrorMessage(errorMessage: string): void {
  * Assert that quarter validation works correctly
  */
 export function assertQuarterValidation(dateStr: string, expectedValid: boolean): void {
-  const [month, day, year] = dateStr.split('/').map(Number);
-  const date = new Date(year, month - 1, day);
-  const currentDate = new Date();
-  const currentYear = currentDate.getFullYear();
-  const currentQuarter = Math.floor(currentDate.getMonth() / 3) + 1;
+  const parts = dateStr.split('/').map(Number);
+  const month = parts[0];
+  const day = parts[1];
+  const year = parts[2];
   
-  const entryYear = date.getFullYear();
-  const entryQuarter = Math.floor(date.getMonth() / 3) + 1;
-  
-  const isValid = entryYear === currentYear && entryQuarter === currentQuarter;
-  
-  expect(isValid).toBe(expectedValid);
+  if (month && day && year) {
+    const date = new Date(year, month - 1, day);
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    const currentQuarter = Math.floor(currentDate.getMonth() / 3) + 1;
+    
+    const entryYear = date.getFullYear();
+    const entryQuarter = Math.floor(date.getMonth() / 3) + 1;
+    
+    const isValid = entryYear === currentYear && entryQuarter === currentQuarter;
+    
+    expect(isValid).toBe(expectedValid);
+  }
 }
 
 /**

@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { formatTimeInput } from '../../src/renderer/business-logic/timesheet-validation';
+import { formatTimeInput } from '../../src/logic/timesheet-validation';
 import { timeFormatTestCases } from '../fixtures/timesheet-data';
 
 describe('Time Normalization Unit Tests', () => {

@@ -165,7 +165,7 @@ export function doesProjectNeedTools(project: string): boolean {
  * @returns True if the project does not require tools
  */
 export function isProjectWithoutTools(project: string): boolean {
-  return PROJECTS_WITHOUT_TOOLS.includes(project as any);
+  return PROJECTS_WITHOUT_TOOLS.includes(project as typeof PROJECTS_WITHOUT_TOOLS[number]);
 }
 
 /**
@@ -183,7 +183,7 @@ export function doesToolNeedChargeCode(tool: string): boolean {
  * @returns True if the tool does not require charge codes
  */
 export function isToolWithoutChargeCode(tool: string): boolean {
-  return TOOLS_WITHOUT_CHARGES.includes(tool as any);
+  return TOOLS_WITHOUT_CHARGES.includes(tool as typeof TOOLS_WITHOUT_CHARGES[number]);
 }
 
 /**
@@ -208,7 +208,7 @@ export function getAllChargeCodes(): readonly string[] {
  * @returns True if the project is valid
  */
 export function isValidProject(project: string): boolean {
-  return PROJECTS.includes(project as any);
+  return PROJECTS.includes(project as typeof PROJECTS[number]);
 }
 
 /**
@@ -231,7 +231,7 @@ export function isValidToolForProject(tool: string, project: string): boolean {
  * @returns True if the charge code is valid
  */
 export function isValidChargeCode(chargeCode: string): boolean {
-  return CHARGE_CODES.includes(chargeCode as any);
+  return CHARGE_CODES.includes(chargeCode as typeof CHARGE_CODES[number]);
 }
 
 /**

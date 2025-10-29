@@ -8,8 +8,7 @@ const ResizeObserverMock = class ResizeObserver {
   disconnect = vi.fn();
 };
 
-global.ResizeObserver = ResizeObserverMock;
-window.ResizeObserver = ResizeObserverMock;
+global.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
 
 // Mock Vite environment variables
 vi.stubGlobal('import', {
@@ -23,7 +22,7 @@ vi.stubGlobal('import', {
 });
 
 // Mock window.matchMedia
-Object.defineProperty(window, 'matchMedia', {
+Object.defineProperty(globalThis.window, 'matchMedia', {
   writable: true,
   value: vi.fn().mockImplementation(query => ({
     matches: query === '(prefers-color-scheme: dark)' ? false : false,
@@ -61,7 +60,7 @@ const localStorageMock = {
   removeItem: vi.fn(),
   clear: vi.fn(),
 };
-Object.defineProperty(window, 'localStorage', {
+Object.defineProperty(globalThis.window, 'localStorage', {
   value: localStorageMock
 });
 
@@ -72,7 +71,7 @@ const sessionStorageMock = {
   removeItem: vi.fn(),
   clear: vi.fn(),
 };
-Object.defineProperty(window, 'sessionStorage', {
+Object.defineProperty(globalThis.window, 'sessionStorage', {
   value: sessionStorageMock
 });
 
@@ -116,11 +115,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   
   // Re-install ResizeObserver mock (in case it was cleaned up)
-  if (!window.ResizeObserver) {
-    window.ResizeObserver = ResizeObserverMock;
-  }
   if (!global.ResizeObserver) {
-    global.ResizeObserver = ResizeObserverMock;
+    global.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
   }
   
   // Reset localStorage and sessionStorage
@@ -135,12 +131,15 @@ beforeEach(() => {
   sessionStorageMock.clear.mockClear();
   
   // Clear window object extensions
-  delete (window as Record<string, unknown>).logger;
-  delete (window as Record<string, unknown>).timesheet;
-  delete (window as Record<string, unknown>).credentials;
-  delete (window as Record<string, unknown>).database;
-  delete (window as Record<string, unknown>).logs;
-  delete (window as Record<string, unknown>).api;
+  if (typeof globalThis.window !== 'undefined') {
+    const win = globalThis.window as unknown as Record<string, unknown>;
+    delete win['logger'];
+    delete win['timesheet'];
+    delete win['credentials'];
+    delete win['database'];
+    delete win['logs'];
+    delete win['api'];
+  }
 });
 
 afterEach(() => {

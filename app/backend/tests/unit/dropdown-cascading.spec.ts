@@ -19,7 +19,7 @@ import {
   getToolOptions,
   toolNeedsChargeCode,
   projectNeedsTools
-} from '../../src/renderer/business-logic/dropdown-logic';
+} from '../../src/logic/dropdown-logic';
 import { cascadingTestCases } from '../fixtures/timesheet-data';
 
 describe('Dropdown Cascading Logic Unit Tests', () => {

@@ -13,10 +13,10 @@ import type {
   ISubmissionService,
   SubmissionResult,
   ValidationResult
-} from '../../shared/contracts/ISubmissionService';
-import type { TimesheetEntry } from '../../shared/contracts/IDataService';
-import type { Credentials } from '../../shared/contracts/ICredentialService';
-import type { PluginMetadata } from '../../shared/plugin-types';
+} from '../../../../shared/contracts/ISubmissionService';
+import type { TimesheetEntry } from '../../../../shared/contracts/IDataService';
+import type { Credentials } from '../../../../shared/contracts/ICredentialService';
+import type { PluginMetadata } from '../../../../shared/plugin-types';
 
 /**
  * Mock submission service for testing

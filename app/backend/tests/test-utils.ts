@@ -13,7 +13,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import * as XLSX from 'xlsx';
-import { setDbPath, ensureSchema, openDb } from '../backend/database';
+import { setDbPath, ensureSchema, getDb } from '../src/services/database';
 
 /**
  * Creates a temporary test database with a unique name
@@ -63,10 +63,16 @@ export function createSampleTimesheetFile(rowCount = 5): string {
         const timeIn = 900 + (i * 60); // Start at 9:00 AM, add 1 hour per row
         const timeOut = timeIn + 60; // 1 hour duration
         
+        // Format date as MM/DD/YYYY
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const year = String(date.getFullYear());
+        const dateStr = `${month}/${day}/${year}`;
+        
         data.push([
-            date,
-            timeIn,
-            timeOut,
+            dateStr,
+            String(timeIn),
+            String(timeOut),
             `Test Project ${i + 1}`,
             i % 2 === 0 ? 'VS Code' : 'IntelliJ',
             `DEV-${(i + 1).toString().padStart(3, '0')}`,
@@ -130,7 +136,7 @@ export function cleanupTestFiles(filePaths: string[]): void {
  * @returns {Object} Database statistics
  */
 export function getDatabaseStats(): { count: number; projects: string[]; dateRange: { min: string; max: string } } {
-    const db = openDb();
+    const db = getDb();
     
     try {
         const count = db.prepare('SELECT COUNT(*) as count FROM timesheet').get() as { count: number };
@@ -154,17 +160,22 @@ export function getDatabaseStats(): { count: number; projects: string[]; dateRan
  * @returns {boolean} True if entry is valid
  */
 export function isValidTimesheetEntry(entry: unknown): boolean {
+    if (!entry || typeof entry !== 'object') {
+        return false;
+    }
+    
+    const entryObj = entry as Record<string, unknown>;
+    
     return (
-        entry &&
-        typeof entry.date === 'string' &&
-        /^\d{4}-\d{2}-\d{2}$/.test(entry.date) &&
-        typeof entry.time_in === 'number' &&
-        typeof entry.time_out === 'number' &&
-        entry.time_out > entry.time_in &&
-        typeof entry.project === 'string' &&
-        entry.project.length > 0 &&
-        typeof entry.task_description === 'string' &&
-        entry.task_description.length > 0
+        typeof entryObj['date'] === 'string' &&
+        /^\d{4}-\d{2}-\d{2}$/.test(entryObj['date'] as string) &&
+        typeof entryObj['time_in'] === 'number' &&
+        typeof entryObj['time_out'] === 'number' &&
+        (entryObj['time_out'] as number) > (entryObj['time_in'] as number) &&
+        typeof entryObj['project'] === 'string' &&
+        (entryObj['project'] as string).length > 0 &&
+        typeof entryObj['task_description'] === 'string' &&
+        (entryObj['task_description'] as string).length > 0
     );
 }
 

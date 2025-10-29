@@ -16,11 +16,11 @@ import {
     removeFailedTimesheetEntries,
     getTimesheetEntriesByIds
 } from './database';
-import { botLogger } from '../../../../shared/logger';
-import { getSubmissionService } from '../../middleware/bootstrap-plugins';
-import type { TimesheetEntry } from '../../../../shared/contracts/IDataService';
-import type { Credentials } from '../../../../shared/contracts/ICredentialService';
-import type { SubmissionResult, ISubmissionService } from '../../../../shared/contracts/ISubmissionService';
+import { botLogger } from '../../../shared/logger';
+import { getSubmissionService } from '../middleware/bootstrap-plugins';
+import type { TimesheetEntry } from '../../../shared/contracts/IDataService';
+import type { Credentials } from '../../../shared/contracts/ICredentialService';
+import type { SubmissionResult, ISubmissionService } from '../../../shared/contracts/ISubmissionService';
 // Dynamic import to avoid top-level async operations during module loading
 
 
@@ -49,7 +49,7 @@ type DbRow = {
  * Result object for timesheet submission operations
  * Re-export the contract type for backward compatibility
  */
-export type { SubmissionResult } from '../shared/contracts/ISubmissionService';
+export type { SubmissionResult } from '../../../shared/contracts/ISubmissionService';
 
 /**
  * Converts database row format to TimesheetEntry format

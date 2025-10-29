@@ -9,8 +9,8 @@
  * @since 2025
  */
 
-import type { TimesheetRow } from '../../src/renderer/business-logic/timesheet-validation';
-import type { DbTimesheetEntry } from '../../src/shared/contracts/IDataService';
+import type { TimesheetRow } from '../../src/logic/timesheet-validation';
+import type { DbTimesheetEntry } from '../../../shared/contracts/IDataService';
 
 /**
  * Valid timesheet entries covering all projects, tools, and charge codes
@@ -384,9 +384,7 @@ export const validDbEntries: DbTimesheetEntry[] = [
     project: 'FL-Carver Techs',
     tool: '#1 Rinse and 2D marker',
     detail_charge_code: 'EPR1',
-    task_description: 'Equipment maintenance and calibration',
-    status: null, // Pending
-    submitted_at: null
+    task_description: 'Equipment maintenance and calibration'
   },
   {
     id: 2,
@@ -396,7 +394,6 @@ export const validDbEntries: DbTimesheetEntry[] = [
     hours: 8.0,
     project: 'FL-Carver Tools',
     tool: 'Meeting',
-    detail_charge_code: null,
     task_description: 'Team coordination meeting',
     status: 'Complete',
     submitted_at: '2025-01-16T16:30:00Z'
@@ -408,8 +405,6 @@ export const validDbEntries: DbTimesheetEntry[] = [
     time_out: 1080, // 18:00
     hours: 8.0,
     project: 'PTO/RTO',
-    tool: null,
-    detail_charge_code: null,
     task_description: 'Personal time off',
     status: 'Complete',
     submitted_at: '2025-01-17T18:00:00Z'

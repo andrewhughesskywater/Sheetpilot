@@ -16,7 +16,7 @@ import {
   isTimeOutAfterTimeIn,
   validateField,
   formatTimeInput
-} from '../../src/renderer/business-logic/timesheet-validation';
+} from '../../src/logic/timesheet-validation';
 import { validateQuarterAvailability } from '../../src/services/bot/src/quarter_config';
 import { validTimesheetEntries, invalidTimesheetEntries, edgeCaseEntries } from '../fixtures/timesheet-data';
 import { assertValidTimesheetRow, assertInvalidTimesheetRow } from '../helpers/assertion-helpers';

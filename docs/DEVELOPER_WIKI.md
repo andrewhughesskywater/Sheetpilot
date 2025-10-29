@@ -77,7 +77,7 @@ src/
     │   ├── fonts/                  # Font files
     │   ├── icons/                  # Icon files
     │   └── images/                 # Image files
-    ├── business-logic/             # Pure business logic
+    ├── logic/                      # Pure business logic
     │   ├── dropdown-logic.ts       # Cascading dropdown rules
     │   ├── timesheet-normalization.ts
     │   └── timesheet-validation.ts # Validation rules
@@ -199,9 +199,9 @@ All services implement clean interface contracts:
 
 Extracted business logic is UI-independent and reusable:
 
-- `src/renderer/business-logic/timesheet-validation.ts` - All validation rules
-- `src/renderer/business-logic/dropdown-logic.ts` - Cascading dropdown rules
-- `src/renderer/business-logic/timesheet-normalization.ts` - Data normalization
+- `src/logic/timesheet-validation.ts` - All validation rules
+- `src/logic/dropdown-logic.ts` - Cascading dropdown rules
+- `src/logic/timesheet-normalization.ts` - Data normalization
 
 #### Grid Contracts
 

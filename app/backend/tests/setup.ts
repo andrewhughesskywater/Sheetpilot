@@ -10,18 +10,26 @@ import { vi } from 'vitest';
 // Tests run on Node.js (v127) but better-sqlite3 is compiled for Electron (v139)
 vi.mock('better-sqlite3', () => {
   const mockStmt = {
-    run: (..._args: any[]) => ({ changes: 1 }),
-    get: (..._args: any[]) => null,
-    all: (..._args: any[]) => [],
-    bind: (..._args: any[]) => mockStmt
+    run: (..._args: unknown[]) => ({ changes: 1 }),
+    get: (..._args: unknown[]) => null,
+    all: (..._args: unknown[]) => [],
+    bind: (..._args: unknown[]) => mockStmt
   };
 
-  function MockDatabase(this: any, _path: string, _opts?: unknown) {
+  function MockDatabase(this: MockDatabaseInstance, _path: string, _opts?: unknown) {
     this.path = _path;
     this.prepare = () => mockStmt;
-    this.transaction = (callback: (...args: unknown[]) => unknown) => (...args: any[]) => callback(...args);
+    this.transaction = (callback: (...args: unknown[]) => unknown) => (...args: unknown[]) => callback(...args);
     this.exec = () => this;
     this.close = () => this;
+  }
+
+  interface MockDatabaseInstance {
+    path: string;
+    prepare: () => typeof mockStmt;
+    transaction: unknown;
+    exec: () => MockDatabaseInstance;
+    close: () => MockDatabaseInstance;
   }
 
   // Return function that will be called with new
@@ -37,11 +45,10 @@ const ResizeObserverMock = class ResizeObserver {
   disconnect = vi.fn();
 };
 
-global.ResizeObserver = ResizeObserverMock;
-window.ResizeObserver = ResizeObserverMock;
+global.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
 
 // Mock other browser APIs that might be missing
-Object.defineProperty(window, 'matchMedia', {
+Object.defineProperty(globalThis.window, 'matchMedia', {
   writable: true,
   value: vi.fn().mockImplementation(query => ({
     matches: false,

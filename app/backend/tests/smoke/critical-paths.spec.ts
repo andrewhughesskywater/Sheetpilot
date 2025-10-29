@@ -20,7 +20,7 @@ import {
   isTimeOutAfterTimeIn, 
   validateField,
   formatTimeInput 
-} from '../../src/renderer/business-logic/timesheet-validation';
+} from '../../src/logic/timesheet-validation';
 import { 
   projectNeedsTools, 
   toolNeedsChargeCode,  
@@ -28,7 +28,7 @@ import {
   projects,
   chargeCodes,
   toolsByProject 
-} from '../../src/renderer/business-logic/dropdown-logic';
+} from '../../src/logic/dropdown-logic';
 
 // Mock Electron modules
 vi.mock('electron', () => {

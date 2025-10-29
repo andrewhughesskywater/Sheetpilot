@@ -19,9 +19,7 @@ import * as fs from 'fs';
 import { dbLogger } from '../../../shared/logger';
 import {
     DatabaseConnectionError,
-    DatabaseQueryError,
-    DatabaseSchemaError,
-    type DatabaseError
+    DatabaseSchemaError
 } from '../../../shared/errors';
 
 /**
@@ -41,12 +39,6 @@ let DB_PATH = process.env['SHEETPILOT_DB']
 let connectionInstance: BetterSqlite3.Database | null = null;
 let connectionLock: Promise<void> = Promise.resolve();
 let schemaInitialized = false;
-
-/**
- * Maximum retry attempts for database operations
- */
-const MAX_RETRIES = 3;
-const RETRY_DELAY = 100; // milliseconds
 
 /**
  * Sets the database file path
@@ -113,33 +105,6 @@ export function shutdownDatabase(): void {
     closeConnection();
 }
 
-/**
- * Retry wrapper for database operations with exponential backoff
- */
-async function withRetry<T>(
-    operation: () => T,
-    operationName: string
-): Promise<T> {
-    let lastError: Error | null = null;
-    
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-        try {
-            return operation();
-        } catch (error) {
-            lastError = error instanceof Error ? error : new Error(String(error));
-            
-            if (attempt < MAX_RETRIES) {
-                const delay = RETRY_DELAY * Math.pow(2, attempt - 1);
-                dbLogger.debug(`Retrying ${operationName}`, { attempt, delay });
-                await new Promise(resolve => setTimeout(resolve, delay));
-            } else {
-                dbLogger.error(`Failed ${operationName} after ${MAX_RETRIES} attempts`, lastError);
-            }
-        }
-    }
-    
-    throw lastError;
-}
 
 /**
  * Module cache for better-sqlite3
@@ -189,17 +154,17 @@ function getDbConnection(): BetterSqlite3.Database {
         return connectionInstance!;
     }
     
-    // Lock initialization to prevent race conditions
-    let unlockNext: (() => void) | null = null;
-    const currentLock = connectionLock.then(() => {
-        return new Promise<void>((resolve) => {
-            unlockNext = resolve;
-        });
-    });
-    connectionLock = currentLock;
-    
     // If another thread is initializing, wait for it
     if (connectionInstance === null) {
+        // Lock initialization to prevent race conditions
+        let unlockFunction: (() => void) = () => {};
+        const currentLock = connectionLock.then(() => {
+            return new Promise<void>((resolve) => {
+                unlockFunction = resolve;
+            });
+        });
+        connectionLock = currentLock;
+        
         try {
             // Ensure the database directory exists
             const dbDir = path.dirname(DB_PATH);
@@ -244,47 +209,21 @@ function getDbConnection(): BetterSqlite3.Database {
                 stack: error instanceof Error ? error.stack : undefined
             });
         } finally {
-            if (unlockNext) unlockNext();
+            unlockFunction();
         }
     }
-    
-    // Unlock the next waiter
-    if (unlockNext) unlockNext();
     
     return connectionInstance!;
 }
 
 /**
- * Internal function to get database connection with retry logic
+ * Gets database connection with retry logic
  * Used by all database operations
  */
-function getDb(): BetterSqlite3.Database {
+export function getDb(): BetterSqlite3.Database {
     return getDbConnection();
 }
 
-/**
- * Wraps database operations with proper error handling
- * Converts generic errors to domain-specific error types
- */
-function withDatabaseErrorHandling<T>(
-    operation: () => T,
-    operationName: string
-): T {
-    try {
-        return operation();
-    } catch (error) {
-        // If it's already an AppError, re-throw it
-        if (error instanceof Error && error.name.startsWith('App')) {
-            throw error;
-        }
-        
-        // Convert to domain error
-        throw new DatabaseQueryError(operationName, {
-            error: error instanceof Error ? error.message : String(error),
-            stack: error instanceof Error ? error.stack : undefined
-        });
-    }
-}
 
 /**
  * Inserts a new timesheet entry with deduplication
@@ -646,19 +585,17 @@ export function getPendingTimesheetEntries() {
     const timer = dbLogger.startTimer('get-pending-entries');
     const db = getDb();
     
-    try {
-        dbLogger.verbose('Fetching pending timesheet entries');
-        const getPending = db.prepare(`
-            SELECT * FROM timesheet 
-            WHERE status IS NULL
-            ORDER BY date, time_in
-        `);
-        
-        const entries = getPending.all();
-        dbLogger.verbose('Pending entries retrieved', { count: entries.length });
-        timer.done({ count: entries.length });
-        return entries;
-    }
+    dbLogger.verbose('Fetching pending timesheet entries');
+    const getPending = db.prepare(`
+        SELECT * FROM timesheet 
+        WHERE status IS NULL
+        ORDER BY date, time_in
+    `);
+    
+    const entries = getPending.all();
+    dbLogger.verbose('Pending entries retrieved', { count: entries.length });
+    timer.done({ count: entries.length });
+    return entries;
 }
 
 /**
@@ -675,23 +612,21 @@ export function markTimesheetEntriesAsSubmitted(ids: number[]) {
     const timer = dbLogger.startTimer('mark-entries-submitted');
     const db = getDb();
     
-    try {
-        dbLogger.info('Marking timesheet entries as submitted', { count: ids.length, ids });
-        const placeholders = ids.map(() => '?').join(',');
-        const updateSubmitted = db.prepare(`
-            UPDATE timesheet 
-            SET status = 'Complete', 
-                submitted_at = datetime('now')
-            WHERE id IN (${placeholders})
-        `);
-        
-        const result = updateSubmitted.run(...ids);
-        dbLogger.audit('mark-submitted', 'Entries marked as submitted', { 
-            count: ids.length,
-            changes: result.changes 
-        });
-        timer.done({ count: ids.length, changes: result.changes });
-    }
+    dbLogger.info('Marking timesheet entries as submitted', { count: ids.length, ids });
+    const placeholders = ids.map(() => '?').join(',');
+    const updateSubmitted = db.prepare(`
+        UPDATE timesheet 
+        SET status = 'Complete', 
+            submitted_at = datetime('now')
+        WHERE id IN (${placeholders})
+    `);
+    
+    const result = updateSubmitted.run(...ids);
+    dbLogger.audit('mark-submitted', 'Entries marked as submitted', { 
+        count: ids.length,
+        changes: result.changes 
+    });
+    timer.done({ count: ids.length, changes: result.changes });
 }
 
 /**
@@ -711,21 +646,19 @@ export function removeFailedTimesheetEntries(ids: number[]) {
     const timer = dbLogger.startTimer('remove-failed-entries');
     const db = getDb();
     
-    try {
-        dbLogger.warn('Removing failed timesheet entries', { count: ids.length, ids });
-        const placeholders = ids.map(() => '?').join(',');
-        const deleteFailed = db.prepare(`
-            DELETE FROM timesheet 
-            WHERE id IN (${placeholders})
-        `);
-        
-        const result = deleteFailed.run(...ids);
-        dbLogger.audit('remove-failed', 'Failed entries removed from database', { 
-            count: ids.length,
-            changes: result.changes 
-        });
-        timer.done({ count: ids.length, changes: result.changes });
-    }
+    dbLogger.warn('Removing failed timesheet entries', { count: ids.length, ids });
+    const placeholders = ids.map(() => '?').join(',');
+    const deleteFailed = db.prepare(`
+        DELETE FROM timesheet 
+        WHERE id IN (${placeholders})
+    `);
+    
+    const result = deleteFailed.run(...ids);
+    dbLogger.audit('remove-failed', 'Failed entries removed from database', { 
+        count: ids.length,
+        changes: result.changes 
+    });
+    timer.done({ count: ids.length, changes: result.changes });
 }
 
 /**
@@ -739,16 +672,14 @@ export function getTimesheetEntriesByIds(ids: number[]) {
     
     const db = getDb();
     
-    try {
-        const placeholders = ids.map(() => '?').join(',');
-        const getByIds = db.prepare(`
-            SELECT * FROM timesheet 
-            WHERE id IN (${placeholders})
-            ORDER BY date, time_in
-        `);
-        
-        return getByIds.all(...ids);
-    }
+    const placeholders = ids.map(() => '?').join(',');
+    const getByIds = db.prepare(`
+        SELECT * FROM timesheet 
+        WHERE id IN (${placeholders})
+        ORDER BY date, time_in
+    `);
+    
+    return getByIds.all(...ids);
 }
 
 /**
@@ -760,30 +691,28 @@ export function getSubmittedTimesheetEntriesForExport() {
     const timer = dbLogger.startTimer('get-submitted-entries-export');
     const db = getDb();
     
-    try {
-        dbLogger.verbose('Fetching submitted timesheet entries for export');
-        const getSubmitted = db.prepare(`
-            SELECT 
-                date,
-                time_in,
-                time_out,
-                hours,
-                project,
-                tool,
-                detail_charge_code,
-                task_description,
-                status,
-                submitted_at
-            FROM timesheet 
-            WHERE status = 'Complete'
-            ORDER BY date ASC, time_in ASC
-        `);
-        
-        const entries = getSubmitted.all();
-        dbLogger.verbose('Submitted entries retrieved for export', { count: entries.length });
-        timer.done({ count: entries.length });
-        return entries;
-    }
+    dbLogger.verbose('Fetching submitted timesheet entries for export');
+    const getSubmitted = db.prepare(`
+        SELECT 
+            date,
+            time_in,
+            time_out,
+            hours,
+            project,
+            tool,
+            detail_charge_code,
+            task_description,
+            status,
+            submitted_at
+        FROM timesheet 
+        WHERE status = 'Complete'
+        ORDER BY date ASC, time_in ASC
+    `);
+    
+    const entries = getSubmitted.all();
+    dbLogger.verbose('Submitted entries retrieved for export', { count: entries.length });
+    timer.done({ count: entries.length });
+    return entries;
 }
 
 // ============================================================================
@@ -901,7 +830,7 @@ export function getCredentials(service: string): { email: string; password: stri
             email: result.email,
             password: decryptPassword(result.password)
         };
-    } catch (error) {
+    } catch (error: unknown) {
         dbLogger.error('Could not retrieve credentials', error);
         timer.done({ outcome: 'error' });
         return null;

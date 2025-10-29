@@ -17,9 +17,9 @@ import type {
   DeleteResult,
   ArchiveResult,
   DbTimesheetEntry
-} from '../../shared/contracts/IDataService';
-import type { PluginMetadata } from '../../shared/plugin-types';
-import { openDb } from '../database';
+} from '../../../../shared/contracts/IDataService';
+import type { PluginMetadata } from '../../../../shared/plugin-types';
+import { getDb } from '../database';
 
 /**
  * SQLite implementation of the data service
@@ -86,7 +86,7 @@ export class SQLiteDataService implements IDataService {
         return { success: false, error: 'Time Out must be after Time In' };
       }
       
-      const db = openDb();
+      const db = getDb();
       let result;
       
       try {
@@ -156,7 +156,7 @@ export class SQLiteDataService implements IDataService {
    */
   public async loadDraft(): Promise<LoadResult> {
     try {
-      const db = openDb();
+      const db = getDb();
       
       try {
         const getPending = db.prepare(`
@@ -212,7 +212,7 @@ export class SQLiteDataService implements IDataService {
         return { success: false, error: 'Valid ID is required' };
       }
 
-      const db = openDb();
+      const db = getDb();
       
       try {
         const deleteStmt = db.prepare(`
@@ -243,7 +243,7 @@ export class SQLiteDataService implements IDataService {
    */
   public async getArchiveData(): Promise<ArchiveResult> {
     try {
-      const db = openDb();
+      const db = getDb();
       
       try {
         // Get completed timesheet entries
@@ -291,7 +291,7 @@ export class SQLiteDataService implements IDataService {
    */
   public async getAllTimesheetEntries(): Promise<{ success: boolean; entries?: DbTimesheetEntry[]; error?: string }> {
     try {
-      const db = openDb();
+      const db = getDb();
       
       try {
         const getAll = db.prepare(`

@@ -51,12 +51,12 @@ describe('App Rendering Tests - Blank Screen Prevention', () => {
     vi.clearAllMocks();
     
     // Clear window APIs
-    delete (window as any).logger;
-    delete (window as any).timesheet;
-    delete (window as any).credentials;
-    delete (window as any).database;
-    delete (window as any).logs;
-    delete (window as any).api;
+    delete (window as Record<string, unknown>).logger;
+    delete (window as Record<string, unknown>).timesheet;
+    delete (window as Record<string, unknown>).credentials;
+    delete (window as Record<string, unknown>).database;
+    delete (window as Record<string, unknown>).logs;
+    delete (window as Record<string, unknown>).api;
     
     // Mock window object
     Object.assign(window, mockWindow);

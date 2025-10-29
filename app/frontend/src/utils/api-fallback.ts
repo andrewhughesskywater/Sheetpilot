@@ -234,23 +234,25 @@ export function initializeAPIFallback(): void {
     console.log('[APIFallback] Initializing development API fallbacks');
     
     // Create fallback APIs if they don't exist
-    if (!window.timesheet) {
-      window.timesheet = mockTimesheetAPI;
+    const win = window as unknown as Record<string, unknown>;
+    
+    if (!win['timesheet']) {
+      win['timesheet'] = mockTimesheetAPI;
       console.log('[APIFallback] Mock timesheet API initialized');
     }
     
-    if (!window.credentials) {
-      window.credentials = mockCredentialsAPI;
+    if (!win['credentials']) {
+      win['credentials'] = mockCredentialsAPI;
       console.log('[APIFallback] Mock credentials API initialized');
     }
     
-    if (!window.database) {
-      window.database = mockDatabaseAPI;
+    if (!win['database']) {
+      win['database'] = mockDatabaseAPI;
       console.log('[APIFallback] Mock database API initialized');
     }
     
-    if (!window.logs) {
-      window.logs = mockLogsAPI;
+    if (!win['logs']) {
+      win['logs'] = mockLogsAPI;
       console.log('[APIFallback] Mock logs API initialized');
     }
     

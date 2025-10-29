@@ -12,7 +12,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { BotOrchestrator } from '../src/services/bot/src/bot_orchestation';
 import { WebformFiller } from '../src/services/bot/src/webform_flow';
-import { createFormConfig } from '../src/services/bot/src/automation_config';
+import { createFormConfig, type FormConfig } from '../src/services/bot/src/automation_config';
 import * as Cfg from '../src/services/bot/src/automation_config';
 import { QUARTER_DEFINITIONS } from '../src/services/bot/src/quarter_config';
 
@@ -107,14 +107,14 @@ describe('Quarter Routing Integration', () => {
     it('should require formConfig parameter (no longer optional)', () => {
       expect(() => {
         // @ts-expect-error - Testing that formConfig is required
-        new BotOrchestrator(Cfg, undefined as any, false, null, undefined);
+        new BotOrchestrator(Cfg, undefined as unknown as FormConfig, false, null, undefined);
       }).toThrow('formConfig is required');
     });
 
     it('should throw error if formConfig is missing', () => {
       expect(() => {
         // @ts-expect-error - Testing that formConfig is required
-        new BotOrchestrator(Cfg, undefined as any, false, null, undefined);
+        new BotOrchestrator(Cfg, undefined as unknown as FormConfig, false, null, undefined);
       }).toThrow('formConfig is required');
     });
 
