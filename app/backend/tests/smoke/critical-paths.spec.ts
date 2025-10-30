@@ -47,10 +47,17 @@ vi.mock('electron', () => {
     ipcMain,
     app: {
       getPath: vi.fn(() => 'C:/tmp/sheetpilot-userdata'),
+      getVersion: vi.fn(() => '1.3.6'),
+      setAppUserModelId: vi.fn(),
       isPackaged: false,
       whenReady: vi.fn(() => Promise.resolve()),
       on: vi.fn(),
       quit: vi.fn()
+    },
+    screen: {
+      getPrimaryDisplay: vi.fn(() => ({
+        workAreaSize: { width: 1920, height: 1080 }
+      }))
     },
     BrowserWindow: vi.fn().mockImplementation(() => ({
       loadURL: vi.fn(),
@@ -58,11 +65,32 @@ vi.mock('electron', () => {
       once: vi.fn(),
       on: vi.fn(),
       show: vi.fn(),
+      setIcon: vi.fn(),
       getBounds: vi.fn(() => ({ x: 0, y: 0, width: 1200, height: 800 })),
-      isMaximized: vi.fn(() => false)
+      isMaximized: vi.fn(() => false),
+      isDestroyed: vi.fn(() => false),
+      webContents: {
+        on: vi.fn(),
+        openDevTools: vi.fn(),
+        send: vi.fn()
+      }
     }))
   };
 });
+
+// Mock electron-updater to prevent import failures
+vi.mock('electron-updater', () => ({
+  autoUpdater: {
+    autoDownload: false,
+    autoInstallOnAppQuit: true,
+    logger: null,
+    on: vi.fn(),
+    once: vi.fn(),
+    checkForUpdates: vi.fn(() => Promise.resolve()),
+    downloadUpdate: vi.fn(() => Promise.resolve()),
+    removeListener: vi.fn()
+  }
+}));
 
 // Mock database
 vi.mock('../../src/services/database', () => ({
@@ -81,7 +109,7 @@ vi.mock('../../src/services/database', () => ({
 }));
 
 // Mock logger
-vi.mock('../../src/shared/logger', () => ({
+vi.mock('../../shared/logger', () => ({
   initializeLogging: vi.fn(),
   appLogger: {
     info: vi.fn(),
@@ -92,7 +120,44 @@ vi.mock('../../src/shared/logger', () => ({
     silly: vi.fn(),
     audit: vi.fn(),
     startTimer: vi.fn(() => ({ done: vi.fn() }))
+  },
+  dbLogger: {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+    verbose: vi.fn(),
+    silly: vi.fn(),
+    audit: vi.fn(),
+    startTimer: vi.fn(() => ({ done: vi.fn() }))
+  },
+  ipcLogger: {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+    verbose: vi.fn(),
+    silly: vi.fn(),
+    audit: vi.fn(),
+    startTimer: vi.fn(() => ({ done: vi.fn() }))
   }
+}));
+
+// Mock timesheet_importer
+vi.mock('../../src/services/timesheet_importer', () => ({
+  submitTimesheets: vi.fn(async () => ({ 
+    ok: true, 
+    submittedIds: [1], 
+    removedIds: [], 
+    totalProcessed: 1, 
+    successCount: 1, 
+    removedCount: 0 
+  }))
+}));
+
+// Mock bootstrap-plugins
+vi.mock('../../src/middleware/bootstrap-plugins', () => ({
+  registerDefaultPlugins: vi.fn()
 }));
 
 describe('Critical Path Smoke Tests', () => {

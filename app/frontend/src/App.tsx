@@ -7,7 +7,8 @@ import {
   DialogContent,
   DialogActions,
   Typography,
-  CircularProgress
+  CircularProgress,
+  LinearProgress
 } from '@mui/material';
 import {
   Download as DownloadIcon
@@ -24,6 +25,104 @@ import { initializeTheme } from './utils/theme-manager';
 import logoImage from './assets/images/transparent-logo.svg';
 import { APP_VERSION } from './config/constants';
 import './styles/App.css';
+
+export function AboutBody() {
+  return (
+    <Box className="about-dialog-content">
+      <img 
+        src={logoImage} 
+        alt="SheetPilot Logo" 
+        className="about-dialog-logo"
+      />
+      <Typography variant="body1" color="text.secondary" gutterBottom>
+        Version {APP_VERSION}
+      </Typography>
+      <Typography variant="body1" color="text.secondary">
+        Created by Andrew Hughes
+      </Typography>
+      <Typography variant="body2" color="text.secondary" className="about-dialog-description">
+        Automate timesheet data entry into web forms
+      </Typography>
+    </Box>
+  );
+}
+
+export function Splash() {
+  const [progress, setProgress] = useState<number | null>(null);
+  const [status, setStatus] = useState<'checking' | 'downloading' | 'installing' | 'finalizing' | 'ready'>('checking');
+
+  useEffect(() => {
+    // Detect finalize state from URL hash
+    const hash = window.location.hash || '';
+    if (hash.includes('state=finalize')) {
+      setStatus('finalizing');
+    }
+
+    if (!window.updates) return;
+
+    window.updates.onUpdateAvailable((_version) => {
+      setStatus('downloading');
+    });
+    window.updates.onDownloadProgress((p) => {
+      setStatus('downloading');
+      setProgress(p.percent);
+    });
+    window.updates.onUpdateDownloaded((_version) => {
+      setStatus('installing');
+    });
+
+    return () => {
+      window.updates?.removeAllListeners();
+    };
+  }, []);
+
+  const renderStatus = () => {
+    switch (status) {
+      case 'checking':
+        return 'Checking for updates…';
+      case 'downloading':
+        return progress != null ? `Downloading update… ${progress.toFixed(0)}%` : 'Downloading update…';
+      case 'installing':
+        return 'Installing update…';
+      case 'finalizing':
+        return 'Finalizing update…';
+      case 'ready':
+        return 'Starting…';
+      default:
+        return '';
+    }
+  };
+
+  return (
+    <Box sx={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      height: '100vh',
+      gap: 'var(--sp-space-6)'
+    }}>
+      <AboutBody />
+      <Box sx={{ width: '60%', minWidth: 260 }}>
+        <LinearProgress
+          variant={progress != null ? 'determinate' : 'indeterminate'}
+          {...(progress != null ? { value: progress } : {})}
+          sx={{
+            height: 8,
+            borderRadius: 'var(--sp-radius-sm)',
+            backgroundColor: 'var(--md-sys-color-surface-variant)',
+            '& .MuiLinearProgress-bar': {
+              backgroundColor: 'var(--md-sys-color-primary)'
+            }
+          }}
+        />
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1, textAlign: 'center' }}>
+          {renderStatus()}
+        </Typography>
+      </Box>
+    </Box>
+  );
+}
 
 function AppContent() {
   console.log('=== APP CONTENT RENDERING ===');

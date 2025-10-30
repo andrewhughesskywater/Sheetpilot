@@ -1,6 +1,6 @@
 {
   "name": "sheetpilot",
-  "version": "1.3.5",
+  "version": "1.3.6",
   "description": "Business timesheet management and reporting tool",
   "author": "Andrew Hughes",
   "repository": {
@@ -42,7 +42,10 @@
     "test:bot": "cd app/backend/src/services/bot && npm test",
     "install:bot": "cd app/backend/src/services/bot && npm install",
     "install:backend": "cd app/backend && npm install",
-    "clean": "rimraf build/dist && cd app/backend/src/services/bot && npm run clean"
+    "clean": "rimraf build/dist && cd app/backend/src/services/bot && npm run clean",
+    "ci:smoke": "npm run build:main && npm run build:renderer && cross-env SMOKE_PACKAGED=1 ELECTRON_IS_DEV=0 node_modules/.bin/electron build/dist/backend/src/main.js",
+    "build:dir": "npm run build:main && npm run build:renderer && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --dir",
+    "ci:dir": "npm run build:dir && node scripts/ci-dir.js"
   },
   "build": {
     "appId": "com.sheetpilot.app",
@@ -52,7 +55,9 @@
     "files": [
       "build/dist/**/*",
       "app/backend/src/services/bot/dist/**/*",
+      "app/backend/src/services/bot/package.json",
       "app/backend/src/services/bot/node_modules/**/*",
+      "app/backend/package.json",
       "app/backend/node_modules/**/*",
       "app/frontend/dist/**/*",
       "app/frontend/src/assets/images/icon.ico",
@@ -64,6 +69,9 @@
     "directories": {
       "output": "build"
     },
+    "asarUnpack": [
+      "app/backend/node_modules/electron-updater/**/*"
+    ],
     "extraResources": [
       {
         "from": "app/frontend/src/assets/images/icon.ico",

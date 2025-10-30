@@ -1,5 +1,4 @@
 import { app, BrowserWindow, ipcMain, screen } from 'electron';
-import { autoUpdater } from 'electron-updater';
 import * as path from 'path';
 import * as fs from 'fs';
 import {
@@ -19,12 +18,34 @@ import {
   rebuildDatabase
 } from './services/database';
 import { submitTimesheets } from './services/timesheet_importer';
-import {
-  initializeLogging,
-  appLogger,
-  dbLogger,
-  ipcLogger
-} from '../../shared/logger';
+// Defer logger import until after preflight; provide lightweight shims for early use
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let appLogger: any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let dbLogger: any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let ipcLogger: any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let initializeLogging: any;
+
+// Minimal console-based logger used before real logger loads
+function createShimLogger(component: string) {
+  const prefix = `[${component}]`;
+  return {
+    error: (message: string, data?: unknown) => console.error(prefix, message, data ?? ''),
+    warn: (message: string, data?: unknown) => console.warn(prefix, message, data ?? ''),
+    info: (message: string, data?: unknown) => console.log(prefix, message, data ?? ''),
+    verbose: (message: string, data?: unknown) => console.log(prefix, message, data ?? ''),
+    debug: (message: string, data?: unknown) => console.debug(prefix, message, data ?? ''),
+    audit: (_a: string, message: string, data?: unknown) => console.log(prefix, message, data ?? ''),
+    security: (_e: string, message: string, data?: unknown) => console.warn(prefix, message, data ?? ''),
+    startTimer: (_op: string) => ({ done: (_m?: unknown) => void 0 })
+  };
+}
+
+appLogger = createShimLogger('Application');
+dbLogger = createShimLogger('Database');
+ipcLogger = createShimLogger('IPC');
 import {
   CredentialsNotFoundError,
   CredentialsStorageError,
@@ -35,7 +56,10 @@ import {
 
 // CRITICAL: Configure Playwright BEFORE importing any modules that use it
 // This must happen before bootstrap-plugins, which imports PlaywrightBotService
-if (app.isPackaged) {
+const IS_SMOKE = process.env['SMOKE_PACKAGED'] === '1';
+const PACKAGED_LIKE = app.isPackaged || IS_SMOKE;
+
+if (PACKAGED_LIKE) {
   const browserPath = path.join(process.resourcesPath, 'playwright-browsers');
   process.env['PLAYWRIGHT_BROWSERS_PATH'] = browserPath;
   console.log('[Setup] Playwright browsers path configured:', browserPath);
@@ -44,16 +68,55 @@ if (app.isPackaged) {
   console.log('[Setup] Development mode - using local Playwright browsers from node_modules');
 }
 
-// Add backend node_modules to module resolution path for development
-if (!app.isPackaged) {
+// Add backend node_modules to module resolution path (dev and packaged-like)
+{
   const pathModule = require('path');
-  const backendNodeModules = pathModule.resolve(__dirname, '..', '..', '..', '..', 'app', 'backend', 'node_modules');
+  const modulePaths: string[] = [];
+
+  if (PACKAGED_LIKE && !IS_SMOKE) {
+    // Packaged paths (ASAR and ASAR unpacked)
+    modulePaths.push(
+      pathModule.join(process.resourcesPath, 'app.asar', 'app', 'backend', 'node_modules'),
+      pathModule.join(process.resourcesPath, 'app.asar.unpacked', 'app', 'backend', 'node_modules')
+    );
+  } else {
+    // Development or smoke path: use project node_modules directly
+    modulePaths.push(pathModule.resolve(__dirname, '..', '..', '..', '..', 'app', 'backend', 'node_modules'));
+  }
+
   const currentPath = process.env['NODE_PATH'] || '';
-  process.env['NODE_PATH'] = currentPath ? `${backendNodeModules}${pathModule.delimiter}${currentPath}` : backendNodeModules;
+  const combined = [...modulePaths, currentPath].filter(Boolean).join(pathModule.delimiter);
+  process.env['NODE_PATH'] = combined;
   require('module').Module._initPaths();
 }
 
 import { registerDefaultPlugins } from './middleware/bootstrap-plugins';
+
+// Lazy-load electron-updater AFTER module paths are configured
+const { autoUpdater } = require('electron-updater') as typeof import('electron-updater');
+
+// Preflight: verify critical modules resolve before loading heavy subsystems
+function preflightResolve(): void {
+  const criticalModules = ['electron-log', 'electron-updater', 'better-sqlite3'];
+  const failures: Array<{ name: string; error: string }> = [];
+  for (const name of criticalModules) {
+    try {
+      require.resolve(name);
+    } catch (err) {
+      failures.push({ name, error: err instanceof Error ? err.message : String(err) });
+    }
+  }
+  if (failures.length > 0) {
+    const details = failures.map(f => `${f.name}: ${f.error}`).join(' | ');
+    console.error('Preflight module resolution failed', { details, nodePath: process.env['NODE_PATH'], resourcesPath: process.resourcesPath });
+    app.exit(1);
+  }
+}
+
+preflightResolve();
+
+// Now import the real logger after preflight passes
+({ initializeLogging, appLogger, dbLogger, ipcLogger } = require('../../shared/logger'));
 function parseTimeToMinutes(timeStr: string): number {
   const parts = timeStr.split(':');
   if (parts.length !== 2 || !parts[0] || !parts[1]) {
@@ -78,6 +141,53 @@ function formatMinutesToTime(minutes: number): string {
 // This allows users to enter historical data from any quarter
 
 let mainWindow: BrowserWindow | null = null;
+let splashWindow: BrowserWindow | null = null;
+function getAppIconPath(): string | undefined {
+  if (PACKAGED_LIKE) {
+    return path.join(process.resourcesPath, 'icon.ico');
+  }
+  return path.join(__dirname, '..', '..', '..', '..', 'app', 'frontend', 'src', 'assets', 'images', 'icon.ico');
+}
+
+function logIconPath(iconPath?: string) {
+  if (!iconPath) return;
+  const iconExists = fs.existsSync(iconPath);
+  appLogger.debug('Window icon', { iconPath, exists: iconExists });
+  if (!iconExists) {
+    appLogger.warn('Icon file not found at expected path', { iconPath });
+  }
+}
+
+// Update marker file to persist splash across relaunch after install
+function getUpdateMarkerPath(): string {
+  const userDataPath = app.getPath('userData');
+  return path.join(userDataPath, 'updating.json');
+}
+
+function writeUpdateMarker(reason: string) {
+  try {
+    const markerPath = getUpdateMarkerPath();
+    fs.mkdirSync(path.dirname(markerPath), { recursive: true });
+    fs.writeFileSync(markerPath, JSON.stringify({ reason, at: Date.now() }));
+    appLogger.info('Wrote update marker', { markerPath, reason });
+  } catch (err) {
+    appLogger.warn('Could not write update marker', { error: err instanceof Error ? err.message : String(err) });
+  }
+}
+
+function consumeUpdateMarker(): boolean {
+  try {
+    const markerPath = getUpdateMarkerPath();
+    if (fs.existsSync(markerPath)) {
+      fs.unlinkSync(markerPath);
+      appLogger.info('Consumed update marker', { markerPath });
+      return true;
+    }
+  } catch (err) {
+    appLogger.warn('Could not consume update marker', { error: err instanceof Error ? err.message : String(err) });
+  }
+  return false;
+}
 
 // Window state management
 interface WindowState {
@@ -205,8 +315,10 @@ function configureAutoUpdater() {
     const version = info?.version || 'unknown';
     appLogger.info('Update available', { version });
     
-    // Send IPC event to renderer to show update dialog
-    if (mainWindow && !mainWindow.isDestroyed()) {
+    // Send IPC event to splash or main
+    if (splashWindow && !splashWindow.isDestroyed()) {
+      splashWindow.webContents.send('update-available', version);
+    } else if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('update-available', version);
     }
     
@@ -225,9 +337,10 @@ function configureAutoUpdater() {
       total: progress.total
     });
     
-    // Send progress to renderer
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('download-progress', {
+    // Send progress to splash or main
+    const target = splashWindow && !splashWindow.isDestroyed() ? splashWindow : (mainWindow && !mainWindow.isDestroyed() ? mainWindow : null);
+    if (target) {
+      target.webContents.send('download-progress', {
         percent: progress.percent,
         transferred: progress.transferred,
         total: progress.total
@@ -240,13 +353,16 @@ function configureAutoUpdater() {
     appLogger.info('Update downloaded', { version });
     
     // Send IPC event to renderer to show installing status
-    if (mainWindow && !mainWindow.isDestroyed()) {
+    if (splashWindow && !splashWindow.isDestroyed()) {
+      splashWindow.webContents.send('update-downloaded', version);
+    } else if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('update-downloaded', version);
     }
     
-    // Wait 3 seconds for user to see completion, then install
+    // Write marker and wait 3 seconds for user to see completion, then install
     setTimeout(() => {
       appLogger.info('Installing update and restarting');
+      writeUpdateMarker('update-downloaded');
       autoUpdater.quitAndInstall();
     }, 3000);
   });
@@ -255,7 +371,9 @@ function configureAutoUpdater() {
     appLogger.error('AutoUpdater error', { error: err.message, stack: err.stack });
     
     // Send error to renderer if window exists
-    if (mainWindow && !mainWindow.isDestroyed()) {
+    if (splashWindow && !splashWindow.isDestroyed()) {
+      splashWindow.webContents.send('update-error', err.message);
+    } else if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('update-error', err.message);
     }
   });
@@ -331,36 +449,15 @@ async function bootstrapDatabaseAsync() {
 function createWindow() {
   const windowState = getWindowState();
   
-  // Get icon path - works in both dev and production builds
-  let iconPath: string | undefined;
-  if (app.isPackaged) {
-    // In production, try extraResources location first
-    iconPath = path.join(process.resourcesPath, '..', 'resources', 'icon.ico');
-    if (!fs.existsSync(iconPath)) {
-      // Fallback to packaged location
-      iconPath = path.join(process.resourcesPath, 'app', 'frontend', 'src', 'assets', 'images', 'icon.ico');
-    }
-  } else {
-    // In development, use path relative to compiled main.js location
-    // __dirname points to build/dist/backend/src in development
-    iconPath = path.join(__dirname, '..', '..', '..', '..', 'app', 'frontend', 'src', 'assets', 'images', 'icon.ico');
-  }
-  
-  // Log icon path and existence for debugging
-  if (iconPath) {
-    const iconExists = fs.existsSync(iconPath);
-    appLogger.debug('Window icon', { iconPath, exists: iconExists });
-    if (!iconExists) {
-      appLogger.warn('Icon file not found at expected path', { iconPath });
-    }
-  }
+  // Resolve and log icon path
+  const iconPath = getAppIconPath();
+  logIconPath(iconPath);
   
   const windowOptions: Electron.BrowserWindowConstructorOptions = {
     width: windowState.width,
     height: windowState.height,
     show: false, // Don't show until ready
     backgroundColor: '#ffffff', // Prevent white flash
-    icon: iconPath, // Set window icon
     autoHideMenuBar: true, // Hide the menu bar
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'), // Compiled preload script
@@ -382,6 +479,27 @@ function createWindow() {
   }
   
   mainWindow = new BrowserWindow(windowOptions);
+  if (iconPath) {
+    // Set icon after creation when available to satisfy strict option typing
+    try { mainWindow.setIcon(iconPath); } catch { /* no-op */ }
+  }
+
+  // Forward renderer console to main logs to debug blank screens
+  mainWindow.webContents.on('console-message', (_e, level, message, line, sourceId) => {
+    const data = { line, sourceId };
+    switch (level) {
+      case 0: appLogger.debug(`[Renderer] ${message}`, data); break; // VERBOSE
+      case 1: appLogger.info(`[Renderer] ${message}`, data); break;  // INFO
+      case 2: appLogger.warn(`[Renderer] ${message}`, data); break;  // WARNING
+      case 3: appLogger.error(`[Renderer] ${message}`, data); break; // ERROR
+      default: appLogger.info(`[Renderer] ${message}`, data);
+    }
+  });
+
+  // In smoke mode, auto-open devtools for visibility
+  if (IS_SMOKE) {
+    try { mainWindow.webContents.openDevTools({ mode: 'detach' }); } catch { /* no-op */ }
+  }
 
   // Restore maximized state if it was maximized
   if (windowState.isMaximized) {
@@ -450,12 +568,62 @@ function createWindow() {
     console.log('Loading development URL: http://localhost:5173');
     mainWindow.loadURL('http://localhost:5173');
   } else {
-    // In production, load from the packaged renderer files
-    // __dirname is 'build/dist/main', so go up to project root
-    const htmlPath = path.join(__dirname, '..', '..', '..', 'src', 'renderer', 'dist', 'index.html');
+    // In production/smoke, load compiled renderer from app/frontend/dist
+    // __dirname = build/dist/backend/src → go up 4 to project root
+    const htmlPath = path.join(__dirname, '..', '..', '..', '..', 'app', 'frontend', 'dist', 'index.html');
     console.log('Loading production HTML from:', htmlPath);
     console.log('File exists:', fs.existsSync(htmlPath));
     mainWindow.loadFile(htmlPath);
+  }
+}
+
+ function createSplashWindow(hash: string = '#splash') {
+  const iconPath = getAppIconPath();
+   logIconPath(iconPath);
+  // Small, centered window; keep invisible menu, minimal chrome
+   const options: Electron.BrowserWindowConstructorOptions = {
+    width: 500,
+    height: 420,
+    resizable: false,
+    movable: true,
+    fullscreenable: false,
+    frame: true,
+    show: false,
+    backgroundColor: '#ffffff',
+    autoHideMenuBar: true,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      webSecurity: true,
+      allowRunningInsecureContent: false,
+      experimentalFeatures: false
+    }
+  };
+
+  splashWindow = new BrowserWindow(options);
+  if (iconPath) {
+    try { splashWindow.setIcon(iconPath); } catch { /* no-op */ }
+  }
+  splashWindow.once('ready-to-show', () => splashWindow?.show());
+
+  const isDev = process.env['NODE_ENV'] === 'development' || process.env['ELECTRON_IS_DEV'] === '1';
+  if (isDev) {
+    splashWindow.loadURL(`http://localhost:5173/${hash}`);
+  } else {
+    const htmlPath = path.join(__dirname, '..', '..', '..', '..', 'app', 'frontend', 'dist', 'index.html');
+    splashWindow.loadFile(htmlPath, { hash });
+  }
+}
+
+function showMainAndCloseSplash() {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    createWindow();
+  }
+  if (splashWindow && !splashWindow.isDestroyed()) {
+    splashWindow.close();
+    splashWindow = null;
   }
 }
 
@@ -1284,9 +1452,29 @@ export function registerIPCHandlers() {
     ipcLogger.info(`User action: ${action}`, data);
   });
 
-  // Create and show window FIRST (immediate visual feedback)
-  createWindow();
-  
+  // Decide whether to show splash first
+  const isDev = process.env['NODE_ENV'] === 'development' || process.env['ELECTRON_IS_DEV'] === '1';
+  const forceSplashInDev = process.env['VITE_FORCE_SPLASH'] === 'true';
+  const shouldShowSplash = app.isPackaged || (isDev && forceSplashInDev);
+
+  // If we detect a previous update marker, show finalize splash
+  let showedFinalizeSplash = false;
+  if (shouldShowSplash && fs.existsSync(getUpdateMarkerPath())) {
+    // Do not consume immediately; renderer may need to know
+    createSplashWindow('#splash?state=finalize');
+    showedFinalizeSplash = true;
+    // Consume marker shortly after splash is shown
+    setTimeout(() => {
+      consumeUpdateMarker();
+      // After brief finalize, show main
+      setTimeout(() => showMainAndCloseSplash(), 1000);
+    }, 500);
+  } else if (shouldShowSplash) {
+    createSplashWindow('#splash');
+  } else {
+    createWindow();
+  }
+
   // Initialize database asynchronously (non-blocking)
   bootstrapDatabaseAsync().then(() => {
     dbLogger.info('Database ready for operations');
@@ -1298,9 +1486,28 @@ export function registerIPCHandlers() {
   setImmediate(() => {
     try {
       configureAutoUpdater();
-      checkForUpdates();
+      if (app.isPackaged) {
+        checkForUpdates();
+      } else if (!shouldShowSplash) {
+        // In dev without splash, still allow update UI in main if wired
+        checkForUpdates();
+      }
     } catch (err) {
       appLogger.error('Auto-updater setup failed', err);
+    }
+  });
+
+  // If we showed a non-finalize splash in production but no update is available, we will close it
+  // on the 'update-not-available' event by showing main. Hook that here by listening once.
+  autoUpdater.once('update-not-available', () => {
+    if (shouldShowSplash && !showedFinalizeSplash) {
+      showMainAndCloseSplash();
+    }
+  });
+  // On updater error, do not block the app
+  autoUpdater.once('error', () => {
+    if (shouldShowSplash && !showedFinalizeSplash) {
+      showMainAndCloseSplash();
     }
   });
 }
@@ -1310,6 +1517,14 @@ app.whenReady().then(() => {
   // Initialize logging first (fast, non-blocking)
   initializeLogging();
   appLogger.info('Application startup initiated');
+  
+  // Ensure Windows taskbar uses our app identity (affects icon/notifications)
+  try {
+    app.setAppUserModelId('com.sheetpilot.app');
+    appLogger.debug('AppUserModelID set', { appId: 'com.sheetpilot.app' });
+  } catch (err) {
+    appLogger.warn('Could not set AppUserModelID', { error: err instanceof Error ? err.message : String(err) });
+  }
   
   // Register default plugins for the plugin system
   registerDefaultPlugins();
