@@ -79,6 +79,12 @@ export function createFormConfig(formUrl: string, formId: string) {
   };
 }
 
+/**
+ * Public type representing the shape returned by createFormConfig
+ * Used by tests and other modules to reference the config structure.
+ */
+export type FormConfig = ReturnType<typeof createFormConfig>;
+
 // ============================================================================
 // BROWSER CONFIGURATION
 // ============================================================================

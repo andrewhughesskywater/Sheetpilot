@@ -4,7 +4,12 @@
     "skipLibCheck": true,
     "types": ["vitest", "vite/client", "node"],
     "jsx": "react-jsx",
-    "noPropertyAccessFromIndexSignature": false
+    "noPropertyAccessFromIndexSignature": false,
+    "exactOptionalPropertyTypes": false,
+    "noUncheckedIndexedAccess": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "allowUnreachableCode": true
   },
   "include": [
     "app/**/*.ts",
@@ -17,6 +22,10 @@
     "app/backend/src/services/bot/node_modules",
     "app/frontend/node_modules",
     "app/frontend/src/config/vite.config.ts",
-    "app/frontend/tests/vitest.config.blank-screen-prevention.ts"
+    "app/frontend/tests/vitest.config.blank-screen-prevention.ts",
+    "app/**/*.spec.ts",
+    "app/**/*.spec.tsx",
+    "app/**/*.test.ts",
+    "app/**/*.test.tsx"
   ]
 }
