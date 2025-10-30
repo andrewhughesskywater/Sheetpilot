@@ -167,8 +167,15 @@ const mockCredentialsAPI = {
 };
 
 const mockDatabaseAPI = {
-  getAllTimesheetEntries: async (): Promise<{ success: boolean; entries?: TimesheetEntry[]; error?: string }> => {
+  getAllTimesheetEntries: async (token: string): Promise<{ success: boolean; entries?: TimesheetEntry[]; error?: string }> => {
     console.log('[MockAPI] Getting all timesheet entries');
+    if (!token) {
+      return {
+        success: false,
+        error: 'Session token is required',
+        entries: []
+      };
+    }
     return {
       success: true,
       entries: mockArchiveData

@@ -24,12 +24,12 @@ vi.mock('better-sqlite3', () => {
     bind: (..._args: unknown[]) => mockStmt
   };
 
-  function MockDatabase(this: { path: string; prepare: () => typeof mockStmt; transaction: unknown; exec: () => typeof this; close: () => typeof this }, _path: string, _opts?: unknown) {
+  function MockDatabase(this: { path: string; prepare: () => typeof mockStmt; transaction: unknown; exec: (this: unknown) => unknown; close: (this: unknown) => unknown }, _path: string, _opts?: unknown) {
     this.path = _path;
     this.prepare = () => mockStmt;
     this.transaction = (callback: (...args: unknown[]) => unknown) => (...args: unknown[]) => callback(...args);
-    this.exec = () => this;
-    this.close = () => this;
+    this.exec = function (this: unknown) { return this; };
+    this.close = function (this: unknown) { return this; };
   }
 
   return MockDatabase;
@@ -139,8 +139,8 @@ describe('Database Module', () => {
             expect(tables).toHaveLength(1);
             
             // Check table structure
-            const columns = db.prepare("PRAGMA table_info(timesheet)").all();
-            const columnNames = columns.map((col: { name: string }) => col.name);
+            const columns = db.prepare("PRAGMA table_info(timesheet)").all() as Array<{ name: string }>;
+            const columnNames = columns.map((col) => col.name);
             
             expect(columnNames).toContain('id');
             expect(columnNames).toContain('date');
@@ -162,8 +162,8 @@ describe('Database Module', () => {
             const db = openDb();
             
             // Check for indexes
-            const indexes = db.prepare("SELECT name FROM sqlite_master WHERE type='index'").all();
-            const indexNames = indexes.map((idx: { name: string }) => idx.name);
+            const indexes = db.prepare("SELECT name FROM sqlite_master WHERE type='index'").all() as Array<{ name: string }>;
+            const indexNames = indexes.map((idx) => idx.name);
             
             expect(indexNames).toContain('idx_timesheet_date');
             expect(indexNames).toContain('idx_timesheet_project');
@@ -221,8 +221,8 @@ describe('Database Module', () => {
         it('should handle optional fields correctly', () => {
             const entryWithoutOptionals = {
                 ...sampleEntry,
-                tool: undefined,
-                detailChargeCode: undefined
+                tool: null,
+                detailChargeCode: null
             };
             
             const result = insertTimesheetEntry(entryWithoutOptionals);
@@ -537,7 +537,7 @@ describe('Database Module', () => {
                 timeOut: 600,
                 project: 'Test Project',
                 tool: null,
-                detailChargeCode: undefined,
+                detailChargeCode: null,
                 taskDescription: 'Test Task'
             };
             

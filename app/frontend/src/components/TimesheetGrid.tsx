@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { HotTable } from '@handsontable/react-wrapper';
 import { registerAllModules } from 'handsontable/registry';
 import type { HotTableRef } from '@handsontable/react-wrapper';
@@ -117,31 +117,35 @@ const chargeCodes = [
 
 // Helper functions for dropdown cascading logic
 function getToolOptions(project?: string): string[] {
-  if (!project || projectsWithoutTools.has(project)) return [];
-  return toolsByProject[project] || [];
+  const p = project ?? '';
+  if (!p || projectsWithoutTools.has(p)) return [];
+  return toolsByProject[p] || [];
 }
 
 function toolNeedsChargeCode(tool?: string): boolean {
-  return !!tool && !toolsWithoutCharges.has(tool);
+  const t = tool ?? '';
+  return !!t && !toolsWithoutCharges.has(t);
 }
 
 function projectNeedsTools(project?: string): boolean {
-  return !!project && !projectsWithoutTools.has(project);
+  const p = project ?? '';
+  return !!p && !projectsWithoutTools.has(p);
 }
 
 // Validation helpers
 function isValidDate(dateStr?: string): boolean {
-  if (!dateStr) return false;
-  
+  const d = dateStr ?? '';
+  if (!d) return false;
   // Check format first
   const dateRegex = /^\d{1,2}\/\d{1,2}\/\d{4}$/;
-  if (!dateRegex.test(dateStr)) return false;
-  
+  if (!dateRegex.test(d)) return false;
   // Parse the date components
-  const [monthStr, dayStr, yearStr] = dateStr.split('/');
-  const month = parseInt(monthStr, 10);
-  const day = parseInt(dayStr, 10);
-  const year = parseInt(yearStr, 10);
+  const dateParts = d.split('/');
+  if (dateParts.length !== 3) return false;
+  const [monthStr, dayStr, yearStr] = dateParts;
+  const month = parseInt(monthStr ?? '', 10);
+  const day = parseInt(dayStr ?? '', 10);
+  const year = parseInt(yearStr ?? '', 10);
   
   // Basic range checks
   if (month < 1 || month > 12) return false;
@@ -186,30 +190,26 @@ function formatTimeInput(timeStr: unknown): string {
 
 function isValidTime(timeStr?: string): boolean {
   if (!timeStr) return false;
-  
   // First try to format the input
   const formattedTime = formatTimeInput(timeStr);
-  
   // Check if it matches HH:MM format
   const timeRegex = /^([01]?[0-9]|2[0-3]):([0-5][0-9])$/;
   if (!timeRegex.test(formattedTime)) return false;
-  
-  const [hours, minutes] = formattedTime.split(':').map(Number);
+  const parts = formattedTime.split(':');
+  if (parts.length !== 2) return false;
+  const [hours, minutes] = parts.map(Number) as [number, number];
   const totalMinutes = hours * 60 + minutes;
-  
   // Check if it's a multiple of 15 minutes
   return totalMinutes % 15 === 0;
 }
 
 function isTimeOutAfterTimeIn(timeIn?: string, timeOut?: string): boolean {
   if (!timeIn || !timeOut) return true; // Let other validations handle missing values
-  
-  const [inHours, inMinutes] = timeIn.split(':').map(Number);
-  const [outHours, outMinutes] = timeOut.split(':').map(Number);
-  
+  if (!isValidTime(timeIn) || !isValidTime(timeOut)) return true;
+  const [inHours, inMinutes] = timeIn.split(':').map(Number) as [number, number];
+  const [outHours, outMinutes] = timeOut.split(':').map(Number) as [number, number];
   const inTotalMinutes = inHours * 60 + inMinutes;
   const outTotalMinutes = outHours * 60 + outMinutes;
-  
   return outTotalMinutes > inTotalMinutes;
 }
 
@@ -399,13 +399,12 @@ function TimesheetGrid({ onChange }: TimesheetGridProps) {
       });
       
       const result = await window.timesheet.saveDraft({
-        id: row.id,
         date: row.date,
         timeIn: row.timeIn,
         timeOut: row.timeOut,
         project: row.project,
-        tool: row.tool,
-        chargeCode: row.chargeCode,
+        tool: row.tool ?? null,
+        chargeCode: row.chargeCode ?? null,
         taskDescription: row.taskDescription
       });
       
@@ -420,6 +419,18 @@ function TimesheetGrid({ onChange }: TimesheetGridProps) {
       console.error('[TimesheetGrid] Autosave error:', error);
     }
   }, []);
+
+  // Track rows slated for removal so we can delete from DB after UI removal
+  const rowsPendingRemovalRef = useRef<TimesheetRow[]>([]);
+
+  // Capture rows before they are removed (Handsontable passes index and amount)
+  const handleBeforeRemoveRow = useCallback((index: number, amount: number) => {
+    // Defensive checks
+    const start = Math.max(0, index);
+    const _end = Math.min(timesheetDraftData.length, index + amount);
+    rowsPendingRemovalRef.current = timesheetDraftData.slice(start, _end);
+    window.logger?.verbose('[TimesheetGrid] Captured rows for deletion', { start, amount, captured: rowsPendingRemovalRef.current.length });
+  }, [timesheetDraftData]);
 
   // Block manual edits to inactive tool/charge code columns, but allow paste operations
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -494,17 +505,17 @@ function TimesheetGrid({ onChange }: TimesheetGridProps) {
       
       // Cascading dropdown rules
       if (propStr === 'project' && newVal !== oldVal) {
-        const project = typeof newVal === 'string' ? newVal : String(newVal || '');
+        const project: string = typeof newVal === 'string' ? newVal : String(newVal ?? '');
         next[rowIdx] = projectsWithoutTools.has(project)
           ? { ...currentRow, project, tool: null, chargeCode: null }
           : { ...currentRow, project, tool: null, chargeCode: null };
       } else if (propStr === 'tool' && newVal !== oldVal) {
-        const tool = typeof newVal === 'string' ? newVal : String(newVal || '');
+        const tool: string = typeof newVal === 'string' ? newVal : String(newVal ?? '');
         next[rowIdx] = toolsWithoutCharges.has(tool)
           ? { ...currentRow, tool, chargeCode: null }
           : { ...currentRow, tool };
       } else {
-        next[rowIdx] = { ...currentRow, [propStr]: newVal };
+        next[rowIdx] = { ...currentRow, [propStr]: newVal ?? '' };
       }
     }
     
@@ -533,11 +544,51 @@ function TimesheetGrid({ onChange }: TimesheetGridProps) {
     }
   }, [timesheetDraftData, setTimesheetDraftData, onChange, autosaveRow, saveLocalBackup]);
 
-  // Handle row removal (note: deleteDraft API not yet implemented)
-  const handleAfterRemoveRow = useCallback(() => {
-    // TODO: Implement deleteDraft API in window.timesheet
-    // For now, removed rows will be handled on next data refresh
-  }, []);
+  // Persist row removal to database
+  const handleAfterRemoveRow = useCallback(async (index: number, amount: number) => {
+    const removedRows = rowsPendingRemovalRef.current || [];
+    rowsPendingRemovalRef.current = [];
+
+    // Handsontable may call afterRemoveRow without before hook; fallback to compute if needed
+    if (removedRows.length === 0) {
+      const start = Math.max(0, index);
+      // Best-effort: try to infer from a saved local backup (may be stale). Skip if uncertain.
+      window.logger?.warn('[TimesheetGrid] No captured rows before deletion; skipping DB delete', { index: start, amount });
+      return;
+    }
+
+    if (!window.timesheet?.deleteDraft) {
+      window.logger?.error('Could not delete draft rows', { reason: 'timesheet API not available' });
+      return;
+    }
+
+    let deletedCount = 0;
+    for (const row of removedRows) {
+      const rowId = row?.id;
+      if (rowId === undefined || rowId === null) {
+        continue; // Skip unsaved/new rows that never had an ID
+      }
+      try {
+        const res = await window.timesheet.deleteDraft(rowId);
+        if (res?.success) {
+          deletedCount++;
+        } else {
+          window.logger?.warn('Could not delete draft row', { id: rowId, error: res?.error });
+        }
+      } catch (err) {
+        window.logger?.error('Encountered error deleting draft row', { id: rowId, error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+
+    window.logger?.info('Rows removed from database successfully', { count: deletedCount, requested: amount });
+
+    // Refresh from backend to ensure UI state matches DB
+    try {
+      await refreshTimesheetDraft();
+    } catch (err) {
+      window.logger?.warn('Could not refresh timesheet draft after deletion', { error: err instanceof Error ? err.message : String(err) });
+    }
+  }, [refreshTimesheetDraft, timesheetDraftData.length]);
 
   // Validation hooks
   const handleBeforeValidate = useCallback((value: unknown, row: number, prop: string | number) => {
@@ -824,7 +875,6 @@ function TimesheetGrid({ onChange }: TimesheetGridProps) {
     { data: 'taskDescription', title: 'Task Description', type: 'text', placeholder: '', className: 'htLeft' }
   ], []);
 
-
   if (isTimesheetDraftLoading) {
     console.log('[TimesheetGrid] Rendering loading state');
     return (
@@ -877,6 +927,7 @@ function TimesheetGrid({ onChange }: TimesheetGridProps) {
         data={timesheetDraftData}
         columns={columnDefinitions}
         cells={cellsFunction}
+        beforeRemoveRow={handleBeforeRemoveRow}
         beforeChange={handleBeforeChange}
         afterChange={handleAfterChange}
         afterRemoveRow={handleAfterRemoveRow}
@@ -898,12 +949,12 @@ function TimesheetGrid({ onChange }: TimesheetGridProps) {
         licenseKey="non-commercial-and-evaluation"
         minSpareRows={1}
         readOnly={false}
-        fillHandle={true}
+        fillHandle={false}
         autoWrapRow={true}
         autoWrapCol={true}
         fragmentSelection={true}
         disableVisualSelection={false}
-        selectionMode="multiple"
+        selectionMode="single"
         outsideClickDeselects={true}
         viewportRowRenderingOffset={200}
         columnSorting={{

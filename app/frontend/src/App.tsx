@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import { useState, useEffect, Suspense, lazy, useRef } from 'react';
 import {
   Box,
   Button,
@@ -12,10 +12,10 @@ import {
 import {
   Download as DownloadIcon
 } from '@mui/icons-material';
-import Archive from './components/DatabaseViewer';
+const Archive = lazy(() => import('./components/DatabaseViewer'));
 const TimesheetGrid = lazy(() => import('./components/TimesheetGrid'));
 import ModernSegmentedNavigation from './components/ModernSegmentedNavigation';
-import Help from './components/Help';
+const Help = lazy(() => import('./components/Help'));
 import UpdateDialog from './components/UpdateDialog';
 import LoginDialog from './components/LoginDialog';
 import { DataProvider, useData } from './contexts/DataContext';
@@ -30,6 +30,8 @@ function AppContent() {
   const { isLoggedIn, isLoading: sessionLoading, login: sessionLogin } = useSession();
   const [activeTab, setActiveTab] = useState(0);
   console.log('Active tab:', activeTab);
+  const hasRequestedInitialTimesheetRef = useRef(false);
+  const hasRefreshedEmptyOnceRef = useRef(false);
   
   const [isExporting, setIsExporting] = useState(false);
   const [showAboutDialog, setShowAboutDialog] = useState(false);
@@ -41,21 +43,40 @@ function AppContent() {
   const [updateStatus, setUpdateStatus] = useState<'downloading' | 'installing'>('downloading');
   
   // Use data context
-  const { refreshTimesheetDraft, refreshArchiveData } = useData();
+  const { refreshTimesheetDraft, refreshArchiveData, isTimesheetDraftLoading, timesheetDraftData } = useData() as unknown as {
+    refreshTimesheetDraft: () => Promise<void>;
+    refreshArchiveData: () => Promise<void>;
+    isTimesheetDraftLoading: boolean;
+    timesheetDraftData: unknown[];
+  };
 
   // Load data when user navigates to tabs (on-demand loading)
   useEffect(() => {
     if (!isLoggedIn) return;
-    
+
     if (activeTab === 0) {
-      // User navigated to timesheet tab - load data now
-      refreshTimesheetDraft();
+      // Prevent duplicate initial loads (StrictMode/effect re-runs)
+      if (!hasRequestedInitialTimesheetRef.current) {
+        window.logger?.debug('[App] Refreshing timesheet draft on initial tab activate');
+        hasRequestedInitialTimesheetRef.current = true;
+        refreshTimesheetDraft();
+        return;
+      }
+      // If data appears effectively empty and not loading, refresh once more
+      const hasRealRows = Array.isArray(timesheetDraftData) && timesheetDraftData.some((r) => {
+        const row = r as Record<string, unknown>;
+        return !!(row?.date || row?.timeIn || row?.timeOut || row?.project || row?.taskDescription);
+      });
+      if (!isTimesheetDraftLoading && !hasRealRows && !hasRefreshedEmptyOnceRef.current) {
+        window.logger?.debug('[App] Timesheet appears empty post-init; refreshing once');
+        hasRefreshedEmptyOnceRef.current = true;
+        refreshTimesheetDraft();
+      }
     } else if (activeTab === 1) {
-      // User navigated to archive tab - load data now
+      window.logger?.debug('[App] Refreshing archive data on tab activate');
       refreshArchiveData();
     }
-     
-  }, [activeTab, isLoggedIn]);
+  }, [activeTab, isLoggedIn, refreshTimesheetDraft, refreshArchiveData, isTimesheetDraftLoading, timesheetDraftData]);
 
   // Initialize theme on mount
   useEffect(() => {
@@ -189,11 +210,15 @@ function AppContent() {
               )}
 
               {activeTab === 1 && (
-                <Archive />
+                <Suspense fallback={<div className="loading-fallback">Loading archive...</div>}>
+                  <Archive />
+                </Suspense>
               )}
 
               {activeTab === 2 && (
-                <Help />
+                <Suspense fallback={<div className="loading-fallback">Loading help...</div>}>
+                  <Help />
+                </Suspense>
               )}
             </>
           )}

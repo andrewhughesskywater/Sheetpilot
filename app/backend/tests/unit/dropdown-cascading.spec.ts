@@ -28,8 +28,8 @@ describe('Dropdown Cascading Logic Unit Tests', () => {
       const expectedProjectsWithoutTools = ['ERT', 'PTO/RTO', 'SWFL-CHEM/GAS', 'Training'];
       
       expectedProjectsWithoutTools.forEach(project => {
-        expect(projectsWithoutTools.has(project)).toBe(true);
-        expect(projectNeedsTools(project)).toBe(false);
+        expect(projectsWithoutTools.has(project as any)).toBe(true);
+        expect(projectNeedsTools(project as any)).toBe(false);
       });
     });
 
@@ -37,8 +37,8 @@ describe('Dropdown Cascading Logic Unit Tests', () => {
       const expectedProjectsWithTools = ['FL-Carver Techs', 'FL-Carver Tools', 'OSC-BBB', 'SWFL-EQUIP'];
       
       expectedProjectsWithTools.forEach(project => {
-        expect(projectsWithoutTools.has(project)).toBe(false);
-        expect(projectNeedsTools(project)).toBe(true);
+        expect(projectsWithoutTools.has(project as any)).toBe(false);
+        expect(projectNeedsTools(project as any)).toBe(true);
       });
     });
 
@@ -93,8 +93,8 @@ describe('Dropdown Cascading Logic Unit Tests', () => {
       ];
       
       expectedToolsWithoutCharges.forEach(tool => {
-        expect(toolsWithoutCharges.has(tool)).toBe(true);
-        expect(toolNeedsChargeCode(tool)).toBe(false);
+        expect(toolsWithoutCharges.has(tool as any)).toBe(true);
+        expect(toolNeedsChargeCode(tool as any)).toBe(false);
       });
     });
 
@@ -105,8 +105,8 @@ describe('Dropdown Cascading Logic Unit Tests', () => {
       ];
       
       expectedToolsWithCharges.forEach(tool => {
-        expect(toolsWithoutCharges.has(tool)).toBe(false);
-        expect(toolNeedsChargeCode(tool)).toBe(true);
+        expect(toolsWithoutCharges.has(tool as any)).toBe(false);
+        expect(toolNeedsChargeCode(tool as any)).toBe(true);
       });
     });
 
@@ -157,9 +157,9 @@ describe('Dropdown Cascading Logic Unit Tests', () => {
 
     it('should handle cascading from project without tools to project with tools', () => {
       // Start with project that doesn't need tools
-      let currentProject = 'PTO/RTO';
-      let currentTool = null;
-      let currentChargeCode = null;
+      let currentProject: string = 'PTO/RTO';
+      let currentTool: string | null = null;
+      let currentChargeCode: string | null = null;
       
       expect(projectNeedsTools(currentProject)).toBe(false);
       expect(getToolOptions(currentProject)).toEqual([]);
@@ -178,9 +178,9 @@ describe('Dropdown Cascading Logic Unit Tests', () => {
 
     it('should handle cascading from project with tools to project without tools', () => {
       // Start with project that needs tools
-      let currentProject = 'FL-Carver Techs';
-      let currentTool = '#1 Rinse and 2D marker';
-      let currentChargeCode = 'EPR1';
+      let currentProject: string = 'FL-Carver Techs';
+      let currentTool: string | null = '#1 Rinse and 2D marker';
+      let currentChargeCode: string | null = 'EPR1';
       
       expect(projectNeedsTools(currentProject)).toBe(true);
       expect(getToolOptions(currentProject)).toContain(currentTool);
@@ -200,8 +200,8 @@ describe('Dropdown Cascading Logic Unit Tests', () => {
 
     it('should handle cascading from tool without charges to tool with charges', () => {
       // Start with tool that doesn't need charge codes
-      let currentTool = 'Meeting';
-      let currentChargeCode = null;
+      let currentTool: string | null = 'Meeting';
+      let currentChargeCode: string | null = null;
       
       expect(toolNeedsChargeCode(currentTool)).toBe(false);
       
@@ -216,8 +216,8 @@ describe('Dropdown Cascading Logic Unit Tests', () => {
 
     it('should handle cascading from tool with charges to tool without charges', () => {
       // Start with tool that needs charge codes
-      let currentTool = '#1 Rinse and 2D marker';
-      let currentChargeCode = 'EPR1';
+      let currentTool: string | null = '#1 Rinse and 2D marker';
+      let currentChargeCode: string | null = 'EPR1';
       
       expect(toolNeedsChargeCode(currentTool)).toBe(true);
       
@@ -333,7 +333,7 @@ describe('Dropdown Cascading Logic Unit Tests', () => {
 
   describe('Performance', () => {
     it('should handle large tool lists efficiently', () => {
-      const flCarverTools = toolsByProject['FL-Carver Techs'];
+      const flCarverTools = toolsByProject['FL-Carver Techs'] ?? [];
       expect(flCarverTools.length).toBeGreaterThan(50); // FL-Carver Techs has many tools
       
       // Should be able to check tool membership quickly

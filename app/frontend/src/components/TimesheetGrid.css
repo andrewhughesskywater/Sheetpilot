@@ -118,3 +118,18 @@
   white-space: nowrap !important;
   padding: 8px 12px !important;
 }
+
+/* Improve selection visibility using design tokens */
+.handsontable .ht_master .wtBorder.current {
+  border-color: var(--md-sys-color-primary) !important;
+}
+
+.handsontable .ht_master .area {
+  background-color: var(--md-sys-color-primary) !important;
+  opacity: 0.18 !important; /* subtle but visible overlay */
+}
+
+.handsontable .ht_master .area.corner {
+  background-color: var(--md-sys-color-primary) !important;
+  opacity: 0.28 !important; /* emphasize corner drag area */
+}

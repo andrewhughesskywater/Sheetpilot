@@ -131,7 +131,7 @@
   --sp-ring: 2px;
 
   /*Z layers*/
-  --sp-z-appbar: 100;
+  --sp-z-appbar: 1500;
   --sp-z-drawer: 400;
   --sp-z-dropdown: 700;
   --sp-z-modal: 1000;

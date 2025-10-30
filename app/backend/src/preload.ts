@@ -91,11 +91,15 @@ contextBridge.exposeInMainWorld('admin', {
 });
 
 contextBridge.exposeInMainWorld('database', {
-  getAllTimesheetEntries: (): Promise<Array<{
-    id: number; date: string; time_in: number; time_out: number; hours: number;
-    project: string; tool?: string; detail_charge_code?: string; task_description: string;
-    status?: string; submitted_at?: string;
-  }>> => ipcRenderer.invoke('database:getAllTimesheetEntries'),
+  getAllTimesheetEntries: (token: string): Promise<{
+    success: boolean;
+    entries?: Array<{
+      id: number; date: string; time_in: number; time_out: number; hours: number;
+      project: string; tool?: string; detail_charge_code?: string; task_description: string;
+      status?: string; submitted_at?: string;
+    }>;
+    error?: string;
+  }> => ipcRenderer.invoke('database:getAllTimesheetEntries', token),
   getAllCredentials: (): Promise<Array<{
     id: number; service: string; email: string; created_at: string; updated_at: string;
   }>> => ipcRenderer.invoke('database:getAllCredentials'),

@@ -814,13 +814,25 @@ export function registerIPCHandlers() {
   });
 
   // Handler for getting all timesheet entries (for database viewer)
-  ipcMain.handle('database:getAllTimesheetEntries', async () => {
-    ipcLogger.verbose('Fetching all timesheet entries (Archive - Complete only)');
+  ipcMain.handle('database:getAllTimesheetEntries', async (_event, token: string) => {
+    // Validate session
+    if (!token) {
+      ipcLogger.security('database-access-denied', 'Unauthorized database access attempted', { handler: 'getAllTimesheetEntries' });
+      return { success: false, error: 'Session token is required. Please log in to view archive data.', entries: [] };
+    }
+
+    const session = validateSession(token);
+    if (!session.valid) {
+      ipcLogger.security('database-access-denied', 'Invalid session attempting database access', { handler: 'getAllTimesheetEntries', token: token.substring(0, 8) + '...' });
+      return { success: false, error: 'Session is invalid or expired. Please log in again.', entries: [] };
+    }
+
+    ipcLogger.verbose('Fetching all timesheet entries (Archive - Complete only)', { email: session.email });
     try {
       const db = getDb();
       const getAll = db.prepare('SELECT * FROM timesheet WHERE status = \'Complete\' ORDER BY date ASC, time_in ASC');
       const entries = getAll.all();
-      ipcLogger.verbose('Archive timesheet entries retrieved', { count: entries.length });
+      ipcLogger.verbose('Archive timesheet entries retrieved', { count: entries.length, email: session.email });
       return { success: true, entries };
     } catch (err: unknown) {
       ipcLogger.error('Could not get timesheet entries', err);

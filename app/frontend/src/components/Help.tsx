@@ -178,8 +178,10 @@ function Help() {
     setError('');
     
     try {
-      const response = await window.logs.getLogPath();
-      if (response.success) {
+      const response = await window.logs?.getLogPath?.();
+      if (!response) {
+        setError('Logs API not available');
+      } else if (response.success) {
         setLogPath(response.logPath || '');
         setLogFiles(response.logFiles || []);
       } else {
@@ -204,10 +206,11 @@ function Help() {
     setError('');
     
     try {
-      const fullLogPath = logPath.replace(/[^\\]*$/, latestLogFile);
-      const response = await window.logs.exportLogs(fullLogPath, 'txt');
-      
-      if (response.success && response.content && response.filename) {
+      const fullLogPath = logPath.endsWith('\\') ? (logPath + latestLogFile) : (logPath + '\\' + latestLogFile);
+      const response = await window.logs?.exportLogs?.(fullLogPath, 'txt');
+      if (!response) {
+        setError('Logs API not available');
+      } else if (response.success && response.content && response.filename) {
         // Create and download file
         const blob = new Blob([response.content], { type: response.mimeType || 'text/plain' });
         const url = URL.createObjectURL(blob);

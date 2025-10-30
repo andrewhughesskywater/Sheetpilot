@@ -27,7 +27,7 @@ describe('Development Fallback Tests', () => {
 
   describe('Logger Fallback', () => {
     it('should initialize logger fallback in development mode', async () => {
-      const { initializeLoggerFallback } = await import('../../src/renderer/utils/logger-fallback');
+      const { initializeLoggerFallback } = await import('../src/utils/logger-fallback');
       
       initializeLoggerFallback();
       
@@ -52,7 +52,7 @@ describe('Development Fallback Tests', () => {
       
       window.logger = existingLogger;
       
-      const { initializeLoggerFallback } = await import('../../src/renderer/utils/logger-fallback');
+      const { initializeLoggerFallback } = await import('../src/utils/logger-fallback');
       initializeLoggerFallback();
       
       expect(window.logger).toBe(existingLogger);
@@ -66,7 +66,7 @@ describe('Development Fallback Tests', () => {
     });
 
     it('should log messages correctly', async () => {
-      const { initializeLoggerFallback } = await import('../../src/renderer/utils/logger-fallback');
+      const { initializeLoggerFallback } = await import('../src/utils/logger-fallback');
       initializeLoggerFallback();
       
       const consoleSpy = vi.spyOn(console, 'info');
@@ -81,7 +81,7 @@ describe('Development Fallback Tests', () => {
 
   describe('API Fallback', () => {
     it('should initialize API fallbacks in development mode', async () => {
-      const { initializeAPIFallback } = await import('../../src/renderer/utils/api-fallback');
+      const { initializeAPIFallback } = await import('../src/utils/api-fallback');
       
       initializeAPIFallback();
       
@@ -101,7 +101,7 @@ describe('Development Fallback Tests', () => {
       };
       window.timesheet = existingTimesheet;
       
-      const { initializeAPIFallback } = await import('../../src/renderer/utils/api-fallback');
+      const { initializeAPIFallback } = await import('../src/utils/api-fallback');
       initializeAPIFallback();
       
       expect(window.timesheet).toBe(existingTimesheet);
@@ -115,7 +115,7 @@ describe('Development Fallback Tests', () => {
     });
 
     it('should provide mock data for timesheet API', async () => {
-      const { initializeAPIFallback } = await import('../../src/renderer/utils/api-fallback');
+      const { initializeAPIFallback } = await import('../src/utils/api-fallback');
       initializeAPIFallback();
       
       const result = await window.timesheet.loadDraft();
@@ -126,7 +126,7 @@ describe('Development Fallback Tests', () => {
     });
 
     it('should provide mock data for credentials API', async () => {
-      const { initializeAPIFallback } = await import('../../src/renderer/utils/api-fallback');
+      const { initializeAPIFallback } = await import('../src/utils/api-fallback');
       initializeAPIFallback();
       
       const result = await window.credentials.list();
@@ -137,7 +137,7 @@ describe('Development Fallback Tests', () => {
     });
 
     it('should provide mock data for database API', async () => {
-      const { initializeAPIFallback } = await import('../../src/renderer/utils/api-fallback');
+      const { initializeAPIFallback } = await import('../src/utils/api-fallback');
       initializeAPIFallback();
       
       const result = await window.database.getAllTimesheetEntries();
@@ -148,7 +148,7 @@ describe('Development Fallback Tests', () => {
     });
 
     it('should provide mock data for logs API', async () => {
-      const { initializeAPIFallback } = await import('../../src/renderer/utils/api-fallback');
+      const { initializeAPIFallback } = await import('../src/utils/api-fallback');
       initializeAPIFallback();
       
       const result = await window.logs.getLogPath();
@@ -160,8 +160,8 @@ describe('Development Fallback Tests', () => {
 
   describe('Integration Tests', () => {
     it('should work together without conflicts', async () => {
-      const { initializeLoggerFallback } = await import('../../src/renderer/utils/logger-fallback');
-      const { initializeAPIFallback } = await import('../../src/renderer/utils/api-fallback');
+      const { initializeLoggerFallback } = await import('../src/utils/logger-fallback');
+      const { initializeAPIFallback } = await import('../src/utils/api-fallback');
       
       initializeLoggerFallback();
       initializeAPIFallback();
@@ -181,8 +181,8 @@ describe('Development Fallback Tests', () => {
     });
 
     it('should handle multiple initializations gracefully', async () => {
-      const { initializeLoggerFallback } = await import('../../src/renderer/utils/logger-fallback');
-      const { initializeAPIFallback } = await import('../../src/renderer/utils/api-fallback');
+      const { initializeLoggerFallback } = await import('../src/utils/logger-fallback');
+      const { initializeAPIFallback } = await import('../src/utils/api-fallback');
       
       // Initialize multiple times
       initializeLoggerFallback();

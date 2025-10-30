@@ -9,7 +9,7 @@
  * @since 2025
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -287,9 +287,9 @@ describe('Main Application Logic Tests', () => {
   });
 
   describe('Window State Management', () => {
-    const mockFs = fs as typeof fs & { readFileSync: vi.Mock; writeFileSync: vi.Mock };
+    const mockFs = fs as unknown as { existsSync: Mock; readFileSync: Mock; writeFileSync: Mock; mkdirSync: Mock };
 
-    const getWindowState = (): { width: number; height: number; x?: number; y?: number } => {
+    const getWindowState = (): { width: number; height: number; x?: number; y?: number; isMaximized?: boolean } => {
       const defaultWidth = 1200;
       const defaultHeight = Math.round(defaultWidth * 1.618);
       
@@ -338,7 +338,7 @@ describe('Main Application Logic Tests', () => {
       };
     };
 
-    const saveWindowState = (state: { width: number; height: number; x?: number; y?: number }): void => {
+    const saveWindowState = (state: { width: number; height: number; x?: number; y?: number; isMaximized?: boolean }): void => {
       try {
         const userDataPath = '/tmp/sheetpilot-userdata';
         mockFs.mkdirSync(userDataPath, { recursive: true });

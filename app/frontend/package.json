@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint src",
     "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.app.json --noEmit",
     "test": "vitest",
     "test:run": "vitest run",
     "test:watch": "vitest --watch",

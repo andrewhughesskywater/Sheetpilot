@@ -188,11 +188,15 @@ describe('IPC Contract Validation', () => {
       expect(invalidTimePayload['timeIn']).toMatch(/^([01]?[0-9]|2[0-3]):([0-5][0-9])$/);
       
       // Check 15-minute increment
-      const [hours, minutes] = validTimePayload['timeIn'].split(':').map(Number);
+      const parts = String(validTimePayload['timeIn']).split(':');
+      expect(parts.length).toBe(2);
+      const [hours, minutes] = parts.map(Number) as [number, number];
       const totalMinutes = hours * 60 + minutes;
       expect(totalMinutes % 15).toBe(0);
       
-      const [invalidHours, invalidMinutes] = invalidTimePayload['timeIn'].split(':').map(Number);
+      const badParts = String(invalidTimePayload['timeIn']).split(':');
+      expect(badParts.length).toBe(2);
+      const [invalidHours, invalidMinutes] = badParts.map(Number) as [number, number];
       const invalidTotalMinutes = invalidHours * 60 + invalidMinutes;
       expect(invalidTotalMinutes % 15).not.toBe(0);
     });
@@ -411,7 +415,9 @@ describe('IPC Contract Validation', () => {
       ];
       
       timeFormats.forEach(({ input, expected }) => {
-        const [hours, minutes] = input.split(':').map(Number);
+        const parts = input.split(':');
+        expect(parts.length).toBe(2);
+        const [hours, minutes] = parts.map(Number) as [number, number];
         const totalMinutes = hours * 60 + minutes;
         expect(totalMinutes).toBe(expected);
       });
@@ -426,7 +432,9 @@ describe('IPC Contract Validation', () => {
       ];
       
       edgeCases.forEach(({ time, minutes }) => {
-        const [hours, mins] = time.split(':').map(Number);
+        const parts = time.split(':');
+        expect(parts.length).toBe(2);
+        const [hours, mins] = parts.map(Number) as [number, number];
         const totalMinutes = hours * 60 + mins;
         expect(totalMinutes).toBe(minutes);
       });
@@ -442,7 +450,9 @@ describe('IPC Contract Validation', () => {
       ];
       
       dateConversions.forEach(({ input, expected }) => {
-        const [month, day, year] = input.split('/').map(Number);
+        const parts = input.split('/');
+        expect(parts.length).toBe(3);
+        const [month, day, year] = parts.map(Number) as [number, number, number];
         const isoDate = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
         expect(isoDate).toBe(expected);
       });
@@ -457,7 +467,9 @@ describe('IPC Contract Validation', () => {
       ];
       
       edgeCases.forEach(({ input, expected }) => {
-        const [month, day, year] = input.split('/').map(Number);
+        const parts = input.split('/');
+        expect(parts.length).toBe(3);
+        const [month, day, year] = parts.map(Number) as [number, number, number];
         const isoDate = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
         expect(isoDate).toBe(expected);
       });

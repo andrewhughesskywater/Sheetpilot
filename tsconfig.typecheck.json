@@ -1,7 +1,10 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "types": ["vitest", "vite/client", "node"],
+    "jsx": "react-jsx",
+    "noPropertyAccessFromIndexSignature": false
   },
   "include": [
     "app/**/*.ts",

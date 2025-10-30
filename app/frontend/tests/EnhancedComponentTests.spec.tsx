@@ -124,7 +124,8 @@ describe('Enhanced Component Tests', () => {
 
       const grids = screen.getAllByTestId('timesheet-grid');
       // Use the first grid
-      fireEvent.click(grids[0]);
+      const grid = grids[0]!;
+      fireEvent.click(grid);
 
       expect(mockAfterChange).toHaveBeenCalledWith([
         ['0', 'project', '', 'Test Project'],
@@ -143,7 +144,8 @@ describe('Enhanced Component Tests', () => {
 
       const grids = screen.getAllByTestId('timesheet-grid');
       // Use the first grid
-      const initialData = JSON.parse(grids[0].getAttribute('data-initial-data') || '[]');
+      const grid = grids[0]!;
+      const initialData = JSON.parse(grid.getAttribute('data-initial-data') || '[]');
       expect(initialData).toEqual([{}]);
     });
   });

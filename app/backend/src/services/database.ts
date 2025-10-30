@@ -224,6 +224,13 @@ export function getDb(): BetterSqlite3.Database {
     return getDbConnection();
 }
 
+/**
+ * Backwards-compatible alias used in tests to obtain the DB connection
+ */
+export function openDb(): BetterSqlite3.Database {
+    return getDb();
+}
+
 
 /**
  * Inserts a new timesheet entry with deduplication
@@ -262,8 +269,8 @@ export function insertTimesheetEntry(entry: {
     timeIn: number;
     timeOut: number;
     project: string;
-    tool?: string;
-    detailChargeCode?: string;
+    tool?: string | null;
+    detailChargeCode?: string | null;
     taskDescription: string;
 }) {
     const timer = dbLogger.startTimer('insert-timesheet-entry');
@@ -409,8 +416,8 @@ export function insertTimesheetEntries(entries: Array<{
     timeIn: number;
     timeOut: number;
     project: string;
-    tool?: string;
-    detailChargeCode?: string;
+    tool?: string | null;
+    detailChargeCode?: string | null;
     taskDescription: string;
 }>) {
     const timer = dbLogger.startTimer('insert-timesheet-entries-bulk');

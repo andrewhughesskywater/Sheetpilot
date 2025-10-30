@@ -12,7 +12,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Import types for contract validation (used in type assertions)
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import type { IDataService, ISubmissionService, ICredentialService } from '../../src/shared/contracts';
+// Types validated via runtime assertion helper; explicit type imports not needed here
 import { assertPluginInterface } from '../helpers/assertion-helpers';
 
 // Mock the plugin implementations
@@ -89,7 +89,7 @@ describe('Plugin Contract Validation', () => {
   describe('IDataService Contract', () => {
     it('should validate SQLiteDataService implements IDataService', async () => {
       const { SQLiteDataService } = await import('../../src/services/plugins/sqlite-data-service');
-      const service = new SQLiteDataService();
+      const service: any = new SQLiteDataService();
       
       assertPluginInterface(service, 'IDataService');
       
@@ -103,7 +103,7 @@ describe('Plugin Contract Validation', () => {
 
     it('should validate MemoryDataService implements IDataService', async () => {
       const { MemoryDataService } = await import('../../src/services/plugins/memory-data-service');
-      const service = new MemoryDataService();
+      const service: any = new MemoryDataService();
       
       assertPluginInterface(service, 'IDataService');
       
@@ -117,7 +117,7 @@ describe('Plugin Contract Validation', () => {
 
     it('should validate saveDraft method signature', async () => {
       const { SQLiteDataService } = await import('../../src/services/plugins/sqlite-data-service');
-      const service = new SQLiteDataService();
+      const service: any = new SQLiteDataService();
       
       const mockEntry = {
         date: '01/15/2025',
@@ -130,7 +130,7 @@ describe('Plugin Contract Validation', () => {
       };
       
       // Mock the method to return expected structure
-      service.saveDraft.mockResolvedValue({
+      (service.saveDraft as unknown as import('vitest').Mock).mockResolvedValue({
         success: true,
         changes: 1,
         id: 1
@@ -148,7 +148,7 @@ describe('Plugin Contract Validation', () => {
 
     it('should validate loadDraft method signature', async () => {
       const { SQLiteDataService } = await import('../../src/services/plugins/sqlite-data-service');
-      const service = new SQLiteDataService();
+      const service: any = new SQLiteDataService();
       
       const mockEntries = [
         {
@@ -163,7 +163,7 @@ describe('Plugin Contract Validation', () => {
         }
       ];
       
-      service.loadDraft.mockResolvedValue({
+      (service.loadDraft as unknown as import('vitest').Mock).mockResolvedValue({
         success: true,
         entries: mockEntries
       });
@@ -178,9 +178,9 @@ describe('Plugin Contract Validation', () => {
 
     it('should validate deleteDraft method signature', async () => {
       const { SQLiteDataService } = await import('../../src/services/plugins/sqlite-data-service');
-      const service = new SQLiteDataService();
+      const service: any = new SQLiteDataService();
       
-      service.deleteDraft.mockResolvedValue({
+      (service.deleteDraft as unknown as import('vitest').Mock).mockResolvedValue({
         success: true
       });
       
@@ -192,14 +192,14 @@ describe('Plugin Contract Validation', () => {
 
     it('should validate getArchiveData method signature', async () => {
       const { SQLiteDataService } = await import('../../src/services/plugins/sqlite-data-service');
-      const service = new SQLiteDataService();
+      const service: any = new SQLiteDataService();
       
       const mockArchiveData = {
         timesheet: [],
         credentials: []
       };
       
-      service.getArchiveData.mockResolvedValue({
+      (service.getArchiveData as unknown as import('vitest').Mock).mockResolvedValue({
         success: true,
         data: mockArchiveData
       });
@@ -233,7 +233,7 @@ describe('Plugin Contract Validation', () => {
         }
       ];
       
-      service.getAllTimesheetEntries.mockResolvedValue({
+      (service.getAllTimesheetEntries as unknown as import('vitest').Mock).mockResolvedValue({
         success: true,
         entries: mockDbEntries
       });
@@ -250,7 +250,7 @@ describe('Plugin Contract Validation', () => {
   describe('ISubmissionService Contract', () => {
     it('should validate PlaywrightBotService implements ISubmissionService', async () => {
       const { PlaywrightBotService } = await import('../../src/services/plugins/playwright-bot-service');
-      const service = new PlaywrightBotService();
+      const service: any = new PlaywrightBotService();
       
       assertPluginInterface(service, 'ISubmissionService');
       
@@ -262,7 +262,7 @@ describe('Plugin Contract Validation', () => {
 
     it('should validate MockSubmissionService implements ISubmissionService', async () => {
       const { MockSubmissionService } = await import('../../src/services/plugins/mock-submission-service');
-      const service = new MockSubmissionService();
+      const service: any = new MockSubmissionService();
       
       assertPluginInterface(service, 'ISubmissionService');
       
@@ -274,7 +274,7 @@ describe('Plugin Contract Validation', () => {
 
     it('should validate submit method signature', async () => {
       const { PlaywrightBotService } = await import('../../src/services/plugins/playwright-bot-service');
-      const service = new PlaywrightBotService();
+      const service: any = new PlaywrightBotService();
       
       const mockEntries = [
         {
@@ -293,7 +293,7 @@ describe('Plugin Contract Validation', () => {
         password: 'password123'
       };
       
-      service.submit.mockResolvedValue({
+      (service.submit as unknown as import('vitest').Mock).mockResolvedValue({
         ok: true,
         submittedIds: [1],
         removedIds: [],
@@ -320,7 +320,7 @@ describe('Plugin Contract Validation', () => {
 
     it('should validate validateEntry method signature', async () => {
       const { PlaywrightBotService } = await import('../../src/services/plugins/playwright-bot-service');
-      const service = new PlaywrightBotService();
+      const service: any = new PlaywrightBotService();
       
       const mockEntry = {
         date: '01/15/2025',
@@ -332,7 +332,7 @@ describe('Plugin Contract Validation', () => {
         taskDescription: 'Test task'
       };
       
-      service.validateEntry.mockReturnValue({
+      (service.validateEntry as unknown as import('vitest').Mock).mockReturnValue({
         valid: true,
         errors: [],
         warnings: []
@@ -352,7 +352,7 @@ describe('Plugin Contract Validation', () => {
       const { PlaywrightBotService } = await import('../../src/services/plugins/playwright-bot-service');
       const service = new PlaywrightBotService();
       
-      service.isAvailable.mockResolvedValue(true);
+      (service.isAvailable as unknown as import('vitest').Mock).mockResolvedValue(true);
       
       const result = await service.isAvailable();
       
@@ -363,7 +363,7 @@ describe('Plugin Contract Validation', () => {
   describe('ICredentialService Contract', () => {
     it('should validate SQLiteCredentialService implements ICredentialService', async () => {
       const { SQLiteCredentialService } = await import('../../src/services/plugins/sqlite-credential-service');
-      const service = new SQLiteCredentialService();
+      const service: any = new SQLiteCredentialService();
       
       assertPluginInterface(service, 'ICredentialService');
       
@@ -376,7 +376,7 @@ describe('Plugin Contract Validation', () => {
 
     it('should validate store method signature', async () => {
       const { SQLiteCredentialService } = await import('../../src/services/plugins/sqlite-credential-service');
-      const service = new SQLiteCredentialService();
+      const service: any = new SQLiteCredentialService();
       
       service.store.mockResolvedValue({
         success: true,
@@ -396,7 +396,7 @@ describe('Plugin Contract Validation', () => {
 
     it('should validate get method signature', async () => {
       const { SQLiteCredentialService } = await import('../../src/services/plugins/sqlite-credential-service');
-      const service = new SQLiteCredentialService();
+      const service: any = new SQLiteCredentialService();
       
       service.get.mockResolvedValue({
         success: true,
@@ -429,7 +429,7 @@ describe('Plugin Contract Validation', () => {
         }
       ];
       
-      service.list.mockResolvedValue({
+      (service.list as unknown as import('vitest').Mock).mockResolvedValue({
         success: true,
         credentials: mockCredentials
       });
@@ -446,7 +446,7 @@ describe('Plugin Contract Validation', () => {
       const { SQLiteCredentialService } = await import('../../src/services/plugins/sqlite-credential-service');
       const service = new SQLiteCredentialService();
       
-      service.delete.mockResolvedValue({
+      (service.delete as unknown as import('vitest').Mock).mockResolvedValue({
         success: true,
         message: 'Credentials deleted successfully',
         changes: 1
@@ -488,23 +488,23 @@ describe('Plugin Contract Validation', () => {
       ];
       
       plugins.forEach(PluginClass => {
-        const plugin = new PluginClass();
+        const plugin: any = new PluginClass();
         
         expect(plugin).toHaveProperty('name');
         expect(plugin).toHaveProperty('version');
         expect(plugin).toHaveProperty('initialize');
         expect(plugin).toHaveProperty('cleanup');
         
-        expect(typeof plugin.name).toBe('string');
-        expect(typeof plugin.version).toBe('string');
-        expect(typeof plugin.initialize).toBe('function');
-        expect(typeof plugin.cleanup).toBe('function');
+        expect(typeof (plugin as any).name).toBe('string');
+        expect(typeof (plugin as any).version).toBe('string');
+        expect(typeof (plugin as any).initialize).toBe('function');
+        expect(typeof (plugin as any).cleanup).toBe('function');
       });
     });
 
     it('should validate plugin initialization', async () => {
       const { SQLiteDataService } = await import('../../src/services/plugins/sqlite-data-service');
-      const service = new SQLiteDataService();
+      const service: any = new SQLiteDataService();
       
       service.initialize.mockResolvedValue(true);
       
@@ -515,7 +515,7 @@ describe('Plugin Contract Validation', () => {
 
     it('should validate plugin cleanup', async () => {
       const { SQLiteDataService } = await import('../../src/services/plugins/sqlite-data-service');
-      const service = new SQLiteDataService();
+      const service: any = new SQLiteDataService();
       
       service.cleanup.mockResolvedValue(true);
       
@@ -530,24 +530,32 @@ describe('Plugin Contract Validation', () => {
       const { SQLiteDataService } = await import('../../src/services/plugins/sqlite-data-service');
       const service = new SQLiteDataService();
       
-      service.saveDraft.mockResolvedValue({
+      (service.saveDraft as unknown as import('vitest').Mock).mockResolvedValue({
         success: false,
         error: 'Database connection failed'
       });
       
-      const result = await service.saveDraft({});
+      const result = await service.saveDraft({
+        date: '01/15/2025',
+        timeIn: '09:00',
+        timeOut: '17:00',
+        project: 'FL-Carver Techs',
+        taskDescription: 'Test'
+      });
       
       expect(result).toHaveProperty('success');
       expect(result).toHaveProperty('error');
       expect(result.success).toBe(false);
-      expect(typeof result.error).toBe('string');
+      if ('error' in result) {
+        expect(typeof (result as any).error).toBe('string');
+      }
     });
 
     it('should validate error messages are user-friendly', async () => {
       const { PlaywrightBotService } = await import('../../src/services/plugins/playwright-bot-service');
-      const service = new PlaywrightBotService();
+      const service: any = new PlaywrightBotService();
       
-      service.submit.mockResolvedValue({
+      (service.submit as unknown as import('vitest').Mock).mockResolvedValue({
         ok: false,
         submittedIds: [],
         removedIds: [],
@@ -559,11 +567,13 @@ describe('Plugin Contract Validation', () => {
       
       const result = await service.submit([], { email: 'test@example.com', password: 'password' });
       
-      expect(result.error).toBeDefined();
-      expect(typeof result.error).toBe('string');
-      expect(result.error.length).toBeLessThan(100);
-      expect(result.error).not.toContain('undefined');
-      expect(result.error).not.toContain('null');
+      if ('error' in result && typeof (result as any).error === 'string') {
+        expect((result as any).error.length).toBeLessThan(100);
+        expect((result as any).error).not.toContain('undefined');
+        expect((result as any).error).not.toContain('null');
+      } else {
+        throw new Error('error field missing or invalid');
+      }
     });
   });
 

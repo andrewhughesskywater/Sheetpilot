@@ -49,7 +49,7 @@ vi.mock('electron', () => {
   const ipcMain = {
     handle: vi.fn((channel: string, fn: (...args: unknown[]) => unknown) => {
       // Store handlers in global scope
-      globalThis.__test_handlers[channel] = fn;
+      (globalThis.__test_handlers as Record<string, (...args: unknown[]) => unknown>)[channel] = fn;
       return undefined;
     }),
     on: vi.fn(),
@@ -140,14 +140,16 @@ vi.mock('../src/shared/logger', () => {
 });
 
 // Import main.ts AFTER mocks so its side-effects (handler registration) use our stubs
-import { registerIPCHandlers } from '../src/main/main';
+import { registerIPCHandlers } from '../src/main';
 
 // Re-get typed references to mocked modules for assertions
 import * as db from '../src/services/database';
 import * as imp from '../src/services/timesheet_importer';
 
+const mimps = imp as unknown as { submitTimesheets: ReturnType<typeof vi.fn> };
+
 // Create local reference to handlers after all imports
-const handlers = globalThis.__test_handlers;
+const handlers: Record<string, any> = globalThis.__test_handlers! as Record<string, any>;
 
 describe('Electron IPC Handlers (main.ts)', () => {
   beforeEach(() => {
@@ -170,7 +172,7 @@ describe('Electron IPC Handlers (main.ts)', () => {
   it('timesheet:submit submits with stored credentials', async () => {
     (db as { getCredentials: { mockReturnValue: (value: unknown) => void } }).getCredentials.mockReturnValue({ email: 'user@test', password: 'pw' });
     const res = await handlers['timesheet:submit']();
-    expect((imp as { submitTimesheets: { toHaveBeenCalledWith: (...args: unknown[]) => void } }).submitTimesheets).toHaveBeenCalledWith('user@test', 'pw');
+    expect(mimps.submitTimesheets).toHaveBeenCalledWith('user@test', 'pw');
     expect(res.submitResult?.ok).toBe(true);
   });
 });

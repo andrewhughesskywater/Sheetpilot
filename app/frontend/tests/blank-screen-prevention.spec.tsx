@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
-import App from '../../src/renderer/App';
+import App from '../src/App';
 
 // Mock the window object for testing
 const mockWindow = {
@@ -51,12 +51,12 @@ describe('App Rendering Tests - Blank Screen Prevention', () => {
     vi.clearAllMocks();
     
     // Clear window APIs
-    delete (window as Record<string, unknown>).logger;
-    delete (window as Record<string, unknown>).timesheet;
-    delete (window as Record<string, unknown>).credentials;
-    delete (window as Record<string, unknown>).database;
-    delete (window as Record<string, unknown>).logs;
-    delete (window as Record<string, unknown>).api;
+    delete (window as unknown as Record<string, unknown>).logger;
+    delete (window as unknown as Record<string, unknown>).timesheet;
+    delete (window as unknown as Record<string, unknown>).credentials;
+    delete (window as unknown as Record<string, unknown>).database;
+    delete (window as unknown as Record<string, unknown>).logs;
+    delete (window as unknown as Record<string, unknown>).api;
     
     // Mock window object
     Object.assign(window, mockWindow);
@@ -76,7 +76,7 @@ describe('App Rendering Tests - Blank Screen Prevention', () => {
   describe('Development Environment Tests', () => {
     beforeEach(() => {
       // Mock development environment
-      vi.stubEnv('DEV', 'true');
+      vi.stubEnv('DEV', true);
       vi.stubEnv('NODE_ENV', 'development');
     });
 
@@ -193,8 +193,8 @@ describe('App Rendering Tests - Blank Screen Prevention', () => {
     });
 
     it('should initialize fallbacks in development mode', async () => {
-      const { initializeLoggerFallback } = await import('../../src/renderer/utils/logger-fallback');
-      const { initializeAPIFallback } = await import('../../src/renderer/utils/api-fallback');
+      const { initializeLoggerFallback } = await import('../src/utils/logger-fallback');
+      const { initializeAPIFallback } = await import('../src/utils/api-fallback');
 
       render(
         <App />
@@ -214,7 +214,7 @@ describe('App Rendering Tests - Blank Screen Prevention', () => {
   describe('Production Environment Tests', () => {
     beforeEach(() => {
       // Mock production environment
-      vi.stubEnv('DEV', 'false');
+      vi.stubEnv('DEV', false);
       vi.stubEnv('NODE_ENV', 'production');
     });
 
@@ -243,8 +243,8 @@ describe('App Rendering Tests - Blank Screen Prevention', () => {
     });
 
     it('should not initialize fallbacks in production mode', async () => {
-      const { initializeLoggerFallback } = await import('../../src/renderer/utils/logger-fallback');
-      const { initializeAPIFallback } = await import('../../src/renderer/utils/api-fallback');
+      const { initializeLoggerFallback } = await import('../src/utils/logger-fallback');
+      const { initializeAPIFallback } = await import('../src/utils/api-fallback');
 
       render(
         <App />

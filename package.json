@@ -25,6 +25,8 @@
     "type-check": "npm run type-check:root && npm run type-check:frontend",
     "type-check:root": "tsc --noEmit --project tsconfig.typecheck.json",
     "type-check:frontend": "cd app/frontend && tsc -b --noEmit",
+    "typecheck": "npm run typecheck:root && cd app/frontend && npm run typecheck && cd ../backend && npm run typecheck && cd src/services/bot && npm run typecheck",
+    "typecheck:root": "tsc --noEmit --project tsconfig.typecheck.json",
     "lint": "eslint . --ext .ts,.tsx",
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
     "test": "npm run test:smoke && npm run test:unit && npm run test:integration && npm run test:e2e && npm run test:renderer && npm run test:blank-screen && npm run test:bot",

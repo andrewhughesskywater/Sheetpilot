@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { DbTimesheetEntry } from '../../src/shared/contracts/IDataService';
+import type { DbTimesheetEntry } from '../../../shared/contracts/IDataService';
 import { DbTimesheetEntryBuilder } from '../helpers/test-builders';
 import { assertValidDbEntry, assertDatabaseConstraints } from '../helpers/assertion-helpers';
 
@@ -253,8 +253,10 @@ describe('Database Schema Contract Validation', () => {
       ];
       
       // Both entries have same natural key
-      const key1 = `${duplicateEntries[0].date}-${duplicateEntries[0].time_in}-${duplicateEntries[0].project}-${duplicateEntries[0].task_description}`;
-      const key2 = `${duplicateEntries[1].date}-${duplicateEntries[1].time_in}-${duplicateEntries[1].project}-${duplicateEntries[1].task_description}`;
+      const first = duplicateEntries[0]!;
+      const second = duplicateEntries[1]!;
+      const key1 = `${first.date}-${first.time_in}-${first.project}-${first.task_description}`;
+      const key2 = `${second.date}-${second.time_in}-${second.project}-${second.task_description}`;
       
       expect(key1).toBe(key2);
     });
@@ -319,7 +321,7 @@ describe('Database Schema Contract Validation', () => {
       };
       
       // Should still match current interface
-      assertValidDbEntry(legacyEntry as DbTimesheetEntry);
+      assertValidDbEntry(legacyEntry as unknown as DbTimesheetEntry);
     });
 
     it('should handle schema evolution gracefully', () => {

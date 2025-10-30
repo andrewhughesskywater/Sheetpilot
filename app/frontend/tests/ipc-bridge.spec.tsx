@@ -124,7 +124,7 @@ describe('IPC Bridge Tests', () => {
     // Test that accessing undefined IPC bridge doesn't crash
     expect(() => {
       if (window.timesheet?.submit) {
-        window.timesheet.submit();
+        window.timesheet.submit('');
       }
     }).not.toThrow();
 
@@ -184,8 +184,8 @@ describe('IPC Bridge Tests', () => {
     expect(hasLogger).toBe(true);
 
     // Test IPC bridge usage
-    expect(() => {
-      window.timesheet.submit();
+  expect(() => {
+      window.timesheet.submit('');
       window.credentials.store('test', 'test@example.com', 'password');
       window.logger.info('Test message');
     }).not.toThrow();

@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import { useSession } from './SessionContext';
 
 // Define data types
 interface TimesheetRow {
@@ -75,6 +76,9 @@ interface DataProviderProps {
 }
 
 export function DataProvider({ children }: DataProviderProps) {
+  // Get session token for authenticated API calls
+  const { token } = useSession();
+  
   // Timesheet draft data state
   const [timesheetDraftData, setTimesheetDraftData] = useState<TimesheetRow[]>([{}]);
   const [isTimesheetDraftLoading, setIsTimesheetDraftLoading] = useState(true);
@@ -110,6 +114,7 @@ export function DataProvider({ children }: DataProviderProps) {
   // Load timesheet draft data - with proper yielding to prevent blocking
   const loadTimesheetDraftData = async () => {
     try {
+      window.logger?.debug('[DataContext] Setting loading true for timesheet draft');
       setIsTimesheetDraftLoading(true);
       setTimesheetDraftError(null);
       
@@ -166,6 +171,7 @@ export function DataProvider({ children }: DataProviderProps) {
         setTimesheetDraftData([{}]); // Fallback to empty row
       }
     } finally {
+      window.logger?.debug('[DataContext] Setting loading false for timesheet draft');
       setIsTimesheetDraftLoading(false);
     }
   };
@@ -175,6 +181,9 @@ export function DataProvider({ children }: DataProviderProps) {
     try {
       setIsArchiveDataLoading(true);
       setArchiveDataError(null);
+      
+      // Do not hard-require token here; archive loads from local DB via IPC
+      // Session gating is handled at the app level
       
       window.logger?.verbose('[DataContext] Loading archive data...');
       
@@ -191,9 +200,18 @@ export function DataProvider({ children }: DataProviderProps) {
       // Yield control after IPC calls
       await yieldToMain();
       
-      // Handle new structured response format
-      const timesheetData = timesheetResponse?.success ? (timesheetResponse.entries || []) : [];
-      const credentialsData = credentialsResponse?.success ? (credentialsResponse.credentials || []) : [];
+      // Support both structured and array responses
+      const timesheetData: TimesheetEntry[] = Array.isArray(timesheetResponse)
+        ? timesheetResponse
+        : (timesheetResponse && (timesheetResponse as { success?: boolean; entries?: TimesheetEntry[] }).success)
+          ? ((timesheetResponse as { entries?: TimesheetEntry[] }).entries ?? [])
+          : [];
+
+      const credentialsData: Credential[] = Array.isArray(credentialsResponse)
+        ? credentialsResponse
+        : (credentialsResponse && (credentialsResponse as { success?: boolean; credentials?: Credential[] }).success)
+          ? ((credentialsResponse as { credentials?: Credential[] }).credentials ?? [])
+          : [];
       
       // Process large datasets in chunks to prevent blocking
       if (timesheetData.length > 100) {
@@ -221,10 +239,10 @@ export function DataProvider({ children }: DataProviderProps) {
       });
       
       // Check for errors
-      if (timesheetResponse && !timesheetResponse.success) {
-        setArchiveDataError(timesheetResponse.error || 'Could not load timesheet data');
-      } else if (credentialsResponse && !credentialsResponse.success) {
-        setArchiveDataError(credentialsResponse.error || 'Could not load credentials data');
+      if (timesheetResponse && !Array.isArray(timesheetResponse) && !(timesheetResponse as { success?: boolean }).success) {
+        setArchiveDataError((timesheetResponse as { error?: string }).error || 'Could not load timesheet data');
+      } else if (credentialsResponse && !Array.isArray(credentialsResponse) && !(credentialsResponse as { success?: boolean }).success) {
+        setArchiveDataError((credentialsResponse as { error?: string }).error || 'Could not load credentials data');
       }
     } catch (error) {
       console.error('[DataContext] Error loading archive data:', error);
@@ -242,10 +260,11 @@ export function DataProvider({ children }: DataProviderProps) {
     await loadTimesheetDraftData();
   }, []);
 
+  // IMPORTANT: depend on token so we don't capture a stale value
   const refreshArchiveData = useCallback(async () => {
     window.logger?.info('[DataContext] Refreshing archive data');
     await loadArchiveData();
-  }, []);
+  }, [token]);
 
   // Load data on mount - completely disabled during startup to prevent blocking
   useEffect(() => {

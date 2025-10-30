@@ -9,7 +9,7 @@
  * @since 2025
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { validateQuarterAvailability } from '../../src/services/bot/src/quarter_config';
 import { quarterTestCases } from '../fixtures/timesheet-data';
 
