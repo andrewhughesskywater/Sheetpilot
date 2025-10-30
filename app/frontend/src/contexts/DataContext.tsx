@@ -190,7 +190,7 @@ export function DataProvider({ children }: DataProviderProps) {
       // Yield control before making IPC calls
       await yieldToMain();
       
-      const timesheetResponse = await window.database?.getAllTimesheetEntries();
+      const timesheetResponse = await window.database?.getAllTimesheetEntries(token ?? '');
       
       // Yield control between IPC calls
       await yieldToMain();
