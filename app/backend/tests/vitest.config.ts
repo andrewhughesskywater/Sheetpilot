@@ -1,6 +1,7 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import { MarkdownReporter } from './helpers/markdown-reporter';
 
 export default defineConfig({
   plugins: [react()],
@@ -30,7 +31,14 @@ export default defineConfig({
       }
     },
     maxConcurrency: 4, // Allow concurrent tests for better performance
-    fileParallelism: true // Enable file parallelism
+    fileParallelism: true, // Enable file parallelism
+    reporters: [
+      'default',
+      new MarkdownReporter({ 
+        outputFile: 'unit-test-results.md',
+        outputDir: path.resolve(__dirname, '../../..', 'test-results')
+      })
+    ]
   },
   define: {
     'import.meta.env': JSON.stringify({

@@ -173,7 +173,8 @@ function getDbConnection(): BetterSqlite3.Database {
             dbLogger.verbose('Opening persistent database connection', { dbPath: DB_PATH });
             
             const mod = loadBetterSqlite3() as unknown;
-            const DatabaseCtor = (mod as { default?: unknown })?.default ?? mod;
+            // Support both ES module default export and CommonJS direct export
+            const DatabaseCtor = (mod as { default?: unknown })?.default ?? (mod as { Database?: unknown })?.Database ?? mod;
             const db = new (DatabaseCtor as new (path: string, opts?: BetterSqlite3.Options) => BetterSqlite3.Database)(DB_PATH);
             
             // Configure WAL mode for better concurrency

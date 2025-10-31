@@ -35,11 +35,11 @@ export interface DbTimesheetEntry {
   time_out: number;
   hours: number;
   project: string;
-  tool?: string | undefined;
-  detail_charge_code?: string | undefined;
+  tool?: string | null;
+  detail_charge_code?: string | null;
   task_description: string;
-  status?: string | undefined;
-  submitted_at?: string | undefined;
+  status?: string | null;
+  submitted_at?: string | null;
 }
 
 /**

@@ -10,30 +10,13 @@
  * @since 2025
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 
-// Mock better-sqlite3 BEFORE importing database module
-vi.mock('better-sqlite3', () => {
-  const mockStmt = {
-    run: (..._args: unknown[]) => ({ changes: 1 }),
-    get: (..._args: unknown[]) => null,
-    all: (..._args: unknown[]) => [],
-    bind: (..._args: unknown[]) => mockStmt
-  };
-
-  function MockDatabase(this: { path: string; prepare: () => typeof mockStmt; transaction: unknown; exec: (this: unknown) => unknown; close: (this: unknown) => unknown }, _path: string, _opts?: unknown) {
-    this.path = _path;
-    this.prepare = () => mockStmt;
-    this.transaction = (callback: (...args: unknown[]) => unknown) => (...args: unknown[]) => callback(...args);
-    this.exec = function (this: unknown) { return this; };
-    this.close = function (this: unknown) { return this; };
-  }
-
-  return MockDatabase;
-});
+// Note: better-sqlite3 is mocked globally in setup.ts
+// This test file relies on that global mock
 
 import {
     setDbPath,
@@ -63,6 +46,14 @@ describe('Database Module', () => {
     });
 
     afterEach(() => {
+        // Ensure connection is closed and reset
+        try {
+            const { shutdownDatabase } = require('../src/services/database');
+            shutdownDatabase();
+        } catch {
+            // Ignore if shutdownDatabase doesn't exist or fails
+        }
+        
         // Restore original DB path
         setDbPath(originalDbPath);
         

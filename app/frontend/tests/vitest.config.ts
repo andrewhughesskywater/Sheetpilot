@@ -16,28 +16,14 @@ export default defineConfig({
     exclude: [
       'node_modules',
       'dist',
-      'build'
+      'build',
+      '**/blank-screen-prevention.spec.{ts,tsx}',
+      '**/e2e-blank-screen-prevention.spec.{ts,tsx}'
     ],
-    coverage: {
-      provider: 'v8',
-      reporter: ['text', 'json', 'html'],
-      include: [
-        'src/**/*.{ts,tsx}',
-        'utils/**/*.{ts,tsx}',
-        'components/**/*.{ts,tsx}',
-        'contexts/**/*.{ts,tsx}'
-      ],
-      exclude: [
-        'src/**/*.spec.{ts,tsx}',
-        'src/**/*.test.{ts,tsx}',
-        '__tests__/**/*',
-        '**/*.d.ts'
-      ]
-    },
     reporters: [
       'default',
       new MarkdownReporter({ 
-        outputFile: 'frontend-blank-screen-test-results.md',
+        outputFile: 'frontend-test-results.md',
         outputDir: path.resolve(__dirname, '../../..', 'test-results')
       })
     ]

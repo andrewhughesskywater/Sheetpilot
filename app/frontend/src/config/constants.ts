@@ -5,15 +5,15 @@
  * This should match the version in src/shared/constants.ts
  * 
  * @author SheetPilot Team
- * @version 1.2.5
+ * @version 1.3.6
  */
 
 /**
  * Application version
  * This should match the version in src/shared/constants.ts and package.json
- * Updated: 2025-10-27
+ * Updated: 2025-10-30
  */
-export const APP_VERSION = '1.2.5';
+export const APP_VERSION = '1.3.6';
 
 /**
  * Application name

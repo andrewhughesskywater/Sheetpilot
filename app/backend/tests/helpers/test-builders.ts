@@ -177,7 +177,9 @@ export class DbTimesheetEntryBuilder {
     project: 'FL-Carver Techs',
     tool: '#1 Rinse and 2D marker',
     detail_charge_code: 'EPR1',
-    task_description: 'Test task description'
+    task_description: 'Test task description',
+    status: null,
+    submitted_at: null
   };
 
   static create(): DbTimesheetEntryBuilder {
@@ -212,20 +214,12 @@ export class DbTimesheetEntryBuilder {
   }
 
   withTool(tool: string | null): DbTimesheetEntryBuilder {
-    if (tool) {
-      this.data.tool = tool;
-    } else {
-      delete this.data.tool;
-    }
+    this.data.tool = tool;
     return this;
   }
 
   withDetailChargeCode(chargeCode: string | null): DbTimesheetEntryBuilder {
-    if (chargeCode) {
-      this.data.detail_charge_code = chargeCode;
-    } else {
-      delete this.data.detail_charge_code;
-    }
+    this.data.detail_charge_code = chargeCode;
     return this;
   }
 
@@ -235,27 +229,19 @@ export class DbTimesheetEntryBuilder {
   }
 
   withStatus(status: string | null): DbTimesheetEntryBuilder {
-    if (status) {
-      this.data.status = status;
-    } else {
-      delete this.data.status;
-    }
+    this.data.status = status;
     return this;
   }
 
   withSubmittedAt(submittedAt: string | null): DbTimesheetEntryBuilder {
-    if (submittedAt) {
-      this.data.submitted_at = submittedAt;
-    } else {
-      delete this.data.submitted_at;
-    }
+    this.data.submitted_at = submittedAt;
     return this;
   }
 
   // Convenience methods
   asPending(): DbTimesheetEntryBuilder {
-    delete this.data.status;
-    delete this.data.submitted_at;
+    this.data.status = null;
+    this.data.submitted_at = null;
     return this;
   }
 
