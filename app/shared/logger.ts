@@ -90,7 +90,7 @@ export function configureLogger() {
     
     // Machine-parsable JSON format for log aggregation
     // Enables automated monitoring, alerting, and compliance reporting
-    log.transports.file.format = (msg) => {
+    log.transports.file.format = (msg: { level: string; data: unknown[] }) => {
         const logEntry = {
             // ISO 8601 timestamp for precise time tracking
             timestamp: new Date().toISOString(),
@@ -129,7 +129,7 @@ export function configureLogger() {
     
     // Structured console format for development
     // Single-line JSON for consistency and greppability
-    log.transports.console.format = (msg) => {
+    log.transports.console.format = (msg: { level: string; data: unknown[] }) => {
         const consoleEntry = {
             timestamp: new Date().toISOString(),
             level: msg.level,
@@ -143,8 +143,8 @@ export function configureLogger() {
     // SOC2: Ensure system availability and error handling
     log.errorHandler.startCatching({
         showDialog: false,
-        onError: (error) => {
-            console.error('Logging system error:', error);
+        onError: (options: { error: Error; errorName: string; processType: string; versions: Record<string, string>; createIssue: (url: string, data: unknown) => void }) => {
+            console.error('Logging system error:', options.error);
         }
     });
 }

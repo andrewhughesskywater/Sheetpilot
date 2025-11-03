@@ -1,7 +1,12 @@
 {
   "compilerOptions": {
     "strict": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
+    "paths": {
+      "@sheetpilot/shared": ["../shared/index.ts"],
+      "@sheetpilot/shared/*": ["../shared/*"]
+    }
   },
   "files": [],
   "references": [

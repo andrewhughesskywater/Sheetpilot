@@ -89,15 +89,16 @@ export class WebformFiller {
   }
 
   /**
-   * Launches the configured browser type
-   * Attempts to use user's installed browser (Chrome/Edge) first, falls back to bundled Chromium
+   * Launches the configured browser type using system-installed browsers only
+   * Attempts to use Chrome or Edge installed on the system
    * @private
    * @returns Promise that resolves when browser is launched
+   * @throws Error if no system browser (Chrome/Edge) is found
    */
   private async _launch_browser(): Promise<void> {
     botLogger.verbose('Launching browser', { browserKind: this.browser_kind });
     
-    // Try user's browser first, fallback to bundled Chromium
+    // Use system browsers only - no bundled Chromium
     const launchOptions: Record<string, unknown> = {
       headless: this.headless,
       args: [
@@ -122,25 +123,20 @@ export class WebformFiller {
       ]
     };
 
-    // Strategy: Try system browsers in order, fallback to bundled Chromium
+    // Strategy: Try system browsers in order
     // Allow forcing a specific browser via environment variable for testing
     const forceChannel = process.env['SHEETPILOT_FORCE_BROWSER'];
     let systemChannels = ['chrome', 'msedge']; // Try Chrome first, then Edge
     
     // If forcing a specific browser, use only that one
-    if (forceChannel && (forceChannel === 'chrome' || forceChannel === 'msedge' || forceChannel === 'bundled')) {
-      if (forceChannel === 'bundled') {
-        // Force use bundled browser only
-        systemChannels = [];
-        botLogger.info('Testing mode: Forcing bundled browser only');
-      } else {
-        // Force use specific system browser
-        systemChannels = [forceChannel];
-        botLogger.info('Testing mode: Forcing specific browser', { channel: forceChannel });
-      }
+    if (forceChannel && (forceChannel === 'chrome' || forceChannel === 'msedge')) {
+      systemChannels = [forceChannel];
+      botLogger.info('Testing mode: Forcing specific browser', { channel: forceChannel });
     }
     
     let launched = false;
+    let lastError: Error | null = null;
+    
     for (const channel of systemChannels) {
       try {
         botLogger.verbose('Attempting to launch system browser', { channel, headless: this.headless });
@@ -149,16 +145,20 @@ export class WebformFiller {
         launched = true;
         break;
       } catch (error) {
-        botLogger.verbose('Could not launch system browser', { channel, error: error instanceof Error ? error.message : String(error) });
-        // Continue to next browser or fallback
+        lastError = error instanceof Error ? error : new Error(String(error));
+        botLogger.verbose('Could not launch system browser', { channel, error: lastError.message });
+        // Continue to next browser
       }
     }
 
-    // Fallback to bundled Chromium if no system browser worked
+    // Throw error if no system browser worked
     if (!launched) {
-      botLogger.verbose('No system browser available, using bundled Chromium', { headless: this.headless });
-      this.browser = await chromium.launch(launchOptions);
-      botLogger.info('Launched bundled Chromium browser');
+      const errorMsg = 'Could not launch any system browser (Chrome or Edge). Please ensure Chrome or Edge is installed.';
+      botLogger.error(errorMsg, { 
+        attemptedBrowsers: systemChannels, 
+        lastError: lastError?.message 
+      });
+      throw new Error(errorMsg);
     }
     
     botLogger.verbose('Browser launched successfully');

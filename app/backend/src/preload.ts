@@ -100,9 +100,13 @@ contextBridge.exposeInMainWorld('database', {
     }>;
     error?: string;
   }> => ipcRenderer.invoke('database:getAllTimesheetEntries', token),
-  getAllCredentials: (): Promise<Array<{
-    id: number; service: string; email: string; created_at: string; updated_at: string;
-  }>> => ipcRenderer.invoke('database:getAllCredentials'),
+  getAllCredentials: (): Promise<{
+    success: boolean;
+    credentials?: Array<{
+      id: number; service: string; email: string; created_at: string; updated_at: string;
+    }>;
+    error?: string;
+  }> => ipcRenderer.invoke('database:getAllCredentials'),
   clearDatabase: (): Promise<{ success: boolean; error?: string }> => 
     ipcRenderer.invoke('database:clearDatabase')
 });

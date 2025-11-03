@@ -7,6 +7,8 @@ dist
 **/dist
 build
 build-output
+release
+dist-release
 
 # Compiled files
 *.js

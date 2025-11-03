@@ -5,7 +5,17 @@
     "lib": ["ES2022", "DOM"],
     "outDir": "build/dist",
     "rootDir": "app",
+    "baseUrl": ".",
     "moduleResolution": "bundler",
+    "paths": {
+      "@sheetpilot/shared": ["app/shared/index.ts"],
+      "@sheetpilot/shared/*": ["app/shared/*"]
+    },
+    "typeRoots": [
+      "./node_modules/@types",
+      "./app/backend/node_modules/@types",
+      "./app/frontend/node_modules/@types"
+    ],
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,

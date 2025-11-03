@@ -182,15 +182,21 @@ export function DataProvider({ children }: DataProviderProps) {
       setIsArchiveDataLoading(true);
       setArchiveDataError(null);
       
-      // Do not hard-require token here; archive loads from local DB via IPC
-      // Session gating is handled at the app level
+      // Require token for authenticated archive access
+      if (!token) {
+        window.logger?.warn('[DataContext] Cannot load archive data: no session token');
+        setArchiveDataError('Session token is required. Please log in to view archive data.');
+        setArchiveData({ timesheet: [], credentials: [] });
+        setIsArchiveDataLoading(false);
+        return;
+      }
       
       window.logger?.verbose('[DataContext] Loading archive data...');
       
       // Yield control before making IPC calls
       await yieldToMain();
       
-      const timesheetResponse = await window.database?.getAllTimesheetEntries();
+      const timesheetResponse = await window.database?.getAllTimesheetEntries(token);
       
       // Yield control between IPC calls
       await yieldToMain();

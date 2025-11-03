@@ -15,6 +15,10 @@
     "noEmit": true,
     "jsx": "react-jsx",
     "types": ["vite/client", "vitest"],
+    "paths": {
+      "@sheetpilot/shared": ["../shared/index.ts"],
+      "@sheetpilot/shared/*": ["../shared/*"]
+    },
 
     /* Linting */
     "strict": true,

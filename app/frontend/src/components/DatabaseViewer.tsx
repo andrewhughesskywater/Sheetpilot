@@ -37,6 +37,7 @@ interface Credential {
 // }
 
 function Archive() {
+  console.log('[Archive] Component rendering');
   const [activeTab] = useState<'timesheet' | 'credentials'>('timesheet');
   
   // Use preloaded data from context
@@ -45,6 +46,14 @@ function Archive() {
     isArchiveDataLoading, 
     archiveDataError 
   } = useData();
+  
+  console.log('[Archive] State:', {
+    isArchiveDataLoading,
+    archiveDataError,
+    hasArchiveData: !!archiveData,
+    timesheetCount: archiveData?.timesheet?.length ?? 0,
+    credentialsCount: archiveData?.credentials?.length ?? 0
+  });
 
   const formatTime = (minutes: number): string => {
     const hours = Math.floor(minutes / 60);

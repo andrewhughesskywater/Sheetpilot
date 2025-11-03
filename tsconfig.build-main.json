@@ -1,0 +1,31 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "outDir": "build/dist",
+    "rootDir": "app",
+    "baseUrl": ".",
+    "typeRoots": [
+      "./node_modules/@types",
+      "./app/backend/node_modules/@types",
+      "./app/backend/src/services/bot/node_modules/@types"
+    ],
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true
+  },
+  "include": [
+    "app/backend/src/**/*.ts",
+    "app/shared/**/*.ts"
+  ],
+  "exclude": [
+    "app/backend/src/services/bot/node_modules",
+    "app/backend/tests/**/*",
+    "node_modules",
+    "build",
+    "release"
+  ]
+}

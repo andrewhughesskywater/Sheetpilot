@@ -60,12 +60,20 @@ declare global {
       rebuildDatabase: (token: string) => Promise<{ success: boolean; error?: string }>;
     };
     database?: {
-      getAllTimesheetEntries: () => Promise<Array<{
-        id: number; date: string; time_in: number; time_out: number; hours: number;
-        project: string; tool?: string; detail_charge_code?: string; task_description: string;
-        status?: string; submitted_at?: string;
-      }>>;
-      getAllCredentials: () => Promise<Array<{ id: number; service: string; email: string; created_at: string; updated_at: string }>>;
+      getAllTimesheetEntries: (token: string) => Promise<{
+        success: boolean;
+        entries?: Array<{
+          id: number; date: string; time_in: number; time_out: number; hours: number;
+          project: string; tool?: string; detail_charge_code?: string; task_description: string;
+          status?: string; submitted_at?: string;
+        }>;
+        error?: string;
+      }>;
+      getAllCredentials: () => Promise<{
+        success: boolean;
+        credentials?: Array<{ id: number; service: string; email: string; created_at: string; updated_at: string }>;
+        error?: string;
+      }>;
       clearDatabase: () => Promise<{ success: boolean; error?: string }>;
     };
     logs?: {

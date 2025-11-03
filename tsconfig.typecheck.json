@@ -2,13 +2,13 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "skipLibCheck": true,
-    "types": ["vitest", "vite/client", "node"],
+    "types": ["node"],
     "jsx": "react-jsx",
     "noPropertyAccessFromIndexSignature": false
   },
   "include": [
-    "app/**/*.ts",
-    "app/**/*.tsx"
+    "app/backend/src/**/*.ts",
+    "app/shared/**/*.ts"
   ],
   "exclude": [
     "node_modules",
@@ -16,10 +16,6 @@
     "release",
     "app/**/tests/**",
     "app/backend/tests/**",
-    "app/frontend/tests/**",
-    "app/backend/src/services/bot/node_modules",
-    "app/frontend/node_modules",
-    "app/frontend/src/config/vite.config.ts",
-    "app/frontend/tests/vitest.config.blank-screen-prevention.ts"
+    "app/backend/src/services/bot/node_modules"
   ]
 }

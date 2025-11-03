@@ -54,19 +54,9 @@ import {
   isAppError
 } from '../../shared/errors';
 
-// CRITICAL: Configure Playwright BEFORE importing any modules that use it
-// This must happen before bootstrap-plugins, which imports PlaywrightBotService
+// Playwright will use system browsers (Chrome/Edge) - no bundled browsers
 const IS_SMOKE = process.env['SMOKE_PACKAGED'] === '1';
 const PACKAGED_LIKE = app.isPackaged || IS_SMOKE;
-
-if (PACKAGED_LIKE) {
-  const browserPath = path.join(process.resourcesPath, 'playwright-browsers');
-  process.env['PLAYWRIGHT_BROWSERS_PATH'] = browserPath;
-  console.log('[Setup] Playwright browsers path configured:', browserPath);
-  console.log('[Setup] Environment variable set:', process.env['PLAYWRIGHT_BROWSERS_PATH']);
-} else {
-  console.log('[Setup] Development mode - using local Playwright browsers from node_modules');
-}
 
 // Add backend node_modules to module resolution path (dev and packaged-like)
 {
@@ -142,21 +132,6 @@ function formatMinutesToTime(minutes: number): string {
 
 let mainWindow: BrowserWindow | null = null;
 let splashWindow: BrowserWindow | null = null;
-function getAppIconPath(): string | undefined {
-  if (PACKAGED_LIKE) {
-    return path.join(process.resourcesPath, 'icon.ico');
-  }
-  return path.join(__dirname, '..', '..', '..', '..', 'app', 'frontend', 'src', 'assets', 'images', 'icon.ico');
-}
-
-function logIconPath(iconPath?: string) {
-  if (!iconPath) return;
-  const iconExists = fs.existsSync(iconPath);
-  appLogger.debug('Window icon', { iconPath, exists: iconExists });
-  if (!iconExists) {
-    appLogger.warn('Icon file not found at expected path', { iconPath });
-  }
-}
 
 // Update marker file to persist splash across relaunch after install
 function getUpdateMarkerPath(): string {
@@ -449,10 +424,6 @@ async function bootstrapDatabaseAsync() {
 function createWindow() {
   const windowState = getWindowState();
   
-  // Resolve and log icon path
-  const iconPath = getAppIconPath();
-  logIconPath(iconPath);
-  
   const windowOptions: Electron.BrowserWindowConstructorOptions = {
     width: windowState.width,
     height: windowState.height,
@@ -479,10 +450,6 @@ function createWindow() {
   }
   
   mainWindow = new BrowserWindow(windowOptions);
-  if (iconPath) {
-    // Set icon after creation when available to satisfy strict option typing
-    try { mainWindow.setIcon(iconPath); } catch { /* no-op */ }
-  }
 
   // Forward renderer console to main logs to debug blank screens
   mainWindow.webContents.on('console-message', (_e, level, message, line, sourceId) => {
@@ -578,8 +545,6 @@ function createWindow() {
 }
 
  function createSplashWindow(hash: string = '#splash') {
-  const iconPath = getAppIconPath();
-   logIconPath(iconPath);
   // Small, centered window; keep invisible menu, minimal chrome
    const options: Electron.BrowserWindowConstructorOptions = {
     width: 500,
@@ -603,9 +568,6 @@ function createWindow() {
   };
 
   splashWindow = new BrowserWindow(options);
-  if (iconPath) {
-    try { splashWindow.setIcon(iconPath); } catch { /* no-op */ }
-  }
   splashWindow.once('ready-to-show', () => splashWindow?.show());
 
   const isDev = process.env['NODE_ENV'] === 'development' || process.env['ELECTRON_IS_DEV'] === '1';

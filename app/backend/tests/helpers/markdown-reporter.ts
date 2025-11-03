@@ -85,7 +85,7 @@ export class MarkdownReporter implements Reporter {
                    task.result?.state === 'pass' ? 'passed' as const :
                    task.result?.state === 'fail' ? 'failed' as const : 'failed' as const,
             duration: task.result?.duration,
-            error: task.result?.error?.message || task.result?.error?.stack
+            error: task.result?.errors?.[0]?.message || task.result?.errors?.[0]?.stack
           };
 
           if (suiteName) {

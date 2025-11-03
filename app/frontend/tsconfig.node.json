@@ -22,7 +22,11 @@
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true
+    "noUncheckedSideEffectImports": true,
+    "paths": {
+      "@sheetpilot/shared": ["../shared/index.ts"],
+      "@sheetpilot/shared/*": ["../shared/*"]
+    }
   },
   "include": [
     "src/config/vite.config.ts",
