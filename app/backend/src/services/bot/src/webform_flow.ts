@@ -89,16 +89,16 @@ export class WebformFiller {
   }
 
   /**
-   * Launches the configured browser type using system-installed browsers only
-   * Attempts to use Chrome or Edge installed on the system
+   * Launches the configured browser type using bundled Chromium
+   * Uses Playwright's bundled Chromium browser for consistent behavior across all systems
    * @private
    * @returns Promise that resolves when browser is launched
-   * @throws Error if no system browser (Chrome/Edge) is found
+   * @throws Error if bundled Chromium could not be launched
    */
   private async _launch_browser(): Promise<void> {
-    botLogger.verbose('Launching browser', { browserKind: this.browser_kind });
+    botLogger.verbose('Launching bundled Chromium browser', { browserKind: this.browser_kind });
     
-    // Use system browsers only - no bundled Chromium
+    // Use bundled Chromium for consistent behavior across all systems
     const launchOptions: Record<string, unknown> = {
       headless: this.headless,
       args: [
@@ -123,42 +123,16 @@ export class WebformFiller {
       ]
     };
 
-    // Strategy: Try system browsers in order
-    // Allow forcing a specific browser via environment variable for testing
-    const forceChannel = process.env['SHEETPILOT_FORCE_BROWSER'];
-    let systemChannels = ['chrome', 'msedge']; // Try Chrome first, then Edge
-    
-    // If forcing a specific browser, use only that one
-    if (forceChannel && (forceChannel === 'chrome' || forceChannel === 'msedge')) {
-      systemChannels = [forceChannel];
-      botLogger.info('Testing mode: Forcing specific browser', { channel: forceChannel });
-    }
-    
-    let launched = false;
-    let lastError: Error | null = null;
-    
-    for (const channel of systemChannels) {
-      try {
-        botLogger.verbose('Attempting to launch system browser', { channel, headless: this.headless });
-        this.browser = await chromium.launch({ ...launchOptions, channel });
-        botLogger.info('Successfully launched system browser', { channel });
-        launched = true;
-        break;
-      } catch (error) {
-        lastError = error instanceof Error ? error : new Error(String(error));
-        botLogger.verbose('Could not launch system browser', { channel, error: lastError.message });
-        // Continue to next browser
-      }
-    }
-
-    // Throw error if no system browser worked
-    if (!launched) {
-      const errorMsg = 'Could not launch any system browser (Chrome or Edge). Please ensure Chrome or Edge is installed.';
-      botLogger.error(errorMsg, { 
-        attemptedBrowsers: systemChannels, 
-        lastError: lastError?.message 
-      });
-      throw new Error(errorMsg);
+    try {
+      botLogger.verbose('Launching bundled Chromium', { headless: this.headless });
+      // Launch bundled Chromium (no channel parameter = uses Playwright's bundled browser)
+      this.browser = await chromium.launch(launchOptions);
+      botLogger.info('Successfully launched bundled Chromium browser');
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      const errorMsg = 'Could not launch bundled Chromium browser';
+      botLogger.error(errorMsg, { error: err.message });
+      throw new Error(`${errorMsg}: ${err.message}`);
     }
     
     botLogger.verbose('Browser launched successfully');

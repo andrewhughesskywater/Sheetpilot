@@ -5,7 +5,7 @@
  * This ensures a single source of truth for values like version numbers.
  * 
  * @author SheetPilot Team
- * @version 1.3.6
+ * @version 1.3.7
  */
 
 /**
@@ -13,7 +13,7 @@
  * This should match the version in package.json
  * Updated: 2025-11-03
  */
-export const APP_VERSION = '1.3.6';
+export const APP_VERSION = '1.3.7';
 
 /**
  * Application name

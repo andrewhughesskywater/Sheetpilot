@@ -15,6 +15,7 @@ import {
 } from '@mui/icons-material';
 const Archive = lazy(() => import('./components/DatabaseViewer'));
 const TimesheetGrid = lazy(() => import('./components/TimesheetGrid'));
+import type { TimesheetGridHandle } from './components/TimesheetGrid';
 import ModernSegmentedNavigation from './components/ModernSegmentedNavigation';
 const Help = lazy(() => import('./components/Help'));
 import UpdateDialog from './components/UpdateDialog';
@@ -23,7 +24,7 @@ import { DataProvider, useData } from './contexts/DataContext';
 import { SessionProvider, useSession } from './contexts/SessionContext';
 import { initializeTheme } from './utils/theme-manager';
 import logoImage from './assets/images/transparent-logo.svg';
-import { APP_VERSION } from './config/constants';
+import { APP_VERSION } from '../../shared/constants';
 import './styles/App.css';
 
 export function AboutBody() {
@@ -131,6 +132,7 @@ function AppContent() {
   console.log('Active tab:', activeTab);
   const hasRequestedInitialTimesheetRef = useRef(false);
   const hasRefreshedEmptyOnceRef = useRef(false);
+  const timesheetGridRef = useRef<TimesheetGridHandle>(null);
   
   const [isExporting, setIsExporting] = useState(false);
   const [showAboutDialog, setShowAboutDialog] = useState(false);
@@ -267,8 +269,15 @@ function AppContent() {
         {/* Modern Segmented Navigation */}
         <ModernSegmentedNavigation 
           activeTab={activeTab} 
-          onTabChange={(newTab) => {
+          onTabChange={async (newTab) => {
             window.logger?.userAction('tab-change', { from: activeTab, to: newTab });
+            
+            // Save to database when leaving Timesheet tab
+            if (activeTab === 0 && newTab !== 0) {
+              window.logger?.info('[App] Leaving Timesheet tab, triggering batch save');
+              await timesheetGridRef.current?.batchSaveToDatabase();
+            }
+            
             setActiveTab(newTab);
           }}
         />
@@ -304,7 +313,7 @@ function AppContent() {
             <>
               {activeTab === 0 && (
                 <Suspense fallback={<div className="loading-fallback">Loading timesheet...</div>}>
-                  <TimesheetGrid />
+                  <TimesheetGrid ref={timesheetGridRef} />
                 </Suspense>
               )}
 

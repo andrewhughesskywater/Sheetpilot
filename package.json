@@ -1,6 +1,6 @@
 {
   "name": "sheetpilot",
-  "version": "1.3.6",
+  "version": "1.3.7",
   "private": true,
   "description": "Business timesheet management and reporting tool",
   "author": "Andrew Hughes",
@@ -11,8 +11,9 @@
     "app/shared"
   ],
   "scripts": {
+    "postinstall": "npx playwright install chromium",
     "rebuild": "npx @electron/rebuild -f -w better-sqlite3",
-    "electron:compiled": "npm run pre-rebuild && npm run rebuild && cross-env NODE_PATH=app/backend/node_modules:node_modules electron build/dist/backend/src/main.js",
+    "electron:compiled": "npm run rebuild && cross-env NODE_PATH=app/backend/node_modules:node_modules electron build/dist/backend/src/main.js",
     "sync-version": "node scripts/sync-version.js",
     "generate-icon": "node scripts/generate-icon.js",
     "build:main": "npm run sync-version && tsc -p tsconfig.build-main.json",
@@ -78,13 +79,15 @@
       "!app/backend/node_modules/.bin/**",
       "!app/backend/node_modules/*/{example,examples,docs,doc}/**",
       "node_modules/tslib/**/*",
+      "node_modules/playwright/**/*",
       "app/frontend/dist/**/*",
       "package.json",
       "plugin-config.json",
       "scripts/fix-shortcut-icon.ps1"
     ],
     "asarUnpack": [
-      "**/node_modules/better-sqlite3/**/*"
+      "**/node_modules/better-sqlite3/**/*",
+      "**/node_modules/playwright/**/*"
     ],
     "extraMetadata": {
       "main": "build/dist/backend/src/main.js"

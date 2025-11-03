@@ -54,7 +54,7 @@ import {
   isAppError
 } from '../../shared/errors';
 
-// Playwright will use system browsers (Chrome/Edge) - no bundled browsers
+// Playwright uses bundled Chromium for consistent behavior across all systems
 const IS_SMOKE = process.env['SMOKE_PACKAGED'] === '1';
 const PACKAGED_LIKE = app.isPackaged || IS_SMOKE;
 
@@ -625,6 +625,9 @@ function showMainAndCloseSplash() {
   }
 }
 
+// Global flag to prevent concurrent timesheet submissions
+let isSubmissionInProgress = false;
+
 // Export function to register IPC handlers (for testing)
 export function registerIPCHandlers() {
   // Example: typed IPC handler
@@ -637,9 +640,22 @@ export function registerIPCHandlers() {
   ipcMain.handle('timesheet:submit', async (_event, token: string) => {
     console.log('[Main] timesheet:submit IPC handler called');
     const timer = ipcLogger.startTimer('timesheet-submit');
+    
+    // Check if submission is already in progress
+    if (isSubmissionInProgress) {
+      ipcLogger.warn('Submission already in progress, rejecting concurrent request');
+      timer.done({ outcome: 'error', reason: 'concurrent-submission-blocked' });
+      return { 
+        error: 'A submission is already in progress. Please wait for it to complete.'
+      };
+    }
+    
     ipcLogger.info('Timesheet submission initiated by user');
     
     try {
+      // Set flag to block concurrent submissions
+      isSubmissionInProgress = true;
+      
       // Validate session and check if admin
       if (!token) {
         timer.done({ outcome: 'error', reason: 'no-session' });
@@ -722,6 +738,9 @@ export function registerIPCHandlers() {
       timer.done({ outcome: 'error', errorCode });
       
       return { error: errorMessage };
+    } finally {
+      // Always clear the submission lock
+      isSubmissionInProgress = false;
     }
   });
 

@@ -1,22 +1,22 @@
 # Test Results
 
-Generated at: 2025-11-03T16:41:36.455Z
+Generated at: 2025-11-03T20:24:06.875Z
 
 ## Summary
 
 | Metric | Count |
 |--------|-------|
 | Total Tests | 211 |
-| Passed | 211 |
-| Failed | 0 |
-| Skipped | 0 |
-| Duration | 69.24s |
+| Passed | 158 |
+| Failed | 52 |
+| Skipped | 1 |
+| Duration | 1.90s |
 
-**Pass Rate:** 100.00%
+**Pass Rate:** 74.88%
 
 ## Test Results by File
 
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/auto-updater.spec.ts
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/auto-updater.spec.ts
 
 #### Auto-Updater Module
 
@@ -69,78 +69,78 @@ Generated at: 2025-11-03T16:41:36.455Z
 | should expect latest.yml for version metadata | ✅ passed | 0.00s |
 | should parse version from update info | ✅ passed | 0.00s |
 
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/database.spec.ts
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/database.spec.ts
 
 #### Database Module > Database Path Management
 
 | Test | Status | Duration |
 |------|--------|----------|
-| should set and get database path correctly | ✅ passed | 0.10s |
-| should resolve relative paths to absolute paths | ✅ passed | 0.03s |
-| should create database directory if it does not exist | ✅ passed | 0.05s |
+| should set and get database path correctly | ❌ failed | 0.23s |
+| should resolve relative paths to absolute paths | ❌ failed | 0.02s |
+| should create database directory if it does not exist | ❌ failed | 0.03s |
 
 #### Database Module > Database Connection
 
 | Test | Status | Duration |
 |------|--------|----------|
-| should open database connection successfully | ✅ passed | 0.02s |
-| should create database file if it does not exist | ✅ passed | 0.02s |
+| should open database connection successfully | ❌ failed | 0.02s |
+| should create database file if it does not exist | ❌ failed | 0.02s |
 
 #### Database Module > Schema Management
 
 | Test | Status | Duration |
 |------|--------|----------|
-| should create timesheet table with correct schema | ✅ passed | 0.03s |
-| should create required indexes | ✅ passed | 0.02s |
-| should create unique constraint for deduplication | ✅ passed | 0.02s |
+| should create timesheet table with correct schema | ❌ failed | 0.02s |
+| should create required indexes | ❌ failed | 0.03s |
+| should create unique constraint for deduplication | ❌ failed | 0.02s |
 
 #### Database Module > Timesheet Entry Insertion
 
 | Test | Status | Duration |
 |------|--------|----------|
-| should insert a new timesheet entry successfully | ✅ passed | 0.03s |
-| should calculate hours automatically | ✅ passed | 0.03s |
-| should handle optional fields correctly | ✅ passed | 0.03s |
-| should validate time constraints | ✅ passed | 0.03s |
+| should insert a new timesheet entry successfully | ❌ failed | 0.02s |
+| should calculate hours automatically | ❌ failed | 0.02s |
+| should handle optional fields correctly | ❌ failed | 0.02s |
+| should validate time constraints | ❌ failed | 0.02s |
 
 #### Database Module > Deduplication Functionality
 
 | Test | Status | Duration |
 |------|--------|----------|
-| should prevent duplicate entries based on unique constraint | ✅ passed | 0.03s |
-| should allow entries with different time_in | ✅ passed | 0.03s |
-| should allow entries with different project | ✅ passed | 0.04s |
-| should allow entries with different task description | ✅ passed | 0.03s |
-| should allow entries with different date | ✅ passed | 0.04s |
-| should allow entries with different optional fields | ✅ passed | 0.03s |
+| should prevent duplicate entries based on unique constraint | ❌ failed | 0.02s |
+| should allow entries with different time_in | ❌ failed | 0.03s |
+| should allow entries with different project | ❌ failed | 0.02s |
+| should allow entries with different task description | ❌ failed | 0.03s |
+| should allow entries with different date | ❌ failed | 0.02s |
+| should allow entries with different optional fields | ❌ failed | 0.04s |
 
 #### Database Module > Duplicate Checking Utilities
 
 | Test | Status | Duration |
 |------|--------|----------|
-| should correctly identify non-duplicate entries | ✅ passed | 0.06s |
-| should correctly identify duplicate entries | ✅ passed | 0.22s |
-| should find duplicate entries in database | ✅ passed | 0.17s |
-| should filter duplicates by date range | ✅ passed | 0.03s |
+| should correctly identify non-duplicate entries | ❌ failed | 0.02s |
+| should correctly identify duplicate entries | ❌ failed | 0.02s |
+| should find duplicate entries in database | ❌ failed | 0.02s |
+| should filter duplicates by date range | ❌ failed | 0.02s |
 
 #### Database Module > Batch Insertion
 
 | Test | Status | Duration |
 |------|--------|----------|
-| should insert multiple entries successfully | ✅ passed | 0.05s |
-| should handle mixed duplicates in batch insertion | ✅ passed | 0.03s |
-| should handle empty batch | ✅ passed | 0.03s |
-| should use transaction for atomicity | ✅ passed | 0.06s |
+| should insert multiple entries successfully | ❌ failed | 0.02s |
+| should handle mixed duplicates in batch insertion | ❌ failed | 0.02s |
+| should handle empty batch | ❌ failed | 0.02s |
+| should use transaction for atomicity | ❌ failed | 0.02s |
 
 #### Database Module > Edge Cases and Error Handling
 
 | Test | Status | Duration |
 |------|--------|----------|
-| should handle database connection errors gracefully | ✅ passed | 0.10s |
-| should handle malformed entry data | ✅ passed | 0.08s |
-| should handle null and undefined values in optional fields | ✅ passed | 0.07s |
+| should handle database connection errors gracefully | ❌ failed | 0.02s |
+| should handle malformed entry data | ❌ failed | 0.02s |
+| should handle null and undefined values in optional fields | ❌ failed | 0.02s |
 
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/deprecated-constants.spec.ts
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/deprecated-constants.spec.ts
 
 #### Deprecated Constants > Deprecated constant values
 
@@ -172,13 +172,13 @@ Generated at: 2025-11-03T16:41:36.455Z
 | should provide createFormConfig as replacement | ✅ passed | 0.00s |
 | should use createFormConfig to create valid configurations | ✅ passed | 0.00s |
 
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/ipc-handlers-comprehensive.spec.ts
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/ipc-handlers-comprehensive.spec.ts
 
 #### IPC Handlers Comprehensive Tests > ping handler
 
 | Test | Status | Duration |
 |------|--------|----------|
-| should return pong with message | ✅ passed | 0.00s |
+| should return pong with message | ✅ passed | 0.01s |
 | should handle empty message | ✅ passed | 0.00s |
 | should handle undefined message | ✅ passed | 0.00s |
 
@@ -210,7 +210,7 @@ Generated at: 2025-11-03T16:41:36.455Z
 | Test | Status | Duration |
 |------|--------|----------|
 | should delete credentials successfully | ✅ passed | 0.00s |
-| should handle deletion failure | ✅ passed | 0.00s |
+| should handle deletion failure | ✅ passed | 0.01s |
 | should handle invalid service parameter | ✅ passed | 0.00s |
 
 #### IPC Handlers Comprehensive Tests > database:getAllTimesheetEntries handler
@@ -264,7 +264,7 @@ Generated at: 2025-11-03T16:41:36.455Z
 
 | Test | Status | Duration |
 |------|--------|----------|
-| should delete valid draft entry | ✅ passed | 0.00s |
+| should delete valid draft entry | ✅ passed | 0.01s |
 | should validate ID parameter | ✅ passed | 0.00s |
 | should handle non-existent entry | ✅ passed | 0.00s |
 | should handle database errors | ✅ passed | 0.00s |
@@ -274,11 +274,11 @@ Generated at: 2025-11-03T16:41:36.455Z
 
 | Test | Status | Duration |
 |------|--------|----------|
-| should submit timesheets with valid credentials | ✅ passed | 0.00s |
+| should submit timesheets with valid credentials | ✅ passed | 0.01s |
 | should handle missing credentials | ✅ passed | 0.00s |
 | should handle submission failures | ✅ passed | 0.00s |
 
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/ipc-main.spec.ts
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/ipc-main.spec.ts
 
 #### Electron IPC Handlers (main.ts)
 
@@ -287,19 +287,19 @@ Generated at: 2025-11-03T16:41:36.455Z
 | timesheet:submit returns error if credentials missing | ✅ passed | 0.00s |
 | timesheet:submit submits with stored credentials | ✅ passed | 0.00s |
 
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/ipc-workflow-integration.spec.ts
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/ipc-workflow-integration.spec.ts
 
 #### IPC Workflow Integration
 
 | Test | Status | Duration |
 |------|--------|----------|
-| should handle workflow when database has pending entries | ✅ passed | 0.05s |
-| should handle workflow when database is empty | ✅ passed | 0.03s |
-| should not mutate database entries during failed submission | ✅ passed | 0.03s |
-| should handle multiple pending entries with different projects | ✅ passed | 0.03s |
-| should maintain data integrity across automation attempts | ✅ passed | 0.07s |
+| should handle workflow when database has pending entries | ❌ failed | 0.14s |
+| should handle workflow when database is empty | ❌ failed | 0.02s |
+| should not mutate database entries during failed submission | ❌ failed | 0.02s |
+| should handle multiple pending entries with different projects | ❌ failed | 0.02s |
+| should maintain data integrity across automation attempts | ❌ failed | 0.02s |
 
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/main-application-logic.spec.ts
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/main-application-logic.spec.ts
 
 #### Main Application Logic Tests > Time Parsing Utilities > parseTimeToMinutes
 
@@ -343,9 +343,9 @@ Generated at: 2025-11-03T16:41:36.455Z
 | should load valid saved window state | ✅ passed | 0.00s |
 | should constrain window size to screen bounds | ✅ passed | 0.00s |
 | should constrain window position to screen bounds | ✅ passed | 0.00s |
-| should handle corrupted saved state gracefully | ✅ passed | 0.00s |
+| should handle corrupted saved state gracefully | ✅ passed | 0.01s |
 | should save window state successfully | ✅ passed | 0.00s |
-| should handle save errors gracefully | ✅ passed | 0.00s |
+| should handle save errors gracefully | ✅ passed | 0.01s |
 
 #### Main Application Logic Tests > Auto-Updater Configuration
 
@@ -370,7 +370,7 @@ Generated at: 2025-11-03T16:41:36.455Z
 | should handle deletion result validation | ✅ passed | 0.00s |
 | should format deletion error messages correctly | ✅ passed | 0.00s |
 
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/quarter-config.spec.ts
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/quarter-config.spec.ts
 
 #### Quarter Configuration > Quarter Definitions
 
@@ -419,7 +419,7 @@ Generated at: 2025-11-03T16:41:36.455Z
 | should get quarter by ID | ✅ passed | 0.00s |
 | should get current quarter based on today | ✅ passed | 0.00s |
 
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/quarter-routing-integration.spec.ts
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/quarter-routing-integration.spec.ts
 
 #### Quarter Routing Integration > BotOrchestrator with formConfig
 
@@ -481,31 +481,31 @@ Generated at: 2025-11-03T16:41:36.455Z
 | should use correct form URL for Q4 entries | ✅ passed | 0.00s |
 | should generate correct submission endpoints for each quarter | ✅ passed | 0.00s |
 
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/timesheet_submission_integration.spec.ts
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/timesheet_submission_integration.spec.ts
 
 #### Timesheet Submission Integration
 
 | Test | Status | Duration |
 |------|--------|----------|
-| should fetch pending entries correctly | ✅ passed | 0.05s |
-| should mark entries as submitted correctly | ✅ passed | 0.04s |
-| should remove failed entries correctly | ✅ passed | 0.03s |
-| should handle empty pending entries gracefully | ✅ passed | 0.03s |
-| should convert database rows to bot format correctly | ✅ passed | 0.03s |
-| should initialize and cleanup browser when submitting timesheets | ✅ passed | 0.03s |
-| should properly handle browser lifecycle across multiple submission attempts | ✅ passed | 0.04s |
+| should fetch pending entries correctly | ❌ failed | 0.09s |
+| should mark entries as submitted correctly | ❌ failed | 0.02s |
+| should remove failed entries correctly | ❌ failed | 0.01s |
+| should handle empty pending entries gracefully | ❌ failed | 0.02s |
+| should convert database rows to bot format correctly | ❌ failed | 0.02s |
+| should initialize and cleanup browser when submitting timesheets | ❌ failed | 0.03s |
+| should properly handle browser lifecycle across multiple submission attempts | ❌ failed | 0.01s |
 
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/services/bot/authentication_flow.spec.ts
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/services/bot/authentication_flow.spec.ts
 
 #### LoginManager.validate_login_state
 
 | Test | Status | Duration |
 |------|--------|----------|
 | returns true when current URL includes any success pattern | ✅ passed | 0.01s |
-| returns true (default) even if patterns not matched (back-compat) | ✅ passed | 0.00s |
-| returns false when require_page throws | ✅ passed | 0.00s |
+| returns true (default) even if patterns not matched (back-compat) | ✅ passed | 0.01s |
+| returns false when require_page throws | ✅ passed | 0.01s |
 
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/services/bot/bot_orchestation.spec.ts
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/services/bot/bot_orchestation.spec.ts
 
 #### BotOrchestrator small logic
 
@@ -513,48 +513,362 @@ Generated at: 2025-11-03T16:41:36.455Z
 |------|--------|----------|
 | validate required fields logic | ✅ passed | 0.00s |
 | project-specific tool locator resolution | ✅ passed | 0.00s |
-| should return error when run_automation is called without start() | ✅ passed | 0.01s |
-| should work when start() is called before run_automation() | ✅ passed | 3.27s |
+| should return error when run_automation is called without start() | ✅ passed | 0.02s |
+| should work when start() is called before run_automation() | ❌ failed | 0.02s |
 
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/services/bot/browser_lifecycle.spec.ts
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/services/bot/browser_lifecycle.spec.ts
 
 #### Browser Lifecycle Management
 
 | Test | Status | Duration |
 |------|--------|----------|
-| should allow start() to be called multiple times safely | ✅ passed | 0.49s |
-| should allow close() to be called multiple times safely | ✅ passed | 0.38s |
-| should handle close() when start() was never called | ✅ passed | 0.00s |
-| should prevent operations after close() | ✅ passed | 0.35s |
-| should properly cleanup resources on automation error | ✅ passed | 3.38s |
-| should handle concurrent automation attempts gracefully | ✅ passed | 3.18s |
-| should initialize chromium browser correctly | ✅ passed | 0.36s |
-| should handle headless mode configuration correctly | ✅ passed | 0.73s |
+| should allow start() to be called multiple times safely | ❌ failed | 0.05s |
+| should allow close() to be called multiple times safely | ❌ failed | 0.02s |
+| should handle close() when start() was never called | ✅ passed | 0.01s |
+| should prevent operations after close() | ❌ failed | 0.01s |
+| should properly cleanup resources on automation error | ❌ failed | 0.02s |
+| should handle concurrent automation attempts gracefully | ❌ failed | 0.02s |
+| should initialize chromium browser correctly | ❌ failed | 0.02s |
+| should handle headless mode configuration correctly | ❌ failed | 0.01s |
 
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/services/bot/orchestrator_submit_retry.spec.ts
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/services/bot/orchestrator_submit_retry.spec.ts
 
 #### BotOrchestrator submit retry behavior (one retry only)
 
 | Test | Status | Duration |
 |------|--------|----------|
-| succeeds when first submit fails and second succeeds (one retry) | ✅ passed | 0.02s |
-| fails when both first and retry submissions fail | ✅ passed | 0.02s |
+| succeeds when first submit fails and second succeeds (one retry) | ✅ passed | 0.08s |
+| fails when both first and retry submissions fail | ✅ passed | 0.11s |
 
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/services/bot/runTimesheet_wrapper.spec.ts
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/services/bot/runTimesheet_wrapper.spec.ts
 
 #### runTimesheet wrapper function
 
 | Test | Status | Duration |
 |------|--------|----------|
-| should handle empty rows array gracefully | ✅ passed | 0.00s |
-| should return proper error structure when authentication fails | ✅ passed | 3.35s |
-| should handle invalid credentials gracefully | ✅ passed | 3.06s |
-| should process multiple rows and report individual failures | ✅ passed | 7.27s |
+| should handle empty rows array gracefully | ✅ passed | 0.01s |
+| should return proper error structure when authentication fails | ❌ failed | 0.03s |
+| should handle invalid credentials gracefully | ❌ failed | 0.01s |
+| should process multiple rows and report individual failures | ❌ failed | 0.01s |
 
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/services/bot/webform_flow.spec.ts
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/services/bot/webform_flow.spec.ts
 
 #### WebformFiller against mock form
 
 | Test | Status | Duration |
 |------|--------|----------|
-| fills required fields and submits successfully | ✅ passed | 41.32s |
+| fills required fields and submits successfully | ⏭️ skipped | - |
+
+## Failed Tests Details
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Database Path Management > should set and get database path correctly
+
+```
+Could not connect to database
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Database Path Management > should resolve relative paths to absolute paths
+
+```
+Could not connect to database
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Database Path Management > should create database directory if it does not exist
+
+```
+Could not connect to database
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Database Connection > should open database connection successfully
+
+```
+Could not connect to database
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Database Connection > should create database file if it does not exist
+
+```
+Could not connect to database
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Schema Management > should create timesheet table with correct schema
+
+```
+Could not connect to database
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Schema Management > should create required indexes
+
+```
+Could not connect to database
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Schema Management > should create unique constraint for deduplication
+
+```
+Could not connect to database
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Timesheet Entry Insertion > should insert a new timesheet entry successfully
+
+```
+Could not connect to database
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Timesheet Entry Insertion > should calculate hours automatically
+
+```
+Could not connect to database
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Timesheet Entry Insertion > should handle optional fields correctly
+
+```
+Could not connect to database
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Timesheet Entry Insertion > should validate time constraints
+
+```
+Could not connect to database
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Deduplication Functionality > should prevent duplicate entries based on unique constraint
+
+```
+Could not connect to database
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Deduplication Functionality > should allow entries with different time_in
+
+```
+Could not connect to database
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Deduplication Functionality > should allow entries with different project
+
+```
+Could not connect to database
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Deduplication Functionality > should allow entries with different task description
+
+```
+Could not connect to database
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Deduplication Functionality > should allow entries with different date
+
+```
+Could not connect to database
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Deduplication Functionality > should allow entries with different optional fields
+
+```
+Could not connect to database
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Duplicate Checking Utilities > should correctly identify non-duplicate entries
+
+```
+Could not connect to database
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Duplicate Checking Utilities > should correctly identify duplicate entries
+
+```
+Could not connect to database
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Duplicate Checking Utilities > should find duplicate entries in database
+
+```
+Could not connect to database
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Duplicate Checking Utilities > should filter duplicates by date range
+
+```
+Could not connect to database
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Batch Insertion > should insert multiple entries successfully
+
+```
+Could not connect to database
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Batch Insertion > should handle mixed duplicates in batch insertion
+
+```
+Could not connect to database
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Batch Insertion > should handle empty batch
+
+```
+Could not connect to database
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Batch Insertion > should use transaction for atomicity
+
+```
+Could not connect to database
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Edge Cases and Error Handling > should handle database connection errors gracefully
+
+```
+Could not connect to database
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Edge Cases and Error Handling > should handle malformed entry data
+
+```
+Could not connect to database
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Edge Cases and Error Handling > should handle null and undefined values in optional fields
+
+```
+Could not connect to database
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/ipc-workflow-integration.spec.ts - IPC Workflow Integration > should handle workflow when database has pending entries
+
+```
+Could not connect to database
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/ipc-workflow-integration.spec.ts - IPC Workflow Integration > should handle workflow when database is empty
+
+```
+Could not connect to database
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/ipc-workflow-integration.spec.ts - IPC Workflow Integration > should not mutate database entries during failed submission
+
+```
+Could not connect to database
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/ipc-workflow-integration.spec.ts - IPC Workflow Integration > should handle multiple pending entries with different projects
+
+```
+Could not connect to database
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/ipc-workflow-integration.spec.ts - IPC Workflow Integration > should maintain data integrity across automation attempts
+
+```
+Could not connect to database
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/timesheet_submission_integration.spec.ts - Timesheet Submission Integration > should fetch pending entries correctly
+
+```
+Could not connect to database
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/timesheet_submission_integration.spec.ts - Timesheet Submission Integration > should mark entries as submitted correctly
+
+```
+Could not connect to database
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/timesheet_submission_integration.spec.ts - Timesheet Submission Integration > should remove failed entries correctly
+
+```
+Could not connect to database
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/timesheet_submission_integration.spec.ts - Timesheet Submission Integration > should handle empty pending entries gracefully
+
+```
+Could not connect to database
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/timesheet_submission_integration.spec.ts - Timesheet Submission Integration > should convert database rows to bot format correctly
+
+```
+Could not connect to database
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/timesheet_submission_integration.spec.ts - Timesheet Submission Integration > should initialize and cleanup browser when submitting timesheets
+
+```
+Could not connect to database
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/timesheet_submission_integration.spec.ts - Timesheet Submission Integration > should properly handle browser lifecycle across multiple submission attempts
+
+```
+Could not connect to database
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/services/bot/bot_orchestation.spec.ts - BotOrchestrator small logic > should work when start() is called before run_automation()
+
+```
+this.context.addInitScript is not a function
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/services/bot/browser_lifecycle.spec.ts - Browser Lifecycle Management > should allow start() to be called multiple times safely
+
+```
+this.context.addInitScript is not a function
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/services/bot/browser_lifecycle.spec.ts - Browser Lifecycle Management > should allow close() to be called multiple times safely
+
+```
+this.context.addInitScript is not a function
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/services/bot/browser_lifecycle.spec.ts - Browser Lifecycle Management > should prevent operations after close()
+
+```
+this.context.addInitScript is not a function
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/services/bot/browser_lifecycle.spec.ts - Browser Lifecycle Management > should properly cleanup resources on automation error
+
+```
+this.context.addInitScript is not a function
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/services/bot/browser_lifecycle.spec.ts - Browser Lifecycle Management > should handle concurrent automation attempts gracefully
+
+```
+this.context.addInitScript is not a function
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/services/bot/browser_lifecycle.spec.ts - Browser Lifecycle Management > should initialize chromium browser correctly
+
+```
+this.context.addInitScript is not a function
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/services/bot/browser_lifecycle.spec.ts - Browser Lifecycle Management > should handle headless mode configuration correctly
+
+```
+this.context.addInitScript is not a function
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/services/bot/runTimesheet_wrapper.spec.ts - runTimesheet wrapper function > should return proper error structure when authentication fails
+
+```
+this.context.addInitScript is not a function
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/services/bot/runTimesheet_wrapper.spec.ts - runTimesheet wrapper function > should handle invalid credentials gracefully
+
+```
+this.context.addInitScript is not a function
+```
+
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/services/bot/runTimesheet_wrapper.spec.ts - runTimesheet wrapper function > should process multiple rows and report individual failures
+
+```
+this.context.addInitScript is not a function
+```

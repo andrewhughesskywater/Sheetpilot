@@ -727,7 +727,7 @@ export function getSubmittedTimesheetEntriesForExport() {
             submitted_at
         FROM timesheet 
         WHERE status = 'Complete'
-        ORDER BY date ASC, time_in ASC
+        ORDER BY date DESC, time_in DESC
     `);
     
     const entries = getSubmitted.all();

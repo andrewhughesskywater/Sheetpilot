@@ -1,0 +1,53 @@
+/* Save Status Button Styles */
+
+.save-status-button {
+  font-weight: 600;
+  text-transform: none;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.save-status-button:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
+}
+
+.save-status-button:active {
+  transform: translateY(0);
+}
+
+/* Robin egg blue for local cache */
+.save-status-local {
+  background-color: #1abc9c !important;
+  color: white !important;
+}
+
+.save-status-local:hover {
+  background-color: #16a085 !important;
+}
+
+/* Green for database saved */
+.save-status-database {
+  background-color: #27ae60 !important;
+  color: white !important;
+}
+
+.save-status-database:hover {
+  background-color: #229954 !important;
+}
+
+/* Red for error */
+.save-status-error {
+  background-color: #e74c3c !important;
+  color: white !important;
+}
+
+.save-status-error:hover {
+  background-color: #c0392b !important;
+}
+
+/* Disabled state */
+.save-status-button.Mui-disabled {
+  opacity: 0.6;
+}
+

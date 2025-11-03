@@ -297,7 +297,7 @@ export class SQLiteDataService implements IDataService {
         const getAll = db.prepare(`
           SELECT * FROM timesheet 
           WHERE status = 'Complete'
-          ORDER BY date ASC, time_in ASC
+          ORDER BY date DESC, time_in DESC
         `);
         const entries = getAll.all() as DbTimesheetEntry[];
         

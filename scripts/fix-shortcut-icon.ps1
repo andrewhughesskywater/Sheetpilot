@@ -4,7 +4,6 @@
 $ShortcutPath = "$env:PUBLIC\Desktop\Sheetpilot.lnk"
 $UserShortcutPath = "$env:USERPROFILE\Desktop\Sheetpilot.lnk"
 $AppPath = "$env:LOCALAPPDATA\Programs\sheetpilot\sheetpilot.exe"
-$IconPath = "$env:LOCALAPPDATA\Programs\sheetpilot\resources\app.asar"
 
 # Find the correct shortcut
 $Shortcut = $null

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { HotTable } from '@handsontable/react-wrapper';
 import { registerAllModules } from 'handsontable/registry';
 import 'handsontable/styles/handsontable.css';
@@ -39,13 +39,23 @@ interface Credential {
 function Archive() {
   console.log('[Archive] Component rendering');
   const [activeTab] = useState<'timesheet' | 'credentials'>('timesheet');
+  const fetchedRef = useRef(false);
   
   // Use preloaded data from context
   const { 
     archiveData, 
     isArchiveDataLoading, 
-    archiveDataError 
+    archiveDataError,
+    refreshArchiveData
   } = useData();
+
+  // Load archive data when component mounts (guard against StrictMode double-render)
+  useEffect(() => {
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
+    console.log('[Archive] Mounting - loading archive data');
+    refreshArchiveData();
+  }, [refreshArchiveData]);
   
   console.log('[Archive] State:', {
     isArchiveDataLoading,
