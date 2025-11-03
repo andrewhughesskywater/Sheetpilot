@@ -450,7 +450,7 @@ function createWindow() {
   
   // Determine icon path for both dev and production
   const iconPath = PACKAGED_LIKE
-    ? path.join(process.resourcesPath, 'app.asar', 'app', 'frontend', 'dist', 'icon.ico')
+    ? path.join(process.resourcesPath, 'app', 'frontend', 'dist', 'icon.ico')
     : path.join(__dirname, '..', '..', '..', '..', 'app', 'frontend', 'src', 'assets', 'images', 'icon.ico');
 
   const windowOptions: Electron.BrowserWindowConstructorOptions = {
@@ -578,7 +578,7 @@ function createWindow() {
   // Small, centered window; keep invisible menu, minimal chrome
   // Determine icon path for both dev and production
   const iconPath = PACKAGED_LIKE
-    ? path.join(process.resourcesPath, 'app.asar', 'app', 'frontend', 'dist', 'icon.ico')
+    ? path.join(process.resourcesPath, 'app', 'frontend', 'dist', 'icon.ico')
     : path.join(__dirname, '..', '..', '..', '..', 'app', 'frontend', 'src', 'assets', 'images', 'icon.ico');
 
    const options: Electron.BrowserWindowConstructorOptions = {
@@ -1513,6 +1513,43 @@ export function registerIPCHandlers() {
 }
 
 // Initialize app when running as main entry point
+// Fix desktop shortcut icon on Windows
+function fixDesktopShortcutIcon() {
+  if (process.platform !== 'win32' || !PACKAGED_LIKE) {
+    return; // Only run on Windows in packaged mode
+  }
+  
+  // In packaged mode, use process.resourcesPath
+  const scriptPath = path.join(process.resourcesPath, 'app.asar', 'scripts', 'fix-shortcut-icon.ps1');
+  
+  // Extract script from ASAR to temp location since PowerShell can't read from ASAR
+  const tempDir = app.getPath('temp');
+  const tempScriptPath = path.join(tempDir, 'sheetpilot-fix-shortcut.ps1');
+  
+  try {
+    // Read from ASAR and write to temp
+    const scriptContent = fs.readFileSync(scriptPath, 'utf8');
+    fs.writeFileSync(tempScriptPath, scriptContent, 'utf8');
+  } catch (err) {
+    appLogger.debug('Could not extract shortcut fix script', { error: err instanceof Error ? err.message : String(err), scriptPath });
+    return;
+  }
+  
+  // Run PowerShell script in background
+  const { spawn } = require('child_process');
+  const ps = spawn('powershell.exe', [
+    '-NoProfile',
+    '-ExecutionPolicy', 'Bypass',
+    '-File', tempScriptPath
+  ], { 
+    detached: true,
+    stdio: 'ignore'
+  });
+  
+  ps.unref(); // Don't wait for completion
+  appLogger.debug('Started desktop shortcut icon fix', { tempScriptPath });
+}
+
 app.whenReady().then(() => {
   // Initialize logging first (fast, non-blocking)
   initializeLogging();
@@ -1525,6 +1562,9 @@ app.whenReady().then(() => {
   } catch (err) {
     appLogger.warn('Could not set AppUserModelID', { error: err instanceof Error ? err.message : String(err) });
   }
+  
+  // Fix desktop shortcut icon if needed (Windows only)
+  fixDesktopShortcutIcon();
   
   // Register default plugins for the plugin system
   registerDefaultPlugins();

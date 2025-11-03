@@ -11,14 +11,10 @@
     "app/shared"
   ],
   "scripts": {
-    "pre-rebuild": "powershell -NoProfile -Command \"$p = Get-Process electron -ErrorAction SilentlyContinue; if ($p) { $p | Stop-Process -Force }; exit 0\"",
     "rebuild": "npx @electron/rebuild -f -w better-sqlite3",
     "electron:compiled": "npm run pre-rebuild && npm run rebuild && cross-env NODE_PATH=app/backend/node_modules:node_modules electron build/dist/backend/src/main.js",
     "sync-version": "node scripts/sync-version.js",
-    "verify": "node scripts/verify-tslib.js",
-    "validate:deps": "node scripts/validate-dependencies.js",
-    "copy-icon": "powershell -NoProfile -Command \"Copy-Item 'app/frontend/src/assets/images/icon.ico' -Destination 'build/icon.ico' -Force\"",
-    "prebuild": "npm run validate:deps && npm run copy-icon",
+    "generate-icon": "node scripts/generate-icon.js",
     "build:main": "npm run sync-version && tsc -p tsconfig.build-main.json",
     "vite": "npm run -w @sheetpilot/frontend dev",
     "dev": "concurrently -k -n VITE,ELECTRON -c auto \"npm:vite\" \"wait-on tcp:5173 && npm run build:main && cross-env ELECTRON_IS_DEV=1 npm run electron:compiled\"",
@@ -26,8 +22,9 @@
     "build:bot": "cd app/backend/src/services/bot && npm run build",
     "build": "npm run build:main && npm run build:renderer && npm run build:bot && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder",
     "build:dir": "npm run build:main && npm run build:renderer && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --dir",
-    "type-check": "npm run type-check:root && npm run type-check:frontend",
+    "type-check": "npm run type-check:root && npm run type-check:backend && npm run type-check:frontend",
     "type-check:root": "tsc --noEmit --project tsconfig.typecheck.json",
+    "type-check:backend": "npm run -w @sheetpilot/backend typecheck",
     "type-check:frontend": "npm run -w @sheetpilot/frontend typecheck",
     "lint": "eslint . --ext .ts,.tsx",
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
@@ -46,8 +43,8 @@
     "better-sqlite3": "^12.4.1",
     "electron-log": "^5.4.3",
     "electron-updater": "^6.6.2",
-    "tslib": "^2.8.1",
-    "playwright": "^1.56.1"
+    "playwright": "^1.56.1",
+    "tslib": "^2.8.1"
   },
   "devDependencies": {
     "@types/node": "^24.5.2",
@@ -58,7 +55,9 @@
     "cross-env": "^10.1.0",
     "eslint": "^9.36.0",
     "nodemon": "^3.1.9",
+    "png-to-ico": "^2.1.8",
     "rimraf": "^6.0.1",
+    "sharp": "^0.33.5",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4",
     "wait-on": "^9.0.1"
@@ -81,7 +80,8 @@
       "node_modules/tslib/**/*",
       "app/frontend/dist/**/*",
       "package.json",
-      "plugin-config.json"
+      "plugin-config.json",
+      "scripts/fix-shortcut-icon.ps1"
     ],
     "asarUnpack": [
       "**/node_modules/better-sqlite3/**/*"
@@ -93,6 +93,13 @@
       "icon": "build/icon.ico",
       "forceCodeSigning": false,
       "signAndEditExecutable": false
+    },
+    "nsis": {
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico",
+      "createDesktopShortcut": "always",
+      "shortcutName": "Sheetpilot"
     }
   }
 }
