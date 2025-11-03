@@ -11,7 +11,7 @@
 /**
  * Application version
  * This should match the version in src/shared/constants.ts and package.json
- * Updated: 2025-10-30
+ * Updated: 2025-11-03
  */
 export const APP_VERSION = '1.3.6';
 

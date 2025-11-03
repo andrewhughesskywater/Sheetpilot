@@ -14,7 +14,7 @@
     "electron-log": "^5.4.3",
     "electron-updater": "^6.6.2",
     "tslib": "^2.8.1",
-    "xlsx": "^0.18.5"
+    "playwright": "^1.56.1"
   },
   "devDependencies": {
     "@electron/rebuild": "^3.6.0",
@@ -22,8 +22,7 @@
     "@types/node": "^24.5.2",
     "electron": "^38.4.0",
     "electron-builder": "^26.0.12",
-    "electron-rebuild": "^3.2.9",
-    "playwright": "^1.56.1"
+    "electron-rebuild": "^3.2.9"
   },
   "engines": {
     "node": ">=18.0.0"

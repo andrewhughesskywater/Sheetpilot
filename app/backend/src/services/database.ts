@@ -81,9 +81,9 @@ function isConnectionHealthy(): boolean {
 
 /**
  * Closes the persistent database connection
- * Should only be called during application shutdown
+ * Should be called during application shutdown or test cleanup
  */
-function closeConnection(): void {
+export function closeConnection(): void {
     if (connectionInstance) {
         try {
             connectionInstance.close();

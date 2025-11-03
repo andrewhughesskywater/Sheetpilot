@@ -1,6 +1,6 @@
 # SheetPilot Documentation
 
-**Last Updated**: October 22, 2025
+**Last Updated**: November 3, 2025
 
 ## 📚 Start Here
 
@@ -17,8 +17,10 @@ This wiki consolidates all essential information for developing SheetPilot, incl
 - Auto-updates (GitHub releases)
 - Performance optimizations
 - Logging system (renderer-to-main bridge)
+- Error handling patterns
 - Coding standards
-- Testing strategy
+- Testing strategy (comprehensive AI-resistant testing)
+- Dependency validation
 - Deployment procedures
 - Troubleshooting guide (including Sophos configuration)
 
@@ -95,10 +97,31 @@ Use the **Quick Reference** for essential commands and patterns.
 | **Handsontable** | ✅ Complete | Consolidated |
 | **Performance** | ✅ Complete (Startup Optimization) | Consolidated |
 | **Logging** | ✅ Complete (Renderer Bridge) | Consolidated |
+| **Error Handling** | ✅ Complete (Domain-Specific Errors) | Consolidated |
 | **Standards** | ✅ Complete | Consolidated |
-| **Testing** | ✅ Complete | Consolidated |
+| **Testing** | ✅ Complete (AI-Resistant Strategy) | Consolidated |
+| **Dependency Validation** | ✅ Complete (Build System) | Consolidated |
 | **Deployment** | ✅ Complete | Consolidated |
 | **Troubleshooting** | ✅ Complete (Including Sophos) | Consolidated |
+
+---
+
+## 📦 Release History
+
+### v1.3.6 (2025-10-30)
+
+**Scope**: Fix production build error for electron-updater
+
+**Fixes**:
+- Fixed "Cannot find module 'electron-updater'" error in production builds
+- Added `app/backend/package.json` to electron-builder files list
+- Added `app/backend/src/services/bot/package.json` to electron-builder files list
+- Configured `asarUnpack` to unpack electron-updater from app.asar (required for native binaries)
+
+**Developer Notes**:
+- electron-updater requires native binaries that must be unpacked from app.asar
+- Backend dependencies properly packaged via package.json files inclusion
+- All subdirectory package.json files now included for proper module resolution
 
 ---
 

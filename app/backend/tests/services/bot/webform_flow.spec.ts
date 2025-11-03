@@ -16,7 +16,8 @@ describe('WebformFiller against mock form', () => {
 
     // Serve file:// mock page
     const mockPath = path.resolve(__dirname, './fixtures/mock-form.html');
-    process.env['TS_BASE_URL'] = 'file:///' + mockPath.replace(/\\/g, '/');
+    const mockUrl = 'file:///' + mockPath.replace(/\\/g, '/');
+    process.env['TS_BASE_URL'] = mockUrl;
 
     filler = new WebformFiller(cfg as typeof cfg, true, 'chromium');
     await filler.start();
@@ -25,13 +26,13 @@ describe('WebformFiller against mock form', () => {
     // Route the Smartsheet endpoint and return a success JSON (simulate 200 OK)
     await page.route('**/*', async (route) => {
       const url = route.request().url();
-      if (url.includes('forms.smartsheet.com') && url.includes(cfg.FORM_ID)) {
+      if (url.includes('forms.smartsheet.com/api/submit')) {
         return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ submissionId: 'mock-123' }) });
       }
       return route.continue();
     });
 
-    await page.goto(cfg.BASE_URL);
+    await page.goto(mockUrl);
   });
 
   afterAll(async () => {

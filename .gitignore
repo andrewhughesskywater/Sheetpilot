@@ -5,7 +5,8 @@ node_modules
 # Build output
 dist
 **/dist
-build
+build/*
+!build/icon.ico
 build-output
 release
 dist-release

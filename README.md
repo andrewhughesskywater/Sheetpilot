@@ -88,15 +88,37 @@ npm test -- --integration
 
 ## Building
 
-```bash
-# Build the application
-npm run build
+### Dependency Validation
 
-# Package for distribution
-npm run dist
+Before building, validate that all dependencies are correctly configured:
+
+```bash
+# Validate dependencies manually
+npm run validate:deps
 ```
 
-The built application will be available in the `build-output` directory.
+This checks:
+- All dependencies exist in correct locations (root/backend/bot service)
+- Native modules (better-sqlite3) are properly rebuilt for Electron
+- Peer dependencies are satisfied
+- Build output structure is correct
+- electron-builder configuration is valid
+
+See [Dependency Validation Guide](docs/DEPENDENCY_VALIDATION.md) for details.
+
+### Building the Application
+
+```bash
+# Build the application (automatically runs validation first)
+npm run build
+
+# Build without packaging (faster, for testing)
+npm run build:dir
+```
+
+The built application will be available in the `release` directory.
+
+**Note:** `npm run build` automatically validates dependencies via the `prebuild` hook. If validation fails, the build stops with clear error messages.
 
 ## Configuration
 
@@ -118,6 +140,7 @@ Some enterprise antivirus solutions may flag Sheetpilot due to browser automatio
 ## Documentation
 
 - [Auto Updates](docs/AUTO_UPDATES.md)
+- [Dependency Validation Guide](docs/DEPENDENCY_VALIDATION.md)
 - [Testing Strategy](docs/TESTING_STRATEGY.md)
 - [Update Deployment Checklist](docs/UPDATE_DEPLOYMENT_CHECKLIST.md)
 

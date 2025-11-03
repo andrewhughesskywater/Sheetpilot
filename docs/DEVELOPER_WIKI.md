@@ -1,6 +1,6 @@
 # SheetPilot Developer Wiki
 
-**Last Updated**: October 8, 2025  
+**Last Updated**: November 3, 2025  
 **Purpose**: Consolidated reference for developers working on SheetPilot
 
 ---
@@ -15,9 +15,11 @@
 6. [Auto-Updates](#auto-updates)
 7. [Performance](#performance)
 8. [Coding Standards](#coding-standards)
-9. [Testing Strategy](#testing-strategy)
-10. [Deployment](#deployment)
-11. [Troubleshooting](#troubleshooting)
+9. [Error Handling](#error-handling)
+10. [Testing Strategy](#testing-strategy)
+11. [Dependency Validation](#dependency-validation)
+12. [Deployment](#deployment)
+13. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -1052,40 +1054,276 @@ try {
 
 ---
 
-## Testing Strategy
+## Error Handling
 
-### Test Structure
+### Overview
 
-```
-__tests__/
-├── database.spec.ts                    # Database operations
-├── ipc-handlers-comprehensive.spec.ts  # IPC communication
-├── ipc-workflow-integration.spec.ts    # Full workflows
-├── service-layer-edge-cases.spec.ts    # Edge cases
-└── timesheet_submission_integration.spec.ts # E2E submission
-```
+SheetPilot uses structured error handling with domain-specific error classes to improve error tracking, logging, and debugging. All errors follow ISO9000 and SOC2 compliance standards.
 
-### Running Tests
+### Error Architecture
 
-```bash
-# All tests
-npm test
+All errors extend `AppError` from `app/shared/errors.ts` with these properties:
 
-# Specific suite
-npm test -- database.spec.ts
-
-# With coverage
-npm test -- --coverage
-
-# Watch mode (development)
-npm test -- --watch
-```
-
-### Test Patterns
-
-#### Lifecycle Testing
+- **code**: Programmatic error identifier (e.g., `DB_CONNECTION_ERROR`)
+- **message**: Human-readable error message
+- **category**: Error category for filtering/monitoring
+- **context**: Additional structured data
+- **timestamp**: ISO 8601 timestamp
 
 ```typescript
+abstract class AppError extends Error {
+    readonly code: string;
+    readonly context: Record<string, unknown>;
+    readonly timestamp: string;
+    readonly category: ErrorCategory;
+}
+```
+
+### Error Categories
+
+| Category | Use Case |
+|----------|----------|
+| `database` | Database connection, query, transaction errors |
+| `credentials` | Credential storage, retrieval, authentication |
+| `submission` | Timesheet submission failures |
+| `validation` | Input validation errors |
+| `network` | Network connectivity issues |
+| `ipc` | Inter-process communication errors |
+| `configuration` | Configuration/setup errors |
+| `business_logic` | Business rule violations |
+| `system` | System-level errors |
+
+### Error Classes
+
+#### Database Errors
+
+```typescript
+DatabaseConnectionError    // Connection failed
+DatabaseQueryError         // Query execution failed
+DatabaseSchemaError        // Schema initialization failed
+DatabaseTransactionError   // Transaction rollback
+```
+
+#### Credentials Errors
+
+```typescript
+CredentialsNotFoundError      // Credentials not found
+CredentialsStorageError       // Failed to store credentials
+CredentialsRetrievalError     // Failed to retrieve credentials
+InvalidCredentialsError       // Invalid credentials provided
+```
+
+#### Submission Errors
+
+```typescript
+SubmissionServiceUnavailableError  // Service unavailable
+SubmissionFailedError               // Submission failed
+NoEntriesToSubmitError              // No entries to submit
+```
+
+#### Validation Errors
+
+```typescript
+InvalidDateError          // Invalid date format
+InvalidTimeError          // Invalid time format
+RequiredFieldError        // Required field missing
+InvalidFieldValueError    // Invalid field value
+```
+
+### Usage Patterns
+
+#### Throwing Errors
+
+```typescript
+import { CredentialsNotFoundError, DatabaseQueryError } from '../../shared/errors';
+
+// Provide context
+if (!credentials) {
+  throw new CredentialsNotFoundError('smartsheet', {
+    email: userEmail,
+    action: 'retrieve'
+  });
+}
+```
+
+#### Catching Errors
+
+```typescript
+import { isAppError, createUserFriendlyMessage } from '../../shared/errors';
+
+try {
+  const result = await submitTimesheet();
+} catch (err: unknown) {
+  if (isAppError(err)) {
+    logger.error('Operation failed', {
+      code: err.code,
+      category: err.category,
+      context: err.context
+    });
+    return { error: err.toUserMessage() };
+  }
+  
+  // Handle unknown errors
+  const errorMessage = createUserFriendlyMessage(err);
+  return { error: errorMessage };
+}
+```
+
+#### IPC Error Handling
+
+```typescript
+ipcMain.handle('credentials:store', async (_event, service, email, password) => {
+  try {
+    return storeCredentials(service, email, password);
+  } catch (err: unknown) {
+    if (isAppError(err)) {
+      ipcLogger.security('credentials-storage-error', 'Could not store credentials', {
+        code: err.code,
+        service,
+        context: err.context
+      });
+      return { success: false, error: err.toUserMessage() };
+    }
+    return { success: false, error: 'Unknown error occurred' };
+  }
+});
+```
+
+### Utility Functions
+
+```typescript
+// Error extraction
+extractErrorMessage(error)      // Get error message
+extractErrorCode(error)         // Get error code
+extractErrorContext(error)      // Get error context
+
+// Error checking
+isAppError(error)               // Check if AppError
+isDatabaseError(error)          // Check if DatabaseError
+isCredentialsError(error)       // Check if CredentialsError
+isRetryableError(error)         // Check if error is retryable
+isSecurityError(error)          // Check if security concern
+
+// User-friendly messages
+createUserFriendlyMessage(error)  // Create user-friendly message
+```
+
+### Best Practices
+
+✅ **DO**:
+
+- Always provide context when throwing errors
+- Use appropriate error types for the domain
+- Log with structured data (code, category, context)
+- Handle security errors with special logging
+- Return user-friendly messages to UI
+
+❌ **DO NOT**:
+
+- Use generic `Error` for application errors
+- Log sensitive data in error context
+- Return technical error details to users
+
+### Compliance
+
+**ISO9000/SOC2 Requirements:**
+
+- All errors include ISO 8601 timestamp for audit trail
+- Error codes enable programmatic handling
+- Context provides debugging information
+- Security errors logged separately
+
+```typescript
+// Security event logging
+if (isCredentialsError(error)) {
+  logger.security('credentials-access-violation', message, context);
+}
+```
+
+---
+
+## Testing Strategy
+
+### Overview
+
+SheetPilot uses a comprehensive, multi-layered testing strategy designed to prevent regressions and ensure code quality. The strategy includes contract validation, unit tests, integration tests, and E2E tests organized in tiers for both speed and comprehensive coverage.
+
+### Test Organization
+
+```
+app/backend/tests/
+├── contracts/          # Contract validation tests
+├── unit/              # Fast unit tests for business logic
+├── smoke/             # Quick smoke tests for CI/CD
+├── fixtures/          # Reusable test data
+├── helpers/           # Test utilities and builders
+├── services/          # Service-specific tests
+└── vitest.config.*.ts # Test configurations
+
+app/frontend/tests/
+├── components/        # Component tests
+├── setup.ts          # Test setup
+└── vitest.config.ts  # Frontend test config
+```
+
+### Test Tiers
+
+1. **Smoke Tests** (~10s): Critical path validation
+2. **Unit Tests** (~30s): Business logic, validation, utilities
+3. **Integration Tests** (~2min): IPC handlers, database operations, plugin system
+4. **E2E Tests** (~5min): Full workflows with mocked external services
+
+### Test Types
+
+#### 1. Contract Tests
+
+**Purpose**: Prevent breaking changes to data contracts between layers
+
+**Files**:
+- `tests/contracts/ipc-contracts.spec.ts` - IPC payload schemas
+- `tests/contracts/database-schema.spec.ts` - Database schema integrity
+- `tests/contracts/plugin-contracts.spec.ts` - Plugin interface implementations
+- `tests/contracts/renderer-main-contracts.spec.ts` - Renderer-main communication
+
+**Key Validations**:
+- IPC handler signatures match renderer expectations
+- Database schema matches TypeScript interfaces
+- Plugin implementations satisfy required contracts
+- Time/date format consistency across layers
+
+#### 2. Unit Tests
+
+**Purpose**: Protect critical business rules from modification
+
+**Files**:
+- `tests/unit/validation-rules.spec.ts` - All validation logic
+- `tests/unit/dropdown-cascading.spec.ts` - Dropdown dependency rules
+- `tests/unit/quarter-validation.spec.ts` - Quarter availability logic
+- `tests/unit/time-normalization.spec.ts` - Time format conversions
+- `tests/unit/date-normalization.spec.ts` - Date format conversions
+
+**Critical Rules Tested**:
+- Date validation (mm/dd/yyyy format, valid dates, quarter availability)
+- Time validation (HH:MM or numeric, 15-minute increments)
+- Time out > time in validation
+- Project → Tool → ChargeCode cascading
+- Required field validation
+- Database constraints
+
+#### 3. Integration Tests
+
+**Purpose**: Validate layer interactions and workflows
+
+**Files**:
+- `tests/ipc-handlers-comprehensive.spec.ts` - IPC communication
+- `tests/ipc-workflow-integration.spec.ts` - Full workflows
+- `tests/database.spec.ts` - Database operations
+- `tests/timesheet_submission_integration.spec.ts` - E2E submission
+
+**Test Patterns**:
+
+```typescript
+// Lifecycle testing
 describe('Browser Lifecycle', () => {
   it('validates start() initializes browser', async () => {
     await orchestrator.start();
@@ -1095,36 +1333,286 @@ describe('Browser Lifecycle', () => {
   it('validates operations fail without start()', async () => {
     await expect(orchestrator.run_automation()).rejects.toThrow();
   });
-  
-  it('validates close() cleans up resources', async () => {
-    await orchestrator.start();
-    await orchestrator.close();
-    expect(orchestrator.browser).toBeNull();
-  });
 });
-```
 
-#### Integration Testing
-
-```typescript
+// Integration testing
 it('validates complete timesheet submission workflow', async () => {
-  // 1. Insert draft data
   await window.timesheet.saveDraft(draftEntry);
-  
-  // 2. Submit via IPC
   const result = await window.timesheet.submitTimesheet(rows);
-  
-  // 3. Verify database state
   const remaining = await window.timesheet.getPendingDrafts();
   expect(remaining).toHaveLength(0);
 });
 ```
 
-### Test Coverage Goals
+#### 4. Smoke Tests
 
-- **Critical paths**: >80%
-- **Execution time**: <5 minutes
-- **Flakiness rate**: <1%
+**Purpose**: Fast validation for CI/CD pipeline
+
+**File**: `tests/smoke/critical-paths.spec.ts`
+
+**Critical Paths** (must complete in <10s):
+- Application launches without errors
+- Database schema initializes correctly
+- IPC handlers register successfully
+- TimesheetGrid renders with blank row
+- Basic validation rules work
+- Save/load draft IPC calls succeed
+
+### Running Tests
+
+```bash
+# All tests
+npm test
+
+# Specific test types
+npm run test:smoke          # Smoke tests only
+npm run test:unit           # Unit tests only
+npm run test:integration    # Integration tests only
+npm run test:e2e            # E2E tests only
+npm run test:contracts      # Contract tests only
+
+# Development
+npm run test:watch          # Watch mode
+npm test -- database.spec.ts  # Specific suite
+npm test -- --coverage      # With coverage
+```
+
+### Test Infrastructure
+
+**Files**:
+- `tests/fixtures/timesheet-data.ts` - Reusable test data
+- `tests/fixtures/in-memory-db-mock.ts` - In-memory database for tests
+- `tests/helpers/test-builders.ts` - Builder pattern for test data
+- `tests/helpers/markdown-reporter.ts` - Test result reporting
+- `tests/vitest.config.smoke.ts` - Smoke test configuration
+- `tests/vitest.config.integration.ts` - Integration test configuration
+- `tests/vitest.config.e2e.ts` - E2E test configuration
+
+### AI Regression Protection
+
+The test suite is designed to prevent AI-induced regressions:
+
+1. **Contract Guards**: Schema and interface validation
+2. **Business Rule Guards**: Validation matrix testing
+3. **Data Integrity Guards**: Round-trip testing
+4. **UI Behavior Guards**: Event handler verification
+
+### Success Metrics
+
+- **Contract Tests**: 100% coverage of all interfaces and schemas
+- **Business Logic**: 100% coverage of validation and cascading rules
+- **Component Tests**: 90%+ coverage of UI components
+- **Integration Tests**: All critical workflows covered
+- **E2E Tests**: All user journeys covered
+- **Smoke Tests**: Complete in <10 seconds
+- **Full Suite**: Complete in <8 minutes
+
+### CI/CD Integration
+
+```yaml
+# Smoke tests run on every commit
+- run: npm run test:smoke
+
+# Full test suite on PRs
+- run: npm run test:all
+```
+
+### Best Practices
+
+1. Always run smoke tests before committing
+2. Update test data when business rules change
+3. Add new tests for any new business logic
+4. Keep test execution times within limits
+5. Use descriptive test names and assertions
+6. Mock external dependencies appropriately
+7. Validate both success and failure scenarios
+
+---
+
+## Dependency Validation
+
+### Overview
+
+The dependency validation system catches missing or misplaced dependencies **before** running a full build, saving time by identifying issues early rather than discovering them one-by-one during the build process.
+
+### Quick Start
+
+#### Run Validation
+
+```bash
+# Manual validation
+npm run validate:deps
+
+# Automatic validation (runs before build)
+npm run build          # Validates first, then builds
+npm run build:dir      # Validates first, then builds to directory
+```
+
+#### Skip Validation (Not Recommended)
+
+```bash
+npm run build:main && npm run build:renderer && npm run build:bot && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder
+```
+
+### What Gets Checked
+
+| Check | Description | Fix |
+|-------|-------------|-----|
+| **Dependency Locations** | All deps in correct node_modules | `npm install` |
+| **Native Modules** | better-sqlite3 rebuilt for Electron | `npm run rebuild` |
+| **Peer Dependencies** | electron-log available for shared package | `npm install` |
+| **Shared Package** | Workspace links configured | Verify package.json |
+| **Build Output** | Compiled files exist | `npm run build:main/renderer/bot` |
+| **Builder Config** | electron-builder patterns valid | Check package.json build section |
+
+### Understanding Workspace Hoisting
+
+This project uses **npm workspaces**, which automatically hoists shared dependencies to the root `node_modules/` for optimization. This is **normal and expected** behavior.
+
+```text
+✅ electron-log hoisted to root (workspace optimization)
+✅ better-sqlite3 hoisted to root (workspace optimization)
+```
+
+**This is SUCCESS, not a warning!** No action needed.
+
+**Why this matters:** Electron-builder includes both root and workspace node_modules patterns, so hoisted dependencies are bundled correctly.
+
+### Dependency Locations
+
+- **Root dependencies**: Hoisted to root `node_modules/` (workspace optimization)
+- **Backend dependencies**: In `app/backend/node_modules/` or hoisted to root
+- **Bot service dependencies**: In `app/backend/src/services/bot/node_modules/`
+
+### Native Modules
+
+Native Node.js modules must be rebuilt for Electron:
+
+```bash
+# Rebuild native modules
+npm run rebuild
+```
+
+**Why this matters:** Native modules compiled for Node.js have different ABIs than Electron. Using non-rebuilt modules causes crashes like "Module version mismatch".
+
+### Understanding Output
+
+#### Success (Green ✅)
+
+```text
+✅ better-sqlite3 found at root level
+✅ electron-log hoisted to root (workspace optimization)
+✅ playwright found in bot service node_modules
+✅ Main entry point (main.js) exists
+```
+
+Everything is correct. Continue with build.
+
+#### Warning (Yellow ⚠️)
+
+```text
+⚠️ WARNING: playwright found in backend but should be in bot service node_modules
+⚠️ WARNING: Build directory does not exist yet. Run `npm run build:main` first.
+```
+
+Not critical, but may indicate issues. Review and decide if action is needed.
+
+#### Error (Red ❌)
+
+```text
+❌ ERROR: better-sqlite3 not found in backend or root node_modules
+❌ ERROR: better-sqlite3 exists but is not rebuilt for Electron. Run: npm run rebuild
+❌ ERROR: Main entry point (build/dist/backend/src/main.js) does not exist
+```
+
+Critical issues that will cause build failures. Must be fixed before building.
+
+### Common Scenarios
+
+#### Fresh Clone
+
+```bash
+git clone <repo>
+cd sheetpilot
+npm install
+npm run validate:deps
+```
+
+**Expected warnings:**
+- Build directory does not exist (run `npm run build:main`)
+- Frontend not built (run `npm run build:renderer`)
+- Bot service not built (run `npm run build:bot`)
+
+**These are normal.** Run the build commands or just run `npm run build`.
+
+#### After Adding New Dependency
+
+```bash
+# Add dependency to correct location
+npm install --workspace=@sheetpilot/backend <package>
+
+# Or for bot service
+cd app/backend/src/services/bot
+npm install <package>
+
+# Validate it's in the right place
+npm run validate:deps
+```
+
+#### Native Module Issues
+
+```bash
+# If you see: "better-sqlite3 not rebuilt for Electron"
+npm run rebuild
+npm run validate:deps  # Should now pass
+```
+
+### Exit Codes
+
+- **0**: Validation passed (or warnings only)
+- **1**: Critical errors found - build will fail
+
+### CI/CD Integration
+
+```yaml
+# .github/workflows/build.yml
+- name: Install dependencies
+  run: npm install
+
+- name: Validate dependencies
+  run: npm run validate:deps
+
+- name: Build application
+  run: npm run build
+```
+
+This ensures builds fail fast with clear error messages rather than obscure bundling errors.
+
+### Performance
+
+- Typical runtime: 2-5 seconds
+- No network requests (uses local files only)
+- Safe to run frequently
+
+### When to Run
+
+✅ **Run validation:**
+- Before first build after cloning
+- After adding new dependencies
+- After npm install/update
+- Before committing build config changes
+- When build fails with dependency errors
+
+❌ **Skip for:**
+- Every code change (only run when dependencies change)
+
+### Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| Validation script fails | Ensure running from project root |
+| False positives | Run `npm install` to ensure all deps installed |
+| Performance slow | Large node_modules slow checks, consider skipping npm audit |
 
 ---
 
@@ -1138,9 +1626,11 @@ npm run clean
 
 # 2. Install dependencies (if needed)
 npm install
-cd src/renderer && npm install && cd ../..
 
-# 3. Build the application
+# 3. Validate dependencies (optional, runs automatically)
+npm run validate:deps
+
+# 4. Build the application
 npm run build
 ```
 
@@ -1370,16 +1860,21 @@ npm run clean        # Clean build artifacts
 | 1.0 | 2025-10-08 | Initial consolidated wiki |
 | 1.1 | 2025-10-20 | Added Handsontable sorting configuration documentation |
 | 2.0 | 2025-10-22 | Comprehensive consolidation: Updated auto-updates (GitHub), added plugin architecture, expanded logging system, added Sophos configuration |
+| 3.0 | 2025-11-03 | Final consolidation: Added Error Handling, expanded Testing Strategy, added Dependency Validation sections |
 
 **Consolidated from**:
 
 - AUTO_UPDATER.md
+- DEPENDENCY_VALIDATION.md
+- DEPENDENCY_VALIDATION_QUICKREF.md
+- ERROR_HANDLING_GUIDE.md
 - HANDSONTABLE_REQUIREMENTS.md
 - IMPLEMENTATION_SUMMARY.md (Plugin Architecture)
 - LOGGING_IMPROVEMENTS.md
 - PERFORMANCE_OPTIMIZATION_SUMMARY.md
 - PLUGIN_ARCHITECTURE_PROGRESS.md
 - SOPHOS_CONFIGURATION.md
+- TESTING_STRATEGY.md
 - TIMESHEET_FIXES_DOCUMENTATION.md
 
 **Maintained by**: Development Team

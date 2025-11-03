@@ -70,6 +70,7 @@ vi.mock('electron', () => {
     app: {
       getPath: vi.fn((key: string) => (key === 'userData' ? 'C:/tmp/sheetpilot-userdata' : 'C:/tmp')),
       getAppPath: vi.fn(() => 'C:\\Local\\Sheetpilot'),
+      getVersion: vi.fn(() => '1.3.6'),
       isPackaged: false,
       whenReady: vi.fn(() => ({
         then: (_callback: () => void) => {
@@ -79,7 +80,8 @@ vi.mock('electron', () => {
         catch: () => Promise.resolve()
       })),
       on: vi.fn(),
-      quit: vi.fn()
+      quit: vi.fn(),
+      exit: vi.fn()
     },
     screen: {
       getPrimaryDisplay: vi.fn(() => ({
@@ -124,6 +126,18 @@ vi.mock('../src/services/database', () => {
     setDbPath: vi.fn(),
     ensureSchema: vi.fn(),
     getDbPath: vi.fn(() => 'C:/tmp/sheetpilot.sqlite'),
+    getDb: vi.fn(() => mockDbInstance),
+    createSession: vi.fn(() => 'mock-session-token'),
+    validateSession: vi.fn((token: string) => {
+      if (token === 'valid-token' || token === 'mock-session-token') {
+        return { valid: true, email: 'user@test.com', isAdmin: false };
+      }
+      return { valid: false };
+    }),
+    clearSession: vi.fn(),
+    clearUserSessions: vi.fn(),
+    clearAllCredentials: vi.fn(),
+    rebuildDatabase: vi.fn(),
     storeCredentials: vi.fn(),
     getCredentials: vi.fn(),
     listCredentials: vi.fn(),
@@ -147,7 +161,7 @@ vi.mock('../src/services/timesheet_importer', () => ({
 }));
 
 // Mock logger
-vi.mock('../src/shared/logger', () => ({
+vi.mock('../../shared/logger', () => ({
   initializeLogging: vi.fn(),
   appLogger: {
     info: vi.fn(),
@@ -189,6 +203,7 @@ import * as imp from '../src/services/timesheet_importer';
 type VMock = ReturnType<typeof vi.fn>;
 const mdb = db as unknown as {
   openDb: VMock;
+  getDb: VMock;
   setDbPath: VMock;
   ensureSchema: VMock;
   getDbPath: VMock;
@@ -224,8 +239,9 @@ describe('IPC Handlers Comprehensive Tests', () => {
     mockDbInstance.exec = vi.fn();
     mockDbInstance.close = vi.fn();
     
-    // Re-setup openDb mock to return mockDbInstance
+    // Re-setup openDb and getDb mocks to return mockDbInstance
     mdb.openDb.mockImplementation(() => mockDbInstance);
+    mdb.getDb.mockImplementation(() => mockDbInstance);
     
     // Setup handlers for testing
     if (!globalThis.__test_handlers) {
@@ -407,7 +423,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
         get: vi.fn(() => ({}))
       });
 
-      const result = await handlers['database:getAllTimesheetEntries']();
+      const result = await handlers['database:getAllTimesheetEntries']('valid-token');
       
       expect(result.success).toBe(true);
       expect(result.entries).toEqual(mockEntries);
@@ -420,7 +436,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
         get: vi.fn(() => ({}))
       });
 
-      const result = await handlers['database:getAllTimesheetEntries']();
+      const result = await handlers['database:getAllTimesheetEntries']('valid-token');
       
       expect(result.success).toBe(true);
       expect(result.entries).toEqual([]);
@@ -431,7 +447,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
         throw new Error('Database connection failed');
       });
 
-      const result = await handlers['database:getAllTimesheetEntries']();
+      const result = await handlers['database:getAllTimesheetEntries']('valid-token');
       
       expect(result.success).toBe(false);
       expect(result.error).toContain('Database connection failed');
@@ -510,7 +526,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
         exec: vi.fn(),
         close: vi.fn()
       };
-      mdb.openDb.mockReturnValue(mockDb);
+      mdb.getDb.mockReturnValue(mockDb);
 
       const result = await handlers['database:clearDatabase']();
       
@@ -518,7 +534,6 @@ describe('IPC Handlers Comprehensive Tests', () => {
       expect(result.message).toBe('Database cleared successfully');
       expect(mockDb.exec).toHaveBeenCalledWith('DELETE FROM timesheet');
       expect(mockDb.exec).toHaveBeenCalledWith('DELETE FROM credentials');
-      expect(mockDb.close).toHaveBeenCalled();
     });
 
     it('should handle clear database errors', async () => {
@@ -528,7 +543,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
         }),
         close: vi.fn()
       };
-      mdb.openDb.mockReturnValue(mockDb);
+      mdb.getDb.mockReturnValue(mockDb);
 
       const result = await handlers['database:clearDatabase']();
       
@@ -591,19 +606,22 @@ describe('IPC Handlers Comprehensive Tests', () => {
       expect(result.error).toContain('Invalid time format');
     });
 
-    it('should validate quarter constraints', async () => {
-      const invalidRow = {
-        date: '2024-01-15', // Different quarter (Q1 2024 vs Q4 2025)
+    it('should allow dates from any quarter (validation happens at submission)', async () => {
+      // Quarter validation was intentionally removed from saveDraft
+      // It now happens during submission routing to allow historical data entry
+      const historicalRow = {
+        date: '2024-01-15', // Different quarter (Q1 2024)
         timeIn: '09:00',
         timeOut: '17:00',
         project: 'Test Project',
         taskDescription: 'Test task'
       };
 
-      const result = await handlers['timesheet:saveDraft'](invalidRow);
+      const result = await handlers['timesheet:saveDraft'](historicalRow);
       
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('not in the current quarter');
+      // Should succeed - quarter validation is deferred to submission
+      expect(result.success).toBe(true);
+      expect(result.changes).toBeGreaterThanOrEqual(0);
     });
 
     it('should handle duplicate entries', async () => {
@@ -793,7 +811,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
         removedCount: 0
       });
 
-      const result = await handlers['timesheet:submit']();
+      const result = await handlers['timesheet:submit']('valid-token');
       
       expect(result.submitResult.ok).toBe(true);
       expect(result.submitResult.successCount).toBe(2);
@@ -803,7 +821,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
     it('should handle missing credentials', async () => {
       mdb.getCredentials.mockReturnValue(null);
 
-      const result = await handlers['timesheet:submit']();
+      const result = await handlers['timesheet:submit']('valid-token');
       
       expect(result.error).toContain('credentials not found');
       expect(mimps.submitTimesheets).not.toHaveBeenCalled();
@@ -823,7 +841,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
         removedCount: 2
       });
 
-      const result = await handlers['timesheet:submit']();
+      const result = await handlers['timesheet:submit']('valid-token');
       
       expect(result.submitResult.ok).toBe(false);
       expect(result.submitResult.successCount).toBe(0);

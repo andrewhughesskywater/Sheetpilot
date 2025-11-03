@@ -1,17 +1,31 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
+import fs from 'fs'
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => ({
-  plugins: [react()],
+  plugins: [
+    react(),
+    // Copy icon.ico to dist root for electron-builder
+    {
+      name: 'copy-icon',
+      closeBundle() {
+        const iconSrc = path.resolve(__dirname, '../assets/images/icon.ico');
+        const iconDest = path.resolve(__dirname, '../../dist/icon.ico');
+        if (fs.existsSync(iconSrc)) {
+          fs.copyFileSync(iconSrc, iconDest);
+        }
+      }
+    }
+  ],
   base: './', // Use relative paths for assets in production builds
   resolve: {
     alias: {
       '/fonts': path.resolve(__dirname, 'assets/fonts'),
     },
   },
-  assetsInclude: ['**/*.ttf', '**/*.woff', '**/*.woff2'],
+  assetsInclude: ['**/*.ttf', '**/*.woff', '**/*.woff2', '**/*.ico'],
   build: {
     rollupOptions: {
       output: {

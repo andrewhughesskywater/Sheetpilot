@@ -11,7 +11,8 @@ import {
     insertTimesheetEntry, 
     getPendingTimesheetEntries,
     setDbPath,
-    openDb
+    openDb,
+    closeConnection
 } from '../src/services/database';
 import { submitTimesheets } from '../src/services/timesheet_importer';
 import * as fs from 'fs';
@@ -29,6 +30,7 @@ describe('IPC Workflow Integration', () => {
     });
     
     afterEach(() => {
+        closeConnection();
         if (fs.existsSync(testDbPath)) {
             fs.unlinkSync(testDbPath);
         }

@@ -12,7 +12,8 @@ import {
     getPendingTimesheetEntries,
     markTimesheetEntriesAsSubmitted,
     removeFailedTimesheetEntries,
-    setDbPath
+    setDbPath,
+    closeConnection
 } from '../src/services/database';
 import { submitTimesheets, getPendingEntries } from '../src/services/timesheet_importer';
 import * as fs from 'fs';
@@ -33,6 +34,7 @@ describe('Timesheet Submission Integration', () => {
     
     afterEach(() => {
         // Clean up test database
+        closeConnection();
         if (fs.existsSync(testDbPath)) {
             fs.unlinkSync(testDbPath);
         }

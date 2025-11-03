@@ -15,14 +15,17 @@
     "rebuild": "npx @electron/rebuild -f -w better-sqlite3",
     "electron:compiled": "npm run pre-rebuild && npm run rebuild && cross-env NODE_PATH=app/backend/node_modules:node_modules electron build/dist/backend/src/main.js",
     "sync-version": "node scripts/sync-version.js",
+    "verify": "node scripts/verify-tslib.js",
+    "validate:deps": "node scripts/validate-dependencies.js",
+    "copy-icon": "powershell -NoProfile -Command \"Copy-Item 'app/frontend/src/assets/images/icon.ico' -Destination 'build/icon.ico' -Force\"",
+    "prebuild": "npm run validate:deps && npm run copy-icon",
     "build:main": "npm run sync-version && tsc -p tsconfig.build-main.json",
     "vite": "npm run -w @sheetpilot/frontend dev",
     "dev": "concurrently -k -n VITE,ELECTRON -c auto \"npm:vite\" \"wait-on tcp:5173 && npm run build:main && cross-env ELECTRON_IS_DEV=1 npm run electron:compiled\"",
-    "dev:hot": "concurrently -k -n VITE,ELECTRON -c auto \"npm:vite\" \"wait-on tcp:5173 && npm run build:main && cross-env ELECTRON_IS_DEV=1 npm run dev:main\"",
-    "dev:main": "nodemon --watch app/backend/src/main.ts --watch app/backend/src/preload.ts --exec \"npm run build:main && cross-env ELECTRON_IS_DEV=1 NODE_PATH=app/backend/node_modules;node_modules electron build/dist/backend/src/main.js\"",
     "build:renderer": "npm run -w @sheetpilot/frontend build",
     "build:bot": "cd app/backend/src/services/bot && npm run build",
     "build": "npm run build:main && npm run build:renderer && npm run build:bot && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder",
+    "build:dir": "npm run build:main && npm run build:renderer && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --dir",
     "type-check": "npm run type-check:root && npm run type-check:frontend",
     "type-check:root": "tsc --noEmit --project tsconfig.typecheck.json",
     "type-check:frontend": "npm run -w @sheetpilot/frontend typecheck",
@@ -37,18 +40,14 @@
     "test:blank-screen": "npm run -w @sheetpilot/frontend test:run -- --config ../tests/vitest.config.blank-screen-prevention.ts",
     "test:renderer": "npm run -w @sheetpilot/frontend test:run",
     "test:bot": "cd app/backend/src/services/bot && npm run test",
-    "install:backend": "npm i -w @sheetpilot/backend",
-    "install:frontend": "npm i -w @sheetpilot/frontend",
-    "clean": "rimraf build/dist && cd app/backend/src/services/bot && npm run clean",
-    "ci:smoke": "npm run build:main && npm run build:renderer && cross-env SMOKE_PACKAGED=1 ELECTRON_IS_DEV=0 node_modules/.bin/electron build/dist/backend/src/main.js",
-    "build:dir": "npm run build:main && npm run build:renderer && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --dir",
-    "ci:dir": "npm run build:dir && node scripts/ci-dir.js"
+    "clean": "rimraf build/dist && cd app/backend/src/services/bot && npm run clean"
   },
   "dependencies": {
     "better-sqlite3": "^12.4.1",
     "electron-log": "^5.4.3",
     "electron-updater": "^6.6.2",
-    "xlsx": "^0.18.5"
+    "tslib": "^2.8.1",
+    "playwright": "^1.56.1"
   },
   "devDependencies": {
     "@types/node": "^24.5.2",
@@ -72,6 +71,7 @@
     },
     "files": [
       "build/dist/backend/**/*",
+      "build/dist/shared/**/*",
       "app/backend/node_modules/**/*",
       "!app/backend/node_modules/*/{test,tests,__tests__}/**",
       "!app/backend/node_modules/*/{*.md,*.txt,LICENSE*,CHANGELOG*,README*,HISTORY*}",
@@ -80,7 +80,8 @@
       "!app/backend/node_modules/*/{example,examples,docs,doc}/**",
       "node_modules/tslib/**/*",
       "app/frontend/dist/**/*",
-      "package.json"
+      "package.json",
+      "plugin-config.json"
     ],
     "asarUnpack": [
       "**/node_modules/better-sqlite3/**/*"
@@ -89,7 +90,7 @@
       "main": "build/dist/backend/src/main.js"
     },
     "win": {
-      "icon": "app/frontend/src/assets/images/icon.ico",
+      "icon": "build/icon.ico",
       "forceCodeSigning": false,
       "signAndEditExecutable": false
     }

@@ -48,8 +48,11 @@ vi.mock('electron', () => {
 
   const ipcMain = {
     handle: vi.fn((channel: string, fn: (...args: unknown[]) => unknown) => {
-      // Store handlers in global scope
-      (globalThis.__test_handlers as Record<string, (...args: unknown[]) => unknown>)[channel] = fn;
+      // Wrap handler to skip the event parameter when called from tests
+      (globalThis.__test_handlers as Record<string, (...args: unknown[]) => unknown>)[channel] = async (...args: unknown[]) => {
+        // Call the actual handler with null event and the provided args
+        return fn(null, ...args);
+      };
       return undefined;
     }),
     on: vi.fn(),
@@ -69,6 +72,7 @@ vi.mock('electron', () => {
     isPackaged: false,
     getPath: vi.fn((key: string) => (key === 'userData' ? 'C:/tmp/sheetpilot-userdata' : 'C:/tmp')),
     getAppPath: vi.fn(() => 'C:\\Local\\Sheetpilot'),
+    getVersion: vi.fn(() => '1.3.6'),
     // Make whenReady return a thenable that immediately executes the callback
     whenReady: vi.fn(() => ({
       then: (callback: () => void) => {
@@ -79,7 +83,8 @@ vi.mock('electron', () => {
       catch: () => Promise.resolve()
     })),
     on: vi.fn(),
-    quit: vi.fn()
+    quit: vi.fn(),
+    exit: vi.fn()
   };
 
   const screen = {
@@ -93,19 +98,33 @@ vi.mock('electron', () => {
 
 // Mock backend modules used by main.ts
 vi.mock('../src/services/database', () => {
+  const mockDb = {
+    prepare: vi.fn(() => ({ all: vi.fn(() => []), get: vi.fn(() => ({})), run: vi.fn(() => ({ changes: 1 })) })),
+    exec: vi.fn(),
+    close: vi.fn()
+  };
+  
   return {
     setDbPath: vi.fn(),
     ensureSchema: vi.fn(),
     getDbPath: vi.fn(() => 'C:/tmp/sheetpilot.sqlite'),
+    getDb: vi.fn(() => mockDb),
+    createSession: vi.fn(() => 'mock-session-token'),
+    validateSession: vi.fn((token: string) => {
+      if (token === 'valid-token' || token === 'mock-session-token') {
+        return { valid: true, email: 'user@test', isAdmin: false };
+      }
+      return { valid: false };
+    }),
+    clearSession: vi.fn(),
+    clearUserSessions: vi.fn(),
+    clearAllCredentials: vi.fn(),
+    rebuildDatabase: vi.fn(),
     storeCredentials: vi.fn(),
     getCredentials: vi.fn(() => null),
     listCredentials: vi.fn(() => []),
     deleteCredentials: vi.fn(),
-    openDb: vi.fn(() => ({
-      prepare: vi.fn(() => ({ all: vi.fn(() => []), get: vi.fn(() => ({})) })),
-      exec: vi.fn(),
-      close: vi.fn()
-    }))
+    openDb: vi.fn(() => mockDb)
   };
 });
 
@@ -116,7 +135,7 @@ vi.mock('../src/services/timesheet_importer', () => {
 });
 
 // Mock the logger module to prevent electron initialization issues
-vi.mock('../src/shared/logger', () => {
+vi.mock('../../shared/logger', () => {
   const createMockLogger = () => ({
     info: vi.fn(),
     warn: vi.fn(),
@@ -125,6 +144,7 @@ vi.mock('../src/shared/logger', () => {
     verbose: vi.fn(),
     silly: vi.fn(),
     audit: vi.fn(),
+    security: vi.fn(),
     startTimer: vi.fn(() => ({ done: vi.fn() }))
   });
   
@@ -165,13 +185,13 @@ describe('Electron IPC Handlers (main.ts)', () => {
 
   it('timesheet:submit returns error if credentials missing', async () => {
     (db as { getCredentials: { mockReturnValue: (value: unknown) => void } }).getCredentials.mockReturnValue(null);
-    const res = await handlers['timesheet:submit']();
-    expect(res.error).toMatch(/credentials not found/i);
+    const res = await handlers['timesheet:submit']('valid-token');
+    expect(res.error).toContain('credentials not found');
   });
 
   it('timesheet:submit submits with stored credentials', async () => {
     (db as { getCredentials: { mockReturnValue: (value: unknown) => void } }).getCredentials.mockReturnValue({ email: 'user@test', password: 'pw' });
-    const res = await handlers['timesheet:submit']();
+    const res = await handlers['timesheet:submit']('valid-token');
     expect(mimps.submitTimesheets).toHaveBeenCalledWith('user@test', 'pw');
     expect(res.submitResult?.ok).toBe(true);
   });

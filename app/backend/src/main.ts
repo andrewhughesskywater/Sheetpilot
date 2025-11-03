@@ -83,7 +83,10 @@ const PACKAGED_LIKE = app.isPackaged || IS_SMOKE;
 import { registerDefaultPlugins } from './middleware/bootstrap-plugins';
 
 // Lazy-load electron-updater AFTER module paths are configured
-const { autoUpdater } = require('electron-updater') as typeof import('electron-updater');
+// Skip loading during tests to avoid initialization issues
+const { autoUpdater } = (process.env['VITEST'] === 'true' 
+  ? { autoUpdater: null as unknown as typeof import('electron-updater').autoUpdater }
+  : require('electron-updater')) as typeof import('electron-updater');
 
 // Preflight: verify critical modules resolve before loading heavy subsystems
 function preflightResolve(): void {
@@ -106,7 +109,18 @@ function preflightResolve(): void {
 preflightResolve();
 
 // Now import the real logger after preflight passes
-({ initializeLogging, appLogger, dbLogger, ipcLogger } = require('../../shared/logger'));
+// In test mode, use placeholder loggers that will be mocked
+if (process.env['VITEST'] === 'true') {
+  const mockLogger = () => ({ info: () => {}, warn: () => {}, error: () => {}, debug: () => {}, verbose: () => {}, silly: () => {}, audit: () => {}, security: () => {}, startTimer: () => ({ done: () => {} }) });
+  ({ initializeLogging, appLogger, dbLogger, ipcLogger } = {
+    initializeLogging: () => {},
+    appLogger: mockLogger(),
+    dbLogger: mockLogger(),
+    ipcLogger: mockLogger()
+  } as any);
+} else {
+  ({ initializeLogging, appLogger, dbLogger, ipcLogger } = require('../../shared/logger'));
+}
 function parseTimeToMinutes(timeStr: string): number {
   const parts = timeStr.split(':');
   if (parts.length !== 2 || !parts[0] || !parts[1]) {
@@ -270,6 +284,11 @@ process.on('rejectionHandled', () => {
 
 // Configure auto-updater
 function configureAutoUpdater() {
+  // Skip auto-updater configuration in test mode
+  if (!autoUpdater || process.env['VITEST'] === 'true') {
+    return;
+  }
+  
   // Keep manual control of downloads to show UI before downloading
   autoUpdater.autoDownload = false;
   
@@ -376,6 +395,11 @@ function checkForUpdates() {
 
   // On Windows, skip update check on first run due to Squirrel.Windows file lock
   // See: https://github.com/electron/electron/issues/7155
+  // Skip update checks in test mode
+  if (!autoUpdater || process.env['VITEST'] === 'true') {
+    return;
+  }
+  
   if (process.platform === 'win32' && process.argv.includes('--squirrel-firstrun')) {
     appLogger.info('Skipping update check on first run (Squirrel.Windows file lock)');
     // Schedule update check for 10 seconds later when file lock is released
@@ -424,12 +448,18 @@ async function bootstrapDatabaseAsync() {
 function createWindow() {
   const windowState = getWindowState();
   
+  // Determine icon path for both dev and production
+  const iconPath = PACKAGED_LIKE
+    ? path.join(process.resourcesPath, 'app.asar', 'app', 'frontend', 'dist', 'icon.ico')
+    : path.join(__dirname, '..', '..', '..', '..', 'app', 'frontend', 'src', 'assets', 'images', 'icon.ico');
+
   const windowOptions: Electron.BrowserWindowConstructorOptions = {
     width: windowState.width,
     height: windowState.height,
     show: false, // Don't show until ready
     backgroundColor: '#ffffff', // Prevent white flash
     autoHideMenuBar: true, // Hide the menu bar
+    icon: iconPath, // Application icon
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'), // Compiled preload script
       contextIsolation: true,
@@ -546,6 +576,11 @@ function createWindow() {
 
  function createSplashWindow(hash: string = '#splash') {
   // Small, centered window; keep invisible menu, minimal chrome
+  // Determine icon path for both dev and production
+  const iconPath = PACKAGED_LIKE
+    ? path.join(process.resourcesPath, 'app.asar', 'app', 'frontend', 'dist', 'icon.ico')
+    : path.join(__dirname, '..', '..', '..', '..', 'app', 'frontend', 'src', 'assets', 'images', 'icon.ico');
+
    const options: Electron.BrowserWindowConstructorOptions = {
     width: 500,
     height: 420,
@@ -556,6 +591,7 @@ function createWindow() {
     show: false,
     backgroundColor: '#ffffff',
     autoHideMenuBar: true,
+    icon: iconPath, // Application icon
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -1461,17 +1497,19 @@ export function registerIPCHandlers() {
 
   // If we showed a non-finalize splash in production but no update is available, we will close it
   // on the 'update-not-available' event by showing main. Hook that here by listening once.
-  autoUpdater.once('update-not-available', () => {
-    if (shouldShowSplash && !showedFinalizeSplash) {
-      showMainAndCloseSplash();
-    }
-  });
-  // On updater error, do not block the app
-  autoUpdater.once('error', () => {
-    if (shouldShowSplash && !showedFinalizeSplash) {
-      showMainAndCloseSplash();
-    }
-  });
+  if (autoUpdater && process.env['VITEST'] !== 'true') {
+    autoUpdater.once('update-not-available', () => {
+      if (shouldShowSplash && !showedFinalizeSplash) {
+        showMainAndCloseSplash();
+      }
+    });
+    // On updater error, do not block the app
+    autoUpdater.once('error', () => {
+      if (shouldShowSplash && !showedFinalizeSplash) {
+        showMainAndCloseSplash();
+      }
+    });
+  }
 }
 
 // Initialize app when running as main entry point
