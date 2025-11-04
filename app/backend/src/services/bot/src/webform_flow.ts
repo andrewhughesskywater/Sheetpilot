@@ -12,6 +12,9 @@
 import { chromium, Browser, BrowserContext, Page, Locator } from 'playwright';
 import * as cfg from './automation_config';
 import { botLogger } from '../../../../../shared/logger';
+import { app } from 'electron';
+import * as path from 'path';
+import * as fs from 'fs';
 
 /**
  * Error thrown when browser operations are attempted before initialization
@@ -89,6 +92,63 @@ export class WebformFiller {
   }
 
   /**
+   * Gets the path to the bundled Chromium executable
+   * @private
+   * @returns Path to the Chromium executable or undefined if not found
+   */
+  private getBundledBrowserPath(): string | undefined {
+    // Only use bundled browsers in packaged app
+    if (!app.isPackaged) {
+      botLogger.verbose('Running in development mode, using system Playwright browsers');
+      return undefined;
+    }
+
+    try {
+      // In packaged app, browsers are bundled in resources/app.asar.unpacked/build/playwright-browsers/
+      const resourcesPath = process.resourcesPath;
+      const browsersBasePath = path.join(resourcesPath, 'app.asar.unpacked', 'build', 'playwright-browsers');
+      
+      botLogger.verbose('Searching for bundled browsers', { browsersBasePath });
+
+      if (!fs.existsSync(browsersBasePath)) {
+        botLogger.warn('Bundled browsers directory not found', { browsersBasePath });
+        return undefined;
+      }
+
+      // Find chromium directory (e.g., chromium-1194)
+      const entries = fs.readdirSync(browsersBasePath);
+      const chromiumDir = entries.find(entry => entry.startsWith('chromium-'));
+
+      if (!chromiumDir) {
+        botLogger.warn('Chromium directory not found in bundled browsers', { browsersBasePath });
+        return undefined;
+      }
+
+      // Construct path to executable based on platform
+      let executablePath: string;
+      if (process.platform === 'win32') {
+        executablePath = path.join(browsersBasePath, chromiumDir, 'chrome-win', 'chrome.exe');
+      } else if (process.platform === 'darwin') {
+        executablePath = path.join(browsersBasePath, chromiumDir, 'chrome-mac', 'Chromium.app', 'Contents', 'MacOS', 'Chromium');
+      } else {
+        executablePath = path.join(browsersBasePath, chromiumDir, 'chrome-linux', 'chrome');
+      }
+
+      if (fs.existsSync(executablePath)) {
+        botLogger.info('Found bundled Chromium browser', { executablePath });
+        return executablePath;
+      } else {
+        botLogger.warn('Bundled Chromium executable not found', { executablePath });
+        return undefined;
+      }
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      botLogger.error('Error locating bundled browser', { error: err.message });
+      return undefined;
+    }
+  }
+
+  /**
    * Launches the configured browser type using bundled Chromium
    * Uses Playwright's bundled Chromium browser for consistent behavior across all systems
    * @private
@@ -123,8 +183,15 @@ export class WebformFiller {
       ]
     };
 
+    // Add bundled browser path if available (production mode)
+    const bundledBrowserPath = this.getBundledBrowserPath();
+    if (bundledBrowserPath) {
+      launchOptions.executablePath = bundledBrowserPath;
+      botLogger.verbose('Using bundled browser executable', { executablePath: bundledBrowserPath });
+    }
+
     try {
-      botLogger.verbose('Launching bundled Chromium', { headless: this.headless });
+      botLogger.verbose('Launching bundled Chromium', { headless: this.headless, isPackaged: app.isPackaged });
       // Launch bundled Chromium (no channel parameter = uses Playwright's bundled browser)
       this.browser = await chromium.launch(launchOptions);
       botLogger.info('Successfully launched bundled Chromium browser');
