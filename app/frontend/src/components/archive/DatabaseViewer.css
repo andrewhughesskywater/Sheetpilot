@@ -1,5 +1,28 @@
 /* DatabaseViewer Component Styles */
 
+.archive-page {
+  width: 100%;
+  max-width: 100%;
+  overflow: visible;
+}
+
+.archive-header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: var(--sp-space-6);
+  gap: var(--sp-space-4);
+}
+
+/* Footer container for export button below table */
+.archive-footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: var(--sp-space-6);
+  gap: var(--sp-space-4);
+}
+
 .loading-container {
   text-align: center;
   padding: var(--sp-space-6);
@@ -92,6 +115,13 @@
   border-radius: var(--md-sys-shape-corner-medium);
   background: var(--md-sys-color-surface-container-low);
   box-shadow: var(--md-sys-elevation-level1);
+  transition: transform var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-standard),
+              box-shadow var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-standard);
+}
+
+.grid-container:hover {
+  transform: translateY(-2px) scale(1.005);
+  box-shadow: var(--md-sys-elevation-level2);
 }
 
 .no-data-message {
@@ -101,6 +131,13 @@
   background: var(--md-sys-color-surface);
   border-radius: var(--md-sys-shape-corner-medium);
   border: 1px solid var(--md-sys-color-outline-variant);
+  transition: transform var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-standard),
+              box-shadow var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-standard);
+}
+
+.no-data-message:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--md-sys-elevation-level1);
 }
 
 /* Minimal Handsontable styling - let the theme drive appearance */
@@ -122,34 +159,8 @@
   --ht-row-cell-even-background-color: var(--md-sys-color-surface);
 }
 
-/* Essential archive-specific styling only */
-.handsontable td {
-  cursor: default;
-  -webkit-user-select: none;
-  user-select: none;
-}
-
-.handsontable .wtHolder {
-  cursor: default;
-}
-
-/* Fix row banding for read-only cells - multiple selectors for better coverage */
-.handsontable .htDimmed,
-.handsontable .htDimmed td,
-.handsontable td.htDimmed {
-  background-color: transparent !important;
-}
-
-/* Force row banding to work with read-only cells */
-.handsontable tbody tr:nth-child(odd) td {
-  background-color: var(--md-sys-color-surface-container-low) !important;
-}
-
-.handsontable tbody tr:nth-child(even) td {
-  background-color: var(--md-sys-color-surface) !important;
-}
-
 /* Error message styling */
 .archive-error-message {
   color: var(--md-sys-color-error);
 }
+

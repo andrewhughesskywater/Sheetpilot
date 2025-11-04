@@ -2,23 +2,94 @@ import { useState, useCallback, useMemo, useEffect, useRef, useImperativeHandle,
 import { HotTable } from '@handsontable/react-wrapper';
 import { registerAllModules } from 'handsontable/registry';
 import type { HotTableRef } from '@handsontable/react-wrapper';
-import { Button, CircularProgress, Alert } from '@mui/material';
+import { Alert } from '@mui/material';
 import { PlayArrow as PlayArrowIcon } from '@mui/icons-material';
 import 'handsontable/styles/handsontable.css';
 import 'handsontable/styles/ht-theme-horizon.css';
-import { useData } from '../contexts/DataContext';
-import { useSession } from '../contexts/SessionContext';
-import SaveStatusButton from './SaveStatusButton';
+import { useData } from '../../contexts/DataContext';
+import { useSession } from '../../contexts/SessionContext';
+import { StatusButton } from '../StatusButton';
 import './TimesheetGrid.css';
 import type { TimesheetRow } from './timesheet.schema';
-import { formatTimeInput, normalizeRowData } from './timesheet.schema';
+
+type ButtonStatus = 'neutral' | 'ready' | 'warning';
+import { formatTimeInput, normalizeRowData, isValidDate, isValidTime, hasTimeOverlapWithPreviousEntries } from './timesheet.schema';
 import { projects, chargeCodes, projectsWithoutTools, toolsWithoutCharges, getToolOptions, toolNeedsChargeCode, projectNeedsTools } from './timesheet.options';
 import { submitTimesheet } from './timesheet.submit';
-import { saveLocalBackup, batchSaveToDatabase as batchSaveToDatabaseUtil, deleteDraftRows, type SaveStatus } from './timesheet.persistence';
-import { validateField } from './timesheet.validation';
+import { saveLocalBackup, batchSaveToDatabase as batchSaveToDatabaseUtil, deleteDraftRows } from './timesheet.persistence';
 
 // Register all Handsontable modules
 registerAllModules();
+
+// Validator functions for Handsontable columns
+// These return true for valid, false for invalid
+// Note: Handsontable validators have access to 'this' context with row, col, and instance
+const dateValidator = (value: unknown): boolean => {
+  if (!value) return false;
+  return isValidDate(String(value));
+};
+
+const timeInValidator = function(this: any, value: unknown): boolean {
+  if (!value) return false;
+  if (!isValidTime(String(value))) return false;
+  
+  // Check for overlaps with previous entries
+  const allRows = this.instance.getSourceData() as TimesheetRow[];
+  const currentRow = allRows[this.row];
+  if (!currentRow) return true; // Can't validate without row data
+  
+  // Create updated row with the new timeIn value
+  const updatedRow = { ...currentRow, timeIn: String(value) };
+  const updatedRows = [...allRows];
+  updatedRows[this.row] = updatedRow;
+  
+  // Check for overlap
+  if (hasTimeOverlapWithPreviousEntries(this.row, updatedRows)) {
+    return false;
+  }
+  
+  return true;
+};
+
+const timeOutValidator = function(this: any, value: unknown, callback: (valid: boolean) => void): void {
+  if (!value) {
+    callback(false);
+    return;
+  }
+  if (!isValidTime(String(value))) {
+    callback(false);
+    return;
+  }
+  
+  // Check for overlaps with previous entries
+  const allRows = this.instance.getSourceData() as TimesheetRow[];
+  const currentRow = allRows[this.row];
+  if (!currentRow) {
+    callback(true); // Can't validate without row data
+    return;
+  }
+  
+  // Create updated row with the new timeOut value
+  const updatedRow = { ...currentRow, timeOut: String(value) };
+  const updatedRows = [...allRows];
+  updatedRows[this.row] = updatedRow;
+  
+  // Check for overlap
+  if (hasTimeOverlapWithPreviousEntries(this.row, updatedRows)) {
+    callback(false);
+    return;
+  }
+  
+  callback(true);
+};
+
+const projectValidator = (value: unknown): boolean => {
+  return !!value;
+};
+
+const taskDescriptionValidator = (value: unknown): boolean => {
+  return !!value;
+};
 
 interface TimesheetGridProps {
   onChange?: (rows: TimesheetRow[]) => void;
@@ -32,8 +103,6 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
   const hotTableRef = useRef<HotTableRef>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const isProcessingRef = useRef(false); // Synchronous guard against race conditions
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<SaveStatus>('local');
   const { token, isAdmin } = useSession();
   
   // Use preloaded data from context
@@ -79,22 +148,8 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
   // Batch save all complete rows to database (called on tab navigation or app close)
   // Also syncs database to remove orphaned rows not in Handsontable
   const batchSaveToDatabase = useCallback(async () => {
-    await batchSaveToDatabaseUtil(timesheetDraftData, setSaveStatus);
+    await batchSaveToDatabaseUtil(timesheetDraftData);
   }, [timesheetDraftData]);
-
-  // Manual save handler for button click
-  const handleManualSave = useCallback(async () => {
-    if (isSaving) return;
-    
-    window.logger?.userAction('manual-save-clicked');
-    setIsSaving(true);
-    
-    try {
-      await batchSaveToDatabase();
-    } finally {
-      setIsSaving(false);
-    }
-  }, [isSaving, batchSaveToDatabase]);
 
   // Expose batch save function to parent component via ref
   useImperativeHandle(ref, () => ({
@@ -107,6 +162,22 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
       // Synchronously save on unmount - this runs before the component is destroyed
       window.logger?.info('[TimesheetGrid] Component unmounting, triggering batch save');
       batchSaveToDatabase();
+    };
+  }, [batchSaveToDatabase]);
+
+  // Auto-save to database every 5 minutes
+  useEffect(() => {
+    const FIVE_MINUTES = 5 * 60 * 1000;
+    
+    window.logger?.info('[TimesheetGrid] Setting up 5-minute auto-save interval');
+    const intervalId = setInterval(() => {
+      window.logger?.info('[TimesheetGrid] 5-minute interval triggered, saving to database');
+      batchSaveToDatabase();
+    }, FIVE_MINUTES);
+
+    return () => {
+      window.logger?.info('[TimesheetGrid] Clearing 5-minute auto-save interval');
+      clearInterval(intervalId);
     };
   }, [batchSaveToDatabase]);
 
@@ -162,7 +233,6 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
     setTimesheetDraftData(normalized);
     onChange?.(normalized);
     saveLocalBackup(normalized);
-    setSaveStatus('local');
   }, [timesheetDraftData, setTimesheetDraftData, onChange]);
 
   // Persist row removal to database
@@ -204,19 +274,6 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
     saveLocalBackup(hotData);
     onChange?.(hotData);
   }, [timesheetDraftData, setTimesheetDraftData, onChange]);
-
-  // Validation hooks
-  const handleBeforeValidate = useCallback((value: unknown, row: number, prop: string | number) => {
-    const errorMessage = validateField(value, row, prop, timesheetDraftData);
-    return errorMessage || value;
-  }, [timesheetDraftData]);
-
-  const handleAfterValidate = useCallback((isValid: boolean, _value: unknown, row: number, prop: string | number) => {
-    // N/A fields are always valid
-    if (prop === 'tool' && !projectNeedsTools(timesheetDraftData[row]?.project)) return true;
-    if (prop === 'chargeCode' && !toolNeedsChargeCode(timesheetDraftData[row]?.tool || undefined)) return true;
-    return isValid;
-  }, [timesheetDraftData]);
 
   // Normalize pasted data
   const handleBeforePaste = useCallback((data: unknown[][]) => {
@@ -350,9 +407,9 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
 
   // Column definitions using cascading configuration
   const columnDefinitions = useMemo(() => [
-    { data: 'date', title: 'Date', type: 'date', dateFormat: 'MM/DD/YYYY', placeholder: 'MM/DD/YYYY', className: 'htCenter' },
-    { data: 'timeIn', title: 'Start Time', type: 'text', placeholder: '0000 to 2400', className: 'htCenter' },
-    { data: 'timeOut', title: 'End Time', type: 'text', placeholder: '0000 to 2400', className: 'htCenter' },
+    { data: 'date', title: 'Date', type: 'date', dateFormat: 'MM/DD/YYYY', placeholder: 'MM/DD/YYYY', className: 'htCenter', validator: dateValidator },
+    { data: 'timeIn', title: 'Start Time', type: 'text', placeholder: '0000 to 2400', className: 'htCenter', validator: timeInValidator },
+    { data: 'timeOut', title: 'End Time', type: 'text', placeholder: '0000 to 2400', className: 'htCenter', validator: timeOutValidator },
     { data: 'project', 
       title: 'Project', 
       type: 'dropdown', 
@@ -361,12 +418,78 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
       allowInvalid: false, 
       placeholder: 'Pick a project', 
       className: 'htCenter',
-      trimDropdown: false 
+      trimDropdown: false,
+      validator: projectValidator
     },
     { data: 'tool', title: 'Tool', type: 'dropdown', source: [], strict: true, allowInvalid: false, placeholder: '', className: 'htCenter' },
     { data: 'chargeCode', title: 'Charge Code', type: 'dropdown', source: chargeCodes, strict: true, allowInvalid: false, placeholder: '', className: 'htCenter' },
-    { data: 'taskDescription', title: 'Task Description', type: 'text', placeholder: '', className: 'htLeft' }
+    { data: 'taskDescription', title: 'Task Description', type: 'text', placeholder: '', className: 'htLeft', validator: taskDescriptionValidator, maxLength: 120 }
   ], []);
+
+  // Validate timesheet data for button status - MUST be before early returns
+  const buttonStatus: ButtonStatus = useMemo(() => {
+    if (!timesheetDraftData || timesheetDraftData.length === 0) {
+      return 'neutral';
+    }
+
+    // Check if there's any real data (non-empty rows)
+    const realRows = timesheetDraftData.filter((row: TimesheetRow) => {
+      return row.date || row.timeIn || row.timeOut || row.project || row.taskDescription;
+    });
+
+    if (realRows.length === 0) {
+      return 'neutral';
+    }
+
+    // Check if all real rows are valid
+    let hasErrors = false;
+    for (const row of realRows) {
+      // Check required fields
+      if (!row.date || !isValidDate(row.date)) {
+        hasErrors = true;
+        break;
+      }
+      if (!row.timeIn || !isValidTime(row.timeIn)) {
+        hasErrors = true;
+        break;
+      }
+      if (!row.timeOut || !isValidTime(row.timeOut)) {
+        hasErrors = true;
+        break;
+      }
+      if (!row.project) {
+        hasErrors = true;
+        break;
+      }
+      if (!row.taskDescription) {
+        hasErrors = true;
+        break;
+      }
+      // Check if tool is required
+      if (projectNeedsTools(row.project) && !row.tool) {
+        hasErrors = true;
+        break;
+      }
+      // Check if charge code is required
+      if (row.tool && toolNeedsChargeCode(row.tool) && !row.chargeCode) {
+        hasErrors = true;
+        break;
+      }
+    }
+
+    if (hasErrors) {
+      return 'warning';
+    }
+
+    // Check for time overlaps
+    for (let i = 0; i < timesheetDraftData.length; i++) {
+      if (hasTimeOverlapWithPreviousEntries(i, timesheetDraftData)) {
+        return 'warning';
+      }
+    }
+
+    return 'ready';
+  }, [timesheetDraftData]);
 
   if (isTimesheetDraftLoading) {
     return (
@@ -391,26 +514,11 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
   return (
     <div className="timesheet-page">
       <div className="timesheet-header">
-        <SaveStatusButton 
-          status={saveStatus}
-          onClick={handleManualSave}
-          disabled={isSaving}
-        />
         {isAdmin && (
           <Alert severity="warning" sx={{ mb: 2 }}>
             Admin users cannot submit timesheet entries to SmartSheet.
           </Alert>
         )}
-        <Button
-          variant="contained"
-          size="large"
-          className="submit-timesheet-button"
-          startIcon={isProcessing ? <CircularProgress size={20} color="inherit" /> : <PlayArrowIcon />}
-          onClick={handleSubmitTimesheet}
-          disabled={isProcessing || isAdmin}
-        >
-          {isProcessing ? 'Submitting...' : 'Submit Timesheet'}
-        </Button>
       </div>
       <HotTable
         ref={hotTableRef}
@@ -421,10 +529,7 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
         beforeRemoveRow={handleBeforeRemoveRow}
         afterChange={handleAfterChange}
         afterRemoveRow={handleAfterRemoveRow}
-        beforeValidate={handleBeforeValidate}
-        afterValidate={handleAfterValidate}
         beforePaste={handleBeforePaste}
-        persistentState={true}
         themeName="ht-theme-horizon"
         width="100%"
         rowHeaders={true}
@@ -462,6 +567,18 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
         tabMoves={{ row: 0, col: 1 }}
         invalidCellClassName="htInvalid"
       />
+      <div className="timesheet-footer">
+        <StatusButton
+          status={buttonStatus}
+          onClick={handleSubmitTimesheet}
+          isProcessing={isProcessing}
+          processingText="Submitting..."
+          icon={<PlayArrowIcon />}
+          disabled={isAdmin}
+        >
+          Submit Timesheet
+        </StatusButton>
+      </div>
     </div>
   );
 });

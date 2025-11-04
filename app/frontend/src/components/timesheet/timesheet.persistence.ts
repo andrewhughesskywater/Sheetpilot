@@ -1,7 +1,5 @@
 import type { TimesheetRow } from './timesheet.schema';
 
-export type SaveStatus = 'local' | 'database' | 'error';
-
 /**
  * Save a local backup of timesheet data to localStorage
  */
@@ -24,12 +22,10 @@ export function saveLocalBackup(data: TimesheetRow[]): void {
  * Batch save all complete rows to database and sync orphaned rows
  */
 export async function batchSaveToDatabase(
-  timesheetDraftData: TimesheetRow[],
-  setSaveStatus: (status: SaveStatus) => void
+  timesheetDraftData: TimesheetRow[]
 ): Promise<void> {
   if (!window.timesheet?.saveDraft || !window.timesheet?.loadDraft || !window.timesheet?.deleteDraft) {
     window.logger?.warn('Batch save skipped - timesheet API not available');
-    setSaveStatus('error');
     return;
   }
   
@@ -76,7 +72,6 @@ export async function batchSaveToDatabase(
     
     if (completeRows.length === 0) {
       window.logger?.verbose('No complete rows to save to database');
-      setSaveStatus('database');
       return;
     }
     
@@ -123,18 +118,10 @@ export async function batchSaveToDatabase(
       errors: errorCount,
       orphansDeleted: deletedCount
     });
-    
-    // Update save status
-    if (errorCount > 0) {
-      setSaveStatus('error');
-    } else {
-      setSaveStatus('database');
-    }
   } catch (error) {
     window.logger?.error('Batch save failed', { 
       error: error instanceof Error ? error.message : String(error) 
     });
-    setSaveStatus('error');
   }
 }
 

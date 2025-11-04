@@ -177,7 +177,8 @@ export function DataProvider({ children }: DataProviderProps) {
   };
 
   // Load archive data - with proper yielding to prevent blocking
-  const loadArchiveData = async () => {
+  // Wrapped in useCallback to prevent stale closure bug
+  const loadArchiveData = useCallback(async () => {
     try {
       setIsArchiveDataLoading(true);
       setArchiveDataError(null);
@@ -257,7 +258,7 @@ export function DataProvider({ children }: DataProviderProps) {
     } finally {
       setIsArchiveDataLoading(false);
     }
-  };
+  }, [token]);
 
   // Refresh functions - force reload data
   // Wrapped in useCallback to prevent infinite re-renders
@@ -266,11 +267,11 @@ export function DataProvider({ children }: DataProviderProps) {
     await loadTimesheetDraftData();
   }, []);
 
-  // IMPORTANT: depend on token so we don't capture a stale value
+  // Refresh archive data - now simply calls loadArchiveData which has proper token dependency
   const refreshArchiveData = useCallback(async () => {
     window.logger?.info('[DataContext] Refreshing archive data');
     await loadArchiveData();
-  }, [token]);
+  }, [loadArchiveData]);
 
   // Load data on mount - completely disabled during startup to prevent blocking
   useEffect(() => {

@@ -11,15 +11,13 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  TextField,
-  Chip
+  TextField
 } from '@mui/material';
 import {
   Download as DownloadIcon,
-  VpnKey as VpnKeyIcon,
-  Logout as LogoutIcon,
   Delete as DeleteIcon,
-  Security as SecurityIcon
+  Security as SecurityIcon,
+  Settings as SettingsIcon
 } from '@mui/icons-material';
 import UserManual from './UserManual';
 import { useSession } from '../contexts/SessionContext';
@@ -32,6 +30,11 @@ function Help() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [isExporting, setIsExporting] = useState(false);
+  
+  // Dialog state for each feature card
+  const [showLogsDialog, setShowLogsDialog] = useState(false);
+  const [showUserGuideDialog, setShowUserGuideDialog] = useState(false);
+  const [showAdminDialog, setShowAdminDialog] = useState(false);
   
   // Credentials management state
   const [storedCredentials, setStoredCredentials] = useState<Array<{
@@ -47,12 +50,6 @@ function Help() {
   const [showRebuildDatabaseDialog, setShowRebuildDatabaseDialog] = useState(false);
   const [isAdminActionLoading, setIsAdminActionLoading] = useState(false);
 
-  // Load log files and credentials on component mount
-  useEffect(() => {
-    loadLogFiles();
-    loadStoredCredentials();
-  }, []);
-
   const loadStoredCredentials = async () => {
     try {
       if (window.credentials?.list) {
@@ -62,9 +59,39 @@ function Help() {
         }
       }
     } catch (err) {
+      console.error('Could not load credentials', err);
       window.logger?.error('Could not load credentials', { error: err });
+      // Don't set error state here as it's not critical
     }
   };
+
+  const loadLogFiles = async () => {
+    setIsLoading(true);
+    setError('');
+    
+    try {
+      const response = await window.logs?.getLogPath?.();
+      if (!response) {
+        console.warn('Logs API not available');
+      } else if (response.success) {
+        setLogPath(response.logPath || '');
+        setLogFiles(response.logFiles || []);
+      } else {
+        console.error('Failed to load log files:', response.error);
+      }
+    } catch (err) {
+      console.error('Error loading log files:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Load log files and credentials on component mount
+  useEffect(() => {
+    loadLogFiles();
+    loadStoredCredentials();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleUpdateCredentials = async () => {
     if (!updateEmail || !updatePassword) {
@@ -173,27 +200,6 @@ function Help() {
     }
   };
 
-  const loadLogFiles = async () => {
-    setIsLoading(true);
-    setError('');
-    
-    try {
-      const response = await window.logs?.getLogPath?.();
-      if (!response) {
-        setError('Logs API not available');
-      } else if (response.success) {
-        setLogPath(response.logPath || '');
-        setLogFiles(response.logFiles || []);
-      } else {
-        setError(response.error || 'Failed to load log files');
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const exportLogs = async () => {
     // Use the latest log file if available
     if (!logFiles || logFiles.length === 0) {
@@ -233,79 +239,40 @@ function Help() {
 
   return (
     <div className="help-container">
-      <Box className="help-header">
-        <Typography variant="h4" component="h1" className="help-title">
-          Help & Support
-        </Typography>
-        <Typography variant="body1" color="text.secondary" className="help-subtitle">
-          Export application logs and access user documentation
-        </Typography>
-      </Box>
-
-      {/* Log Export Section */}
-      <Card className="log-management-card">
-        <CardContent>
-          <Box className="log-management-header">
-            <Typography variant="h6" component="h2">
-              Application Logs
-            </Typography>
-          </Box>
-
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
-            </Alert>
-          )}
-
-          <Box sx={{ mt: 2 }}>
-            <Button
-              variant="contained"
-              startIcon={isExporting ? <CircularProgress size={20} color="inherit" /> : <DownloadIcon />}
-              onClick={exportLogs}
-              disabled={isExporting || isLoading || !logFiles || logFiles.length === 0}
-              fullWidth
-            >
-              {isExporting ? 'Exporting...' : 'Export Logs'}
-            </Button>
-          </Box>
-        </CardContent>
-      </Card>
-
-      {/* Credentials Management Section */}
-      <Card className="credentials-management-card" sx={{ mt: 3 }}>
-        <CardContent>
-          <Box className="credentials-management-header">
-            <Typography variant="h6" component="h2">
-              Credentials Management
-            </Typography>
-          </Box>
-
-          {storedCredentials.length > 0 ? (
-            <Box sx={{ mt: 2, mb: 2 }}>
-              {storedCredentials.map((cred) => (
-                <Box key={cred.id} sx={{ mb: 2, p: 2, backgroundColor: 'var(--md-sys-color-surface-container-low)', borderRadius: 'var(--md-sys-shape-corner-medium)' }}>
-                  <Box display="flex" alignItems="center" gap={1} mb={1}>
-                    <Chip label={cred.service} color="primary" size="small" />
-                    <Typography variant="body1" fontWeight="medium">
-                      {cred.email}
-                    </Typography>
-                  </Box>
-                  <Typography variant="caption" color="text.secondary">
-                    Updated: {new Date(cred.updated_at).toLocaleString()}
-                  </Typography>
-                </Box>
-              ))}
+      {/* Main Container Card */}
+      <Card className="help-main-card">
+        <CardContent className="help-main-card-content">
+          {/* Header Section */}
+          <Box className="help-section-header">
+            <Box className="help-section-icon">
+              <SettingsIcon sx={{ fontSize: 48 }} />
             </Box>
-          ) : (
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 2, mb: 2 }}>
-              No credentials stored
+            <Typography variant="h4" component="h1" className="help-section-title">
+              Help & Support
             </Typography>
-          )}
+            <Typography variant="body1" className="help-section-subtitle">
+              Access tools, documentation, and support resources. SheetPilot ensures accurate logging of every minute, designed specifically for SkyWater Technology's manufacturing excellence standards.
+            </Typography>
+          </Box>
 
-          <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
-            <Button
-              variant="contained"
-              startIcon={<VpnKeyIcon />}
+          {/* Feature Cards Grid */}
+          <Box className="help-cards-grid">
+            {/* Export Logs Card */}
+            <Box 
+              className="help-feature-card"
+              onClick={() => setShowLogsDialog(true)}
+              role="button"
+              tabIndex={0}
+              onKeyPress={(e) => e.key === 'Enter' && setShowLogsDialog(true)}
+            >
+              <Typography variant="h6" component="h2" className="help-feature-card-title">
+                Export Logs
+              </Typography>
+            </Box>
+
+            {/* Update Credentials Card */}
+            <Box 
+              className="help-feature-card"
               onClick={() => {
                 const existingCred = storedCredentials.find(c => c.service === 'smartsheet');
                 if (existingCred) {
@@ -313,63 +280,203 @@ function Help() {
                 }
                 setShowUpdateCredentialsDialog(true);
               }}
-              fullWidth
+              role="button"
+              tabIndex={0}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  const existingCred = storedCredentials.find(c => c.service === 'smartsheet');
+                  if (existingCred) {
+                    setUpdateEmail(existingCred.email);
+                  }
+                  setShowUpdateCredentialsDialog(true);
+                }
+              }}
             >
-              {storedCredentials.length > 0 ? 'Update Credentials' : 'Add Credentials'}
-            </Button>
-            <Button
-              variant="outlined"
-              startIcon={<LogoutIcon />}
+              <Typography variant="h6" component="h2" className="help-feature-card-title">
+                Update Credentials
+              </Typography>
+            </Box>
+
+            {/* User Guide Card */}
+            <Box 
+              className="help-feature-card"
+              onClick={() => setShowUserGuideDialog(true)}
+              role="button"
+              tabIndex={0}
+              onKeyPress={(e) => e.key === 'Enter' && setShowUserGuideDialog(true)}
+            >
+              <Typography variant="h6" component="h2" className="help-feature-card-title">
+                User Guide
+              </Typography>
+            </Box>
+
+            {/* Logout Card */}
+            <Box 
+              className="help-feature-card help-feature-card-warning"
               onClick={handleLogout}
-              fullWidth
+              role="button"
+              tabIndex={0}
+              onKeyPress={(e) => e.key === 'Enter' && handleLogout()}
             >
-              Logout
-            </Button>
+              <Typography variant="h6" component="h2" className="help-feature-card-title">
+                Logout
+              </Typography>
+            </Box>
+
+            {/* Admin Tools Card - only show for admins */}
+            {isAdmin && (
+              <Box 
+                className="help-feature-card help-feature-card-admin"
+                onClick={() => setShowAdminDialog(true)}
+                role="button"
+                tabIndex={0}
+                onKeyPress={(e) => e.key === 'Enter' && setShowAdminDialog(true)}
+              >
+                <Typography variant="h6" component="h2" className="help-feature-card-title">
+                  Admin Tools
+                </Typography>
+              </Box>
+            )}
           </Box>
         </CardContent>
       </Card>
 
-      {/* Admin Section */}
+      {/* Export Logs Dialog */}
+      <Dialog
+        open={showLogsDialog}
+        onClose={() => {
+          setShowLogsDialog(false);
+          setError('');
+        }}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Export Application Logs</DialogTitle>
+        <DialogContent>
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          )}
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 2, mb: 2 }}>
+            Export application logs for troubleshooting and support purposes.
+          </Typography>
+          {logFiles && logFiles.length > 0 && (
+            <Typography variant="caption" color="text.secondary">
+              Latest log: {logFiles[logFiles.length - 1]}
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => {
+            setShowLogsDialog(false);
+            setError('');
+          }}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={isExporting ? <CircularProgress size={20} color="inherit" /> : <DownloadIcon />}
+            onClick={exportLogs}
+            disabled={isExporting || isLoading || !logFiles || logFiles.length === 0}
+          >
+            {isExporting ? 'Exporting...' : 'Export Logs'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* User Guide Dialog */}
+      <Dialog
+        open={showUserGuideDialog}
+        onClose={() => setShowUserGuideDialog(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>User Guide</DialogTitle>
+        <DialogContent>
+          <UserManual />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowUserGuideDialog(false)} variant="contained">
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Admin Tools Dialog */}
       {isAdmin && (
-        <Card className="admin-section-card" sx={{ mt: 3, border: '2px solid var(--md-sys-color-error)' }}>
-          <CardContent>
-            <Box className="admin-section-header" display="flex" alignItems="center" gap={1} mb={2}>
+        <Dialog
+          open={showAdminDialog}
+          onClose={() => {
+            setShowAdminDialog(false);
+            setError('');
+          }}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle>
+            <Box display="flex" alignItems="center" gap={1}>
               <SecurityIcon color="error" />
-              <Typography variant="h6" component="h2" color="error">
+              <Typography variant="h6" component="span" color="error">
                 Admin Tools
               </Typography>
             </Box>
-
+          </DialogTitle>
+          <DialogContent>
+            {error && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {error}
+              </Alert>
+            )}
+            
             <Alert severity="warning" sx={{ mb: 2 }}>
               <Typography variant="body2">
                 Admin users cannot submit timesheet entries to SmartSheet.
               </Typography>
             </Alert>
 
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <Button
-                variant="outlined"
-                color="error"
-                startIcon={<DeleteIcon />}
-                onClick={() => setShowClearCredentialsDialog(true)}
-                disabled={isAdminActionLoading}
-                fullWidth
-              >
-                Clear All Credentials
-              </Button>
-              <Button
-                variant="outlined"
-                color="error"
-                startIcon={<DeleteIcon />}
-                onClick={() => setShowRebuildDatabaseDialog(true)}
-                disabled={isAdminActionLoading}
-                fullWidth
-              >
-                Rebuild Database
-              </Button>
-            </Box>
-          </CardContent>
-        </Card>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+              These tools perform destructive operations. Use with caution.
+            </Typography>
+          </DialogContent>
+          <DialogActions sx={{ flexDirection: 'column', gap: 1, alignItems: 'stretch', p: 2 }}>
+            <Button
+              variant="outlined"
+              color="error"
+              startIcon={<DeleteIcon />}
+              onClick={() => {
+                setShowAdminDialog(false);
+                setShowClearCredentialsDialog(true);
+              }}
+              disabled={isAdminActionLoading}
+              fullWidth
+            >
+              Clear All Credentials
+            </Button>
+            <Button
+              variant="outlined"
+              color="error"
+              startIcon={<DeleteIcon />}
+              onClick={() => {
+                setShowAdminDialog(false);
+                setShowRebuildDatabaseDialog(true);
+              }}
+              disabled={isAdminActionLoading}
+              fullWidth
+            >
+              Rebuild Database
+            </Button>
+            <Button
+              onClick={() => {
+                setShowAdminDialog(false);
+                setError('');
+              }}
+              fullWidth
+            >
+              Close
+            </Button>
+          </DialogActions>
+        </Dialog>
       )}
 
       {/* Update Credentials Dialog */}
@@ -510,11 +617,6 @@ function Help() {
           </Button>
         </DialogActions>
       </Dialog>
-
-      {/* User Manual Section */}
-      <Box sx={{ mt: 4 }}>
-        <UserManual />
-      </Box>
     </div>
   );
 };

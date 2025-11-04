@@ -10,22 +10,23 @@ import {
   CircularProgress,
   LinearProgress
 } from '@mui/material';
-import {
-  Download as DownloadIcon
-} from '@mui/icons-material';
-const Archive = lazy(() => import('./components/DatabaseViewer'));
-const TimesheetGrid = lazy(() => import('./components/TimesheetGrid'));
-import type { TimesheetGridHandle } from './components/TimesheetGrid';
-import ModernSegmentedNavigation from './components/ModernSegmentedNavigation';
+const Archive = lazy(() => import('./components/archive/DatabaseViewer'));
+const TimesheetGrid = lazy(() => import('./components/timesheet/TimesheetGrid'));
+import type { TimesheetGridHandle } from './components/timesheet/TimesheetGrid';
+import SheetPilotNavigation from './components/SheetPilotNavigation';
 const Help = lazy(() => import('./components/Help'));
+import TimesheetSkeleton from './components/skeletons/TimesheetSkeleton';
+import ArchiveSkeleton from './components/skeletons/ArchiveSkeleton';
+import HelpSkeleton from './components/skeletons/HelpSkeleton';
 import UpdateDialog from './components/UpdateDialog';
 import LoginDialog from './components/LoginDialog';
 import { DataProvider, useData } from './contexts/DataContext';
 import { SessionProvider, useSession } from './contexts/SessionContext';
 import { initializeTheme } from './utils/theme-manager';
-import logoImage from './assets/images/transparent-logo.svg';
+import logoImage from './assets/images/logo.svg';
 import { APP_VERSION } from '../../shared/constants';
 import './styles/App.css';
+import './styles/transitions.css';
 
 export function AboutBody() {
   return (
@@ -95,16 +96,9 @@ export function Splash() {
   };
 
   return (
-    <Box sx={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      height: '100vh',
-      gap: 'var(--sp-space-6)'
-    }}>
+    <Box className="splash-container" sx={{ gap: 'var(--sp-space-4)' }}>
       <AboutBody />
-      <Box sx={{ width: '60%', minWidth: 260 }}>
+      <Box sx={{ width: '60%', minWidth: 260, maxWidth: 400 }}>
         <LinearProgress
           variant={progress != null ? 'determinate' : 'indeterminate'}
           {...(progress != null ? { value: progress } : {})}
@@ -126,15 +120,17 @@ export function Splash() {
 }
 
 function AppContent() {
-  console.log('=== APP CONTENT RENDERING ===');
+  if (process.env.NODE_ENV === 'development') {
+    console.debug(`[AppContent] render ts:${performance.now().toFixed(2)}ms`);
+  }
   const { isLoggedIn, isLoading: sessionLoading, login: sessionLogin } = useSession();
   const [activeTab, setActiveTab] = useState(0);
-  console.log('Active tab:', activeTab);
+  const [displayedTab, setDisplayedTab] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const hasRequestedInitialTimesheetRef = useRef(false);
   const hasRefreshedEmptyOnceRef = useRef(false);
   const timesheetGridRef = useRef<TimesheetGridHandle>(null);
   
-  const [isExporting, setIsExporting] = useState(false);
   const [showAboutDialog, setShowAboutDialog] = useState(false);
   
   // Update dialog state
@@ -221,86 +217,44 @@ function AppContent() {
 
 
 
-
-
-
-  const exportToCSV = async () => {
-    // Prevent multiple simultaneous exports
-    if (isExporting) return;
-    
-    window.logger?.userAction('export-to-csv-clicked');
-    setIsExporting(true);
-    
-    try {
-      // CSV export functionality not yet implemented
-      window.logger?.info('CSV export requested');
-    } catch (error) {
-      window.logger?.error('CSV export error', { error: error instanceof Error ? error.message : String(error) });
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
-
   return (
     <div className="app-container">
-      {/* Top Navigation Bar */}
-      <div className="top-navigation">
-        {/* App Logo/Branding */}
-        <div className="app-branding">
-          <img 
-            src={logoImage} 
-            alt="SheetPilot" 
-            className="app-logo"
-            onLoad={() => window.logger?.debug('Logo loaded successfully')}
-            onError={(e) => console.error('Logo failed to load:', e)}
-          />
-          <button 
-            className="app-logo-button"
-            onClick={() => {
-              window.logger?.userAction('about-dialog-opened');
-              setShowAboutDialog(true);
-            }}
-            aria-label="About SheetPilot"
-            title="Click to view about information"
-          />
-        </div>
-
-        {/* Modern Segmented Navigation */}
-        <ModernSegmentedNavigation 
-          activeTab={activeTab} 
-          onTabChange={async (newTab) => {
-            window.logger?.userAction('tab-change', { from: activeTab, to: newTab });
-            
-            // Save to database when leaving Timesheet tab
-            if (activeTab === 0 && newTab !== 0) {
-              window.logger?.info('[App] Leaving Timesheet tab, triggering batch save');
-              await timesheetGridRef.current?.batchSaveToDatabase();
-            }
-            
-            setActiveTab(newTab);
-          }}
-        />
-      </div>
+      {/* SheetPilot Navigation */}
+      <SheetPilotNavigation 
+        activeTab={activeTab}
+        onLogoClick={() => {
+          window.logger?.userAction('about-dialog-opened');
+          setShowAboutDialog(true);
+        }}
+        onTabChange={async (newTab) => {
+          if (isTransitioning || newTab === activeTab) return;
+          
+          window.logger?.userAction('tab-change', { from: activeTab, to: newTab });
+          
+          // Start transition
+          setIsTransitioning(true);
+          
+          // Save to database when leaving Timesheet tab
+          if (activeTab === 0 && newTab !== 0) {
+            window.logger?.info('[App] Leaving Timesheet tab, triggering batch save');
+            await timesheetGridRef.current?.batchSaveToDatabase();
+          }
+          
+          // Wait for exit animation
+          await new Promise(resolve => setTimeout(resolve, 200));
+          
+          // Update both activeTab (for navigation) and displayedTab (for content)
+          setActiveTab(newTab);
+          setDisplayedTab(newTab);
+          
+          // Wait for enter animation to start
+          await new Promise(resolve => setTimeout(resolve, 100));
+          setIsTransitioning(false);
+        }}
+      />
       
       {/* Main Content Area */}
       <div className="main-content-area">
-        {/* Header Actions */}
-        <div className="header-actions">
-          {activeTab === 1 && isLoggedIn && (
-            <Button
-              variant="contained"
-              size="large"
-              className="export-button"
-              startIcon={isExporting ? <CircularProgress size={20} color="inherit" /> : <DownloadIcon />}
-              onClick={exportToCSV}
-              disabled={isExporting}
-            >
-              {isExporting ? 'Exporting...' : 'Export to CSV'}
-            </Button>
-          )}
-        </div>
-
         {/* Main Content */}
         <div className="content-area">
           {sessionLoading ? (
@@ -310,25 +264,25 @@ function AppContent() {
           ) : !isLoggedIn ? (
             <LoginDialog open={!isLoggedIn} onLoginSuccess={sessionLogin} />
           ) : (
-            <>
-              {activeTab === 0 && (
-                <Suspense fallback={<div className="loading-fallback">Loading timesheet...</div>}>
+            <div className={`page-transition-container ${isTransitioning ? 'page-exit-active' : 'page-enter-active'}`}>
+              {displayedTab === 0 && (
+                <Suspense fallback={<TimesheetSkeleton />}>
                   <TimesheetGrid ref={timesheetGridRef} />
                 </Suspense>
               )}
 
-              {activeTab === 1 && (
-                <Suspense fallback={<div className="loading-fallback">Loading archive...</div>}>
+              {displayedTab === 1 && (
+                <Suspense fallback={<ArchiveSkeleton />}>
                   <Archive />
                 </Suspense>
               )}
 
-              {activeTab === 2 && (
-                <Suspense fallback={<div className="loading-fallback">Loading help...</div>}>
+              {displayedTab === 2 && (
+                <Suspense fallback={<HelpSkeleton />}>
                   <Help />
                 </Suspense>
               )}
-            </>
+            </div>
           )}
         </div>
 
@@ -380,11 +334,10 @@ function AppContent() {
 };
 
 export default function App() {
-  // This should show in console immediately on app load
-  console.log('=== APP LOADING ===');
-  console.log('Environment:', import.meta.env.DEV ? 'development' : 'production');
-  console.log('Window object:', typeof window);
-  console.log('Console available:', typeof console.log);
+  // Diagnostic logging (gated by development mode, aware of StrictMode double-render)
+  if (process.env.NODE_ENV === 'development') {
+    console.debug(`[App] render ts:${performance.now().toFixed(2)}ms env:${import.meta.env.DEV ? 'dev' : 'prod'}`);
+  }
   
   return (
     <SessionProvider>

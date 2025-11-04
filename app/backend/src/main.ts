@@ -1015,7 +1015,7 @@ export function registerIPCHandlers() {
     ipcLogger.verbose('Fetching all timesheet entries (Archive - Complete only)', { email: session.email });
     try {
       const db = getDb();
-      const getAll = db.prepare('SELECT * FROM timesheet WHERE status = \'Complete\' ORDER BY date ASC, time_in ASC');
+      const getAll = db.prepare('SELECT * FROM timesheet WHERE status = \'Complete\' ORDER BY date DESC, time_in DESC');
       const entries = getAll.all();
       ipcLogger.verbose('Archive timesheet entries retrieved', { count: entries.length, email: session.email });
       return { success: true, entries };

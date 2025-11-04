@@ -6,12 +6,13 @@ import './styles/index.css'
 import App, { Splash } from './App'
 import { initializeLoggerFallback } from './utils/logger-fallback'
 import { initializeAPIFallback } from './utils/api-fallback'
+import { runOnce } from './utils/safe-init'
 
-// Initialize logger fallback for development mode
-initializeLoggerFallback();
-
-// Initialize API fallbacks for development mode
-initializeAPIFallback();
+// Initialize logger and API fallbacks for development mode (idempotent with guard)
+runOnce(() => {
+  initializeLoggerFallback();
+  initializeAPIFallback();
+}, 'renderer-init');
 
 // Global error handlers for renderer process
 window.addEventListener('error', (event) => {

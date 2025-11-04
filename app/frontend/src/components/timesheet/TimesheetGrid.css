@@ -8,9 +8,9 @@
 
 .timesheet-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
-  margin-bottom: var(--sp-space-4);
+  margin-bottom: var(--sp-space-6);
   gap: var(--sp-space-4);
 }
 
@@ -19,8 +19,13 @@
   flex: 1;
 }
 
-.submit-timesheet-button {
-  flex-shrink: 0;
+/* Footer container for submit button below table */
+.timesheet-footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: var(--sp-space-6);
+  gap: var(--sp-space-4);
 }
 
 .debug-state-display {
@@ -95,28 +100,6 @@
 /* Error message styling */
 .timesheet-error-message {
   color: var(--md-sys-color-error);
-}
-
-/* Dropdown menu styling - make dropdowns wider than columns */
-.handsontable .htDropdownMenuList {
-  min-width: 250px !important;
-  max-width: 400px !important;
-  width: auto !important;
-  position: absolute !important;
-  z-index: 1000 !important;
-}
-
-/* Dropdown menu vertical scrolling only */
-.handsontable .htDropdownMenu {
-  max-height: none;
-  overflow-y: visible !important;
-  position: relative !important;
-}
-
-/* Ensure dropdown items have proper spacing and don't truncate */
-.handsontable .htDropdownMenuList .htDropdownMenuListItem {
-  white-space: nowrap !important;
-  padding: 8px 12px !important;
 }
 
 /* Improve selection visibility using design tokens */
