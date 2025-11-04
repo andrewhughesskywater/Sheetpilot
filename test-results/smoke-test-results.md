@@ -1,6 +1,6 @@
 # Test Results
 
-Generated at: 2025-11-03T20:23:54.942Z
+Generated at: 2025-11-04T02:00:26.808Z
 
 ## Summary
 
@@ -10,13 +10,13 @@ Generated at: 2025-11-03T20:23:54.942Z
 | Passed | 18 |
 | Failed | 0 |
 | Skipped | 1 |
-| Duration | 0.02s |
+| Duration | 0.01s |
 
 **Pass Rate:** 94.74%
 
 ## Test Results by File
 
-### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/smoke/critical-paths.spec.ts
+### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/smoke/critical-paths.spec.ts
 
 #### Critical Path Smoke Tests > Application Initialization
 
@@ -46,7 +46,7 @@ Generated at: 2025-11-03T20:23:54.942Z
 
 | Test | Status | Duration |
 |------|--------|----------|
-| should handle saveDraft IPC call | ✅ passed | 0.01s |
+| should handle saveDraft IPC call | ✅ passed | 0.00s |
 | should handle loadDraft IPC call | ✅ passed | 0.00s |
 
 #### Critical Path Smoke Tests > Data Structures

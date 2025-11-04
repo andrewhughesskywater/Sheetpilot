@@ -89,6 +89,72 @@ export function isTimeOutAfterTimeIn(timeIn?: string, timeOut?: string): boolean
   return outTotalMinutes > inTotalMinutes;
 }
 
+/**
+ * Check if two time ranges overlap (excluding adjacent boundaries)
+ * Returns true if the ranges overlap, false otherwise
+ */
+export function timeRangesOverlap(
+  timeIn1: string,
+  timeOut1: string,
+  timeIn2: string,
+  timeOut2: string
+): boolean {
+  const [in1Hours, in1Minutes] = timeIn1.split(':').map(Number) as [number, number];
+  const [out1Hours, out1Minutes] = timeOut1.split(':').map(Number) as [number, number];
+  const [in2Hours, in2Minutes] = timeIn2.split(':').map(Number) as [number, number];
+  const [out2Hours, out2Minutes] = timeOut2.split(':').map(Number) as [number, number];
+  
+  const in1Total = in1Hours * 60 + in1Minutes;
+  const out1Total = out1Hours * 60 + out1Minutes;
+  const in2Total = in2Hours * 60 + in2Minutes;
+  const out2Total = out2Hours * 60 + out2Minutes;
+  
+  // Ranges overlap if: start1 < end2 AND end1 > start2
+  // Using strict inequalities to allow adjacent times (e.g., 12:00-15:00 and 15:00-17:00)
+  return in1Total < out2Total && out1Total > in2Total;
+}
+
+/**
+ * Check if a row's time range overlaps with any previous rows on the same date
+ * Returns true if there's an overlap, false otherwise
+ */
+export function hasTimeOverlapWithPreviousEntries(
+  currentRowIndex: number,
+  rows: TimesheetRow[]
+): boolean {
+  const currentRow = rows[currentRowIndex];
+  if (!currentRow) return false;
+  
+  const { date, timeIn, timeOut } = currentRow;
+  
+  // Skip validation if any required field is missing or invalid
+  if (!date || !timeIn || !timeOut) return false;
+  if (!isValidDate(date) || !isValidTime(timeIn) || !isValidTime(timeOut)) return false;
+  if (!isTimeOutAfterTimeIn(timeIn, timeOut)) return false;
+  
+  // Check all previous rows (first-in rule: earlier rows take precedence)
+  for (let i = 0; i < currentRowIndex; i++) {
+    const previousRow = rows[i];
+    if (!previousRow) continue;
+    
+    const { date: prevDate, timeIn: prevTimeIn, timeOut: prevTimeOut } = previousRow;
+    
+    // Skip if previous row doesn't have complete valid data
+    if (!prevDate || !prevTimeIn || !prevTimeOut) continue;
+    if (!isValidDate(prevDate) || !isValidTime(prevTimeIn) || !isValidTime(prevTimeOut)) continue;
+    if (!isTimeOutAfterTimeIn(prevTimeIn, prevTimeOut)) continue;
+    
+    // Only check for overlaps on the same date
+    if (date === prevDate) {
+      if (timeRangesOverlap(timeIn, timeOut, prevTimeIn, prevTimeOut)) {
+        return true;
+      }
+    }
+  }
+  
+  return false;
+}
+
 export function normalizeRowData(row: TimesheetRow, projectNeedsTools: (p?: string) => boolean, toolNeedsChargeCode: (t?: string) => boolean): TimesheetRow {
   const normalized = { ...row };
   if (!projectNeedsTools(normalized.project)) {

@@ -1,0 +1,298 @@
+/*
+  Page Transition Animations
+  Material Design 3 inspired transitions for smooth page changes
+*/
+
+/* ========================================
+   PAGE TRANSITIONS
+   ======================================== */
+
+/* Page transition container */
+.page-transition-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Exit animations - current content leaving */
+.page-exit {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.page-exit-active {
+  opacity: 0;
+  transform: translateX(-30px);
+  transition: opacity var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-emphasized-accelerate),
+              transform var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-emphasized-accelerate);
+}
+
+/* Enter animations - new content arriving */
+.page-enter {
+  opacity: 0;
+  transform: translateX(30px);
+}
+
+.page-enter-active {
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized-decelerate),
+              transform var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized-decelerate);
+}
+
+/* ========================================
+   STAGGERED ENTRANCE ANIMATIONS
+   ======================================== */
+
+/* Fade in from bottom animation */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Fade in animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Scale in animation */
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Slide in from right */
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Animation classes with staggered delays */
+.animate-on-enter {
+  animation: fadeInUp var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized-decelerate) forwards;
+  opacity: 0;
+}
+
+.animate-on-enter-delay-1 {
+  animation: fadeInUp var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized-decelerate) forwards;
+  animation-delay: 100ms;
+  opacity: 0;
+}
+
+.animate-on-enter-delay-2 {
+  animation: fadeInUp var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized-decelerate) forwards;
+  animation-delay: 200ms;
+  opacity: 0;
+}
+
+.animate-on-enter-delay-3 {
+  animation: fadeInUp var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized-decelerate) forwards;
+  animation-delay: 300ms;
+  opacity: 0;
+}
+
+.animate-on-enter-delay-4 {
+  animation: fadeInUp var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-emphasized-decelerate) forwards;
+  animation-delay: 400ms;
+  opacity: 0;
+}
+
+/* Scale in animation class */
+.animate-scale-in {
+  animation: scaleIn var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-emphasized-decelerate) forwards;
+  opacity: 0;
+}
+
+/* Fade in animation class */
+.animate-fade-in {
+  animation: fadeIn var(--md-sys-motion-duration-short4) var(--md-sys-motion-easing-standard) forwards;
+  opacity: 0;
+}
+
+/* ========================================
+   SKELETON LOADING ANIMATIONS
+   ======================================== */
+
+/* Pulse animation for loading states */
+@keyframes skeleton-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.skeleton-pulse {
+  animation: skeleton-pulse var(--md-sys-motion-duration-long2) ease-in-out infinite;
+}
+
+/* ========================================
+   BUTTON ICON ANIMATIONS
+   ======================================== */
+
+.button-icon-animate {
+  display: inline-flex;
+  transition: transform var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard);
+}
+
+button:hover .button-icon-animate,
+.MuiButton-root:hover .button-icon-animate {
+  transform: scale(1.1) rotate(5deg);
+}
+
+button:active .button-icon-animate,
+.MuiButton-root:active .button-icon-animate {
+  transform: scale(0.95);
+}
+
+/* Specific icon animations */
+.icon-rotate {
+  transition: transform var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard);
+}
+
+button:hover .icon-rotate,
+.MuiButton-root:hover .icon-rotate {
+  transform: rotate(15deg);
+}
+
+.icon-bounce {
+  transition: transform var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-emphasized);
+}
+
+button:hover .icon-bounce,
+.MuiButton-root:hover .icon-bounce {
+  animation: bounce 0.6s ease-in-out;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+/* ========================================
+   STATUS DISPLAY ANIMATIONS
+   ======================================== */
+
+/* Typing cursor animation */
+@keyframes typing-cursor {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.typing-cursor {
+  animation: typing-cursor 1s step-end infinite;
+}
+
+/* Pulse indicator animation */
+@keyframes pulse-indicator {
+  0%, 100% { 
+    opacity: 1; 
+    transform: scale(1); 
+  }
+  50% { 
+    opacity: 0.7; 
+    transform: scale(1.05); 
+  }
+}
+
+.pulse-indicator {
+  animation: pulse-indicator var(--md-sys-motion-duration-long1) ease-in-out infinite;
+}
+
+/* Status indicators with colors */
+.status-success {
+  color: var(--md-ref-palette-tertiary60);
+}
+
+.status-error {
+  color: var(--md-sys-color-error);
+}
+
+.status-warning {
+  color: #FACC15;
+}
+
+.status-info {
+  color: var(--md-sys-color-primary);
+}
+
+/* ========================================
+   CARD HOVER ANIMATIONS
+   ======================================== */
+
+.card-enhanced {
+  transition: transform var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-standard),
+              box-shadow var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-standard);
+}
+
+.card-enhanced:hover {
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: var(--md-sys-elevation-level3);
+}
+
+.card-enhanced:active {
+  transform: translateY(-2px) scale(1.005);
+  box-shadow: var(--md-sys-elevation-level2);
+}
+
+/* ========================================
+   ACCESSIBILITY - REDUCED MOTION
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .page-exit-active,
+  .page-enter-active,
+  .animate-on-enter,
+  .animate-on-enter-delay-1,
+  .animate-on-enter-delay-2,
+  .animate-on-enter-delay-3,
+  .animate-on-enter-delay-4,
+  .animate-scale-in,
+  .animate-fade-in,
+  .button-icon-animate,
+  .icon-rotate,
+  .icon-bounce,
+  .card-enhanced {
+    animation: none !important;
+    transition: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  
+  /* Still allow immediate state changes */
+  .page-exit-active {
+    opacity: 0;
+  }
+  
+  .page-enter-active {
+    opacity: 1;
+  }
+}
+

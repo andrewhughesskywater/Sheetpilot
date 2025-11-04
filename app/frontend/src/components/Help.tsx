@@ -243,7 +243,7 @@ function Help() {
       </Box>
 
       {/* Log Export Section */}
-      <Card className="log-management-card">
+      <Card className="log-management-card animate-on-enter">
         <CardContent>
           <Box className="log-management-header">
             <Typography variant="h6" component="h2">
@@ -260,7 +260,7 @@ function Help() {
           <Box sx={{ mt: 2 }}>
             <Button
               variant="contained"
-              startIcon={isExporting ? <CircularProgress size={20} color="inherit" /> : <DownloadIcon />}
+              startIcon={isExporting ? <CircularProgress size={20} color="inherit" /> : <DownloadIcon className="button-icon-animate" />}
               onClick={exportLogs}
               disabled={isExporting || isLoading || !logFiles || logFiles.length === 0}
               fullWidth
@@ -272,7 +272,7 @@ function Help() {
       </Card>
 
       {/* Credentials Management Section */}
-      <Card className="credentials-management-card" sx={{ mt: 3 }}>
+      <Card className="credentials-management-card animate-on-enter-delay-1" sx={{ mt: 3 }}>
         <CardContent>
           <Box className="credentials-management-header">
             <Typography variant="h6" component="h2">
@@ -305,7 +305,7 @@ function Help() {
           <Box sx={{ display: 'flex', gap: 2, mt: 2 }}>
             <Button
               variant="contained"
-              startIcon={<VpnKeyIcon />}
+              startIcon={<VpnKeyIcon className="button-icon-animate" />}
               onClick={() => {
                 const existingCred = storedCredentials.find(c => c.service === 'smartsheet');
                 if (existingCred) {
@@ -319,7 +319,7 @@ function Help() {
             </Button>
             <Button
               variant="outlined"
-              startIcon={<LogoutIcon />}
+              startIcon={<LogoutIcon className="button-icon-animate" />}
               onClick={handleLogout}
               fullWidth
             >
@@ -331,7 +331,7 @@ function Help() {
 
       {/* Admin Section */}
       {isAdmin && (
-        <Card className="admin-section-card" sx={{ mt: 3, border: '2px solid var(--md-sys-color-error)' }}>
+        <Card className="admin-section-card animate-on-enter-delay-2" sx={{ mt: 3, border: '2px solid var(--md-sys-color-error)' }}>
           <CardContent>
             <Box className="admin-section-header" display="flex" alignItems="center" gap={1} mb={2}>
               <SecurityIcon color="error" />
@@ -350,7 +350,7 @@ function Help() {
               <Button
                 variant="outlined"
                 color="error"
-                startIcon={<DeleteIcon />}
+                startIcon={<DeleteIcon className="button-icon-animate" />}
                 onClick={() => setShowClearCredentialsDialog(true)}
                 disabled={isAdminActionLoading}
                 fullWidth
@@ -360,7 +360,7 @@ function Help() {
               <Button
                 variant="outlined"
                 color="error"
-                startIcon={<DeleteIcon />}
+                startIcon={<DeleteIcon className="button-icon-animate" />}
                 onClick={() => setShowRebuildDatabaseDialog(true)}
                 disabled={isAdminActionLoading}
                 fullWidth
@@ -512,7 +512,7 @@ function Help() {
       </Dialog>
 
       {/* User Manual Section */}
-      <Box sx={{ mt: 4 }}>
+      <Box className="animate-on-enter-delay-3" sx={{ mt: 4 }}>
         <UserManual />
       </Box>
     </div>

@@ -1,5 +1,5 @@
 import type { TimesheetRow } from './timesheet.schema';
-import { isValidDate, isValidTime, isTimeOutAfterTimeIn } from './timesheet.schema';
+import { isValidDate, isValidTime, isTimeOutAfterTimeIn, hasTimeOverlapWithPreviousEntries } from './timesheet.schema';
 import { projectNeedsTools, toolNeedsChargeCode } from './timesheet.options';
 
 /**
@@ -23,6 +23,13 @@ export function validateField(
     case 'timeIn': {
       if (!value) return 'Please enter start time';
       if (!isValidTime(String(value))) return 'Time must be like 09:00, 800, or 1430 and in 15 minute steps';
+      // Check for overlaps after updating the value
+      const updatedRow = { ...rowData, timeIn: String(value) };
+      const updatedRows = [...rows];
+      updatedRows[row] = updatedRow;
+      if (hasTimeOverlapWithPreviousEntries(row, updatedRows)) {
+        return 'The time range you entered overlaps with a previous entry, please adjust your entry accordingly';
+      }
       return null;
     }
       
@@ -30,6 +37,13 @@ export function validateField(
       if (!value) return 'Please enter end time';
       if (!isValidTime(String(value))) return 'Time must be like 17:00, 1700, or 530 and in 15 minute steps';
       if (!isTimeOutAfterTimeIn(rowData?.timeIn, String(value))) return 'End time must be after start time';
+      // Check for overlaps after updating the value
+      const updatedRow = { ...rowData, timeOut: String(value) };
+      const updatedRows = [...rows];
+      updatedRows[row] = updatedRow;
+      if (hasTimeOverlapWithPreviousEntries(row, updatedRows)) {
+        return 'The time range you entered overlaps with a previous entry, please adjust your entry accordingly';
+      }
       return null;
     }
       

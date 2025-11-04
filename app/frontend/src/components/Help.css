@@ -20,6 +20,13 @@
 
 .log-management-card {
   margin-bottom: var(--sp-space-6);
+  transition: transform var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-standard),
+              box-shadow var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-standard);
+}
+
+.log-management-card:hover {
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: var(--md-sys-elevation-level3);
 }
 
 .log-management-header {
@@ -36,6 +43,13 @@
 
 .credentials-management-card {
   margin-bottom: var(--sp-space-6);
+  transition: transform var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-standard),
+              box-shadow var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-standard);
+}
+
+.credentials-management-card:hover {
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: var(--md-sys-elevation-level3);
 }
 
 .credentials-management-header {
@@ -47,6 +61,13 @@
 
 .admin-section-card {
   margin-bottom: var(--sp-space-6);
+  transition: transform var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-standard),
+              box-shadow var(--md-sys-motion-duration-medium1) var(--md-sys-motion-easing-standard);
+}
+
+.admin-section-card:hover {
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: var(--md-sys-elevation-level3);
 }
 
 .admin-section-header {

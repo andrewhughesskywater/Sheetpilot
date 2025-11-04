@@ -767,12 +767,12 @@ export default function UserManual() {
         SheetPilot User Manual
       </Typography>
       
-      {manualSections.map((section) => (
+      {manualSections.map((section, index) => (
         <Accordion
           key={section.id}
           expanded={expandedSection === section.id}
           onChange={handleChange(section.id)}
-          className="manual-accordion"
+          className={`manual-accordion animate-on-enter-delay-${Math.min(index, 4)}`}
         >
           <AccordionSummary
             expandIcon={<ExpandMoreIcon />}

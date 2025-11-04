@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { HotTable } from '@handsontable/react-wrapper';
 import { registerAllModules } from 'handsontable/registry';
+import { Button, CircularProgress } from '@mui/material';
+import { Download as DownloadIcon } from '@mui/icons-material';
 import 'handsontable/styles/handsontable.css';
 import 'handsontable/styles/ht-theme-horizon.css';
-import { useData } from '../contexts/DataContext';
+import { useData } from '../../contexts/DataContext';
 import './DatabaseViewer.css';
 
 // Register Handsontable modules
@@ -39,6 +41,7 @@ interface Credential {
 function Archive() {
   console.log('[Archive] Component rendering');
   const [activeTab] = useState<'timesheet' | 'credentials'>('timesheet');
+  const [isExporting, setIsExporting] = useState(false);
   const fetchedRef = useRef(false);
   
   // Use preloaded data from context
@@ -71,9 +74,22 @@ function Archive() {
     return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
   };
 
+  const formatDate = (dateStr: string): string => {
+    // Convert from YYYY-MM-DD to MM/DD/YYYY format
+    if (dateStr && dateStr.includes('-')) {
+      const parts = dateStr.split('-');
+      if (parts.length === 3 && parts[0] && parts[1] && parts[2]) {
+        // YYYY-MM-DD -> MM/DD/YYYY
+        return `${parts[1]}/${parts[2]}/${parts[0]}`;
+      }
+    }
+    // Return as-is if not in expected format
+    return dateStr;
+  };
+
   const formatTimesheetData = (entries: TimesheetEntry[]) => {
     const formatted = entries.map(entry => ({
-      date: entry.date,
+      date: formatDate(entry.date),
       timeIn: formatTime(entry.time_in),
       timeOut: formatTime(entry.time_out),
       hours: entry.hours.toFixed(2),
@@ -115,6 +131,23 @@ function Archive() {
     { data: 'updatedAt', title: 'Updated', width: 150 }
   ];
 
+  const exportToCSV = async () => {
+    // Prevent multiple simultaneous exports
+    if (isExporting) return;
+    
+    window.logger?.userAction('export-to-csv-clicked');
+    setIsExporting(true);
+    
+    try {
+      // CSV export functionality not yet implemented
+      window.logger?.info('CSV export requested');
+    } catch (error) {
+      window.logger?.error('CSV export error', { error: error instanceof Error ? error.message : String(error) });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   if (isArchiveDataLoading) {
     return (
       <div className="loading-container">
@@ -135,17 +168,19 @@ function Archive() {
   }
 
   return (
-    <div className="main-container">
-      <div className="header-container">
-        <h2 className="md-typescale-headline-medium">Archive</h2>
-        <div>
-          <span className="data-info md-typescale-body-medium">
-            Timesheet entries: {archiveData.timesheet.length} | 
-            Credentials: {archiveData.credentials.length}
-          </span>
-        </div>
+    <div className="archive-page">
+      <div className="archive-header">
+        <Button
+          variant="contained"
+          size="large"
+          className="export-button"
+          startIcon={isExporting ? <CircularProgress size={20} color="inherit" /> : <DownloadIcon />}
+          onClick={exportToCSV}
+          disabled={isExporting}
+        >
+          {isExporting ? 'Exporting...' : 'Export to CSV'}
+        </Button>
       </div>
-
       {archiveData.timesheet.length === 0 && archiveData.credentials.length === 0 ? (
         <div className="no-data-message">
           <p>No data available. Submit some timesheet entries to see them here.</p>

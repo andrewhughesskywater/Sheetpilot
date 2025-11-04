@@ -10,14 +10,14 @@ import {
   CircularProgress,
   LinearProgress
 } from '@mui/material';
-import {
-  Download as DownloadIcon
-} from '@mui/icons-material';
 const Archive = lazy(() => import('./components/archive/DatabaseViewer'));
 const TimesheetGrid = lazy(() => import('./components/timesheet/TimesheetGrid'));
 import type { TimesheetGridHandle } from './components/timesheet/TimesheetGrid';
 import ModernSegmentedNavigation from './components/ModernSegmentedNavigation';
 const Help = lazy(() => import('./components/Help'));
+import TimesheetSkeleton from './components/skeletons/TimesheetSkeleton';
+import ArchiveSkeleton from './components/skeletons/ArchiveSkeleton';
+import HelpSkeleton from './components/skeletons/HelpSkeleton';
 import UpdateDialog from './components/UpdateDialog';
 import LoginDialog from './components/LoginDialog';
 import { DataProvider, useData } from './contexts/DataContext';
@@ -26,6 +26,7 @@ import { initializeTheme } from './utils/theme-manager';
 import logoImage from './assets/images/transparent-logo.svg';
 import { APP_VERSION } from '../../shared/constants';
 import './styles/App.css';
+import './styles/transitions.css';
 
 export function AboutBody() {
   return (
@@ -124,11 +125,12 @@ function AppContent() {
   }
   const { isLoggedIn, isLoading: sessionLoading, login: sessionLogin } = useSession();
   const [activeTab, setActiveTab] = useState(0);
+  const [displayedTab, setDisplayedTab] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const hasRequestedInitialTimesheetRef = useRef(false);
   const hasRefreshedEmptyOnceRef = useRef(false);
   const timesheetGridRef = useRef<TimesheetGridHandle>(null);
   
-  const [isExporting, setIsExporting] = useState(false);
   const [showAboutDialog, setShowAboutDialog] = useState(false);
   
   // Update dialog state
@@ -215,27 +217,6 @@ function AppContent() {
 
 
 
-
-
-
-  const exportToCSV = async () => {
-    // Prevent multiple simultaneous exports
-    if (isExporting) return;
-    
-    window.logger?.userAction('export-to-csv-clicked');
-    setIsExporting(true);
-    
-    try {
-      // CSV export functionality not yet implemented
-      window.logger?.info('CSV export requested');
-    } catch (error) {
-      window.logger?.error('CSV export error', { error: error instanceof Error ? error.message : String(error) });
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
-
   return (
     <div className="app-container">
       {/* Top Navigation Bar */}
@@ -264,7 +245,12 @@ function AppContent() {
         <ModernSegmentedNavigation 
           activeTab={activeTab} 
           onTabChange={async (newTab) => {
+            if (isTransitioning || newTab === activeTab) return;
+            
             window.logger?.userAction('tab-change', { from: activeTab, to: newTab });
+            
+            // Start transition
+            setIsTransitioning(true);
             
             // Save to database when leaving Timesheet tab
             if (activeTab === 0 && newTab !== 0) {
@@ -272,29 +258,25 @@ function AppContent() {
               await timesheetGridRef.current?.batchSaveToDatabase();
             }
             
+            // Wait for exit animation
+            await new Promise(resolve => setTimeout(resolve, 200));
+            
+            // Update both activeTab (for navigation) and displayedTab (for content)
             setActiveTab(newTab);
+            setDisplayedTab(newTab);
+            
+            // Wait for enter animation to start
+            await new Promise(resolve => setTimeout(resolve, 100));
+            setIsTransitioning(false);
           }}
         />
+        
+        {/* Empty spacer for grid balance */}
+        <div />
       </div>
       
       {/* Main Content Area */}
       <div className="main-content-area">
-        {/* Header Actions */}
-        <div className="header-actions">
-          {activeTab === 1 && isLoggedIn && (
-            <Button
-              variant="contained"
-              size="large"
-              className="export-button"
-              startIcon={isExporting ? <CircularProgress size={20} color="inherit" /> : <DownloadIcon />}
-              onClick={exportToCSV}
-              disabled={isExporting}
-            >
-              {isExporting ? 'Exporting...' : 'Export to CSV'}
-            </Button>
-          )}
-        </div>
-
         {/* Main Content */}
         <div className="content-area">
           {sessionLoading ? (
@@ -304,25 +286,25 @@ function AppContent() {
           ) : !isLoggedIn ? (
             <LoginDialog open={!isLoggedIn} onLoginSuccess={sessionLogin} />
           ) : (
-            <>
-              {activeTab === 0 && (
-                <Suspense fallback={<div className="loading-fallback">Loading timesheet...</div>}>
+            <div className={`page-transition-container ${isTransitioning ? 'page-exit-active' : 'page-enter-active'}`}>
+              {displayedTab === 0 && (
+                <Suspense fallback={<TimesheetSkeleton />}>
                   <TimesheetGrid ref={timesheetGridRef} />
                 </Suspense>
               )}
 
-              {activeTab === 1 && (
-                <Suspense fallback={<div className="loading-fallback">Loading archive...</div>}>
+              {displayedTab === 1 && (
+                <Suspense fallback={<ArchiveSkeleton />}>
                   <Archive />
                 </Suspense>
               )}
 
-              {activeTab === 2 && (
-                <Suspense fallback={<div className="loading-fallback">Loading help...</div>}>
+              {displayedTab === 2 && (
+                <Suspense fallback={<HelpSkeleton />}>
                   <Help />
                 </Suspense>
               )}
-            </>
+            </div>
           )}
         </div>
 
