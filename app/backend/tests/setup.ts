@@ -35,63 +35,60 @@ vi.mock('fs', async () => {
 // Mock better-sqlite3 to avoid NODE_MODULE_VERSION mismatch
 // Tests run on Node.js (v127) but better-sqlite3 is compiled for Electron (v139)
 // Uses INTERNAL in-memory database mock that stores data for proper test behavior
-vi.mock('better-sqlite3', async () => {
-  const { createInMemoryDatabase } = await import('./fixtures/in-memory-db-mock');
+// IMPORTANT: Mock factory must be synchronous for Vitest to intercept require() calls
+vi.mock('better-sqlite3', () => {
+  console.log('[SETUP] Mock factory for better-sqlite3 is being called');
+  // Use synchronous require() instead of async import()
+  const { createInMemoryDatabase } = require('./fixtures/in-memory-db-mock');
+  console.log('[SETUP] Successfully loaded in-memory-db-mock');
   
   // Store database instances per path - cleared between tests for isolation
   const databaseInstances = new Map<string, ReturnType<typeof createInMemoryDatabase>>();
   
-  function MockDatabase(this: MockDatabaseInstance, path: string, _opts?: unknown) {
-    const pathModule = require('path');
-    const resolvedPath = pathModule.resolve(path);
-    createdDbPaths.add(resolvedPath);
-    // Also track the directory
-    const dir = pathModule.dirname(resolvedPath);
-    createdDbPaths.add(dir);
-    
-    if (!databaseInstances.has(resolvedPath)) {
-      databaseInstances.set(resolvedPath, createInMemoryDatabase(resolvedPath));
-    }
-    const db = databaseInstances.get(resolvedPath)!;
-    this.path = resolvedPath;
-    this.open = true;
-    this.prepare = db.prepare.bind(db);
-    this.transaction = db.transaction.bind(db);
-    this.exec = db.exec.bind(db);
-    this.close = db.close.bind(db);
-    this.pragma = db.pragma.bind(db);
-  }
-
-  interface MockDatabaseInstance {
+  // Use a proper class to ensure constructor works correctly with 'new'
+  class MockDatabase {
     path: string;
     open: boolean;
     prepare: ReturnType<typeof createInMemoryDatabase>['prepare'];
     transaction: ReturnType<typeof createInMemoryDatabase>['transaction'];
     exec: ReturnType<typeof createInMemoryDatabase>['exec'];
     close: ReturnType<typeof createInMemoryDatabase>['close'];
-    pragma?: ReturnType<typeof createInMemoryDatabase>['pragma'];
+    pragma: ReturnType<typeof createInMemoryDatabase>['pragma'];
+    
+    constructor(path: string, _opts?: unknown) {
+      console.log('[SETUP] MockDatabase constructor called with path:', path);
+      const pathModule = require('path');
+      const resolvedPath = pathModule.resolve(path);
+      createdDbPaths.add(resolvedPath);
+      // Also track the directory
+      const dir = pathModule.dirname(resolvedPath);
+      createdDbPaths.add(dir);
+      
+      if (!databaseInstances.has(resolvedPath)) {
+        databaseInstances.set(resolvedPath, createInMemoryDatabase(resolvedPath));
+      }
+      const db = databaseInstances.get(resolvedPath)!;
+      this.path = resolvedPath;
+      this.open = true;
+      this.prepare = db.prepare.bind(db);
+      this.transaction = db.transaction.bind(db);
+      this.exec = db.exec.bind(db);
+      this.close = db.close.bind(db);
+      this.pragma = db.pragma.bind(db);
+    }
   }
   
-  // The mock module needs to work for both CommonJS require() and ES imports
-  // CommonJS: require('better-sqlite3') should return a constructor function
-  // ES: import Database from 'better-sqlite3' should get .default
-  // The database code checks: mod.default ?? mod.Database ?? mod, then calls: new DatabaseCtor(path)
-  // So we need MockDatabase to work as a constructor when called with 'new'
-  // MockDatabase is already a constructor function, we just need to attach ES module properties
+  // For Vitest mocks with CommonJS, we need to export the constructor as default
+  // The real better-sqlite3 module exports: module.exports = Database
+  // Which means both require('better-sqlite3') and require('better-sqlite3').default work
+  // We mimic this by making default the primary export
   
-  // MockDatabase is already a constructor function that can be called with 'new'
-  // We just need to attach ES module properties (.default and .Database)
-  const mockModule = MockDatabase as unknown as {
-    (path: string, opts?: unknown): MockDatabaseInstance;
-    default: typeof MockDatabase;
-    Database: typeof MockDatabase;
+  const mockExport = MockDatabase;
+  
+  return {
+    default: mockExport,
+    __esModule: true
   };
-  
-  // Attach properties for ES module compatibility
-  mockModule.default = MockDatabase;
-  mockModule.Database = MockDatabase;
-  
-  return mockModule;
 });
 
 // Mock Playwright to prevent browser automation in tests

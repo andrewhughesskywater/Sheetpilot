@@ -2,14 +2,17 @@ import { useState, useCallback, useMemo, useEffect, useRef, useImperativeHandle,
 import { HotTable } from '@handsontable/react-wrapper';
 import { registerAllModules } from 'handsontable/registry';
 import type { HotTableRef } from '@handsontable/react-wrapper';
-import { Button, CircularProgress, Alert } from '@mui/material';
+import { Alert } from '@mui/material';
 import { PlayArrow as PlayArrowIcon } from '@mui/icons-material';
 import 'handsontable/styles/handsontable.css';
 import 'handsontable/styles/ht-theme-horizon.css';
 import { useData } from '../../contexts/DataContext';
 import { useSession } from '../../contexts/SessionContext';
+import { StatusButton } from '../StatusButton';
 import './TimesheetGrid.css';
 import type { TimesheetRow } from './timesheet.schema';
+
+type ButtonStatus = 'neutral' | 'ready' | 'warning';
 import { formatTimeInput, normalizeRowData, isValidDate, isValidTime, hasTimeOverlapWithPreviousEntries } from './timesheet.schema';
 import { projects, chargeCodes, projectsWithoutTools, toolsWithoutCharges, getToolOptions, toolNeedsChargeCode, projectNeedsTools } from './timesheet.options';
 import { submitTimesheet } from './timesheet.submit';
@@ -423,6 +426,71 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
     { data: 'taskDescription', title: 'Task Description', type: 'text', placeholder: '', className: 'htLeft', validator: taskDescriptionValidator, maxLength: 120 }
   ], []);
 
+  // Validate timesheet data for button status - MUST be before early returns
+  const buttonStatus: ButtonStatus = useMemo(() => {
+    if (!timesheetDraftData || timesheetDraftData.length === 0) {
+      return 'neutral';
+    }
+
+    // Check if there's any real data (non-empty rows)
+    const realRows = timesheetDraftData.filter((row: TimesheetRow) => {
+      return row.date || row.timeIn || row.timeOut || row.project || row.taskDescription;
+    });
+
+    if (realRows.length === 0) {
+      return 'neutral';
+    }
+
+    // Check if all real rows are valid
+    let hasErrors = false;
+    for (const row of realRows) {
+      // Check required fields
+      if (!row.date || !isValidDate(row.date)) {
+        hasErrors = true;
+        break;
+      }
+      if (!row.timeIn || !isValidTime(row.timeIn)) {
+        hasErrors = true;
+        break;
+      }
+      if (!row.timeOut || !isValidTime(row.timeOut)) {
+        hasErrors = true;
+        break;
+      }
+      if (!row.project) {
+        hasErrors = true;
+        break;
+      }
+      if (!row.taskDescription) {
+        hasErrors = true;
+        break;
+      }
+      // Check if tool is required
+      if (projectNeedsTools(row.project) && !row.tool) {
+        hasErrors = true;
+        break;
+      }
+      // Check if charge code is required
+      if (row.tool && toolNeedsChargeCode(row.tool) && !row.chargeCode) {
+        hasErrors = true;
+        break;
+      }
+    }
+
+    if (hasErrors) {
+      return 'warning';
+    }
+
+    // Check for time overlaps
+    for (let i = 0; i < timesheetDraftData.length; i++) {
+      if (hasTimeOverlapWithPreviousEntries(i, timesheetDraftData)) {
+        return 'warning';
+      }
+    }
+
+    return 'ready';
+  }, [timesheetDraftData]);
+
   if (isTimesheetDraftLoading) {
     return (
       <div className="timesheet-page">
@@ -451,16 +519,6 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
             Admin users cannot submit timesheet entries to SmartSheet.
           </Alert>
         )}
-        <Button
-          variant="contained"
-          size="large"
-          className="submit-timesheet-button"
-          startIcon={isProcessing ? <CircularProgress size={20} color="inherit" /> : <PlayArrowIcon />}
-          onClick={handleSubmitTimesheet}
-          disabled={isProcessing || isAdmin}
-        >
-          {isProcessing ? 'Submitting...' : 'Submit Timesheet'}
-        </Button>
       </div>
       <HotTable
         ref={hotTableRef}
@@ -509,6 +567,18 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
         tabMoves={{ row: 0, col: 1 }}
         invalidCellClassName="htInvalid"
       />
+      <div className="timesheet-footer">
+        <StatusButton
+          status={buttonStatus}
+          onClick={handleSubmitTimesheet}
+          isProcessing={isProcessing}
+          processingText="Submitting..."
+          icon={<PlayArrowIcon />}
+          disabled={isAdmin}
+        >
+          Submit Timesheet
+        </StatusButton>
+      </div>
     </div>
   );
 });

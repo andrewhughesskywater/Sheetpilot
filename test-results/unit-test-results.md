@@ -1,6 +1,6 @@
 # Test Results
 
-Generated at: 2025-11-04T02:00:28.260Z
+Generated at: 2025-11-04T02:03:35.908Z
 
 ## Summary
 
@@ -10,7 +10,7 @@ Generated at: 2025-11-04T02:00:28.260Z
 | Passed | 196 |
 | Failed | 0 |
 | Skipped | 0 |
-| Duration | 0.14s |
+| Duration | 0.18s |
 
 **Pass Rate:** 100.00%
 
@@ -71,7 +71,7 @@ Generated at: 2025-11-04T02:00:28.260Z
 
 | Test | Status | Duration |
 |------|--------|----------|
-| should handle large datasets efficiently | ✅ passed | 0.06s |
+| should handle large datasets efficiently | ✅ passed | 0.08s |
 | should maintain referential integrity | ✅ passed | 0.00s |
 
 ### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/contracts/ipc-contracts.spec.ts
@@ -420,7 +420,7 @@ Generated at: 2025-11-04T02:00:28.260Z
 | Test | Status | Duration |
 |------|--------|----------|
 | should validate dates efficiently | ✅ passed | 0.00s |
-| should handle large date ranges efficiently | ✅ passed | 0.00s |
+| should handle large date ranges efficiently | ✅ passed | 0.01s |
 
 #### Quarter Validation Unit Tests > Integration with Date Validation
 

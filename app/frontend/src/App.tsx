@@ -13,7 +13,7 @@ import {
 const Archive = lazy(() => import('./components/archive/DatabaseViewer'));
 const TimesheetGrid = lazy(() => import('./components/timesheet/TimesheetGrid'));
 import type { TimesheetGridHandle } from './components/timesheet/TimesheetGrid';
-import ModernSegmentedNavigation from './components/ModernSegmentedNavigation';
+import SheetPilotNavigation from './components/SheetPilotNavigation';
 const Help = lazy(() => import('./components/Help'));
 import TimesheetSkeleton from './components/skeletons/TimesheetSkeleton';
 import ArchiveSkeleton from './components/skeletons/ArchiveSkeleton';
@@ -23,7 +23,7 @@ import LoginDialog from './components/LoginDialog';
 import { DataProvider, useData } from './contexts/DataContext';
 import { SessionProvider, useSession } from './contexts/SessionContext';
 import { initializeTheme } from './utils/theme-manager';
-import logoImage from './assets/images/transparent-logo.svg';
+import logoImage from './assets/images/logo.svg';
 import { APP_VERSION } from '../../shared/constants';
 import './styles/App.css';
 import './styles/transitions.css';
@@ -219,61 +219,39 @@ function AppContent() {
 
   return (
     <div className="app-container">
-      {/* Top Navigation Bar */}
-      <div className="top-navigation">
-        {/* App Logo/Branding */}
-        <div className="app-branding">
-          <img 
-            src={logoImage} 
-            alt="SheetPilot" 
-            className="app-logo"
-            onLoad={() => window.logger?.debug('Logo loaded successfully')}
-            onError={(e) => console.error('Logo failed to load:', e)}
-          />
-          <button 
-            className="app-logo-button"
-            onClick={() => {
-              window.logger?.userAction('about-dialog-opened');
-              setShowAboutDialog(true);
-            }}
-            aria-label="About SheetPilot"
-            title="Click to view about information"
-          />
-        </div>
-
-        {/* Modern Segmented Navigation */}
-        <ModernSegmentedNavigation 
-          activeTab={activeTab} 
-          onTabChange={async (newTab) => {
-            if (isTransitioning || newTab === activeTab) return;
-            
-            window.logger?.userAction('tab-change', { from: activeTab, to: newTab });
-            
-            // Start transition
-            setIsTransitioning(true);
-            
-            // Save to database when leaving Timesheet tab
-            if (activeTab === 0 && newTab !== 0) {
-              window.logger?.info('[App] Leaving Timesheet tab, triggering batch save');
-              await timesheetGridRef.current?.batchSaveToDatabase();
-            }
-            
-            // Wait for exit animation
-            await new Promise(resolve => setTimeout(resolve, 200));
-            
-            // Update both activeTab (for navigation) and displayedTab (for content)
-            setActiveTab(newTab);
-            setDisplayedTab(newTab);
-            
-            // Wait for enter animation to start
-            await new Promise(resolve => setTimeout(resolve, 100));
-            setIsTransitioning(false);
-          }}
-        />
-        
-        {/* Empty spacer for grid balance */}
-        <div />
-      </div>
+      {/* SheetPilot Navigation */}
+      <SheetPilotNavigation 
+        activeTab={activeTab}
+        onLogoClick={() => {
+          window.logger?.userAction('about-dialog-opened');
+          setShowAboutDialog(true);
+        }}
+        onTabChange={async (newTab) => {
+          if (isTransitioning || newTab === activeTab) return;
+          
+          window.logger?.userAction('tab-change', { from: activeTab, to: newTab });
+          
+          // Start transition
+          setIsTransitioning(true);
+          
+          // Save to database when leaving Timesheet tab
+          if (activeTab === 0 && newTab !== 0) {
+            window.logger?.info('[App] Leaving Timesheet tab, triggering batch save');
+            await timesheetGridRef.current?.batchSaveToDatabase();
+          }
+          
+          // Wait for exit animation
+          await new Promise(resolve => setTimeout(resolve, 200));
+          
+          // Update both activeTab (for navigation) and displayedTab (for content)
+          setActiveTab(newTab);
+          setDisplayedTab(newTab);
+          
+          // Wait for enter animation to start
+          await new Promise(resolve => setTimeout(resolve, 100));
+          setIsTransitioning(false);
+        }}
+      />
       
       {/* Main Content Area */}
       <div className="main-content-area">

@@ -1,12 +1,14 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { HotTable } from '@handsontable/react-wrapper';
 import { registerAllModules } from 'handsontable/registry';
-import { Button, CircularProgress } from '@mui/material';
 import { Download as DownloadIcon } from '@mui/icons-material';
 import 'handsontable/styles/handsontable.css';
 import 'handsontable/styles/ht-theme-horizon.css';
 import { useData } from '../../contexts/DataContext';
+import { StatusButton } from '../StatusButton';
 import './DatabaseViewer.css';
+
+type ButtonStatus = 'neutral' | 'ready' | 'warning';
 
 // Register Handsontable modules
 registerAllModules();
@@ -148,6 +150,21 @@ function Archive() {
     }
   };
 
+  // Validate archive data for button status - MUST be before early returns
+  const buttonStatus: ButtonStatus = useMemo(() => {
+    if (!archiveData || !archiveData.timesheet) {
+      return 'neutral';
+    }
+
+    const timesheetCount = archiveData.timesheet.length;
+
+    if (timesheetCount === 0) {
+      return 'neutral';
+    }
+
+    return 'ready';
+  }, [archiveData]);
+
   if (isArchiveDataLoading) {
     return (
       <div className="loading-container">
@@ -170,16 +187,7 @@ function Archive() {
   return (
     <div className="archive-page">
       <div className="archive-header">
-        <Button
-          variant="contained"
-          size="large"
-          className="export-button"
-          startIcon={isExporting ? <CircularProgress size={20} color="inherit" /> : <DownloadIcon />}
-          onClick={exportToCSV}
-          disabled={isExporting}
-        >
-          {isExporting ? 'Exporting...' : 'Export to CSV'}
-        </Button>
+        {/* Header kept for layout consistency, but button moved to footer */}
       </div>
       {archiveData.timesheet.length === 0 && archiveData.credentials.length === 0 ? (
         <div className="no-data-message">
@@ -226,6 +234,17 @@ function Archive() {
           activeHeaderClassName=""
         />
       )}
+      <div className="archive-footer">
+        <StatusButton
+          status={buttonStatus}
+          onClick={exportToCSV}
+          isProcessing={isExporting}
+          processingText="Exporting..."
+          icon={<DownloadIcon />}
+        >
+          Export to CSV
+        </StatusButton>
+      </div>
     </div>
   );
 };

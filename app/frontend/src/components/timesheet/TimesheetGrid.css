@@ -19,8 +19,13 @@
   flex: 1;
 }
 
-.submit-timesheet-button {
-  flex-shrink: 0;
+/* Footer container for submit button below table */
+.timesheet-footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: var(--sp-space-6);
+  gap: var(--sp-space-4);
 }
 
 .debug-state-display {

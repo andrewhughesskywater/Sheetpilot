@@ -1,0 +1,77 @@
+/**
+ * StatusButton Component Styles
+ * Unified status-based button styling
+ */
+
+/* Base button styling */
+.status-button {
+  min-width: 200px !important;
+  transition: background-color var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard),
+              box-shadow var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard),
+              transform var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard) !important;
+}
+
+/* Neutral state - no data or inactive */
+.status-button-neutral {
+  background-color: rgba(100, 116, 139, 0.6) !important; /* Neutral gray with transparency */
+  color: rgba(255, 255, 255, 0.7) !important;
+  backdrop-filter: blur(12px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
+}
+
+.status-button-neutral:hover:not(:disabled) {
+  background-color: rgba(100, 116, 139, 0.7) !important;
+}
+
+/* Ready state - all conditions met and ready for action */
+.status-button-ready {
+  background-color: rgba(20, 184, 166, 0.85) !important; /* Teal/success color */
+  color: white !important;
+  backdrop-filter: blur(12px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
+  box-shadow: 0 4px 12px rgba(20, 184, 166, 0.3) !important;
+}
+
+.status-button-ready:hover:not(:disabled) {
+  background-color: rgba(20, 184, 166, 0.95) !important;
+  box-shadow: 0 6px 16px rgba(20, 184, 166, 0.4) !important;
+  transform: translateY(-2px) scale(1.02) !important;
+}
+
+.status-button-ready:active:not(:disabled) {
+  box-shadow: 0 2px 8px rgba(20, 184, 166, 0.3) !important;
+  transform: translateY(0) scale(1) !important;
+}
+
+/* Warning state - has data but validation errors */
+.status-button-warning {
+  background-color: rgba(245, 158, 11, 0.75) !important; /* Orange/warning color */
+  color: white !important;
+  backdrop-filter: blur(12px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3) !important;
+}
+
+.status-button-warning:hover:not(:disabled) {
+  background-color: rgba(245, 158, 11, 0.85) !important;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .status-button,
+  .status-button-neutral,
+  .status-button-ready,
+  .status-button-warning {
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .status-button {
+    min-width: 160px !important;
+    font-size: 14px !important;
+  }
+}
+

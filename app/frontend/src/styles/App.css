@@ -264,66 +264,9 @@
    M3 BUTTON VARIANTS
    ======================================== */
 
-/* Submit Timesheet Button - M3 Filled Primary */
-/* Submit Timesheet Button - Glassmorphic Design */
-.submit-timesheet-button {
-  min-width: 200px !important;
-  background-color: rgba(156, 74, 0, 0.75) !important; /* Primary color with transparency */
-  backdrop-filter: blur(12px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
-  color: var(--md-sys-color-on-primary) !important;
-  border-radius: var(--md-sys-shape-corner-medium) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  box-shadow: var(--md-sys-elevation-level2) !important;
-  font-family: var(--md-sys-typescale-label-large-font) !important;
-  font-size: var(--md-sys-typescale-label-large-size) !important;
-  font-weight: var(--md-sys-typescale-label-large-weight) !important;
-  letter-spacing: var(--md-sys-typescale-label-large-tracking) !important;
-  transition: box-shadow var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard),
-              background-color var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard),
-              transform var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard) !important;
-}
+/* Submit Timesheet Button - Status-based colors defined in TimesheetGrid.css */
 
-.submit-timesheet-button:hover {
-  background-color: rgba(156, 74, 0, 0.85) !important; /* Slightly more opaque on hover */
-  box-shadow: var(--md-sys-elevation-level3) !important;
-  transform: translateY(-2px) scale(1.02) !important;
-}
-
-.submit-timesheet-button:active {
-  box-shadow: var(--md-sys-elevation-level1) !important;
-  transform: translateY(0) scale(1) !important;
-}
-
-/* Export Button - Glassmorphic Design */
-.export-button {
-  min-width: 200px !important;
-  background-color: rgba(119, 87, 75, 0.75) !important; /* Secondary color with transparency */
-  backdrop-filter: blur(12px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
-  color: var(--md-sys-color-on-secondary) !important;
-  border-radius: var(--md-sys-shape-corner-medium) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  box-shadow: var(--md-sys-elevation-level2) !important;
-  font-family: var(--md-sys-typescale-label-large-font) !important;
-  font-size: var(--md-sys-typescale-label-large-size) !important;
-  font-weight: var(--md-sys-typescale-label-large-weight) !important;
-  letter-spacing: var(--md-sys-typescale-label-large-tracking) !important;
-  transition: box-shadow var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard),
-              background-color var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard),
-              transform var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard) !important;
-}
-
-.export-button:hover {
-  background-color: rgba(119, 87, 75, 0.85) !important; /* Slightly more opaque on hover */
-  box-shadow: var(--md-sys-elevation-level3) !important;
-  transform: translateY(-2px) scale(1.02) !important;
-}
-
-.export-button:active {
-  box-shadow: var(--md-sys-elevation-level1) !important;
-  transform: translateY(0) scale(1) !important;
-}
+/* Export Button - Status-based colors defined in DatabaseViewer.css */
 
 /* Add Credentials Button - M3 Filled Tertiary */
 .add-credentials-button {
@@ -445,11 +388,6 @@
     align-items: stretch;
   }
   
-  .submit-timesheet-button,
-  .export-button {
-    min-width: 100% !important;
-  }
-  
   .credentials-actions-box {
     flex-direction: column;
   }
@@ -471,8 +409,6 @@
 @media (prefers-reduced-motion: reduce) {
   .app-branding,
   .app-logo-button,
-  .submit-timesheet-button,
-  .export-button,
   .add-credentials-button,
   .clear-credentials-button {
     transition: none !important;

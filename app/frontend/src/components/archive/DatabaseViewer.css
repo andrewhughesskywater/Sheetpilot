@@ -14,8 +14,13 @@
   gap: var(--sp-space-4);
 }
 
-.export-button {
-  flex-shrink: 0;
+/* Footer container for export button below table */
+.archive-footer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: var(--sp-space-6);
+  gap: var(--sp-space-4);
 }
 
 .loading-container {
@@ -158,3 +163,4 @@
 .archive-error-message {
   color: var(--md-sys-color-error);
 }
+
