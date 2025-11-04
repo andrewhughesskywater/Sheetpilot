@@ -13,9 +13,9 @@ import {
 import {
   Download as DownloadIcon
 } from '@mui/icons-material';
-const Archive = lazy(() => import('./components/DatabaseViewer'));
-const TimesheetGrid = lazy(() => import('./components/TimesheetGrid'));
-import type { TimesheetGridHandle } from './components/TimesheetGrid';
+const Archive = lazy(() => import('./components/archive/DatabaseViewer'));
+const TimesheetGrid = lazy(() => import('./components/timesheet/TimesheetGrid'));
+import type { TimesheetGridHandle } from './components/timesheet/TimesheetGrid';
 import ModernSegmentedNavigation from './components/ModernSegmentedNavigation';
 const Help = lazy(() => import('./components/Help'));
 import UpdateDialog from './components/UpdateDialog';
@@ -95,16 +95,9 @@ export function Splash() {
   };
 
   return (
-    <Box sx={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      height: '100vh',
-      gap: 'var(--sp-space-6)'
-    }}>
+    <Box className="splash-container" sx={{ gap: 'var(--sp-space-4)' }}>
       <AboutBody />
-      <Box sx={{ width: '60%', minWidth: 260 }}>
+      <Box sx={{ width: '60%', minWidth: 260, maxWidth: 400 }}>
         <LinearProgress
           variant={progress != null ? 'determinate' : 'indeterminate'}
           {...(progress != null ? { value: progress } : {})}
@@ -126,10 +119,11 @@ export function Splash() {
 }
 
 function AppContent() {
-  console.log('=== APP CONTENT RENDERING ===');
+  if (process.env.NODE_ENV === 'development') {
+    console.debug(`[AppContent] render ts:${performance.now().toFixed(2)}ms`);
+  }
   const { isLoggedIn, isLoading: sessionLoading, login: sessionLogin } = useSession();
   const [activeTab, setActiveTab] = useState(0);
-  console.log('Active tab:', activeTab);
   const hasRequestedInitialTimesheetRef = useRef(false);
   const hasRefreshedEmptyOnceRef = useRef(false);
   const timesheetGridRef = useRef<TimesheetGridHandle>(null);
@@ -380,11 +374,10 @@ function AppContent() {
 };
 
 export default function App() {
-  // This should show in console immediately on app load
-  console.log('=== APP LOADING ===');
-  console.log('Environment:', import.meta.env.DEV ? 'development' : 'production');
-  console.log('Window object:', typeof window);
-  console.log('Console available:', typeof console.log);
+  // Diagnostic logging (gated by development mode, aware of StrictMode double-render)
+  if (process.env.NODE_ENV === 'development') {
+    console.debug(`[App] render ts:${performance.now().toFixed(2)}ms env:${import.meta.env.DEV ? 'dev' : 'prod'}`);
+  }
   
   return (
     <SessionProvider>

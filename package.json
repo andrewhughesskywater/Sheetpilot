@@ -38,6 +38,7 @@
     "test:blank-screen": "npm run -w @sheetpilot/frontend test:run -- --config ../tests/vitest.config.blank-screen-prevention.ts",
     "test:renderer": "npm run -w @sheetpilot/frontend test:run",
     "test:bot": "cd app/backend/src/services/bot && npm run test",
+    "dev:smoke": "node -e \"console.log('For smoke test, run: bash scripts/dev-smoke.sh (Linux/Mac) or powershell scripts/dev-smoke.ps1 (Windows)')\"",
     "clean": "rimraf build/dist && cd app/backend/src/services/bot && npm run clean"
   },
   "dependencies": {
@@ -93,9 +94,7 @@
       "main": "build/dist/backend/src/main.js"
     },
     "win": {
-      "icon": "build/icon.ico",
-      "forceCodeSigning": false,
-      "signAndEditExecutable": false
+      "icon": "build/icon.ico"
     },
     "nsis": {
       "installerIcon": "build/icon.ico",
