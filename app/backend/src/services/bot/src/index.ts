@@ -39,13 +39,14 @@ export async function runTimesheet(
   rows: Array<Record<string, unknown>>, 
   email: string, 
   password: string,
-  formConfig: { BASE_URL: string; FORM_ID: string; SUBMISSION_ENDPOINT: string; SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[] }
+  formConfig: { BASE_URL: string; FORM_ID: string; SUBMISSION_ENDPOINT: string; SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[] },
+  progressCallback?: (percent: number, message: string) => void
 ): Promise<{
   ok: boolean;
   submitted: number[];
   errors: Array<[number, string]>;
 }> {
-  const bot = new BotOrchestrator(Cfg, formConfig, false, null, undefined); // Set headless to false to show browser
+  const bot = new BotOrchestrator(Cfg, formConfig, true, null, progressCallback); // Set headless to true
   
   try {
     // Handle empty rows array - should succeed immediately

@@ -15,14 +15,16 @@
     "skipLibCheck": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "incremental": true,
+    "tsBuildInfoFile": "build/.tsbuildinfo"
   },
   "include": [
     "app/backend/src/**/*.ts",
     "app/shared/**/*.ts"
   ],
   "exclude": [
-    "app/backend/src/services/bot/node_modules",
+    "app/backend/src/services/bot/**/*",
     "app/backend/tests/**/*",
     "node_modules",
     "build",

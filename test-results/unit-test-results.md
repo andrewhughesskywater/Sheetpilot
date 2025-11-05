@@ -1,6 +1,6 @@
 # Test Results
 
-Generated at: 2025-11-04T02:03:35.908Z
+Generated at: 2025-11-05T21:06:45.716Z
 
 ## Summary
 
@@ -10,13 +10,13 @@ Generated at: 2025-11-04T02:03:35.908Z
 | Passed | 196 |
 | Failed | 0 |
 | Skipped | 0 |
-| Duration | 0.18s |
+| Duration | 0.59s |
 
 **Pass Rate:** 100.00%
 
 ## Test Results by File
 
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/contracts/database-schema.spec.ts
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/contracts/database-schema.spec.ts
 
 #### Database Schema Contract Validation > Timesheet Table Schema
 
@@ -71,10 +71,10 @@ Generated at: 2025-11-04T02:03:35.908Z
 
 | Test | Status | Duration |
 |------|--------|----------|
-| should handle large datasets efficiently | ✅ passed | 0.08s |
+| should handle large datasets efficiently | ✅ passed | 0.29s |
 | should maintain referential integrity | ✅ passed | 0.00s |
 
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/contracts/ipc-contracts.spec.ts
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/contracts/ipc-contracts.spec.ts
 
 #### IPC Contract Validation > timesheet:saveDraft Contract
 
@@ -141,13 +141,13 @@ Generated at: 2025-11-04T02:03:35.908Z
 | should maintain date format consistency | ✅ passed | 0.00s |
 | should handle date conversion edge cases | ✅ passed | 0.00s |
 
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/contracts/plugin-contracts.spec.ts
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/contracts/plugin-contracts.spec.ts
 
 #### Plugin Contract Validation > IDataService Contract
 
 | Test | Status | Duration |
 |------|--------|----------|
-| should validate SQLiteDataService implements IDataService | ✅ passed | 0.00s |
+| should validate SQLiteDataService implements IDataService | ✅ passed | 0.01s |
 | should validate MemoryDataService implements IDataService | ✅ passed | 0.00s |
 | should validate saveDraft method signature | ✅ passed | 0.00s |
 | should validate loadDraft method signature | ✅ passed | 0.00s |
@@ -179,7 +179,7 @@ Generated at: 2025-11-04T02:03:35.908Z
 
 | Test | Status | Duration |
 |------|--------|----------|
-| should validate all plugins implement lifecycle methods | ✅ passed | 0.00s |
+| should validate all plugins implement lifecycle methods | ✅ passed | 0.01s |
 | should validate plugin initialization | ✅ passed | 0.00s |
 | should validate plugin cleanup | ✅ passed | 0.00s |
 
@@ -197,7 +197,7 @@ Generated at: 2025-11-04T02:03:35.908Z
 | should validate plugin registration | ✅ passed | 0.00s |
 | should validate plugin switching | ✅ passed | 0.00s |
 
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/contracts/renderer-main-contracts.spec.ts
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/contracts/renderer-main-contracts.spec.ts
 
 #### Renderer-Main Communication Contracts > IPC Channel Contracts
 
@@ -252,13 +252,13 @@ Generated at: 2025-11-04T02:03:35.908Z
 | should validate response time expectations | ✅ passed | 0.00s |
 | should validate payload size limits | ✅ passed | 0.00s |
 
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/unit/date-normalization.spec.ts
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/unit/date-normalization.spec.ts
 
 #### Date Normalization Unit Tests > Date Format Conversion
 
 | Test | Status | Duration |
 |------|--------|----------|
-| should convert mm/dd/yyyy to yyyy-mm-dd correctly | ✅ passed | 0.00s |
+| should convert mm/dd/yyyy to yyyy-mm-dd correctly | ✅ passed | 0.01s |
 | should convert yyyy-mm-dd to mm/dd/yyyy correctly | ✅ passed | 0.00s |
 | should handle single digit months and days correctly | ✅ passed | 0.00s |
 
@@ -290,7 +290,7 @@ Generated at: 2025-11-04T02:03:35.908Z
 
 | Test | Status | Duration |
 |------|--------|----------|
-| should convert dates efficiently | ✅ passed | 0.00s |
+| should convert dates efficiently | ✅ passed | 0.01s |
 | should handle large datasets efficiently | ✅ passed | 0.00s |
 
 #### Date Normalization Unit Tests > Data Consistency
@@ -306,7 +306,7 @@ Generated at: 2025-11-04T02:03:35.908Z
 |------|--------|----------|
 | should work with quarter validation | ✅ passed | 0.00s |
 
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/unit/dropdown-cascading.spec.ts
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/unit/dropdown-cascading.spec.ts
 
 #### Dropdown Cascading Logic Unit Tests > Project-Tool Relationships
 
@@ -371,10 +371,10 @@ Generated at: 2025-11-04T02:03:35.908Z
 | Test | Status | Duration |
 |------|--------|----------|
 | should enforce correct project-tool relationships for all projects | ✅ passed | 0.00s |
-| should enforce correct tool-chargeCode relationships for all tools | ✅ passed | 0.00s |
-| should maintain referential integrity | ✅ passed | 0.01s |
+| should enforce correct tool-chargeCode relationships for all tools | ✅ passed | 0.01s |
+| should maintain referential integrity | ✅ passed | 0.02s |
 
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/unit/quarter-validation.spec.ts
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/unit/quarter-validation.spec.ts
 
 #### Quarter Validation Unit Tests > Current Quarter Detection
 
@@ -428,7 +428,7 @@ Generated at: 2025-11-04T02:03:35.908Z
 |------|--------|----------|
 | should work with date format validation | ✅ passed | 0.00s |
 
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/unit/time-normalization.spec.ts
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/unit/time-normalization.spec.ts
 
 #### Time Normalization Unit Tests > Time Format Conversion
 
@@ -474,7 +474,7 @@ Generated at: 2025-11-04T02:03:35.908Z
 
 | Test | Status | Duration |
 |------|--------|----------|
-| should format times efficiently | ✅ passed | 0.00s |
+| should format times efficiently | ✅ passed | 0.01s |
 | should handle large datasets efficiently | ✅ passed | 0.00s |
 
 #### Time Normalization Unit Tests > Data Consistency
@@ -484,7 +484,7 @@ Generated at: 2025-11-04T02:03:35.908Z
 | should maintain consistent output format | ✅ passed | 0.00s |
 | should handle all valid time combinations | ✅ passed | 0.00s |
 
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/unit/validation-rules.spec.ts
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/unit/validation-rules.spec.ts
 
 #### Validation Rules Unit Tests > Date Validation
 

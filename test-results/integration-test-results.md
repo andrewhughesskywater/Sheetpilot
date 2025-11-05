@@ -1,264 +1,146 @@
 # Test Results
 
-Generated at: 2025-11-04T02:09:15.845Z
+Generated at: 2025-11-05T21:08:07.064Z
 
 ## Summary
 
 | Metric | Count |
 |--------|-------|
-| Total Tests | 29 |
-| Passed | 0 |
-| Failed | 29 |
+| Total Tests | 43 |
+| Passed | 41 |
+| Failed | 2 |
 | Skipped | 0 |
-| Duration | 0.11s |
+| Duration | 0.06s |
 
-**Pass Rate:** 0.00%
+**Pass Rate:** 95.35%
 
 ## Test Results by File
 
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/database.spec.ts
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/ipc-handlers-comprehensive.spec.ts
 
-#### Database Module > Database Path Management
-
-| Test | Status | Duration |
-|------|--------|----------|
-| should set and get database path correctly | ❌ failed | 0.02s |
-| should resolve relative paths to absolute paths | ❌ failed | 0.00s |
-| should create database directory if it does not exist | ❌ failed | 0.00s |
-
-#### Database Module > Database Connection
+#### IPC Handlers Comprehensive Tests > ping handler
 
 | Test | Status | Duration |
 |------|--------|----------|
-| should open database connection successfully | ❌ failed | 0.00s |
-| should create database file if it does not exist | ❌ failed | 0.00s |
+| should return pong with message | ✅ passed | 0.00s |
+| should handle empty message | ✅ passed | 0.00s |
+| should handle undefined message | ✅ passed | 0.00s |
 
-#### Database Module > Schema Management
-
-| Test | Status | Duration |
-|------|--------|----------|
-| should create timesheet table with correct schema | ❌ failed | 0.00s |
-| should create required indexes | ❌ failed | 0.00s |
-| should create unique constraint for deduplication | ❌ failed | 0.00s |
-
-#### Database Module > Timesheet Entry Insertion
+#### IPC Handlers Comprehensive Tests > credentials:store handler
 
 | Test | Status | Duration |
 |------|--------|----------|
-| should insert a new timesheet entry successfully | ❌ failed | 0.00s |
-| should calculate hours automatically | ❌ failed | 0.00s |
-| should handle optional fields correctly | ❌ failed | 0.00s |
-| should validate time constraints | ❌ failed | 0.00s |
+| should store credentials successfully | ✅ passed | 0.00s |
+| should handle storage failure | ✅ passed | 0.00s |
+| should handle invalid parameters | ✅ passed | 0.00s |
 
-#### Database Module > Deduplication Functionality
-
-| Test | Status | Duration |
-|------|--------|----------|
-| should prevent duplicate entries based on unique constraint | ❌ failed | 0.00s |
-| should allow entries with different time_in | ❌ failed | 0.00s |
-| should allow entries with different project | ❌ failed | 0.00s |
-| should allow entries with different task description | ❌ failed | 0.00s |
-| should allow entries with different date | ❌ failed | 0.00s |
-| should allow entries with different optional fields | ❌ failed | 0.00s |
-
-#### Database Module > Duplicate Checking Utilities
+#### IPC Handlers Comprehensive Tests > credentials:get handler
 
 | Test | Status | Duration |
 |------|--------|----------|
-| should correctly identify non-duplicate entries | ❌ failed | 0.00s |
-| should correctly identify duplicate entries | ❌ failed | 0.00s |
-| should find duplicate entries in database | ❌ failed | 0.00s |
-| should filter duplicates by date range | ❌ failed | 0.00s |
+| should retrieve credentials successfully | ✅ passed | 0.00s |
+| should handle missing credentials | ✅ passed | 0.00s |
+| should handle invalid service parameter | ✅ passed | 0.00s |
 
-#### Database Module > Batch Insertion
-
-| Test | Status | Duration |
-|------|--------|----------|
-| should insert multiple entries successfully | ❌ failed | 0.00s |
-| should handle mixed duplicates in batch insertion | ❌ failed | 0.00s |
-| should handle empty batch | ❌ failed | 0.00s |
-| should use transaction for atomicity | ❌ failed | 0.00s |
-
-#### Database Module > Edge Cases and Error Handling
+#### IPC Handlers Comprehensive Tests > credentials:list handler
 
 | Test | Status | Duration |
 |------|--------|----------|
-| should handle database connection errors gracefully | ❌ failed | 0.00s |
-| should handle malformed entry data | ❌ failed | 0.00s |
-| should handle null and undefined values in optional fields | ❌ failed | 0.00s |
+| should list all credentials | ✅ passed | 0.00s |
+| should handle empty credentials list | ✅ passed | 0.00s |
+
+#### IPC Handlers Comprehensive Tests > credentials:delete handler
+
+| Test | Status | Duration |
+|------|--------|----------|
+| should delete credentials successfully | ✅ passed | 0.00s |
+| should handle deletion failure | ✅ passed | 0.00s |
+| should handle invalid service parameter | ✅ passed | 0.00s |
+
+#### IPC Handlers Comprehensive Tests > database:getAllTimesheetEntries handler
+
+| Test | Status | Duration |
+|------|--------|----------|
+| should retrieve all timesheet entries | ✅ passed | 0.00s |
+| should handle empty entries list | ✅ passed | 0.00s |
+| should handle database errors | ✅ passed | 0.00s |
+
+#### IPC Handlers Comprehensive Tests > database:getAllCredentials handler
+
+| Test | Status | Duration |
+|------|--------|----------|
+| should retrieve all credentials | ✅ passed | 0.00s |
+
+#### IPC Handlers Comprehensive Tests > database:getAllArchiveData handler (batched)
+
+| Test | Status | Duration |
+|------|--------|----------|
+| should retrieve both timesheet and credentials in a single call | ✅ passed | 0.00s |
+| should require valid session token | ✅ passed | 0.00s |
+| should validate session token | ✅ passed | 0.00s |
+| should handle database errors gracefully | ✅ passed | 0.00s |
+
+#### IPC Handlers Comprehensive Tests > timesheet:exportToCSV handler
+
+| Test | Status | Duration |
+|------|--------|----------|
+| should export timesheet data to CSV | ✅ passed | 0.00s |
+| should handle empty data export | ✅ passed | 0.00s |
+| should handle export errors | ✅ passed | 0.00s |
+
+#### IPC Handlers Comprehensive Tests > database:clearDatabase handler
+
+| Test | Status | Duration |
+|------|--------|----------|
+| should clear all database tables | ✅ passed | 0.00s |
+| should handle clear database errors | ✅ passed | 0.00s |
+
+#### IPC Handlers Comprehensive Tests > timesheet:saveDraft handler
+
+| Test | Status | Duration |
+|------|--------|----------|
+| should save valid draft data | ✅ passed | 0.00s |
+| should validate required fields | ✅ passed | 0.00s |
+| should validate time format | ✅ passed | 0.00s |
+| should allow dates from any quarter (validation happens at submission) | ✅ passed | 0.00s |
+| should handle duplicate entries | ✅ passed | 0.00s |
+
+#### IPC Handlers Comprehensive Tests > timesheet:loadDraft handler
+
+| Test | Status | Duration |
+|------|--------|----------|
+| should load pending timesheet entries | ✅ passed | 0.00s |
+| should handle empty draft data | ✅ passed | 0.00s |
+| should handle load errors | ✅ passed | 0.00s |
+
+#### IPC Handlers Comprehensive Tests > timesheet:deleteDraft handler
+
+| Test | Status | Duration |
+|------|--------|----------|
+| should delete valid draft entry | ✅ passed | 0.00s |
+| should validate ID parameter | ✅ passed | 0.00s |
+| should handle non-existent entry | ✅ passed | 0.00s |
+| should handle database errors | ✅ passed | 0.00s |
+| should only delete draft entries (status IS NULL) | ✅ passed | 0.00s |
+
+#### IPC Handlers Comprehensive Tests > timesheet:submit handler
+
+| Test | Status | Duration |
+|------|--------|----------|
+| should submit timesheets with valid credentials | ❌ failed | 0.02s |
+| should handle missing credentials | ✅ passed | 0.00s |
+| should handle submission failures | ❌ failed | 0.00s |
 
 ## Failed Tests Details
 
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Database Path Management > should set and get database path correctly
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/ipc-handlers-comprehensive.spec.ts - IPC Handlers Comprehensive Tests > timesheet:submit handler > should submit timesheets with valid credentials
 
 ```
-Could not connect to database
+Cannot read properties of undefined (reading 'ok')
 ```
 
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Database Path Management > should resolve relative paths to absolute paths
+### C:/Users/andrew.hughes/Program Development/Sheetpilot/app/backend/tests/ipc-handlers-comprehensive.spec.ts - IPC Handlers Comprehensive Tests > timesheet:submit handler > should handle submission failures
 
 ```
-Could not connect to database
-```
-
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Database Path Management > should create database directory if it does not exist
-
-```
-Could not connect to database
-```
-
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Database Connection > should open database connection successfully
-
-```
-Could not connect to database
-```
-
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Database Connection > should create database file if it does not exist
-
-```
-Could not connect to database
-```
-
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Schema Management > should create timesheet table with correct schema
-
-```
-Could not connect to database
-```
-
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Schema Management > should create required indexes
-
-```
-Could not connect to database
-```
-
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Schema Management > should create unique constraint for deduplication
-
-```
-Could not connect to database
-```
-
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Timesheet Entry Insertion > should insert a new timesheet entry successfully
-
-```
-Could not connect to database
-```
-
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Timesheet Entry Insertion > should calculate hours automatically
-
-```
-Could not connect to database
-```
-
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Timesheet Entry Insertion > should handle optional fields correctly
-
-```
-Could not connect to database
-```
-
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Timesheet Entry Insertion > should validate time constraints
-
-```
-Could not connect to database
-```
-
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Deduplication Functionality > should prevent duplicate entries based on unique constraint
-
-```
-Could not connect to database
-```
-
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Deduplication Functionality > should allow entries with different time_in
-
-```
-Could not connect to database
-```
-
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Deduplication Functionality > should allow entries with different project
-
-```
-Could not connect to database
-```
-
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Deduplication Functionality > should allow entries with different task description
-
-```
-Could not connect to database
-```
-
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Deduplication Functionality > should allow entries with different date
-
-```
-Could not connect to database
-```
-
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Deduplication Functionality > should allow entries with different optional fields
-
-```
-Could not connect to database
-```
-
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Duplicate Checking Utilities > should correctly identify non-duplicate entries
-
-```
-Could not connect to database
-```
-
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Duplicate Checking Utilities > should correctly identify duplicate entries
-
-```
-Could not connect to database
-```
-
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Duplicate Checking Utilities > should find duplicate entries in database
-
-```
-Could not connect to database
-```
-
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Duplicate Checking Utilities > should filter duplicates by date range
-
-```
-Could not connect to database
-```
-
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Batch Insertion > should insert multiple entries successfully
-
-```
-Could not connect to database
-```
-
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Batch Insertion > should handle mixed duplicates in batch insertion
-
-```
-Could not connect to database
-```
-
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Batch Insertion > should handle empty batch
-
-```
-Could not connect to database
-```
-
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Batch Insertion > should use transaction for atomicity
-
-```
-Could not connect to database
-```
-
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Edge Cases and Error Handling > should handle database connection errors gracefully
-
-```
-Could not connect to database
-```
-
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Edge Cases and Error Handling > should handle malformed entry data
-
-```
-Could not connect to database
-```
-
-### C:/Users/ACHug/Program Development/Sheetpilot/app/backend/tests/database.spec.ts - Database Module > Edge Cases and Error Handling > should handle null and undefined values in optional fields
-
-```
-Could not connect to database
+Cannot read properties of undefined (reading 'ok')
 ```

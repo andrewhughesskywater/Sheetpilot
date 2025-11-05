@@ -1,95 +1,35 @@
-import { useState, useCallback, useMemo, useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef, useImperativeHandle, forwardRef, memo } from 'react';
 import { HotTable } from '@handsontable/react-wrapper';
 import { registerAllModules } from 'handsontable/registry';
+import { registerEditor } from 'handsontable/editors';
 import type { HotTableRef } from '@handsontable/react-wrapper';
-import { Alert } from '@mui/material';
-import { PlayArrow as PlayArrowIcon } from '@mui/icons-material';
+import { Alert, Button } from '@mui/material';
+import { PlayArrow as PlayArrowIcon, Edit as EditIcon } from '@mui/icons-material';
 import 'handsontable/styles/handsontable.css';
 import 'handsontable/styles/ht-theme-horizon.css';
 import { useData } from '../../contexts/DataContext';
 import { useSession } from '../../contexts/SessionContext';
-import { StatusButton } from '../StatusButton';
+import { SubmitProgressBar } from '../SubmitProgressBar';
 import './TimesheetGrid.css';
 import type { TimesheetRow } from './timesheet.schema';
+import MacroManagerDialog from './MacroManagerDialog';
+import { MacroRow, loadMacros, isMacroEmpty } from '../../utils/macroStorage';
 
 type ButtonStatus = 'neutral' | 'ready' | 'warning';
 import { formatTimeInput, normalizeRowData, isValidDate, isValidTime, hasTimeOverlapWithPreviousEntries } from './timesheet.schema';
 import { projects, chargeCodes, projectsWithoutTools, toolsWithoutCharges, getToolOptions, toolNeedsChargeCode, projectNeedsTools } from './timesheet.options';
 import { submitTimesheet } from './timesheet.submit';
 import { saveLocalBackup, batchSaveToDatabase as batchSaveToDatabaseUtil, deleteDraftRows } from './timesheet.persistence';
+import { SpellcheckEditor } from './SpellcheckEditor';
 
 // Register all Handsontable modules
 registerAllModules();
 
-// Validator functions for Handsontable columns
-// These return true for valid, false for invalid
-// Note: Handsontable validators have access to 'this' context with row, col, and instance
-const dateValidator = (value: unknown): boolean => {
-  if (!value) return false;
-  return isValidDate(String(value));
-};
+// Register custom spellcheck editor
+registerEditor('spellcheckText', SpellcheckEditor);
 
-const timeInValidator = function(this: any, value: unknown): boolean {
-  if (!value) return false;
-  if (!isValidTime(String(value))) return false;
-  
-  // Check for overlaps with previous entries
-  const allRows = this.instance.getSourceData() as TimesheetRow[];
-  const currentRow = allRows[this.row];
-  if (!currentRow) return true; // Can't validate without row data
-  
-  // Create updated row with the new timeIn value
-  const updatedRow = { ...currentRow, timeIn: String(value) };
-  const updatedRows = [...allRows];
-  updatedRows[this.row] = updatedRow;
-  
-  // Check for overlap
-  if (hasTimeOverlapWithPreviousEntries(this.row, updatedRows)) {
-    return false;
-  }
-  
-  return true;
-};
-
-const timeOutValidator = function(this: any, value: unknown, callback: (valid: boolean) => void): void {
-  if (!value) {
-    callback(false);
-    return;
-  }
-  if (!isValidTime(String(value))) {
-    callback(false);
-    return;
-  }
-  
-  // Check for overlaps with previous entries
-  const allRows = this.instance.getSourceData() as TimesheetRow[];
-  const currentRow = allRows[this.row];
-  if (!currentRow) {
-    callback(true); // Can't validate without row data
-    return;
-  }
-  
-  // Create updated row with the new timeOut value
-  const updatedRow = { ...currentRow, timeOut: String(value) };
-  const updatedRows = [...allRows];
-  updatedRows[this.row] = updatedRow;
-  
-  // Check for overlap
-  if (hasTimeOverlapWithPreviousEntries(this.row, updatedRows)) {
-    callback(false);
-    return;
-  }
-  
-  callback(true);
-};
-
-const projectValidator = (value: unknown): boolean => {
-  return !!value;
-};
-
-const taskDescriptionValidator = (value: unknown): boolean => {
-  return !!value;
-};
+// NOTE: Column validators removed - they block editor closing and cause navigation issues
+// Validation now happens in afterChange hook using setCellMeta for visual feedback
 
 interface TimesheetGridProps {
   onChange?: (rows: TimesheetRow[]) => void;
@@ -103,7 +43,16 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
   const hotTableRef = useRef<HotTableRef>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const isProcessingRef = useRef(false); // Synchronous guard against race conditions
+  const isDirtyRef = useRef(false); // Track if data has changed since last save
+  const [submissionProgress, setSubmissionProgress] = useState(0);
+  const [currentEntry, setCurrentEntry] = useState(0);
+  const [totalEntries, setTotalEntries] = useState(0);
+  const [progressMessage, setProgressMessage] = useState('');
   const { token, isAdmin } = useSession();
+  
+  // Macro state
+  const [macros, setMacros] = useState<MacroRow[]>([]);
+  const [showMacroDialog, setShowMacroDialog] = useState(false);
   
   // Use preloaded data from context
   const { 
@@ -142,6 +91,12 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
     }
   }, [timesheetDraftData, updateTableData, onChange]);
 
+  // Load macros on mount
+  useEffect(() => {
+    const loaded = loadMacros();
+    setMacros(loaded);
+  }, []);
+
   // Simplified - removed complex DOM manipulation that was interfering with CSS
 
 
@@ -165,14 +120,19 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
     };
   }, [batchSaveToDatabase]);
 
-  // Auto-save to database every 5 minutes
+  // Auto-save to database every 5 minutes (only if dirty)
   useEffect(() => {
     const FIVE_MINUTES = 5 * 60 * 1000;
     
     window.logger?.info('[TimesheetGrid] Setting up 5-minute auto-save interval');
     const intervalId = setInterval(() => {
-      window.logger?.info('[TimesheetGrid] 5-minute interval triggered, saving to database');
-      batchSaveToDatabase();
+      if (isDirtyRef.current) {
+        window.logger?.info('[TimesheetGrid] 5-minute interval triggered, data is dirty, saving to database');
+        batchSaveToDatabase();
+        isDirtyRef.current = false; // Clear dirty flag after save
+      } else {
+        window.logger?.debug('[TimesheetGrid] 5-minute interval triggered, data is clean, skipping save');
+      }
     }, FIVE_MINUTES);
 
     return () => {
@@ -198,6 +158,10 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
   const handleAfterChange = useCallback((changes: any, source: string) => {
     if (!changes || source === 'loadData') return;
     
+    // Mark data as dirty when changes occur
+    isDirtyRef.current = true;
+    
+    const hotInstance = hotTableRef.current?.hotInstance;
     const next = [...timesheetDraftData];
     
     for (const change of changes) {
@@ -233,6 +197,45 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
     setTimesheetDraftData(normalized);
     onChange?.(normalized);
     saveLocalBackup(normalized);
+
+    // VALIDATION: Mark cells as invalid AFTER changes (doesn't block editing)
+    if (hotInstance) {
+      for (const change of changes) {
+        const [rowIdx, prop, , newVal] = change;
+        const propStr = String(prop);
+        let isValid = true;
+
+        // Validate dates
+        if (propStr === 'date' && newVal) {
+          isValid = isValidDate(String(newVal));
+        }
+        // Validate times and check for overlaps
+        else if ((propStr === 'timeIn' || propStr === 'timeOut') && newVal) {
+          isValid = isValidTime(String(newVal));
+          if (isValid && normalized[rowIdx]) {
+            // Check for time overlaps
+            if (hasTimeOverlapWithPreviousEntries(rowIdx, normalized)) {
+              isValid = false;
+            }
+          }
+        }
+        // Validate required fields
+        else if ((propStr === 'project' || propStr === 'taskDescription') && !newVal) {
+          isValid = false;
+        }
+
+        // Mark cell as invalid or clear the mark
+        const colIdx = hotInstance.propToCol(propStr);
+        if (typeof colIdx === 'number' && colIdx >= 0) {
+          if (!isValid) {
+            hotInstance.setCellMeta(rowIdx, colIdx, 'className', 'htInvalid');
+          } else {
+            hotInstance.setCellMeta(rowIdx, colIdx, 'className', '');
+          }
+        }
+      }
+      hotInstance.render();
+    }
   }, [timesheetDraftData, setTimesheetDraftData, onChange]);
 
   // Persist row removal to database
@@ -297,6 +300,167 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
     return true;
   }, []);
 
+  // Handle editor opening - add date picker close handler
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleAfterBeginEditing = useCallback((_row: number, column: number) => {
+    // CRITICAL: For date editor, attach close handler to prevent stuck editor
+    if (column === 0) {
+      const hotInstance = hotTableRef.current?.hotInstance;
+      const editor = hotInstance?.getActiveEditor();
+      if (editor) {
+        const dateEditor = editor as any;
+        if (dateEditor.$datePicker && dateEditor.$datePicker._o) {
+          const originalOnSelect = dateEditor.$datePicker._o.onSelect;
+          dateEditor.$datePicker._o.onSelect = function(this: any, date: any) {
+            if (originalOnSelect) originalOnSelect.call(this, date);
+            // Close editor after date selection
+            setTimeout(() => {
+              if (editor.isOpened && editor.isOpened()) {
+                editor.finishEditing(false, false);
+              }
+            }, 50);
+          };
+        }
+      }
+    }
+  }, []);
+
+
+  // Listen for submission progress events
+  useEffect(() => {
+    if (!window.timesheet?.onSubmissionProgress) {
+      return;
+    }
+    
+    // Set up progress listener
+    window.timesheet.onSubmissionProgress((progress) => {
+      window.logger?.debug('Submission progress update', progress);
+      setSubmissionProgress(progress.percent);
+      setCurrentEntry(progress.current);
+      setTotalEntries(progress.total);
+      setProgressMessage(progress.message);
+    });
+    
+    // Cleanup on unmount
+    return () => {
+      window.timesheet?.removeProgressListener?.();
+    };
+  }, []);
+
+  // Apply macro to current or first empty row
+  const applyMacro = useCallback((macroIndex: number) => {
+    const hotInstance = hotTableRef.current?.hotInstance;
+    if (!hotInstance) {
+      window.logger?.warn('Cannot apply macro - Handsontable instance not available');
+      return;
+    }
+
+    const macro = macros[macroIndex];
+    if (!macro || isMacroEmpty(macro)) {
+      window.logger?.verbose('Macro is empty, skipping application', { macroIndex });
+      return;
+    }
+
+    // Get current selection or find first empty row
+    let targetRow = 0;
+    const selected = hotInstance.getSelected();
+    if (selected && selected.length > 0) {
+      targetRow = selected[0][0]; // First selected row
+    } else {
+      // Find first empty row
+      const sourceData = hotInstance.getSourceData() as TimesheetRow[];
+      const emptyRowIndex = sourceData.findIndex(row => 
+        !row.date && !row.timeIn && !row.timeOut && !row.project && !row.taskDescription
+      );
+      if (emptyRowIndex >= 0) {
+        targetRow = emptyRowIndex;
+      } else {
+        targetRow = sourceData.length; // Add to end if no empty row found
+      }
+    }
+
+    window.logger?.info('Applying macro to row', { macroIndex: macroIndex + 1, targetRow });
+
+    // Apply macro fields using setDataAtCell (triggers handleAfterChange)
+    const changes: [number, string, string | null][] = [];
+    if (macro.timeIn) changes.push([targetRow, 'timeIn', macro.timeIn]);
+    if (macro.timeOut) changes.push([targetRow, 'timeOut', macro.timeOut]);
+    if (macro.project) changes.push([targetRow, 'project', macro.project]);
+    if (macro.tool !== undefined) changes.push([targetRow, 'tool', macro.tool]);
+    if (macro.chargeCode !== undefined) changes.push([targetRow, 'chargeCode', macro.chargeCode]);
+    if (macro.taskDescription) changes.push([targetRow, 'taskDescription', macro.taskDescription]);
+
+    // Apply all changes at once
+    changes.forEach(([row, prop, value]) => {
+      hotInstance.setDataAtCell(row, hotInstance.propToCol(prop) as number, value);
+    });
+
+    // Select the row that was modified
+    hotInstance.selectCell(targetRow, 0);
+  }, [macros]);
+
+  // Duplicate currently selected row
+  const duplicateSelectedRow = useCallback(() => {
+    const hotInstance = hotTableRef.current?.hotInstance;
+    if (!hotInstance) {
+      window.logger?.warn('Cannot duplicate row - Handsontable instance not available');
+      return;
+    }
+
+    const selected = hotInstance.getSelected();
+    if (!selected || selected.length === 0) {
+      window.logger?.verbose('No row selected for duplication');
+      return;
+    }
+
+    const selectedRow = selected[0][0];
+    const rowData = hotInstance.getDataAtRow(selectedRow);
+    
+    if (!rowData || rowData.every(cell => !cell)) {
+      window.logger?.verbose('Selected row is empty, skipping duplication');
+      return;
+    }
+
+    window.logger?.info('Duplicating row', { selectedRow });
+
+    // Insert new row below selected row
+    hotInstance.alter('insert_row_below', selectedRow, 1);
+    
+    // Copy all data to new row
+    const newRow = selectedRow + 1;
+    hotInstance.populateFromArray(newRow, 0, [rowData], undefined, undefined, 'overwrite');
+    
+    // Select the new row
+    hotInstance.selectCell(newRow, 0);
+  }, []);
+
+  // Keyboard shortcuts handler
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle shortcuts when Ctrl is pressed
+      if (!e.ctrlKey) return;
+
+      // Ctrl+1 through Ctrl+5 for macros
+      if (e.key >= '1' && e.key <= '5') {
+        e.preventDefault();
+        const macroIndex = parseInt(e.key, 10) - 1;
+        applyMacro(macroIndex);
+        return;
+      }
+
+      // Ctrl+D for duplicate row
+      if (e.key === 'd' || e.key === 'D') {
+        e.preventDefault();
+        duplicateSelectedRow();
+        return;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [applyMacro, duplicateSelectedRow]);
 
   // Submit timesheet functionality
   const handleSubmitTimesheet = async () => {
@@ -320,6 +484,12 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
       window.logger?.warn('Submit attempted without session token');
       return;
     }
+    
+    // Reset progress state
+    setSubmissionProgress(0);
+    setCurrentEntry(0);
+    setTotalEntries(0);
+    setProgressMessage('');
     
     isProcessingRef.current = true; // Set synchronously to block subsequent calls immediately
     setIsProcessing(true);
@@ -405,11 +575,11 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
     return {};
   }, [timesheetDraftData]);
 
-  // Column definitions using cascading configuration
+  // Column definitions - NO validators (validation happens in afterChange to prevent editor blocking)
   const columnDefinitions = useMemo(() => [
-    { data: 'date', title: 'Date', type: 'date', dateFormat: 'MM/DD/YYYY', placeholder: 'MM/DD/YYYY', className: 'htCenter', validator: dateValidator },
-    { data: 'timeIn', title: 'Start Time', type: 'text', placeholder: '0000 to 2400', className: 'htCenter', validator: timeInValidator },
-    { data: 'timeOut', title: 'End Time', type: 'text', placeholder: '0000 to 2400', className: 'htCenter', validator: timeOutValidator },
+    { data: 'date', title: 'Date', type: 'date', dateFormat: 'MM/DD/YYYY', placeholder: 'MM/DD/YYYY', className: 'htCenter' },
+    { data: 'timeIn', title: 'Start Time', type: 'text', placeholder: '0000 to 2400', className: 'htCenter' },
+    { data: 'timeOut', title: 'End Time', type: 'text', placeholder: '0000 to 2400', className: 'htCenter' },
     { data: 'project', 
       title: 'Project', 
       type: 'dropdown', 
@@ -418,12 +588,11 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
       allowInvalid: false, 
       placeholder: 'Pick a project', 
       className: 'htCenter',
-      trimDropdown: false,
-      validator: projectValidator
+      trimDropdown: false
     },
     { data: 'tool', title: 'Tool', type: 'dropdown', source: [], strict: true, allowInvalid: false, placeholder: '', className: 'htCenter' },
     { data: 'chargeCode', title: 'Charge Code', type: 'dropdown', source: chargeCodes, strict: true, allowInvalid: false, placeholder: '', className: 'htCenter' },
-    { data: 'taskDescription', title: 'Task Description', type: 'text', placeholder: '', className: 'htLeft', validator: taskDescriptionValidator, maxLength: 120 }
+    { data: 'taskDescription', title: 'Task Description', editor: 'spellcheckText', placeholder: '', className: 'htLeft', maxLength: 120 }
   ], []);
 
   // Validate timesheet data for button status - MUST be before early returns
@@ -520,6 +689,45 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
           </Alert>
         )}
       </div>
+      
+      {/* Macro Toolbar */}
+      <div className="macro-toolbar">
+        {macros.map((macro, index) => {
+          const isEmpty = isMacroEmpty(macro);
+          const label = isEmpty 
+            ? `Macro ${index + 1}`
+            : macro.taskDescription 
+              ? `${macro.taskDescription.slice(0, 30)}${macro.taskDescription.length > 30 ? '...' : ''}`
+              : `Macro ${index + 1}`;
+          
+          return (
+            <Button
+              key={index}
+              className="macro-button"
+              variant="outlined"
+              size="small"
+              disabled={isEmpty}
+              onClick={() => applyMacro(index)}
+              title={isEmpty ? `Macro ${index + 1} not configured` : `Apply: ${macro.taskDescription || ''}`}
+            >
+              <span className="macro-button-label">
+                {label}
+                <span className="macro-button-shortcut">Ctrl+{index + 1}</span>
+              </span>
+            </Button>
+          );
+        })}
+        <Button
+          className="macro-edit-button"
+          variant="text"
+          size="small"
+          startIcon={<EditIcon />}
+          onClick={() => setShowMacroDialog(true)}
+        >
+          Edit Macros...
+        </Button>
+      </div>
+
       <HotTable
         ref={hotTableRef}
         id="sheetpilot-timesheet-grid"
@@ -530,6 +738,7 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
         afterChange={handleAfterChange}
         afterRemoveRow={handleAfterRemoveRow}
         beforePaste={handleBeforePaste}
+        afterBeginEditing={handleAfterBeginEditing}
         themeName="ht-theme-horizon"
         width="100%"
         rowHeaders={true}
@@ -547,7 +756,7 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
         autoWrapCol={false}
         fragmentSelection={true}
         disableVisualSelection={false}
-        selectionMode="single"
+        selectionMode="range"
         outsideClickDeselects={true}
         viewportRowRenderingOffset={24}
         columnSorting={{
@@ -568,19 +777,33 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
         invalidCellClassName="htInvalid"
       />
       <div className="timesheet-footer">
-        <StatusButton
+        <SubmitProgressBar
           status={buttonStatus}
-          onClick={handleSubmitTimesheet}
-          isProcessing={isProcessing}
-          processingText="Submitting..."
+          onSubmit={handleSubmitTimesheet}
+          isSubmitting={isProcessing}
+          progress={submissionProgress}
+          currentEntry={currentEntry}
+          totalEntries={totalEntries}
+          message={progressMessage}
           icon={<PlayArrowIcon />}
           disabled={isAdmin}
         >
           Submit Timesheet
-        </StatusButton>
+        </SubmitProgressBar>
       </div>
+
+      {/* Macro Manager Dialog */}
+      <MacroManagerDialog
+        open={showMacroDialog}
+        onClose={() => setShowMacroDialog(false)}
+        onSave={(savedMacros) => {
+          setMacros(savedMacros);
+          window.logger?.info('Macros updated', { count: savedMacros.filter(m => !isMacroEmpty(m)).length });
+        }}
+      />
     </div>
   );
 });
 
-export default TimesheetGrid;
+// Wrap with React.memo to prevent unnecessary re-renders
+export default memo(TimesheetGrid);

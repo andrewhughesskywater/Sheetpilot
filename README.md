@@ -56,6 +56,24 @@ Sheetpilot/
 - Node.js (v16 or higher)
 - npm or yarn
 
+### Environment Variables
+
+For security purposes, certain configuration options should be set via environment variables:
+
+**Required for Production:**
+- `SHEETPILOT_ADMIN_PASSWORD` - Admin account password (admin login disabled if not set)
+
+**Optional:**
+- `SHEETPILOT_ADMIN_USERNAME` - Admin account username (default: "Admin")
+- `SHEETPILOT_MASTER_KEY` - Master encryption key for password storage (default: machine-specific)
+
+**Example .env file:**
+```bash
+SHEETPILOT_ADMIN_USERNAME=Admin
+SHEETPILOT_ADMIN_PASSWORD=your_secure_password_here
+SHEETPILOT_MASTER_KEY=your_master_encryption_key_here
+```
+
 ### Installation
 
 ```bash

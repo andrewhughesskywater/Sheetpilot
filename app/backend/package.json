@@ -1,6 +1,6 @@
 {
   "name": "@sheetpilot/backend",
-  "version": "1.4.0",
+  "version": "1.4.2",
   "private": true,
   "description": "Sheetpilot Electron main process and backend services",
   "main": "src/main.ts",
@@ -13,8 +13,9 @@
     "better-sqlite3": "^12.4.1",
     "electron-log": "^5.4.3",
     "electron-updater": "^6.6.2",
+    "playwright": "^1.56.1",
     "tslib": "^2.8.1",
-    "playwright": "^1.56.1"
+    "zod": "^4.1.12"
   },
   "devDependencies": {
     "@electron/rebuild": "^3.6.0",

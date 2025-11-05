@@ -16,6 +16,8 @@
 import type BetterSqlite3 from 'better-sqlite3';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as crypto from 'crypto';
+import * as os from 'os';
 import { dbLogger } from '../../../shared/logger';
 import {
     DatabaseConnectionError,
@@ -515,7 +517,7 @@ function ensureSchemaInternal(db: BetterSqlite3.Database) {
             task_description TEXT NOT NULL,        -- Task description (required)
             
             -- Submission tracking fields
-            status TEXT DEFAULT NULL,              -- Submission status: 'Complete', NULL (pending)
+            status TEXT DEFAULT NULL,              -- Submission status: NULL (pending), 'in_progress' (submitting), 'Complete' (submitted)
             submitted_at DATETIME DEFAULT NULL,    -- Timestamp when successfully submitted
             
             -- Data validation constraints
@@ -620,6 +622,69 @@ export function getPendingTimesheetEntries() {
 }
 
 /**
+ * Marks timesheet entries as in-progress (being submitted)
+ * 
+ * This protects entries from being deleted by orphan cleanup while submission is in progress.
+ * 
+ * @param ids - Array of timesheet entry IDs to mark as in-progress
+ */
+export function markTimesheetEntriesAsInProgress(ids: number[]) {
+    if (ids.length === 0) {
+        dbLogger.debug('No entries to mark as in-progress');
+        return;
+    }
+    
+    const timer = dbLogger.startTimer('mark-entries-in-progress');
+    const db = getDb();
+    
+    dbLogger.info('Marking timesheet entries as in-progress', { count: ids.length, ids });
+    const placeholders = ids.map(() => '?').join(',');
+    const updateInProgress = db.prepare(`
+        UPDATE timesheet 
+        SET status = 'in_progress'
+        WHERE id IN (${placeholders}) AND status IS NULL
+    `);
+    
+    const result = updateInProgress.run(...ids);
+    dbLogger.audit('mark-in-progress', 'Entries marked as in-progress', { 
+        count: ids.length,
+        changes: result.changes 
+    });
+    timer.done({ count: ids.length, changes: result.changes });
+}
+
+/**
+ * Resets timesheet entries status back to NULL (pending)
+ * Used when submissions are cancelled or time out
+ * 
+ * @param ids - Array of timesheet entry IDs to reset
+ */
+export function resetTimesheetEntriesStatus(ids: number[]) {
+    if (ids.length === 0) {
+        dbLogger.debug('No entries to reset status');
+        return;
+    }
+    
+    const timer = dbLogger.startTimer('reset-entries-status');
+    const db = getDb();
+    
+    dbLogger.info('Resetting timesheet entries to NULL status', { count: ids.length, ids });
+    const placeholders = ids.map(() => '?').join(',');
+    const resetStatus = db.prepare(`
+        UPDATE timesheet 
+        SET status = NULL
+        WHERE id IN (${placeholders})
+    `);
+    
+    const result = resetStatus.run(...ids);
+    dbLogger.audit('reset-status', 'Entries status reset to NULL', { 
+        count: ids.length,
+        changes: result.changes 
+    });
+    timer.done({ count: ids.length, changes: result.changes });
+}
+
+/**
  * Marks timesheet entries as successfully submitted
  * 
  * @param ids - Array of timesheet entry IDs to mark as complete
@@ -651,31 +716,32 @@ export function markTimesheetEntriesAsSubmitted(ids: number[]) {
 }
 
 /**
- * Removes failed timesheet entries from the database
+ * Reverts failed timesheet entries back to pending status
  * 
- * Since users cannot manually modify the database, failed entries are removed
- * rather than marked as errors.
+ * Instead of deleting failed entries, we revert them to NULL (pending) status
+ * so users can review and retry submission.
  * 
- * @param ids - Array of timesheet entry IDs to remove
+ * @param ids - Array of timesheet entry IDs that failed to submit
  */
 export function removeFailedTimesheetEntries(ids: number[]) {
     if (ids.length === 0) {
-        dbLogger.debug('No failed entries to remove');
+        dbLogger.debug('No failed entries to revert');
         return;
     }
     
-    const timer = dbLogger.startTimer('remove-failed-entries');
+    const timer = dbLogger.startTimer('revert-failed-entries');
     const db = getDb();
     
-    dbLogger.warn('Removing failed timesheet entries', { count: ids.length, ids });
+    dbLogger.warn('Reverting failed timesheet entries back to pending', { count: ids.length, ids });
     const placeholders = ids.map(() => '?').join(',');
-    const deleteFailed = db.prepare(`
-        DELETE FROM timesheet 
+    const revertFailed = db.prepare(`
+        UPDATE timesheet 
+        SET status = NULL
         WHERE id IN (${placeholders})
     `);
     
-    const result = deleteFailed.run(...ids);
-    dbLogger.audit('remove-failed', 'Failed entries removed from database', { 
+    const result = revertFailed.run(...ids);
+    dbLogger.audit('revert-failed', 'Failed entries reverted to pending status', { 
         count: ids.length,
         changes: result.changes 
     });
@@ -741,17 +807,89 @@ export function getSubmittedTimesheetEntriesForExport() {
 // ============================================================================
 
 /**
- * Simple encryption/decryption for storing passwords
- * Note: This is a basic implementation. In production, use a proper encryption library
+ * Secure encryption/decryption for storing passwords using AES-256-GCM
+ * 
+ * Security features:
+ * - AES-256-GCM authenticated encryption
+ * - Unique IV per encryption operation
+ * - Derived encryption key from master secret
+ * - Authentication tag for integrity verification
  */
-function encryptPassword(password: string): string {
-    // Simple base64 encoding - replace with proper encryption in production
-    return Buffer.from(password).toString('base64');
+
+/**
+ * Get or create the master encryption key
+ * Uses machine-specific data combined with app name for key derivation
+ * For production: Consider using environment variable or secure key storage
+ */
+function getMasterKey(): Buffer {
+    const masterSecret = process.env['SHEETPILOT_MASTER_KEY'] || 
+                         `sheetpilot-${os.hostname()}-${os.userInfo().username}`;
+    
+    // Derive a 32-byte key using PBKDF2
+    return crypto.pbkdf2Sync(
+        masterSecret,
+        'sheetpilot-salt-v1', // Static salt - for production, use dynamic salt per installation
+        100000, // iterations
+        32, // key length (256 bits)
+        'sha256'
+    );
 }
 
+/**
+ * Encrypts a password using AES-256-GCM
+ * Returns: base64(iv:authTag:encryptedData)
+ */
+function encryptPassword(password: string): string {
+    try {
+        const key = getMasterKey();
+        const iv = crypto.randomBytes(16); // 128-bit IV for GCM
+        
+        const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+        
+        let encrypted = cipher.update(password, 'utf8', 'hex');
+        encrypted += cipher.final('hex');
+        
+        const authTag = cipher.getAuthTag();
+        
+        // Store IV:authTag:encrypted as base64
+        const combined = Buffer.concat([
+            iv,
+            authTag,
+            Buffer.from(encrypted, 'hex')
+        ]);
+        
+        return combined.toString('base64');
+    } catch (error) {
+        dbLogger.error('Encryption failed', error);
+        throw new Error('Could not encrypt password');
+    }
+}
+
+/**
+ * Decrypts a password using AES-256-GCM
+ * Input format: base64(iv:authTag:encryptedData)
+ */
 function decryptPassword(encryptedPassword: string): string {
-    // Simple base64 decoding - replace with proper decryption in production
-    return Buffer.from(encryptedPassword, 'base64').toString('utf-8');
+    try {
+        const key = getMasterKey();
+        const combined = Buffer.from(encryptedPassword, 'base64');
+        
+        // Extract IV (16 bytes), authTag (16 bytes), and encrypted data
+        const iv = combined.subarray(0, 16);
+        const authTag = combined.subarray(16, 32);
+        const encrypted = combined.subarray(32);
+        
+        const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+        decipher.setAuthTag(authTag);
+        
+        let decrypted = decipher.update(encrypted.toString('hex'), 'hex', 'utf8');
+        decrypted += decipher.final('utf8');
+        
+        return decrypted;
+    } catch (error) {
+        dbLogger.error('Decryption failed', error);
+        throw new Error('Could not decrypt password');
+    }
 }
 
 /**
@@ -875,7 +1013,7 @@ export function listCredentials() {
         
         return listCreds.all();
     } catch (error) {
-        console.error('Error listing credentials:', error);
+        dbLogger.error('Error listing credentials', error);
         return [];
     }
 }

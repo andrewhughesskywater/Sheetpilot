@@ -17,7 +17,7 @@ import {
   clearAllCredentials,
   rebuildDatabase
 } from './services/database';
-import { submitTimesheets } from './services/timesheet_importer';
+import { submitTimesheets } from './services/timesheet-importer';
 // Defer logger import until after preflight; provide lightweight shims for early use
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let appLogger: any;
@@ -153,24 +153,28 @@ function getUpdateMarkerPath(): string {
   return path.join(userDataPath, 'updating.json');
 }
 
-function writeUpdateMarker(reason: string) {
+async function writeUpdateMarker(reason: string) {
   try {
     const markerPath = getUpdateMarkerPath();
-    fs.mkdirSync(path.dirname(markerPath), { recursive: true });
-    fs.writeFileSync(markerPath, JSON.stringify({ reason, at: Date.now() }));
+    await fs.promises.mkdir(path.dirname(markerPath), { recursive: true });
+    await fs.promises.writeFile(markerPath, JSON.stringify({ reason, at: Date.now() }));
     appLogger.info('Wrote update marker', { markerPath, reason });
   } catch (err) {
     appLogger.warn('Could not write update marker', { error: err instanceof Error ? err.message : String(err) });
   }
 }
 
-function consumeUpdateMarker(): boolean {
+async function consumeUpdateMarker(): Promise<boolean> {
   try {
     const markerPath = getUpdateMarkerPath();
-    if (fs.existsSync(markerPath)) {
-      fs.unlinkSync(markerPath);
+    try {
+      await fs.promises.access(markerPath);
+      await fs.promises.unlink(markerPath);
       appLogger.info('Consumed update marker', { markerPath });
       return true;
+    } catch (accessErr) {
+      // File doesn't exist - not an error, just return false
+      return false;
     }
   } catch (err) {
     appLogger.warn('Could not consume update marker', { error: err instanceof Error ? err.message : String(err) });
@@ -243,32 +247,42 @@ async function restoreWindowState(window: BrowserWindow): Promise<void> {
   }
 }
 
+// Debounced window state save to reduce file I/O (async)
+let saveWindowStateTimer: NodeJS.Timeout | null = null;
 function saveWindowState() {
   if (!mainWindow) return;
   
-  try {
-    const userDataPath = app.getPath('userData');
-    const windowStatePath = path.join(userDataPath, 'window-state.json');
-    
-    const bounds = mainWindow.getBounds();
-    const isMaximized = mainWindow.isMaximized();
-    
-    const windowState: WindowState = {
-      width: bounds.width,
-      height: bounds.height,
-      x: bounds.x,
-      y: bounds.y,
-      isMaximized
-    };
-    
-    // Ensure directory exists
-    fs.mkdirSync(userDataPath, { recursive: true });
-    fs.writeFileSync(windowStatePath, JSON.stringify(windowState, null, 2));
-    
-    appLogger.debug('Window state saved', windowState);
-  } catch (error: unknown) {
-    appLogger.warn('Could not save window state', { error: error instanceof Error ? error.message : String(error) });
+  // Clear existing timer
+  if (saveWindowStateTimer) {
+    clearTimeout(saveWindowStateTimer);
   }
+  
+  // Debounce: only save after 500ms of no further calls
+  saveWindowStateTimer = setTimeout(async () => {
+    try {
+      const userDataPath = app.getPath('userData');
+      const windowStatePath = path.join(userDataPath, 'window-state.json');
+      
+      const bounds = mainWindow!.getBounds();
+      const isMaximized = mainWindow!.isMaximized();
+      
+      const windowState: WindowState = {
+        width: bounds.width,
+        height: bounds.height,
+        x: bounds.x,
+        y: bounds.y,
+        isMaximized
+      };
+      
+      // Ensure directory exists (async)
+      await fs.promises.mkdir(userDataPath, { recursive: true });
+      await fs.promises.writeFile(windowStatePath, JSON.stringify(windowState, null, 2));
+      
+      appLogger.debug('Window state saved', windowState);
+    } catch (error: unknown) {
+      appLogger.warn('Could not save window state', { error: error instanceof Error ? error.message : String(error) });
+    }
+  }, 500);
 }
 
 // Global safety nets for unhandled async errors
@@ -354,9 +368,9 @@ function configureAutoUpdater() {
     }
     
     // Write marker and wait 3 seconds for user to see completion, then install
-    setTimeout(() => {
+    setTimeout(async () => {
       appLogger.info('Installing update and restarting');
-      writeUpdateMarker('update-downloaded');
+      await writeUpdateMarker('update-downloaded');
       autoUpdater.quitAndInstall();
     }, 3000);
   });
@@ -1042,6 +1056,59 @@ export function registerIPCHandlers() {
     }
   });
 
+  // Batched handler for getting both archive data in a single IPC call
+  ipcMain.handle('database:getAllArchiveData', async (_event, token: string) => {
+    // Validate session
+    if (!token) {
+      ipcLogger.security('database-access-denied', 'Unauthorized database access attempted', { handler: 'getAllArchiveData' });
+      return { 
+        success: false, 
+        error: 'Session token is required. Please log in to view archive data.', 
+        timesheet: [], 
+        credentials: [] 
+      };
+    }
+
+    const session = validateSession(token);
+    if (!session.valid) {
+      ipcLogger.security('database-access-denied', 'Invalid session attempting database access', { 
+        handler: 'getAllArchiveData', 
+        token: token.substring(0, 8) + '...' 
+      });
+      return { 
+        success: false, 
+        error: 'Session is invalid or expired. Please log in again.', 
+        timesheet: [], 
+        credentials: [] 
+      };
+    }
+
+    ipcLogger.verbose('Fetching all archive data (batched)', { email: session.email });
+    try {
+      const db = getDb();
+      
+      // Fetch timesheet entries
+      const getTimesheet = db.prepare('SELECT * FROM timesheet WHERE status = \'Complete\' ORDER BY date DESC, time_in DESC');
+      const timesheet = getTimesheet.all();
+      
+      // Fetch credentials
+      const getCredentials = db.prepare('SELECT id, service, email, created_at, updated_at FROM credentials ORDER BY service');
+      const credentials = getCredentials.all();
+      
+      ipcLogger.verbose('Archive data retrieved (batched)', { 
+        timesheetCount: timesheet.length, 
+        credentialsCount: credentials.length,
+        email: session.email 
+      });
+      
+      return { success: true, timesheet, credentials };
+    } catch (err: unknown) {
+      ipcLogger.error('Could not get archive data', err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      return { success: false, error: errorMessage, timesheet: [], credentials: [] };
+    }
+  });
+
   // Handler for CSV export
   ipcMain.handle('timesheet:exportToCSV', async () => {
     ipcLogger.verbose('Exporting timesheet data to CSV');
@@ -1473,24 +1540,32 @@ export function registerIPCHandlers() {
   const isDev = process.env['NODE_ENV'] === 'development' || process.env['ELECTRON_IS_DEV'] === '1';
   const forceSplashInDev = process.env['VITE_FORCE_SPLASH'] === 'true';
   const shouldShowSplash = app.isPackaged || (isDev && forceSplashInDev);
-
-  // If we detect a previous update marker, show finalize splash
   let showedFinalizeSplash = false;
-  if (shouldShowSplash && fs.existsSync(getUpdateMarkerPath())) {
-    // Do not consume immediately; renderer may need to know
-    createSplashWindow('#splash?state=finalize');
-    showedFinalizeSplash = true;
-    // Consume marker shortly after splash is shown
-    setTimeout(() => {
-      consumeUpdateMarker();
-      // After brief finalize, show main
-      setTimeout(() => showMainAndCloseSplash(), 1000);
-    }, 500);
-  } else if (shouldShowSplash) {
-    createSplashWindow('#splash');
-  } else {
-    createWindow();
-  }
+
+  // Check for update marker and show appropriate splash (async)
+  (async () => {
+    try {
+      await fs.promises.access(getUpdateMarkerPath());
+      // Update marker exists - show finalize splash
+      if (shouldShowSplash) {
+        createSplashWindow('#splash?state=finalize');
+        showedFinalizeSplash = true;
+        // Consume marker shortly after splash is shown
+        setTimeout(async () => {
+          await consumeUpdateMarker();
+          // After brief finalize, show main
+          setTimeout(() => showMainAndCloseSplash(), 1000);
+        }, 500);
+      }
+    } catch {
+      // No update marker exists - normal startup
+      if (shouldShowSplash) {
+        createSplashWindow('#splash');
+      } else {
+        createWindow();
+      }
+    }
+  })();
 
   // Initialize database asynchronously (non-blocking)
   bootstrapDatabaseAsync().then(() => {

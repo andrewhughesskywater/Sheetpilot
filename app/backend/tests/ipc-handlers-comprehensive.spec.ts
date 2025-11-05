@@ -474,6 +474,64 @@ describe('IPC Handlers Comprehensive Tests', () => {
     });
   });
 
+  describe('database:getAllArchiveData handler (batched)', () => {
+    it('should retrieve both timesheet and credentials in a single call', async () => {
+      const mockTimesheet = [
+        { id: 1, date: '2025-01-15', project: 'Test Project', status: 'Complete' },
+        { id: 2, date: '2025-01-16', project: 'Test Project 2', status: 'Complete' }
+      ];
+      const mockCredentials = [
+        { id: 1, service: 'smartsheet', email: 'user@test.com' }
+      ];
+      
+      // Mock multiple prepare calls for timesheet and credentials
+      let callCount = 0;
+      mockDbInstance.prepare.mockImplementation(() => {
+        callCount++;
+        if (callCount === 1) {
+          // First call is for timesheet
+          return { all: vi.fn(() => mockTimesheet) };
+        } else {
+          // Second call is for credentials
+          return { all: vi.fn(() => mockCredentials) };
+        }
+      });
+
+      const result = await handlers['database:getAllArchiveData']('valid-token');
+      
+      expect(result.success).toBe(true);
+      expect(result.timesheet).toEqual(mockTimesheet);
+      expect(result.credentials).toEqual(mockCredentials);
+      expect(mockDbInstance.prepare).toHaveBeenCalledTimes(2); // Two queries in one handler
+    });
+
+    it('should require valid session token', async () => {
+      const result = await handlers['database:getAllArchiveData']('');
+      
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Session token is required');
+    });
+
+    it('should validate session token', async () => {
+      // validateSession mock already returns { valid: false } for 'invalid-token'
+      const result = await handlers['database:getAllArchiveData']('invalid-token');
+      
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Session is invalid or expired');
+    });
+
+    it('should handle database errors gracefully', async () => {
+      mockDbInstance.prepare.mockImplementation(() => {
+        throw new Error('Database connection failed');
+      });
+
+      const result = await handlers['database:getAllArchiveData']('valid-token');
+      
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Database connection failed');
+    });
+  });
+
   describe('timesheet:exportToCSV handler', () => {
     it('should export timesheet data to CSV', async () => {
       const mockEntries = [

@@ -65,21 +65,22 @@ export class PlaywrightBotService implements ISubmissionService {
   /**
    * Submit timesheet entries using browser automation
    */
-  public async submit(entries: TimesheetEntry[], credentials: Credentials): Promise<SubmissionResult> {
+  public async submit(entries: TimesheetEntry[], credentials: Credentials, progressCallback?: (percent: number, message: string) => void): Promise<SubmissionResult> {
     botLogger.info('Starting Playwright submission', { entryCount: entries.length });
-    console.log('[PlaywrightBotService] Starting submission with', entries.length, 'entries');
     
     try {
       // Debug: Check each entry's quarter
-      console.log('[PlaywrightBotService] Checking entries for quarter assignment:');
-      entries.forEach(entry => {
-        const quarter = getQuarterForDate(entry.date);
-        console.log(`  Entry ${entry.id} (date: ${entry.date}) -> quarter: ${quarter ? quarter.id : 'NONE'}`);
+      botLogger.debug('Checking entries for quarter assignment', {
+        entries: entries.map(entry => ({
+          id: entry.id,
+          date: entry.date,
+          quarter: getQuarterForDate(entry.date)?.id || 'NONE'
+        }))
       });
       
       // Group entries by quarter (needed for form configuration)
       const quarterGroups = groupEntriesByQuarter(entries);
-      console.log('[PlaywrightBotService] Grouped into', quarterGroups.size, 'quarters');
+      botLogger.verbose('Entries grouped by quarter', { quarterCount: quarterGroups.size });
       
       const allSubmittedIds: number[] = [];
       const allFailedIds: number[] = [];
@@ -87,13 +88,18 @@ export class PlaywrightBotService implements ISubmissionService {
       
       // Process each quarter separately with appropriate form configuration
       for (const [quarterId, quarterEntries] of quarterGroups) {
-        console.log('[PlaywrightBotService] Processing quarter:', quarterId, 'with', quarterEntries.length, 'entries');
+        botLogger.info('Processing quarter', { 
+          quarterId, 
+          entryCount: quarterEntries.length 
+        });
         
         // Get quarter definition for form configuration
         const quarterDef = quarterEntries[0] ? getQuarterForDate(quarterEntries[0].date) : null;
         if (!quarterDef) {
-          console.error('[PlaywrightBotService] Could not determine quarter for entry:', quarterEntries[0]?.date);
-          botLogger.error('Could not determine quarter for entries', { dates: quarterEntries.map(e => e.date) });
+          botLogger.error('Could not determine quarter for entries', { 
+            firstDate: quarterEntries[0]?.date,
+            dates: quarterEntries.map(e => e.date) 
+          });
           // If we can't determine the quarter, skip these entries
           quarterEntries.forEach(entry => {
             if (entry.id) allFailedIds.push(entry.id);
@@ -108,22 +114,32 @@ export class PlaywrightBotService implements ISubmissionService {
         // Convert entries to bot format
         const ids = quarterEntries.map(e => e.id).filter((id): id is number => id !== undefined);
         const botRows = quarterEntries.map(entry => this.toBotRow(entry));
-        console.log('[PlaywrightBotService] Converted to bot format, ID mappings:', ids);
+        botLogger.debug('Converted to bot format', { idMappings: ids });
         
         // Run browser automation for this quarter
-        console.log('[PlaywrightBotService] Starting bot automation...');
+        botLogger.verbose('Starting bot automation', { 
+          formUrl: formConfig.BASE_URL,
+          formId: formConfig.FORM_ID
+        });
         const { ok, submitted, errors } = await runTimesheet(
           botRows,
           credentials.email,
           credentials.password,
-          formConfig
+          formConfig,
+          progressCallback
         );
-        console.log('[PlaywrightBotService] Bot returned:', { ok, submittedCount: submitted.length, errorCount: errors.length });
+        botLogger.info('Bot automation completed', { 
+          ok, 
+          submittedCount: submitted.length, 
+          errorCount: errors.length 
+        });
         
         // Log errors from bot
         if (errors.length > 0) {
-          console.error('[PlaywrightBotService] Bot errors:', errors);
-          botLogger.error('Bot returned errors during submission', { errorCount: errors.length, errors });
+          botLogger.error('Bot returned errors during submission', { 
+            errorCount: errors.length, 
+            errors 
+          });
         }
         
         // Map bot indices back to entry IDs
@@ -137,7 +153,10 @@ export class PlaywrightBotService implements ISubmissionService {
           .map(([i]) => ids[i])
           .filter((id): id is number => id !== undefined);
         
-        console.log('[PlaywrightBotService] Mapped IDs - submitted:', submittedIds, 'failed:', failedIds);
+        botLogger.debug('Mapped bot results to IDs', { 
+          submittedIds, 
+          failedIds 
+        });
         
         allSubmittedIds.push(...submittedIds);
         allFailedIds.push(...failedIds);
@@ -155,12 +174,13 @@ export class PlaywrightBotService implements ISubmissionService {
         successCount: allSubmittedIds.length,
         removedCount: allFailedIds.length
       };
-      console.log('[PlaywrightBotService] Final result:', result);
       botLogger.info('Playwright submission completed', result);
       return result;
     } catch (error) {
-      console.error('[PlaywrightBotService] Exception during submission:', error);
-      botLogger.error('Exception during Playwright submission', { error: error instanceof Error ? error.message : String(error) });
+      botLogger.error('Exception during Playwright submission', { 
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
       return {
         ok: false,
         submittedIds: [],

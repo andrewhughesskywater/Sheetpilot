@@ -44,9 +44,10 @@ export interface ISubmissionService extends IPlugin {
    * Submit timesheet entries using provided credentials
    * @param entries Array of timesheet entries to submit
    * @param credentials Authentication credentials
+   * @param progressCallback Optional callback for progress updates (percent, message)
    * @returns Result of submission operation
    */
-  submit(entries: TimesheetEntry[], credentials: Credentials): Promise<SubmissionResult>;
+  submit(entries: TimesheetEntry[], credentials: Credentials, progressCallback?: (percent: number, message: string) => void): Promise<SubmissionResult>;
 
   /**
    * Validate a timesheet entry before submission

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import { useSession } from './SessionContext';
 
 // Define data types
@@ -194,31 +194,23 @@ export function DataProvider({ children }: DataProviderProps) {
       
       window.logger?.verbose('[DataContext] Loading archive data...');
       
-      // Yield control before making IPC calls
+      // Yield control before making IPC call
       await yieldToMain();
       
-      const timesheetResponse = await window.database?.getAllTimesheetEntries(token);
+      // Use batched API to fetch both timesheet and credentials in one call
+      const archiveResponse = await window.database?.getAllArchiveData(token);
       
-      // Yield control between IPC calls
+      // Yield control after IPC call
       await yieldToMain();
       
-      const credentialsResponse = await window.database?.getAllCredentials();
-      
-      // Yield control after IPC calls
-      await yieldToMain();
-      
-      // Support both structured and array responses
-      const timesheetData: TimesheetEntry[] = Array.isArray(timesheetResponse)
-        ? timesheetResponse
-        : (timesheetResponse && (timesheetResponse as { success?: boolean; entries?: TimesheetEntry[] }).success)
-          ? ((timesheetResponse as { entries?: TimesheetEntry[] }).entries ?? [])
-          : [];
+      // Parse batched response
+      const timesheetData: TimesheetEntry[] = archiveResponse?.success 
+        ? (archiveResponse.timesheet ?? [])
+        : [];
 
-      const credentialsData: Credential[] = Array.isArray(credentialsResponse)
-        ? credentialsResponse
-        : (credentialsResponse && (credentialsResponse as { success?: boolean; credentials?: Credential[] }).success)
-          ? ((credentialsResponse as { credentials?: Credential[] }).credentials ?? [])
-          : [];
+      const credentialsData: Credential[] = archiveResponse?.success
+        ? (archiveResponse.credentials ?? [])
+        : [];
       
       // Process large datasets in chunks to prevent blocking
       if (timesheetData.length > 100) {
@@ -246,10 +238,8 @@ export function DataProvider({ children }: DataProviderProps) {
       });
       
       // Check for errors
-      if (timesheetResponse && !Array.isArray(timesheetResponse) && !(timesheetResponse as { success?: boolean }).success) {
-        setArchiveDataError((timesheetResponse as { error?: string }).error || 'Could not load timesheet data');
-      } else if (credentialsResponse && !Array.isArray(credentialsResponse) && !(credentialsResponse as { success?: boolean }).success) {
-        setArchiveDataError((credentialsResponse as { error?: string }).error || 'Could not load credentials data');
+      if (!archiveResponse?.success) {
+        setArchiveDataError(archiveResponse?.error || 'Could not load archive data');
       }
     } catch (error) {
       console.error('[DataContext] Error loading archive data:', error);
@@ -287,7 +277,7 @@ export function DataProvider({ children }: DataProviderProps) {
     setIsArchiveDataLoading(false);
   }, []);
 
-  const value: DataContextType = {
+  const value: DataContextType = useMemo(() => ({
     timesheetDraftData,
     setTimesheetDraftData,
     refreshTimesheetDraft,
@@ -298,7 +288,16 @@ export function DataProvider({ children }: DataProviderProps) {
     isArchiveDataLoading,
     timesheetDraftError,
     archiveDataError
-  };
+  }), [
+    timesheetDraftData,
+    archiveData,
+    isTimesheetDraftLoading,
+    isArchiveDataLoading,
+    timesheetDraftError,
+    archiveDataError,
+    refreshTimesheetDraft,
+    refreshArchiveData
+  ]);
 
   return (
     <DataContext.Provider value={value}>

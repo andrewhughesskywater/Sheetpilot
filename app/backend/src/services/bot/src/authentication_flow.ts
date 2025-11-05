@@ -34,6 +34,8 @@ export class LoginManager {
   _wait_s: number;
   /** Dynamic form configuration */
   private formConfig: { BASE_URL: string; FORM_ID: string; SUBMISSION_ENDPOINT: string; SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[] };
+  /** Track login state for each context (for parallel processing) */
+  private loginStates: boolean[] = [];
 
   /**
    * Creates a new LoginManager instance
@@ -49,19 +51,26 @@ export class LoginManager {
   }
 
   /**
-   * Executes the complete login process with provided credentials
+   * Executes the complete login process with provided credentials for a specific context
    * 
    * Performs navigation to login page, credential entry, and authentication
    * following the configured login steps. Includes retry logic for navigation failures.
    * 
    * @param email - User email for authentication
    * @param password - User password for authentication
+   * @param contextIndex - Optional context index for parallel processing
    * @returns Promise that resolves when login is complete
    * @throws BotNavigationError if navigation fails after retries
    */
-  async run_login_steps(email: string, password: string): Promise<void> {
+  async run_login_steps(email: string, password: string, contextIndex?: number): Promise<void> {
+    // Check if already logged in for this context
+    if (contextIndex !== undefined && this.loginStates[contextIndex]) {
+      authLogger.verbose('Context already logged in, skipping login', { contextIndex });
+      return;
+    }
+    
     const timer = authLogger.startTimer('login-flow');
-    authLogger.info('Starting login process', { email, baseUrl: this.formConfig.BASE_URL });
+    authLogger.info('Starting login process', { email, baseUrl: this.formConfig.BASE_URL, contextIndex });
     
     const max_navigation_retries = 3;
     let navigation_attempt = 0;
@@ -69,34 +78,36 @@ export class LoginManager {
     while (navigation_attempt < max_navigation_retries) {
       try {
         navigation_attempt += 1;
-        authLogger.verbose('Navigation attempt', { attempt: navigation_attempt, maxRetries: max_navigation_retries });
-        const page = this.browser_manager.require_page();
+        authLogger.verbose('Navigation attempt', { attempt: navigation_attempt, maxRetries: max_navigation_retries, contextIndex });
+        const page = contextIndex !== undefined ? this.browser_manager.getPage(contextIndex) : this.browser_manager.require_page();
         // Wait for page to be ready before navigation attempt
         await C.wait_for_dom_stability(page, 'body', 'visible', C.DYNAMIC_WAIT_BASE_TIMEOUT * 0.5, C.DYNAMIC_WAIT_BASE_TIMEOUT * 1.0, 'navigation retry delay');
         await this._navigate_to_base(page);
-        authLogger.verbose('Successfully navigated to base URL');
+        authLogger.verbose('Successfully navigated to base URL', { contextIndex });
         break;
       } catch (e) {
         authLogger.warn('Navigation attempt failed', { 
           attempt: navigation_attempt,
-          error: String(e) 
+          error: String(e),
+          contextIndex
         });
         if (navigation_attempt >= max_navigation_retries) {
           authLogger.error('All navigation attempts failed', { 
             maxRetries: max_navigation_retries,
             baseUrl: this.formConfig.BASE_URL,
-            error: String(e) 
+            error: String(e),
+            contextIndex
           });
           throw new BotNavigationError(`Could not navigate to ${this.formConfig.BASE_URL} after ${max_navigation_retries} attempts: ${String(e)}`);
         }
         // Wait for page to be stable after navigation failure
-        const page = this.browser_manager.require_page();
+        const page = contextIndex !== undefined ? this.browser_manager.getPage(contextIndex) : this.browser_manager.require_page();
         await C.wait_for_dom_stability(page, 'body', 'visible', C.DYNAMIC_WAIT_BASE_TIMEOUT * 1.0, C.DYNAMIC_WAIT_BASE_TIMEOUT * 2.0, 'login retry delay');
       }
     }
 
-    const page = this.browser_manager.require_page();
-    authLogger.verbose('Executing login steps', { stepCount: C.LOGIN_STEPS.length });
+    const page = contextIndex !== undefined ? this.browser_manager.getPage(contextIndex) : this.browser_manager.require_page();
+    authLogger.verbose('Executing login steps', { stepCount: C.LOGIN_STEPS.length, contextIndex });
     
     for (let i = 0; i < C.LOGIN_STEPS.length; i++) {
       const step = C.LOGIN_STEPS[i];
@@ -105,7 +116,8 @@ export class LoginManager {
       authLogger.debug('Executing login step', { 
         stepIndex: i,
         action,
-        selector: step['element_selector'] || step['locator'] 
+        selector: step['element_selector'] || step['locator'],
+        contextIndex
       });
       
       if (action === 'wait') {
@@ -113,11 +125,12 @@ export class LoginManager {
           if (!step['optional']) {
             authLogger.error('Required element not found', { 
               selector: step['element_selector'],
-              error: err?.message 
+              error: err?.message,
+              contextIndex
             });
             throw err;
           }
-          authLogger.verbose('Optional element not found, continuing', { selector: step['element_selector'] });
+          authLogger.verbose('Optional element not found, continuing', { selector: step['element_selector'], contextIndex });
         });
       } else if (action === 'input') {
         const locator = page.locator(step['locator']!);
@@ -126,7 +139,8 @@ export class LoginManager {
         authLogger.debug('Filling input field', { 
           locator: step['locator'],
           valueKey: value_key,
-          sensitive: step['sensitive'] 
+          sensitive: step['sensitive'],
+          contextIndex
         });
         if (step['sensitive']) {
           await locator.type(val);
@@ -134,17 +148,23 @@ export class LoginManager {
           await locator.fill(val);
         }
       } else if (action === 'click') {
-        authLogger.debug('Clicking element', { locator: step['locator'] });
+        authLogger.debug('Clicking element', { locator: step['locator'], contextIndex });
         await page.locator(step['locator']!).click();
         if (step['expects_navigation']) {
-          authLogger.verbose('Waiting for navigation after click');
+          authLogger.verbose('Waiting for navigation after click', { contextIndex });
           await C.dynamic_wait_for_page_load(page, undefined, C.GLOBAL_TIMEOUT);
         }
       }
     }
     
-    authLogger.info('Login process completed successfully', { email });
-    timer.done({ email });
+    // Mark this context as logged in
+    if (contextIndex !== undefined) {
+      this.loginStates[contextIndex] = true;
+      authLogger.info('Login process completed successfully, context marked as logged in', { email, contextIndex });
+    } else {
+      authLogger.info('Login process completed successfully', { email });
+    }
+    timer.done({ email, contextIndex });
   }
 
   /**

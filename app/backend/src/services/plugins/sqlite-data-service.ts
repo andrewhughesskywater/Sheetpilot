@@ -140,9 +140,10 @@ export class SQLiteDataService implements IDataService {
         }
         
         return { success: true, changes: result.changes };
-      } finally {
-        db.close();
+      } catch (dbError) {
+        throw dbError;
       }
+      // Note: Do NOT close db connection here - singleton pattern manages lifecycle
     } catch (error) {
       return {
         success: false,
@@ -191,9 +192,10 @@ export class SQLiteDataService implements IDataService {
         // Return one blank row if no entries, otherwise return the entries
         const entriesToReturn = gridData.length > 0 ? gridData : [{}] as TimesheetEntry[];
         return { success: true, entries: entriesToReturn };
-      } finally {
-        db.close();
+      } catch (dbError) {
+        throw dbError;
       }
+      // Note: Do NOT close db connection here - singleton pattern manages lifecycle
     } catch (error) {
       return {
         success: false,
@@ -227,9 +229,10 @@ export class SQLiteDataService implements IDataService {
         }
         
         return { success: true };
-      } finally {
-        db.close();
+      } catch (dbError) {
+        throw dbError;
       }
+      // Note: Do NOT close db connection here - singleton pattern manages lifecycle
     } catch (error) {
       return {
         success: false,
@@ -275,9 +278,10 @@ export class SQLiteDataService implements IDataService {
             credentials: credentials
           }
         };
-      } finally {
-        db.close();
+      } catch (dbError) {
+        throw dbError;
       }
+      // Note: Do NOT close db connection here - singleton pattern manages lifecycle
     } catch (error) {
       return {
         success: false,
@@ -302,9 +306,10 @@ export class SQLiteDataService implements IDataService {
         const entries = getAll.all() as DbTimesheetEntry[];
         
         return { success: true, entries };
-      } finally {
-        db.close();
+      } catch (dbError) {
+        throw dbError;
       }
+      // Note: Do NOT close db connection here - singleton pattern manages lifecycle
     } catch (error) {
       return {
         success: false,

@@ -91,6 +91,15 @@ export const BROWSER_HEADLESS: boolean = (process.env['TIME_KNIGHT_BROWSER_HEADL
 export const BROWSER_CHANNEL: string = process.env['TIME_KNIGHT_BROWSER_CHANNEL'] ?? "chromium";
 
 // ============================================================================
+// PARALLEL PROCESSING CONFIGURATION
+// ============================================================================
+
+/** Maximum number of parallel browser contexts for concurrent processing */
+export const MAX_PARALLEL_CONTEXTS: number = Number(process.env['TIME_KNIGHT_MAX_PARALLEL_CONTEXTS'] ?? "3");
+/** Whether to enable parallel row processing */
+export const ENABLE_PARALLEL_PROCESSING: boolean = (process.env['TIME_KNIGHT_ENABLE_PARALLEL'] ?? "true").toLowerCase() === "true";
+
+// ============================================================================
 // TIMEOUT CONFIGURATION
 // ============================================================================
 
@@ -130,7 +139,7 @@ export const DYNAMIC_FIELD_MAX_NETWORK_TIMEOUT: number = Number(process.env['TIM
 /** Whether dynamic wait functionality is enabled */
 export const DYNAMIC_WAIT_ENABLED: boolean = (process.env['TIME_KNIGHT_DYNAMIC_WAIT_ENABLED'] ?? "true").toLowerCase() === "true";
 /** Base timeout for dynamic wait operations in seconds */
-export const DYNAMIC_WAIT_BASE_TIMEOUT: number = Number(process.env['TIME_KNIGHT_DYNAMIC_WAIT_BASE_TIMEOUT'] ?? "0.5");
+export const DYNAMIC_WAIT_BASE_TIMEOUT: number = Number(process.env['TIME_KNIGHT_DYNAMIC_WAIT_BASE_TIMEOUT'] ?? "0.2");
 /** Maximum timeout for dynamic wait operations in seconds */
 export const DYNAMIC_WAIT_MAX_TIMEOUT: number = Number(process.env['TIME_KNIGHT_DYNAMIC_WAIT_MAX_TIMEOUT'] ?? "10.0");
 /** Multiplier for increasing wait timeouts in dynamic wait */

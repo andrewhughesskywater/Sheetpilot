@@ -338,16 +338,23 @@ describe('Main Application Logic Tests', () => {
       };
     };
 
-    const saveWindowState = (state: { width: number; height: number; x?: number; y?: number; isMaximized?: boolean }): void => {
-      try {
-        const userDataPath = '/tmp/sheetpilot-userdata';
-        mockFs.mkdirSync(userDataPath, { recursive: true });
-        
-        const windowStatePath = path.join(userDataPath, 'window-state.json');
-        mockFs.writeFileSync(windowStatePath, JSON.stringify(state, null, 2));
-      } catch (error) {
-        console.warn('Could not save window state:', error);
-      }
+    // Simulates the debounced async saveWindowState with a 500ms delay
+    const saveWindowState = async (state: { width: number; height: number; x?: number; y?: number; isMaximized?: boolean }): Promise<void> => {
+      return new Promise((resolve) => {
+        setTimeout(async () => {
+          try {
+            const userDataPath = '/tmp/sheetpilot-userdata';
+            await mockFs.promises.mkdir(userDataPath, { recursive: true });
+            
+            const windowStatePath = path.join(userDataPath, 'window-state.json');
+            await mockFs.promises.writeFile(windowStatePath, JSON.stringify(state, null, 2));
+            resolve();
+          } catch (error) {
+            console.warn('Could not save window state:', error);
+            resolve();
+          }
+        }, 500);
+      });
     };
 
     beforeEach(() => {
@@ -438,7 +445,7 @@ describe('Main Application Logic Tests', () => {
       expect(state.isMaximized).toBe(false);
     });
 
-    it('should save window state successfully', () => {
+    it('should save window state successfully (async with debouncing)', async () => {
       const state = {
         width: 1000,
         height: 800,
@@ -447,24 +454,31 @@ describe('Main Application Logic Tests', () => {
         isMaximized: true
       };
       
-      saveWindowState(state);
+      // Mock the async fs.promises methods
+      mockFs.promises = {
+        mkdir: vi.fn().mockResolvedValue(undefined),
+        writeFile: vi.fn().mockResolvedValue(undefined)
+      };
       
-      expect(mockFs.mkdirSync).toHaveBeenCalledWith('/tmp/sheetpilot-userdata', { recursive: true });
-      expect(mockFs.writeFileSync).toHaveBeenCalledWith(
+      await saveWindowState(state);
+      
+      expect(mockFs.promises.mkdir).toHaveBeenCalledWith('/tmp/sheetpilot-userdata', { recursive: true });
+      expect(mockFs.promises.writeFile).toHaveBeenCalledWith(
         expect.stringMatching(/.*sheetpilot-userdata.*window-state\.json/),
         JSON.stringify(state, null, 2)
       );
     });
 
-    it('should handle save errors gracefully', () => {
-      mockFs.mkdirSync.mockImplementation(() => {
-        throw new Error('Permission denied');
-      });
+    it('should handle save errors gracefully (async)', async () => {
+      mockFs.promises = {
+        mkdir: vi.fn().mockRejectedValue(new Error('Permission denied')),
+        writeFile: vi.fn().mockResolvedValue(undefined)
+      };
       
       const state = { width: 1000, height: 800 };
       
-      // Should not throw
-      expect(() => saveWindowState(state)).not.toThrow();
+      // Should not throw even with async errors
+      await expect(saveWindowState(state)).resolves.not.toThrow();
     });
   });
 

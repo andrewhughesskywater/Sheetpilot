@@ -36,9 +36,13 @@ export class WebformFiller {
   browser_kind: string;
   /** Playwright Browser instance (null until started) */
   browser: Browser | null = null;
-  /** Playwright BrowserContext instance (null until started) */
+  /** Playwright BrowserContext instances for parallel processing */
+  contexts: BrowserContext[] = [];
+  /** Playwright Page instances for parallel processing */
+  pages: Page[] = [];
+  /** Legacy single context (maintained for backwards compatibility) */
   context: BrowserContext | null = null;
-  /** Playwright Page instance (null until started) */
+  /** Legacy single page (maintained for backwards compatibility) */
   page: Page | null = null;
   /** Dynamic form configuration */
   formConfig: { BASE_URL: string; FORM_ID: string; SUBMISSION_ENDPOINT: string; SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[] };
@@ -82,12 +86,30 @@ export class WebformFiller {
       return; // Prevent multiple initializations
     }
     const timer = botLogger.startTimer('browser-startup');
-    botLogger.info('Starting browser', { browserKind: this.browser_kind, headless: this.headless });
+    const maxContexts = cfg.ENABLE_PARALLEL_PROCESSING ? cfg.MAX_PARALLEL_CONTEXTS : 1;
+    botLogger.info('Starting browser', { 
+      browserKind: this.browser_kind, 
+      headless: this.headless,
+      parallelContexts: maxContexts
+    });
+    
     await this._launch_browser();
-    await this._create_context();
-    await this._create_page();
-    await cfg.dynamic_wait_for_page_load(this.page!);
-    botLogger.info('Browser started successfully');
+    
+    // Create multiple contexts for parallel processing
+    for (let i = 0; i < maxContexts; i++) {
+      await this._create_context_at_index(i);
+      await this._create_page_at_index(i);
+    }
+    
+    // Set legacy single page/context to first one for backwards compatibility
+    this.page = this.pages[0] ?? null;
+    this.context = this.contexts[0] ?? null;
+    
+    if (this.page) {
+      await cfg.dynamic_wait_for_page_load(this.page);
+    }
+    
+    botLogger.info('Browser started successfully', { contextCount: this.contexts.length });
     timer.done();
   }
 
@@ -186,7 +208,7 @@ export class WebformFiller {
     // Add bundled browser path if available (production mode)
     const bundledBrowserPath = this.getBundledBrowserPath();
     if (bundledBrowserPath) {
-      launchOptions.executablePath = bundledBrowserPath;
+      launchOptions['executablePath'] = bundledBrowserPath;
       botLogger.verbose('Using bundled browser executable', { executablePath: bundledBrowserPath });
     }
 
@@ -206,12 +228,13 @@ export class WebformFiller {
   }
 
   /**
-   * Creates a new browser context with configured settings
+   * Creates a new browser context at specified index with configured settings
    * @private
+   * @param index - Index for the context array
    * @returns Promise that resolves when context is created
    */
-  private async _create_context(): Promise<void> {
-    this.context = await this.browser!.newContext({
+  private async _create_context_at_index(index: number): Promise<void> {
+    const context = await this.browser!.newContext({
       viewport: { width: cfg.BROWSER_VIEWPORT_WIDTH, height: cfg.BROWSER_VIEWPORT_HEIGHT },
       ignoreHTTPSErrors: true,
       javaScriptEnabled: true,
@@ -230,7 +253,7 @@ export class WebformFiller {
     });
     
     // Hide automation flags
-    await this.context.addInitScript(() => {
+    await context.addInitScript(() => {
       // Remove webdriver property
       Object.defineProperty(navigator, 'webdriver', { 
         get: () => false 
@@ -257,34 +280,79 @@ export class WebformFiller {
         return originalQuery(parameters);
       };
     });
+    
+    this.contexts[index] = context;
   }
 
   /**
-   * Creates a new page within the browser context
+   * Creates a new page at specified index within the browser context
    * @private
+   * @param index - Index for the page array
+   * @returns Promise that resolves when page is created
+   */
+  private async _create_page_at_index(index: number): Promise<void> {
+    this.pages[index] = await this.contexts[index]!.newPage();
+  }
+  
+  /**
+   * Legacy method: Creates a single browser context with configured settings
+   * @private
+   * @deprecated Use _create_context_at_index instead
+   * @returns Promise that resolves when context is created
+   */
+  private async _create_context(): Promise<void> {
+    await this._create_context_at_index(0);
+    this.context = this.contexts[0] ?? null;
+  }
+
+  /**
+   * Legacy method: Creates a single page within the browser context
+   * @private
+   * @deprecated Use _create_page_at_index instead
    * @returns Promise that resolves when page is created
    */
   private async _create_page(): Promise<void> {
-    this.page = await this.context!.newPage();
+    await this._create_page_at_index(0);
+    this.page = this.pages[0] ?? null;
   }
 
   /**
    * Closes the browser and cleans up all resources
    * 
-   * Safely closes the context and browser, handling any errors gracefully.
-   * Resets all instance variables to null after cleanup.
+   * Safely closes all contexts and browser, handling any errors gracefully.
+   * Resets all instance variables to null/empty after cleanup.
    * 
    * @returns Promise that resolves when cleanup is complete
    */
   async close(): Promise<void> {
-    botLogger.verbose('Closing browser');
-    await this.context?.close().catch((err) => {
-      botLogger.warn('Error closing browser context', { error: err?.message });
-    });
+    botLogger.verbose('Closing browser', { contextCount: this.contexts.length });
+    
+    // Close all contexts
+    for (let i = 0; i < this.contexts.length; i++) {
+      await this.contexts[i]?.close().catch((err) => {
+        botLogger.warn('Error closing browser context', { contextIndex: i, error: err?.message });
+      });
+    }
+    
+    // Close legacy single context if different from array
+    if (this.context && !this.contexts.includes(this.context)) {
+      await this.context.close().catch((err) => {
+        botLogger.warn('Error closing legacy browser context', { error: err?.message });
+      });
+    }
+    
+    // Close browser
     await this.browser?.close().catch((err) => {
       botLogger.warn('Error closing browser', { error: err?.message });
     });
-    this.context = null; this.browser = null; this.page = null;
+    
+    // Reset all state
+    this.contexts = [];
+    this.pages = [];
+    this.context = null;
+    this.page = null;
+    this.browser = null;
+    
     botLogger.info('Browser closed successfully');
   }
 
@@ -297,22 +365,58 @@ export class WebformFiller {
     if (!this.page) throw new BotNotStartedError('Page is not available; call start() first');
     return this.page;
   }
+  
+  /**
+   * Gets a page instance by context index
+   * @param contextIndex - Index of the context to retrieve page from
+   * @returns Playwright Page object
+   * @throws Error if context index is invalid
+   */
+  getPage(contextIndex: number): Page {
+    if (contextIndex < 0 || contextIndex >= this.pages.length) {
+      throw new Error(`Invalid context index: ${contextIndex}. Available contexts: 0-${this.pages.length - 1}`);
+    }
+    const page = this.pages[contextIndex];
+    if (!page) {
+      throw new BotNotStartedError(`Page at index ${contextIndex} is not available; call start() first`);
+    }
+    return page;
+  }
+  
+  /**
+   * Gets a context instance by index
+   * @param contextIndex - Index of the context to retrieve
+   * @returns Playwright BrowserContext object
+   * @throws Error if context index is invalid
+   */
+  getContext(contextIndex: number): BrowserContext {
+    if (contextIndex < 0 || contextIndex >= this.contexts.length) {
+      throw new Error(`Invalid context index: ${contextIndex}. Available contexts: 0-${this.contexts.length - 1}`);
+    }
+    const context = this.contexts[contextIndex];
+    if (!context) {
+      throw new BotNotStartedError(`Context at index ${contextIndex} is not available; call start() first`);
+    }
+    return context;
+  }
 
   /**
    * Navigates to the base URL for form interaction
+   * @param contextIndex - Optional context index for parallel processing
    * @returns Promise that resolves when navigation is complete
    */
-  async navigate_to_base(): Promise<void> {
-    const page = this.require_page();
+  async navigate_to_base(contextIndex?: number): Promise<void> {
+    const page = contextIndex !== undefined ? this.getPage(contextIndex) : this.require_page();
     await page.goto(this.formConfig.BASE_URL, { timeout: cfg.GLOBAL_TIMEOUT * 1000 });
   }
 
   /**
    * Wait for the form to be ready for interaction
+   * @param contextIndex - Optional context index for parallel processing
    */
-  async wait_for_form_ready(): Promise<void> {
-    const page = this.require_page();
-    botLogger.verbose('Waiting for form to be ready');
+  async wait_for_form_ready(contextIndex?: number): Promise<void> {
+    const page = contextIndex !== undefined ? this.getPage(contextIndex) : this.require_page();
+    botLogger.verbose('Waiting for form to be ready', { contextIndex });
     
     // Wait for page to be loaded
     await page.waitForLoadState('domcontentloaded');
@@ -345,7 +449,7 @@ export class WebformFiller {
       }
     }, cfg.DYNAMIC_WAIT_BASE_TIMEOUT, cfg.DYNAMIC_WAIT_MAX_TIMEOUT, cfg.DYNAMIC_WAIT_MULTIPLIER, 'form inputs ready');
     
-    botLogger.verbose('Form is ready for interaction');
+    botLogger.verbose('Form is ready for interaction', { contextIndex });
   }
 
   /**
@@ -357,10 +461,11 @@ export class WebformFiller {
    * 
    * @param spec - Field specification containing locator and label
    * @param value - Value to inject into the field
+   * @param contextIndex - Optional context index for parallel processing
    * @returns Promise that resolves when field is filled
    * @throws Error if field locator is missing or field doesn't become visible
    */
-  async inject_field_value(spec: Record<string, unknown>, value: string): Promise<void> {
+  async inject_field_value(spec: Record<string, unknown>, value: string, contextIndex?: number): Promise<void> {
     const fieldName = String(spec?.['label'] ?? 'Unknown Field');
     const locatorSel = spec?.['locator'] as string;
     if (!locatorSel) {
@@ -372,7 +477,8 @@ export class WebformFiller {
       fieldName,
       fieldType,
       locator: locatorSel,
-      value: String(value)
+      value: String(value),
+      contextIndex
     });
     
     if (!locatorSel) {
@@ -381,8 +487,8 @@ export class WebformFiller {
     }
 
     try {
-    const page = this.require_page();
-      botLogger.debug('Locating field element', { locator: locatorSel });
+    const page = contextIndex !== undefined ? this.getPage(contextIndex) : this.require_page();
+      botLogger.debug('Locating field element', { locator: locatorSel, contextIndex });
       const field = page.locator(locatorSel);
       
       botLogger.debug('Waiting for field to become visible', { fieldName, timeout: cfg.GLOBAL_TIMEOUT });
@@ -445,12 +551,13 @@ export class WebformFiller {
    * and validates the submission based on response patterns and content.
    * Includes comprehensive response validation similar to the Python version.
    * 
+   * @param contextIndex - Optional context index for parallel processing
    * @returns Promise resolving to true if submission was successful, false otherwise
    */
-  async submit_form(): Promise<boolean> {
+  async submit_form(contextIndex?: number): Promise<boolean> {
     const timer = botLogger.startTimer('submit-form');
-    botLogger.info('Starting form submission');
-    const page = this.require_page();
+    botLogger.info('Starting form submission', { contextIndex });
+    const page = contextIndex !== undefined ? this.getPage(contextIndex) : this.require_page();
     
     // Set up response monitoring with content validation
     const successResponses: Array<{status: number; url: string; body?: string}> = [];

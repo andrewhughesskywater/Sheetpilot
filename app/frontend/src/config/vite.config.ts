@@ -39,7 +39,7 @@ export default defineConfig(({ mode }) => ({
     },
     chunkSizeWarningLimit: 800, // Increase to accommodate larger react-vendor chunk
     target: 'esnext', // Use modern ES features
-    minify: false, // Disable minification for debugging
+    minify: 'esbuild', // Enable fast minification for production builds
   },
   // Development server configuration
   server: {

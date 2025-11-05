@@ -40,6 +40,8 @@ export function registerDefaultPlugins(): void {
   registry.registerPlugin('submission', 'playwright', new PlaywrightBotService());
   registry.registerPlugin('submission', 'mock', new MockSubmissionService());
   
+  // Note: This file uses console.log for bootstrap logging before logger is fully initialized
+  // This is acceptable for plugin registration logging
   console.log('Default plugins registered successfully');
   console.log('Active plugins:', {
     data: registry.getActivePluginName('data'),

@@ -42,7 +42,15 @@ contextBridge.exposeInMainWorld('timesheet', {
     entryCount?: number;
     filename?: string;
     error?: string;
-  }> => ipcRenderer.invoke('timesheet:exportToCSV')
+  }> => ipcRenderer.invoke('timesheet:exportToCSV'),
+  // Listen for submission progress updates
+  onSubmissionProgress: (callback: (progress: { percent: number; current: number; total: number; message: string }) => void) => {
+    ipcRenderer.on('timesheet:progress', (_event, progress) => callback(progress));
+  },
+  // Remove submission progress listener
+  removeProgressListener: (): void => {
+    ipcRenderer.removeAllListeners('timesheet:progress');
+  }
 });
 
 
@@ -107,6 +115,18 @@ contextBridge.exposeInMainWorld('database', {
     }>;
     error?: string;
   }> => ipcRenderer.invoke('database:getAllCredentials'),
+  getAllArchiveData: (token: string): Promise<{
+    success: boolean;
+    timesheet?: Array<{
+      id: number; date: string; time_in: number; time_out: number; hours: number;
+      project: string; tool?: string; detail_charge_code?: string; task_description: string;
+      status?: string; submitted_at?: string;
+    }>;
+    credentials?: Array<{
+      id: number; service: string; email: string; created_at: string; updated_at: string;
+    }>;
+    error?: string;
+  }> => ipcRenderer.invoke('database:getAllArchiveData', token),
   clearDatabase: (): Promise<{ success: boolean; error?: string }> => 
     ipcRenderer.invoke('database:clearDatabase')
 });

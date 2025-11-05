@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 
 interface SessionContextType {
   isLoggedIn: boolean;
@@ -60,15 +60,15 @@ export function SessionProvider({ children }: SessionProviderProps) {
     loadSession();
   }, []);
 
-  const login = (newToken: string, newEmail: string, newIsAdmin: boolean) => {
+  const login = useCallback((newToken: string, newEmail: string, newIsAdmin: boolean) => {
     setToken(newToken);
     setEmail(newEmail);
     setIsAdmin(newIsAdmin);
     localStorage.setItem('sessionToken', newToken);
     window.logger?.info('User logged in', { email: newEmail, isAdmin: newIsAdmin });
-  };
+  }, []);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     const currentToken = token;
     if (currentToken && window.auth?.logout) {
       try {
@@ -83,9 +83,9 @@ export function SessionProvider({ children }: SessionProviderProps) {
     setIsAdmin(false);
     localStorage.removeItem('sessionToken');
     window.logger?.info('User logged out');
-  };
+  }, [token]);
 
-  const value: SessionContextType = {
+  const value: SessionContextType = useMemo(() => ({
     isLoggedIn: !!token,
     token,
     email,
@@ -93,7 +93,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
     login,
     logout,
     isLoading
-  };
+  }), [token, email, isAdmin, login, logout, isLoading]);
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 };
