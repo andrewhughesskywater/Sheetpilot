@@ -42,6 +42,8 @@ declare global {
         filename?: string;
         error?: string;
       }>;
+      onSubmissionProgress: (callback: (progress: { percent: number; current: number; total: number; message: string }) => void) => void;
+      removeProgressListener: () => void;
     };
     credentials?: {
       store: (service: string, email: string, password: string) => Promise<{ success: boolean; message: string; changes: number }>;
@@ -71,6 +73,16 @@ declare global {
       }>;
       getAllCredentials: () => Promise<{
         success: boolean;
+        credentials?: Array<{ id: number; service: string; email: string; created_at: string; updated_at: string }>;
+        error?: string;
+      }>;
+      getAllArchiveData: (token: string) => Promise<{
+        success: boolean;
+        timesheet?: Array<{
+          id: number; date: string; time_in: number; time_out: number; hours: number;
+          project: string; tool?: string; detail_charge_code?: string; task_description: string;
+          status?: string; submitted_at?: string;
+        }>;
         credentials?: Array<{ id: number; service: string; email: string; created_at: string; updated_at: string }>;
         error?: string;
       }>;

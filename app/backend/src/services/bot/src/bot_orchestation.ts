@@ -543,12 +543,14 @@ export class BotOrchestrator {
           // Collect results
           for (let i = 0; i < results.length; i++) {
             const result = results[i];
+            if (!result) continue;
+            
             const globalRowIndex = batchIndex * maxParallel + i;
             
             if (result.status === 'fulfilled') {
               submitted.push(result.value);
               botLogger.info('Batch row succeeded', { globalRowIndex, batchIndex, rowIndexInBatch: i });
-            } else {
+            } else if (result.status === 'rejected') {
               const errorMsg = String(result.reason?.message ?? result.reason);
               failed_rows.push([globalRowIndex, errorMsg]);
               botLogger.warn('Batch row failed', { globalRowIndex, batchIndex, rowIndexInBatch: i, error: errorMsg });

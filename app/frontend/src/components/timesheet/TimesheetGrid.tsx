@@ -398,7 +398,7 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
     }
     
     // Set up progress listener
-    window.timesheet.onSubmissionProgress((progress) => {
+    window.timesheet.onSubmissionProgress((progress: { percent: number; current: number; total: number; message: string }) => {
       window.logger?.debug('Submission progress update', progress);
       setSubmissionProgress(progress.percent);
       setCurrentEntry(progress.current);

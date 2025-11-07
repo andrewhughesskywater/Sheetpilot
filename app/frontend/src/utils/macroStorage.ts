@@ -56,7 +56,7 @@ export function loadMacros(): MacroRow[] {
       // Ensure we always have exactly 5 macros
       if (Array.isArray(parsed) && parsed.length === MACRO_COUNT) {
         // Ensure each macro has a name field (for backward compatibility)
-        return parsed.map((macro, index) => ({
+        return parsed.map((macro) => ({
           ...macro,
           name: macro.name ?? ''
         }));

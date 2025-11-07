@@ -50,7 +50,7 @@ export function getQuarterDateRange(): { minDate: Date; maxDate: Date } {
   // Min date depends on ALLOWED_PREVIOUS_QUARTERS
   let minDate: Date;
   
-  if (ALLOWED_PREVIOUS_QUARTERS === 0) {
+  if ((ALLOWED_PREVIOUS_QUARTERS as number) === 0) {
     // Only current quarter
     minDate = currentBounds.start;
   } else {
@@ -187,24 +187,15 @@ export function detectWeekdayPattern(rows: TimesheetRow[]): boolean {
 }
 
 /**
- * Check if two dates are the same day
- */
-function isSameDay(date1: Date, date2: Date): boolean {
-  return date1.getFullYear() === date2.getFullYear() &&
-         date1.getMonth() === date2.getMonth() &&
-         date1.getDate() === date2.getDate();
-}
-
-/**
  * Get smart placeholder date based on context
  * @param previousRow The row immediately before the current one
- * @param allRows All timesheet rows for pattern detection
+ * @param _allRows All timesheet rows for pattern detection
  * @param skipWeekends Whether to skip weekends when incrementing
  * @returns Suggested date string in MM/DD/YYYY format
  */
 export function getSmartPlaceholder(
   previousRow: TimesheetRow | undefined,
-  allRows: TimesheetRow[],
+  _allRows: TimesheetRow[],
   skipWeekends: boolean
 ): string {
   const today = new Date();

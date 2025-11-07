@@ -294,27 +294,6 @@ export class WebformFiller {
     this.pages[index] = await this.contexts[index]!.newPage();
   }
   
-  /**
-   * Legacy method: Creates a single browser context with configured settings
-   * @private
-   * @deprecated Use _create_context_at_index instead
-   * @returns Promise that resolves when context is created
-   */
-  private async _create_context(): Promise<void> {
-    await this._create_context_at_index(0);
-    this.context = this.contexts[0] ?? null;
-  }
-
-  /**
-   * Legacy method: Creates a single page within the browser context
-   * @private
-   * @deprecated Use _create_page_at_index instead
-   * @returns Promise that resolves when page is created
-   */
-  private async _create_page(): Promise<void> {
-    await this._create_page_at_index(0);
-    this.page = this.pages[0] ?? null;
-  }
 
   /**
    * Closes the browser and cleans up all resources
