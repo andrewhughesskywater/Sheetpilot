@@ -1,6 +1,7 @@
 import type { TimesheetRow } from './timesheet.schema';
 import { isValidDate, isValidTime, isTimeOutAfterTimeIn, hasTimeOverlapWithPreviousEntries } from './timesheet.schema';
 import { projectNeedsTools, toolNeedsChargeCode } from './timesheet.options';
+import { isDateInAllowedRange } from '../../utils/smartDate';
 
 /**
  * Validate a single field value
@@ -17,6 +18,7 @@ export function validateField(
     case 'date': {
       if (!value) return 'Please enter a date';
       if (!isValidDate(String(value))) return 'Date must be like 01/15/2024';
+      if (!isDateInAllowedRange(String(value))) return 'Date must be within allowed quarter range';
       return null;
     }
       

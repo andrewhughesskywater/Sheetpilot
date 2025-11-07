@@ -53,8 +53,23 @@ class InMemoryDatabase {
 
   transaction<T extends unknown[]>(callback: (...args: T) => unknown) {
     return ((...args: T) => {
-      // Simple transaction wrapper - in a real implementation we'd track changes
-      return callback(...args);
+      // Transaction wrapper with rollback support
+      const tableSnapshots = new Map<string, DatabaseRow[]>();
+      
+      // Create snapshots of all tables before transaction
+      for (const [tableName, tableData] of this.tables.entries()) {
+        tableSnapshots.set(tableName, [...tableData]);
+      }
+      
+      try {
+        return callback(...args);
+      } catch (error) {
+        // Rollback: restore snapshots
+        for (const [tableName, snapshot] of tableSnapshots.entries()) {
+          this.tables.set(tableName, snapshot);
+        }
+        throw error;
+      }
     }) as unknown;
   }
 
@@ -182,6 +197,7 @@ class InMemoryDatabase {
     const tableName = tableMatch[1]?.toLowerCase();
     if (!tableName) return;
 
+    // Store indexes by table name - Map<tableName, Set<indexName>>
     if (!this.indexes.has(tableName)) {
       this.indexes.set(tableName, new Set());
     }
@@ -277,8 +293,11 @@ class InMemoryDatabase {
     // Create row
     const row: DatabaseRow = {};
     columns.forEach((col, index) => {
-      if (args[index] !== undefined && args[index] !== null) {
+      // Store the value even if it's null/undefined - normalize undefined to null
+      if (args[index] !== undefined) {
         row[col] = args[index];
+      } else {
+        row[col] = null;
       }
     });
 
@@ -349,13 +368,14 @@ class InMemoryDatabase {
       return this.handlePragma(sql, args, operation);
     }
     
+    // Check for sqlite_master BEFORE parsing table name
+    if (sql.includes('sqlite_master')) {
+      return this.handleSqliteMaster(sql, operation);
+    }
+    
     // Parse table name
     const tableMatch = sql.match(/FROM\s+(\w+)/i);
     if (!tableMatch) {
-      // Check for sqlite_master
-      if (sql.includes('sqlite_master')) {
-        return this.handleSqliteMaster(sql, operation);
-      }
       return operation === 'get' ? null : [];
     }
     const tableName = tableMatch[1]?.toLowerCase();
@@ -395,7 +415,7 @@ class InMemoryDatabase {
     }
 
     // GROUP BY and aggregation
-    if (sql.includes('GROUP BY') || sql.includes('COUNT(*)')) {
+    if (sql.includes('GROUP BY')) {
       if (sql.includes('HAVING COUNT(*) > 1')) {
         // Duplicate detection
         const groupCols = sql.match(/GROUP BY\s+(.+?)(?:\s+HAVING|$)/i)?.[1]?.split(',').map(c => c.trim().toLowerCase()) || [];
@@ -408,7 +428,18 @@ class InMemoryDatabase {
         results = Array.from(grouped.values())
           .filter(group => group.length > 1)
           .map(group => ({ ...group[0]!, count: group.length }));
+        // Return the filtered results directly - don't run COUNT(*) aggregation after this
+        return operation === 'get' ? (results[0] || null) : results;
       }
+    }
+
+    // Handle COUNT(*) aggregation (only if not handled by GROUP BY above)
+    if (sql.includes('COUNT(*)') && !sql.includes('GROUP BY')) {
+      const count = results.length;
+      if (operation === 'get') {
+        return { count };
+      }
+      return [{ count }];
     }
 
     // Select specific columns
@@ -420,10 +451,6 @@ class InMemoryDatabase {
         selectCols.forEach(col => {
           if (row[col] !== undefined) newRow[col] = row[col];
         });
-        // Special handling for COUNT(*)
-        if (selectCols.some(c => c.includes('count'))) {
-          newRow['count'] = results.length;
-        }
         return newRow;
       });
     }
@@ -436,8 +463,9 @@ class InMemoryDatabase {
 
   private handleSqliteMaster(sql: string, operation: 'get' | 'all'): DatabaseRow[] | DatabaseRow | null {
     const results: DatabaseRow[] = [];
+    const normalizedSql = sql.toLowerCase();
     
-    if (sql.includes("type='table'")) {
+    if (normalizedSql.includes("type='table'") || normalizedSql.includes('type="table"')) {
       // Return table names
       for (const tableName of this.tables.keys()) {
         // Generate proper SQL for timesheet table including hours column
@@ -461,13 +489,13 @@ class InMemoryDatabase {
       }
       
       // Filter by name if specified
-      if (sql.includes("name='timesheet'")) {
+      if (normalizedSql.includes("name='timesheet'") || normalizedSql.includes('name="timesheet"')) {
         const filtered = results.filter(r => r['name'] === 'timesheet');
         return operation === 'get' ? (filtered[0] || null) : filtered;
       }
     }
     
-    if (sql.includes("type='index'")) {
+    if (normalizedSql.includes("type='index'") || normalizedSql.includes('type="index"')) {
       // Return index names
       for (const [tableName, indexSet] of this.indexes.entries()) {
         for (const indexName of indexSet) {
@@ -489,7 +517,7 @@ class InMemoryDatabase {
       }
       
       // Filter by name if specified
-      const nameMatch = sql.match(/name='(\w+)'/);
+      const nameMatch = normalizedSql.match(/name=['"](\w+)['"]/);
       if (nameMatch && nameMatch[1]) {
         const filtered = results.filter(r => r['name'] === nameMatch[1]);
         return operation === 'get' ? (filtered[0] || null) : filtered;
@@ -515,7 +543,7 @@ class InMemoryDatabase {
       }
     }
     
-    return operation === 'get' ? null : results;
+    return operation === 'get' ? (results[0] || null) : results;
   }
 
   private handleUpdate(sql: string, args: unknown[]): { changes: number } {
@@ -536,8 +564,19 @@ class InMemoryDatabase {
     
     table.forEach(row => {
       if (!whereMatch || !whereMatch[1] || this.matchesWhere(row, whereMatch[1], args)) {
-        // Apply SET updates
-        if (sql.includes('status =') && sql.includes('submitted_at')) {
+        // Apply SET updates  
+        if (sql.toUpperCase().includes('SET STATUS = NULL')) {
+          // Explicit SET status = NULL
+          row['status'] = null;
+          changes++;
+        } else if (sql.includes('status =') && !sql.includes('submitted_at')) {
+          // Simple status update with a value (e.g., SET status = 'in_progress')
+          const statusMatch = sql.match(/status\s*=\s*\?|status\s*=\s*'([^']+)'/i);
+          if (statusMatch) {
+            row['status'] = statusMatch[1] || args[0] || null;
+            changes++;
+          }
+        } else if (sql.includes('status =') && sql.includes('submitted_at')) {
           const statusIndex = sql.match(/status\s*=\s*'(\w+)'|status\s*=\s*\?/i);
           if (statusIndex) {
             row['status'] = args[0] || 'Complete';
@@ -661,10 +700,10 @@ class InMemoryDatabase {
       if (inMatch) {
         const col = inMatch[1]?.toLowerCase();
         const values = inMatch[2]?.split(',').map(v => v.trim().replace(/'/g, '')) || [];
-        const paramIndex = values.indexOf('?');
-        if (paramIndex !== -1 && args.length > 0) {
-          // Replace ? with actual values from args
-          const idList = (args[0] as number[]) || [];
+        const placeholderCount = values.filter(v => v === '?').length;
+        if (placeholderCount > 0 && args.length > 0) {
+          // Args are spread as individual values: [1, 2, 3] not [[1, 2, 3]]
+          const idList = args.slice(0, placeholderCount).map(id => Number(id));
           return idList.includes(Number(row[col || '']));
         }
         return values.includes(String(row[col || '']));

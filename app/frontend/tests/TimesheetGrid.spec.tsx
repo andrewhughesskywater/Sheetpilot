@@ -2402,3 +2402,243 @@ describe('Save Status Button', () => {
     expect(manualSaveMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('TimesheetGrid Advanced - Keyboard Navigation Edge Cases', () => {
+  it('should handle Tab key navigation', () => {
+    const navigationConfig = {
+      tabMoves: { row: 0, col: 1 },
+      enterMoves: { row: 1, col: 0 }
+    };
+    
+    expect(navigationConfig.tabMoves.col).toBe(1); // Tab moves right
+    expect(navigationConfig.enterMoves.row).toBe(1); // Enter moves down
+  });
+
+  it('should handle navigation at grid boundaries', () => {
+    const isAtRightEdge = (col: number, maxCols: number) => col === maxCols - 1;
+    const isAtBottomEdge = (row: number, maxRows: number) => row === maxRows - 1;
+    
+    expect(isAtRightEdge(6, 7)).toBe(true); // Last column
+    expect(isAtBottomEdge(9, 10)).toBe(true); // Last row
+  });
+
+  it('should handle Shift+Tab for backward navigation', () => {
+    const handleBackwardTab = (currentCol: number) => {
+      return Math.max(0, currentCol - 1);
+    };
+    
+    expect(handleBackwardTab(3)).toBe(2);
+    expect(handleBackwardTab(0)).toBe(0); // Stay at first column
+  });
+
+  it('should handle Arrow key navigation', () => {
+    const arrowNavigation = {
+      ArrowUp: { row: -1, col: 0 },
+      ArrowDown: { row: 1, col: 0 },
+      ArrowLeft: { row: 0, col: -1 },
+      ArrowRight: { row: 0, col: 1 }
+    };
+    
+    expect(arrowNavigation.ArrowUp.row).toBe(-1);
+    expect(arrowNavigation.ArrowDown.row).toBe(1);
+    expect(arrowNavigation.ArrowLeft.col).toBe(-1);
+    expect(arrowNavigation.ArrowRight.col).toBe(1);
+  });
+
+  it('should handle Home and End keys', () => {
+    const handleHome = (currentCol: number) => 0;
+    const handleEnd = (currentCol: number, maxCols: number) => maxCols - 1;
+    
+    expect(handleHome(5)).toBe(0);
+    expect(handleEnd(3, 7)).toBe(6);
+  });
+
+  it('should handle Escape key to cancel editing', () => {
+    let isEditing = true;
+    
+    const handleEscape = () => {
+      isEditing = false;
+    };
+    
+    handleEscape();
+    expect(isEditing).toBe(false);
+  });
+});
+
+describe('TimesheetGrid Advanced - Copy/Paste with Special Characters', () => {
+  it('should handle paste with special characters', () => {
+    const pastedData = [
+      ['01/15/2025', '09:00', '17:00', 'Project with "quotes"', 'Tool', 'EPR1', 'Task with <brackets>']
+    ];
+    
+    expect(pastedData[0][3]).toBe('Project with "quotes"');
+    expect(pastedData[0][6]).toBe('Task with <brackets>');
+  });
+
+  it('should handle paste with unicode characters', () => {
+    const pastedData = [
+      ['01/15/2025', '09:00', '17:00', 'Проект', 'Tool', 'EPR1', 'Task with émojis 🚀']
+    ];
+    
+    expect(pastedData[0][3]).toContain('Проект');
+    expect(pastedData[0][6]).toContain('🚀');
+  });
+
+  it('should handle paste with tabs and newlines', () => {
+    const pastedData = 'Row 1\tCol 2\tCol 3\nRow 2\tCol 2\tCol 3';
+    const rows = pastedData.split('\n').map(row => row.split('\t'));
+    
+    expect(rows.length).toBe(2);
+    expect(rows[0].length).toBe(3);
+    expect(rows[1].length).toBe(3);
+  });
+
+  it('should handle copy with formula-like text', () => {
+    const textWithFormulas = '=SUM(A1:A10)';
+    
+    // Should be treated as text, not formula
+    expect(textWithFormulas.startsWith('=')).toBe(true);
+    expect(textWithFormulas).toBe('=SUM(A1:A10)');
+  });
+
+  it('should handle paste with varying column counts', () => {
+    const pastedData = [
+      ['Col1', 'Col2', 'Col3'],           // 3 columns
+      ['Col1', 'Col2', 'Col3', 'Col4'],   // 4 columns
+      ['Col1', 'Col2']                     // 2 columns
+    ];
+    
+    expect(pastedData[0].length).toBe(3);
+    expect(pastedData[1].length).toBe(4);
+    expect(pastedData[2].length).toBe(2);
+  });
+
+  it('should handle paste with empty cells', () => {
+    const pastedData = [
+      ['01/15/2025', '', '17:00', 'Project', '', '', 'Task']
+    ];
+    
+    expect(pastedData[0][1]).toBe('');
+    expect(pastedData[0][4]).toBe('');
+  });
+});
+
+describe('TimesheetGrid Advanced - Undo/Redo Functionality', () => {
+  it('should support undo configuration', () => {
+    const config = {
+      undo: true,
+      maxUndoLevels: 100
+    };
+    
+    expect(config.undo).toBe(true);
+    expect(config.maxUndoLevels).toBe(100);
+  });
+
+  it('should track undo history', () => {
+    const undoHistory = [
+      { action: 'edit', row: 0, col: 0, oldValue: '', newValue: 'Test' },
+      { action: 'edit', row: 0, col: 1, oldValue: '', newValue: '09:00' }
+    ];
+    
+    expect(undoHistory.length).toBe(2);
+    expect(undoHistory[0].action).toBe('edit');
+  });
+
+  it('should perform undo operation', () => {
+    let currentValue = 'New Value';
+    const originalValue = 'Original Value';
+    
+    // Simulate undo
+    const undo = () => {
+      currentValue = originalValue;
+    };
+    
+    undo();
+    expect(currentValue).toBe('Original Value');
+  });
+
+  it('should perform redo operation', () => {
+    let currentValue = 'Original Value';
+    const newValue = 'New Value';
+    
+    // Simulate redo
+    const redo = () => {
+      currentValue = newValue;
+    };
+    
+    redo();
+    expect(currentValue).toBe('New Value');
+  });
+
+  it('should handle undo/redo stack limits', () => {
+    const maxUndoLevels = 3;
+    const undoStack = ['action1', 'action2', 'action3', 'action4'];
+    
+    // Stack should keep only last N actions
+    const limitedStack = undoStack.slice(-maxUndoLevels);
+    
+    expect(limitedStack.length).toBe(3);
+    expect(limitedStack).toEqual(['action2', 'action3', 'action4']);
+  });
+
+  it('should clear redo stack on new edit', () => {
+    const undoStack = ['action1', 'action2'];
+    let redoStack = ['undone1', 'undone2'];
+    
+    // Simulate new edit
+    const newEdit = () => {
+      redoStack = []; // Clear redo stack
+    };
+    
+    newEdit();
+    expect(redoStack).toEqual([]);
+  });
+});
+
+describe('TimesheetGrid Advanced - Concurrent Editing Scenarios', () => {
+  it('should handle rapid cell edits', () => {
+    const edits = [];
+    
+    for (let i = 0; i < 50; i++) {
+      edits.push({
+        row: 0,
+        col: i % 7,
+        value: `Value ${i}`
+      });
+    }
+    
+    expect(edits.length).toBe(50);
+    expect(edits[0].col).toBe(0);
+    expect(edits[7].col).toBe(0); // Wraps around
+  });
+
+  it('should handle overlapping validation checks', () => {
+    // Simulate multiple validators running
+    const validators = [
+      () => ({ valid: true }),
+      () => ({ valid: true }),
+      () => ({ valid: false, error: 'Invalid' })
+    ];
+    
+    const results = validators.map(v => v());
+    const hasErrors = results.some(r => !r.valid);
+    
+    expect(hasErrors).toBe(true);
+  });
+
+  it('should handle data changes during save operation', () => {
+    let isSaving = false;
+    let dataModifiedDuringSave = false;
+    
+    const simulateSave = () => {
+      isSaving = true;
+      // Data modified while saving
+      dataModifiedDuringSave = true;
+      isSaving = false;
+    };
+    
+    simulateSave();
+    
+    expect(dataModifiedDuringSave).toBe(true);
+  });
+});

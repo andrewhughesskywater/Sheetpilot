@@ -13,7 +13,9 @@ import { SubmitProgressBar } from '../SubmitProgressBar';
 import './TimesheetGrid.css';
 import type { TimesheetRow } from './timesheet.schema';
 import MacroManagerDialog from './MacroManagerDialog';
-import { MacroRow, loadMacros, isMacroEmpty } from '../../utils/macroStorage';
+import KeyboardShortcutsHintDialog from '../KeyboardShortcutsHintDialog';
+import type { MacroRow } from '../../utils/macroStorage';
+import { loadMacros, isMacroEmpty } from '../../utils/macroStorage';
 
 type ButtonStatus = 'neutral' | 'ready' | 'warning';
 import { formatTimeInput, normalizeRowData, isValidDate, isValidTime, hasTimeOverlapWithPreviousEntries } from './timesheet.schema';
@@ -21,6 +23,7 @@ import { projects, chargeCodes, projectsWithoutTools, toolsWithoutCharges, getTo
 import { submitTimesheet } from './timesheet.submit';
 import { saveLocalBackup, batchSaveToDatabase as batchSaveToDatabaseUtil, deleteDraftRows } from './timesheet.persistence';
 import { SpellcheckEditor } from './SpellcheckEditor';
+import { detectWeekdayPattern, getSmartPlaceholder, incrementDate, formatDateForDisplay } from '../../utils/smartDate';
 
 // Register all Handsontable modules
 registerAllModules();
@@ -53,6 +56,12 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
   // Macro state
   const [macros, setMacros] = useState<MacroRow[]>([]);
   const [showMacroDialog, setShowMacroDialog] = useState(false);
+  
+  // Keyboard shortcuts hint dialog state
+  const [showShortcutsHint, setShowShortcutsHint] = useState(false);
+  
+  // Track weekday pattern for smart date suggestions
+  const weekdayPatternRef = useRef<boolean>(false);
   
   // Use preloaded data from context
   const { 
@@ -96,6 +105,19 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
     const loaded = loadMacros();
     setMacros(loaded);
   }, []);
+
+  // Show keyboard shortcuts hint on mount
+  useEffect(() => {
+    // TEMPORARY: Force show for demo
+    setShowShortcutsHint(true);
+  }, []);
+
+  // Detect weekday pattern when data changes
+  useEffect(() => {
+    if (timesheetDraftData && timesheetDraftData.length > 0) {
+      weekdayPatternRef.current = detectWeekdayPattern(timesheetDraftData);
+    }
+  }, [timesheetDraftData]);
 
   // Simplified - removed complex DOM manipulation that was interfering with CSS
 
@@ -278,8 +300,9 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
     onChange?.(hotData);
   }, [timesheetDraftData, setTimesheetDraftData, onChange]);
 
-  // Normalize pasted data
+  // Normalize pasted data and handle via afterPaste to bypass read-only restrictions
   const handleBeforePaste = useCallback((data: unknown[][]) => {
+    // Normalize data based on cascading rules before paste
     data.forEach((row, i) => {
       if (row.length >= 7) {
         const [date, timeIn, timeOut, project, tool, chargeCode, taskDescription] = row;
@@ -298,6 +321,48 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
       }
     });
     return true;
+  }, []);
+
+  // After paste completes, manually apply Tool and ChargeCode to bypass read-only
+  const handleAfterPaste = useCallback((data: unknown[][], coords: { startRow: number; startCol: number; endRow: number; endCol: number }[]) => {
+    if (!coords || coords.length === 0) return;
+    
+    const hotInstance = hotTableRef.current?.hotInstance;
+    if (!hotInstance) return;
+    
+    const { startRow, startCol } = coords[0];
+    
+    // Only handle full row pastes (starting from column 0)
+    if (startCol !== 0) return;
+    
+    // For each pasted row, manually set Tool and ChargeCode if they were skipped due to read-only
+    data.forEach((row, i) => {
+      const targetRow = startRow + i;
+      if (row.length >= 7) {
+        const [_date, _timeIn, _timeOut, project, tool, chargeCode, _taskDescription] = row;
+        
+        // Only apply if project exists and needs tools
+        if (project && projectNeedsTools(project as string)) {
+          const toolCol = hotInstance.propToCol('tool');
+          const currentTool = hotInstance.getDataAtCell(targetRow, toolCol as number);
+          
+          // If tool wasn't set (because it was read-only), set it now
+          if (!currentTool && tool) {
+            hotInstance.setDataAtCell(targetRow, toolCol as number, tool, 'paste');
+          }
+          
+          // Similarly for charge code
+          if (tool && toolNeedsChargeCode(tool as string)) {
+            const chargeCodeCol = hotInstance.propToCol('chargeCode');
+            const currentChargeCode = hotInstance.getDataAtCell(targetRow, chargeCodeCol as number);
+            
+            if (!currentChargeCode && chargeCode) {
+              hotInstance.setDataAtCell(targetRow, chargeCodeCol as number, chargeCode, 'paste');
+            }
+          }
+        }
+      }
+    });
   }, []);
 
   // Handle editor opening - add date picker close handler
@@ -381,23 +446,51 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
 
     window.logger?.info('Applying macro to row', { macroIndex: macroIndex + 1, targetRow });
 
-    // Apply macro fields using setDataAtCell (triggers handleAfterChange)
-    const changes: [number, string, string | null][] = [];
-    if (macro.timeIn) changes.push([targetRow, 'timeIn', macro.timeIn]);
-    if (macro.timeOut) changes.push([targetRow, 'timeOut', macro.timeOut]);
-    if (macro.project) changes.push([targetRow, 'project', macro.project]);
-    if (macro.tool !== undefined) changes.push([targetRow, 'tool', macro.tool]);
-    if (macro.chargeCode !== undefined) changes.push([targetRow, 'chargeCode', macro.chargeCode]);
-    if (macro.taskDescription) changes.push([targetRow, 'taskDescription', macro.taskDescription]);
+    // Get the source data and update it directly to bypass read-only restrictions
+    const sourceData = hotInstance.getSourceData() as TimesheetRow[];
+    
+    // Ensure the target row exists
+    if (!sourceData[targetRow]) {
+      sourceData[targetRow] = {
+        date: '',
+        timeIn: '',
+        timeOut: '',
+        project: '',
+        tool: null,
+        chargeCode: null,
+        taskDescription: ''
+      };
+    }
 
-    // Apply all changes at once
-    changes.forEach(([row, prop, value]) => {
-      hotInstance.setDataAtCell(row, hotInstance.propToCol(prop) as number, value);
-    });
+    // Build the updated row with macro data
+    const updatedRow: TimesheetRow = { ...sourceData[targetRow] };
+    if (macro.timeIn) updatedRow.timeIn = macro.timeIn;
+    if (macro.timeOut) updatedRow.timeOut = macro.timeOut;
+    if (macro.project) updatedRow.project = macro.project;
+    if (macro.tool !== undefined) updatedRow.tool = macro.tool;
+    if (macro.chargeCode !== undefined) updatedRow.chargeCode = macro.chargeCode;
+    if (macro.taskDescription) updatedRow.taskDescription = macro.taskDescription;
+
+    // Normalize the row data based on cascading rules (validation/cleanup)
+    const normalizedRow = normalizeRowData(updatedRow, projectNeedsTools, toolNeedsChargeCode);
+    
+    // Update the source data
+    sourceData[targetRow] = normalizedRow;
+    
+    // Load the updated data back into Handsontable (triggers handleAfterChange via 'edit' source)
+    hotInstance.loadData(sourceData);
+    
+    // Update React state to stay in sync
+    setTimesheetDraftData(sourceData);
+    onChange?.(sourceData);
+    isDirtyRef.current = true;
 
     // Select the row that was modified
-    hotInstance.selectCell(targetRow, 0);
-  }, [macros]);
+    requestAnimationFrame(() => {
+      hotInstance.selectCell(targetRow, 0);
+    });
+  }, [macros, setTimesheetDraftData, onChange]);
+
 
   // Duplicate currently selected row
   const duplicateSelectedRow = useCallback(() => {
@@ -538,6 +631,15 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
       return {};
     }
     
+    // Date column - smart placeholder
+    if (col === 0 && !rowData.date) {
+      const previousRow = row > 0 ? timesheetDraftData[row - 1] : undefined;
+      const smartPlaceholder = getSmartPlaceholder(previousRow, timesheetDraftData, weekdayPatternRef.current);
+      return {
+        placeholder: smartPlaceholder
+      };
+    }
+    
     // Tool column - dynamic dropdown based on selected project
     if (col === 4) {
       const project = rowData?.project;
@@ -573,6 +675,73 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
     }
     
     return {};
+  }, [timesheetDraftData]);
+
+  // Keyboard shortcuts for date column
+  const handleBeforeKeyDown = useCallback((event: KeyboardEvent) => {
+    const hotInstance = hotTableRef.current?.hotInstance;
+    if (!hotInstance) return;
+
+    const selected = hotInstance.getSelected();
+    if (!selected || selected.length === 0) return;
+
+    const [row, col] = selected[0];
+    
+    // Only handle date column (column 0)
+    if (col !== 0) return;
+
+    const rowData = timesheetDraftData[row];
+    if (!rowData) return;
+
+    let dateToInsert: string | null = null;
+    let shouldPreventDefault = false;
+
+    // Get the smart placeholder for this cell
+    const previousRow = row > 0 ? timesheetDraftData[row - 1] : undefined;
+    const smartPlaceholder = getSmartPlaceholder(previousRow, timesheetDraftData, weekdayPatternRef.current);
+
+    // Handle different key combinations
+    if (event.key === 'Tab' && event.ctrlKey) {
+      // Ctrl+Tab: insert day after the last entry (regardless of smart suggestion)
+      const lastEntryWithDate = timesheetDraftData
+        .slice(0, row)
+        .reverse()
+        .find(r => r.date);
+      
+      if (lastEntryWithDate?.date) {
+        dateToInsert = incrementDate(lastEntryWithDate.date, 1, weekdayPatternRef.current);
+        shouldPreventDefault = true;
+      }
+    } else if (event.key === 'Tab' && event.shiftKey) {
+      // Shift+Tab: insert day after placeholder
+      if (!rowData.date && smartPlaceholder) {
+        dateToInsert = incrementDate(smartPlaceholder, 1, weekdayPatternRef.current);
+        shouldPreventDefault = true;
+      }
+    } else if (event.key === 'Tab') {
+      // Tab: accept placeholder value
+      if (!rowData.date && smartPlaceholder) {
+        dateToInsert = smartPlaceholder;
+        shouldPreventDefault = true;
+      }
+    } else if (event.ctrlKey && event.key === 't') {
+      // Insert today's date
+      dateToInsert = formatDateForDisplay(new Date());
+      shouldPreventDefault = true;
+    }
+
+    if (dateToInsert && shouldPreventDefault) {
+      event.preventDefault();
+      event.stopPropagation();
+      
+      // Insert the date
+      hotInstance.setDataAtCell(row, 0, dateToInsert);
+      
+      // Move focus to next column (timeIn)
+      setTimeout(() => {
+        hotInstance.selectCell(row, 1);
+      }, 10);
+    }
   }, [timesheetDraftData]);
 
   // Column definitions - NO validators (validation happens in afterChange to prevent editor blocking)
@@ -694,11 +863,16 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
       <div className="macro-toolbar">
         {macros.map((macro, index) => {
           const isEmpty = isMacroEmpty(macro);
+          const displayName = macro.name?.trim() || `Macro ${index + 1}`;
           const label = isEmpty 
             ? `Macro ${index + 1}`
-            : macro.taskDescription 
-              ? `${macro.taskDescription.slice(0, 30)}${macro.taskDescription.length > 30 ? '...' : ''}`
-              : `Macro ${index + 1}`;
+            : displayName.length > 30
+              ? `${displayName.slice(0, 30)}...`
+              : displayName;
+          
+          const tooltipText = isEmpty 
+            ? `Macro ${index + 1} not configured`
+            : `${displayName}${macro.taskDescription ? ` - ${macro.taskDescription}` : ''}`;
           
           return (
             <Button
@@ -708,7 +882,7 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
               size="small"
               disabled={isEmpty}
               onClick={() => applyMacro(index)}
-              title={isEmpty ? `Macro ${index + 1} not configured` : `Apply: ${macro.taskDescription || ''}`}
+              title={tooltipText}
             >
               <span className="macro-button-label">
                 {label}
@@ -738,7 +912,9 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
         afterChange={handleAfterChange}
         afterRemoveRow={handleAfterRemoveRow}
         beforePaste={handleBeforePaste}
+        afterPaste={handleAfterPaste}
         afterBeginEditing={handleAfterBeginEditing}
+        beforeKeyDown={handleBeforeKeyDown}
         themeName="ht-theme-horizon"
         width="100%"
         rowHeaders={true}
@@ -751,7 +927,7 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
         licenseKey="non-commercial-and-evaluation"
         minSpareRows={1}
         readOnly={false}
-        fillHandle={false}
+        fillHandle={true}
         autoWrapRow={false}
         autoWrapCol={false}
         fragmentSelection={true}
@@ -760,10 +936,6 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
         outsideClickDeselects={true}
         viewportRowRenderingOffset={24}
         columnSorting={{
-          initialConfig: [
-            { column: 0, sortOrder: 'asc' },  // Date: least recent to most recent
-            { column: 1, sortOrder: 'asc' }   // Time In: earliest to latest
-          ],
           indicator: true,
           headerAction: true,
           sortEmptyCells: true
@@ -800,6 +972,12 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
           setMacros(savedMacros);
           window.logger?.info('Macros updated', { count: savedMacros.filter(m => !isMacroEmpty(m)).length });
         }}
+      />
+
+      {/* Keyboard Shortcuts Hint Dialog */}
+      <KeyboardShortcutsHintDialog
+        open={showShortcutsHint}
+        onClose={() => setShowShortcutsHint(false)}
       />
     </div>
   );

@@ -373,6 +373,11 @@ export class WebformFiller {
    * @throws Error if context index is invalid
    */
   getPage(contextIndex: number): Page {
+    // Check if browser has been started at all
+    if (this.pages.length === 0) {
+      throw new BotNotStartedError('Page is not available; call start() first');
+    }
+    
     if (contextIndex < 0 || contextIndex >= this.pages.length) {
       throw new Error(`Invalid context index: ${contextIndex}. Available contexts: 0-${this.pages.length - 1}`);
     }

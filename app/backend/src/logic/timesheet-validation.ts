@@ -30,6 +30,8 @@ export interface TimesheetRow {
  * Check if a date string is valid
  */
 export function isValidDate(dateStr?: string): boolean {
+  // Check if input is a string type
+  if (typeof dateStr !== 'string') return false;
   if (!dateStr) return false;
   
   // Must match mm/dd/yyyy format
@@ -43,7 +45,7 @@ export function isValidDate(dateStr?: string): boolean {
   // Validate ranges
   if (month < 1 || month > 12) return false;
   if (day < 1 || day > 31) return false;
-  if (year < 1900 || year > 2100) return false;
+  if (year < 1900 || year > 3000) return false;
   
   // Create date object using ISO format to avoid locale issues
   // Note: month is 0-indexed in Date constructor
@@ -65,7 +67,20 @@ export function isValidDate(dateStr?: string): boolean {
  * Format numeric time input (e.g., 800 -> 08:00, 1430 -> 14:30)
  */
 export function formatTimeInput(timeStr: unknown): string {
+  // Convert numbers to strings first
+  if (typeof timeStr === 'number') {
+    timeStr = String(timeStr);
+  }
+  
   if (typeof timeStr !== 'string') return String(timeStr || '');
+  
+  // Handle special edge cases - return original for invalid inputs
+  if (timeStr.includes('-') || // Negative values
+      timeStr.includes('.') || // Decimal notation
+      timeStr.includes('e') || timeStr.includes('E') || // Scientific notation
+      timeStr.length > 5) { // Too long (likely invalid)
+    return timeStr;
+  }
   
   // If already in HH:MM format, normalize it to ensure proper padding
   if (timeStr.includes(':')) {
@@ -73,6 +88,12 @@ export function formatTimeInput(timeStr: unknown): string {
     if (parts.length === 2) {
       const [hours, minutes] = parts;
       if (hours && minutes !== undefined) {
+        // Validate that hours and minutes are numeric and within valid range
+        const hoursNum = parseInt(hours, 10);
+        const minutesNum = parseInt(minutes, 10);
+        if (isNaN(hoursNum) || isNaN(minutesNum) || hoursNum >= 24 || minutesNum >= 60) {
+          return timeStr;
+        }
         const normalizedHours = hours.padStart(2, '0');
         const normalizedMinutes = minutes.padStart(2, '0');
         return `${normalizedHours}:${normalizedMinutes}`;
@@ -85,6 +106,9 @@ export function formatTimeInput(timeStr: unknown): string {
   // Remove any non-numeric characters for pure numeric input
   const numericOnly = timeStr.replace(/\D/g, '');
   
+  // If no numeric content, return original
+  if (!numericOnly) return timeStr;
+  
   // Handle different numeric input formats
   if (numericOnly.length === 3) {
     // 800 -> 08:00
@@ -95,9 +119,19 @@ export function formatTimeInput(timeStr: unknown): string {
     // 1430 -> 14:30
     const hours = numericOnly.substring(0, 2);
     const minutes = numericOnly.substring(2, 4);
+    // Validate hours and minutes are within range
+    const hoursNum = parseInt(hours, 10);
+    const minutesNum = parseInt(minutes, 10);
+    if (hoursNum >= 24 || minutesNum >= 60) {
+      return timeStr; // Invalid time, return original
+    }
     return `${hours}:${minutes}`;
   } else if (numericOnly.length === 2) {
     // Two-digit input: treat as hours (08 -> 08:00, 12 -> 12:00)
+    const hoursNum = parseInt(numericOnly, 10);
+    if (hoursNum >= 24) {
+      return timeStr; // Invalid hour, return original
+    }
     return `${numericOnly}:00`;
   } else if (numericOnly.length === 1) {
     // 8 -> 08:00

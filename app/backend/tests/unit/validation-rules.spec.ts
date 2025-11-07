@@ -513,4 +513,298 @@ describe('Validation Rules Unit Tests', () => {
       });
     });
   });
+
+  describe('Edge Cases - Malformed Inputs', () => {
+    it('should handle null and undefined date values', () => {
+      expect(isValidDate(null as unknown as string)).toBe(false);
+      expect(isValidDate(undefined as unknown as string)).toBe(false);
+    });
+
+    it('should handle object date values', () => {
+      expect(isValidDate({} as unknown as string)).toBe(false);
+      expect(isValidDate({ date: '01/15/2025' } as unknown as string)).toBe(false);
+      expect(isValidDate(new Date() as unknown as string)).toBe(false);
+    });
+
+    it('should handle null and undefined time values', () => {
+      expect(isValidTime(null as unknown as string)).toBe(false);
+      expect(isValidTime(undefined as unknown as string)).toBe(false);
+    });
+
+    it('should handle object time values', () => {
+      expect(isValidTime({} as unknown as string)).toBe(false);
+      expect(isValidTime({ time: '09:00' } as unknown as string)).toBe(false);
+    });
+
+    it('should handle numeric date values', () => {
+      expect(isValidDate(20250115 as unknown as string)).toBe(false);
+      expect(isValidDate(1705276800000 as unknown as string)).toBe(false);
+    });
+
+    it('should handle numeric time values', () => {
+      expect(isValidTime(900 as unknown as string)).toBe(true); // Should convert to '09:00'
+      expect(isValidTime(1730 as unknown as string)).toBe(true); // Should convert to '17:30'
+    });
+
+    it('should handle array inputs', () => {
+      expect(isValidDate(['01', '15', '2025'] as unknown as string)).toBe(false);
+      expect(isValidTime(['09', '00'] as unknown as string)).toBe(false);
+    });
+
+    it('should handle boolean inputs', () => {
+      expect(isValidDate(true as unknown as string)).toBe(false);
+      expect(isValidDate(false as unknown as string)).toBe(false);
+      expect(isValidTime(true as unknown as string)).toBe(false);
+      expect(isValidTime(false as unknown as string)).toBe(false);
+    });
+  });
+
+  describe('Edge Cases - Boundary Tests', () => {
+    it('should reject times at 14-minute boundary', () => {
+      const fourteenMinuteTimes = [
+        '00:14', '01:14', '09:14', '12:14', '18:14', '23:14'
+      ];
+      
+      fourteenMinuteTimes.forEach(time => {
+        expect(isValidTime(time)).toBe(false);
+      });
+    });
+
+    it('should accept times at 15-minute boundary', () => {
+      const fifteenMinuteTimes = [
+        '00:15', '01:15', '09:15', '12:15', '18:15', '23:15'
+      ];
+      
+      fifteenMinuteTimes.forEach(time => {
+        expect(isValidTime(time)).toBe(true);
+      });
+    });
+
+    it('should reject times at 16-minute boundary', () => {
+      const sixteenMinuteTimes = [
+        '00:16', '01:16', '09:16', '12:16', '18:16', '23:16'
+      ];
+      
+      sixteenMinuteTimes.forEach(time => {
+        expect(isValidTime(time)).toBe(false);
+      });
+    });
+
+    it('should handle time increment boundaries around all valid increments', () => {
+      const validIncrements = [0, 15, 30, 45];
+      
+      validIncrements.forEach(minute => {
+        // One minute before should be invalid (except at 0)
+        if (minute > 0) {
+          expect(isValidTime(`09:${String(minute - 1).padStart(2, '0')}`)).toBe(false);
+        }
+        
+        // Exact increment should be valid
+        expect(isValidTime(`09:${String(minute).padStart(2, '0')}`)).toBe(true);
+        
+        // One minute after should be invalid (except at 45 which goes to next hour)
+        if (minute < 45) {
+          expect(isValidTime(`09:${String(minute + 1).padStart(2, '0')}`)).toBe(false);
+        }
+      });
+    });
+
+    it('should handle date boundaries at month edges', () => {
+      // Last day of months
+      expect(isValidDate('01/31/2025')).toBe(true);
+      expect(isValidDate('02/28/2025')).toBe(true);
+      expect(isValidDate('03/31/2025')).toBe(true);
+      expect(isValidDate('04/30/2025')).toBe(true);
+      expect(isValidDate('05/31/2025')).toBe(true);
+      expect(isValidDate('06/30/2025')).toBe(true);
+      expect(isValidDate('07/31/2025')).toBe(true);
+      expect(isValidDate('08/31/2025')).toBe(true);
+      expect(isValidDate('09/30/2025')).toBe(true);
+      expect(isValidDate('10/31/2025')).toBe(true);
+      expect(isValidDate('11/30/2025')).toBe(true);
+      expect(isValidDate('12/31/2025')).toBe(true);
+      
+      // One day past should be invalid
+      expect(isValidDate('02/29/2025')).toBe(false); // Not a leap year
+      expect(isValidDate('04/31/2025')).toBe(false);
+      expect(isValidDate('06/31/2025')).toBe(false);
+      expect(isValidDate('09/31/2025')).toBe(false);
+      expect(isValidDate('11/31/2025')).toBe(false);
+    });
+  });
+
+  describe('Edge Cases - Unicode and Special Characters', () => {
+    it('should handle unicode characters in text fields', () => {
+      const mockRows = [{
+        date: '01/15/2025',
+        timeIn: '09:00',
+        timeOut: '17:00',
+        project: 'FL-Carver Techs',
+        tool: '#1 Rinse and 2D marker',
+        chargeCode: 'EPR1',
+        taskDescription: 'Test task with émojis 🚀 and üñïçödé'
+      }];
+      
+      const result = validateField('Test task with émojis 🚀 and üñïçödé', 0, 'taskDescription', mockRows, ['FL-Carver Techs'], ['EPR1']);
+      expect(result).toBeNull(); // Should accept unicode
+    });
+
+    it('should handle special characters in task description', () => {
+      const specialCharacters = [
+        'Task with "quotes"',
+        "Task with 'single quotes'",
+        'Task with <brackets>',
+        'Task with [square brackets]',
+        'Task with {curly braces}',
+        'Task with & ampersand',
+        'Task with | pipe',
+        'Task with \\ backslash',
+        'Task with / forward slash',
+        'Task with @ at sign',
+        'Task with # hash',
+        'Task with $ dollar',
+        'Task with % percent',
+        'Task with ^ caret',
+        'Task with * asterisk',
+        'Task with + plus',
+        'Task with = equals',
+        'Task with ~ tilde',
+        'Task with ` backtick'
+      ];
+      
+      const mockRows = [{
+        date: '01/15/2025',
+        timeIn: '09:00',
+        timeOut: '17:00',
+        project: 'FL-Carver Techs',
+        tool: '#1 Rinse and 2D marker',
+        chargeCode: 'EPR1',
+        taskDescription: ''
+      }];
+      
+      specialCharacters.forEach(description => {
+        const result = validateField(description, 0, 'taskDescription', mockRows, ['FL-Carver Techs'], ['EPR1']);
+        expect(result).toBeNull(); // Should accept special characters
+      });
+    });
+
+    it('should handle multiline text in task description', () => {
+      const mockRows = [{
+        date: '01/15/2025',
+        timeIn: '09:00',
+        timeOut: '17:00',
+        project: 'FL-Carver Techs',
+        tool: '#1 Rinse and 2D marker',
+        chargeCode: 'EPR1',
+        taskDescription: 'Line 1\nLine 2\nLine 3'
+      }];
+      
+      const result = validateField('Line 1\nLine 2\nLine 3', 0, 'taskDescription', mockRows, ['FL-Carver Techs'], ['EPR1']);
+      expect(result).toBeNull(); // Should accept multiline text
+    });
+
+    it('should handle very long text in task description', () => {
+      const longText = 'A'.repeat(10000);
+      const mockRows = [{
+        date: '01/15/2025',
+        timeIn: '09:00',
+        timeOut: '17:00',
+        project: 'FL-Carver Techs',
+        tool: '#1 Rinse and 2D marker',
+        chargeCode: 'EPR1',
+        taskDescription: longText
+      }];
+      
+      const result = validateField(longText, 0, 'taskDescription', mockRows, ['FL-Carver Techs'], ['EPR1']);
+      expect(result).toBeNull(); // Should accept long text (database will handle limits)
+    });
+  });
+
+  describe('Edge Cases - SQL Injection Attempts', () => {
+    it('should handle SQL injection patterns in task description', () => {
+      const sqlInjectionAttempts = [
+        "'; DROP TABLE timesheet; --",
+        "1' OR '1'='1",
+        "1' OR '1'='1' --",
+        "1' OR '1'='1' /*",
+        "admin'--",
+        "admin' #",
+        "admin'/*",
+        "' OR 1=1--",
+        "' OR 'a'='a",
+        "'; EXEC sp_MSForEachTable 'DROP TABLE ?'; --",
+        "SELECT * FROM timesheet WHERE '1'='1",
+        "UNION SELECT NULL, NULL, NULL--",
+        "1'; UPDATE timesheet SET status='Complete' WHERE '1'='1'; --"
+      ];
+      
+      const mockRows = [{
+        date: '01/15/2025',
+        timeIn: '09:00',
+        timeOut: '17:00',
+        project: 'FL-Carver Techs',
+        tool: '#1 Rinse and 2D marker',
+        chargeCode: 'EPR1',
+        taskDescription: ''
+      }];
+      
+      sqlInjectionAttempts.forEach(attempt => {
+        // Validation should still pass (we treat it as text)
+        // The database layer should handle parameterization
+        const result = validateField(attempt, 0, 'taskDescription', mockRows, ['FL-Carver Techs'], ['EPR1']);
+        expect(result).toBeNull(); // Validation treats it as regular text
+      });
+    });
+
+    it('should handle SQL injection patterns in project names', () => {
+      const sqlInjectionProjects = [
+        "Project'; DROP TABLE--",
+        "Project' OR '1'='1"
+      ];
+      
+      const mockRows = [{
+        date: '01/15/2025',
+        timeIn: '09:00',
+        timeOut: '17:00',
+        project: '',
+        tool: '#1 Rinse and 2D marker',
+        chargeCode: 'EPR1',
+        taskDescription: 'Test task'
+      }];
+      
+      // These should fail validation because they're not in the project list
+      sqlInjectionProjects.forEach(project => {
+        const result = validateField(project, 0, 'project', mockRows, ['FL-Carver Techs'], ['EPR1']);
+        expect(result).toBeTruthy(); // Should fail - not in allowed list
+        expect(result).toContain('from the list');
+      });
+    });
+
+    it('should handle XSS attempts in task description', () => {
+      const xssAttempts = [
+        '<script>alert("XSS")</script>',
+        '<img src=x onerror=alert("XSS")>',
+        '<iframe src="javascript:alert(\'XSS\')">',
+        '"><script>alert(String.fromCharCode(88,83,83))</script>',
+        '<body onload=alert("XSS")>'
+      ];
+      
+      const mockRows = [{
+        date: '01/15/2025',
+        timeIn: '09:00',
+        timeOut: '17:00',
+        project: 'FL-Carver Techs',
+        tool: '#1 Rinse and 2D marker',
+        chargeCode: 'EPR1',
+        taskDescription: ''
+      }];
+      
+      xssAttempts.forEach(attempt => {
+        // Validation should pass (we treat it as text)
+        // The rendering layer should handle escaping
+        const result = validateField(attempt, 0, 'taskDescription', mockRows, ['FL-Carver Techs'], ['EPR1']);
+        expect(result).toBeNull(); // Validation treats it as regular text
+      });
+    });
+  });
 });

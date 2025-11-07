@@ -145,7 +145,7 @@ vi.mock('../../shared/logger', () => ({
 }));
 
 // Mock timesheet_importer
-vi.mock('../../src/services/timesheet_importer', () => ({
+vi.mock('../../src/services/timesheet-importer', () => ({
   submitTimesheets: vi.fn(async () => ({ 
     ok: true, 
     submittedIds: [1], 

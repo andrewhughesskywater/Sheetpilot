@@ -359,4 +359,167 @@ describe('Time Normalization Unit Tests', () => {
       }
     });
   });
+
+  describe('Advanced Edge Cases - Negative Time Values', () => {
+    it('should handle negative time values', () => {
+      const negativeTimeValues = [
+        '-1',
+        '-100',
+        '-900',
+        '-1:00',
+        '-09:00'
+      ];
+      
+      negativeTimeValues.forEach(input => {
+        const result = formatTimeInput(input);
+        // Should return original input for invalid negative values
+        expect(result).toBe(input);
+      });
+    });
+
+    it('should reject negative hours in HH:MM format', () => {
+      expect(formatTimeInput('-01:00')).toBe('-01:00'); // Invalid, returned as-is
+      expect(formatTimeInput('-12:30')).toBe('-12:30'); // Invalid, returned as-is
+    });
+
+    it('should reject negative minutes', () => {
+      expect(formatTimeInput('09:-15')).toBe('09:-15'); // Invalid, returned as-is
+      expect(formatTimeInput('12:-30')).toBe('12:-30'); // Invalid, returned as-is
+    });
+  });
+
+  describe('Advanced Edge Cases - Times Greater Than 24 Hours', () => {
+    it('should handle times with hours >= 24', () => {
+      const invalidHours = [
+        '24:00',  // 24 hours
+        '25:00',  // 25 hours
+        '30:00',  // 30 hours
+        '48:00',  // 48 hours
+        '99:59'   // 99 hours
+      ];
+      
+      invalidHours.forEach(input => {
+        const result = formatTimeInput(input);
+        // Should return original input for hours >= 24
+        expect(result).toBe(input);
+      });
+    });
+
+    it('should handle numeric times representing hours >= 24', () => {
+      const invalidNumericTimes = [
+        '2400',  // 24:00
+        '2500',  // 25:00
+        '3000',  // 30:00
+        '9999'   // 99:99
+      ];
+      
+      invalidNumericTimes.forEach(input => {
+        const result = formatTimeInput(input);
+        // Should return original input for invalid hours
+        expect(result).toBe(input);
+      });
+    });
+
+    it('should reject times with minutes >= 60', () => {
+      const invalidMinutes = [
+        '09:60',  // 60 minutes
+        '09:75',  // 75 minutes
+        '12:99',  // 99 minutes
+        '23:100'  // 100 minutes
+      ];
+      
+      invalidMinutes.forEach(input => {
+        const result = formatTimeInput(input);
+        // Should return original input for minutes >= 60
+        expect(result).toBe(input);
+      });
+    });
+  });
+
+  describe('Advanced Edge Cases - Fractional Minutes', () => {
+    it('should handle fractional minute values', () => {
+      const fractionalMinutes = [
+        '09:30.5',   // Half minute
+        '12:15.75',  // Three-quarters minute
+        '17:45.25',  // Quarter minute
+        '23:00.9'    // Decimal minute
+      ];
+      
+      fractionalMinutes.forEach(input => {
+        const result = formatTimeInput(input);
+        // Should return original input for fractional minutes
+        expect(result).toBe(input);
+      });
+    });
+
+    it('should handle decimal notation in numeric format', () => {
+      const decimalTimes = [
+        '9.5',     // 9.5 hours
+        '12.25',   // 12.25 hours
+        '17.75',   // 17.75 hours
+        '930.5'    // 9:30.5
+      ];
+      
+      decimalTimes.forEach(input => {
+        const result = formatTimeInput(input);
+        // Should return original input for decimal notation
+        expect(result).toBe(input);
+      });
+    });
+
+    it('should handle scientific notation', () => {
+      const scientificNotation = [
+        '1e2',     // 100
+        '9.5e1',   // 95
+        '1.2e3'    // 1200
+      ];
+      
+      scientificNotation.forEach(input => {
+        const result = formatTimeInput(input);
+        // Should return original input for scientific notation
+        expect(result).toBe(input);
+      });
+    });
+
+    it('should handle fractional hours in standard format', () => {
+      // Hours as decimals (e.g., 9.5 hours = 9:30)
+      // This should NOT be supported by formatTimeInput
+      const fractionalHours = [
+        { input: '9.5', expected: '9.5' },     // Should not convert
+        { input: '12.25', expected: '12.25' }, // Should not convert
+        { input: '17.75', expected: '17.75' }  // Should not convert
+      ];
+      
+      fractionalHours.forEach(({ input, expected }) => {
+        const result = formatTimeInput(input);
+        expect(result).toBe(expected); // Returns original for unsupported format
+      });
+    });
+
+    it('should handle very small fractional values', () => {
+      const smallFractions = [
+        '09:00.001',
+        '12:30.0001',
+        '17:45.00001'
+      ];
+      
+      smallFractions.forEach(input => {
+        const result = formatTimeInput(input);
+        expect(result).toBe(input); // Invalid format, returned as-is
+      });
+    });
+
+    it('should handle fractional seconds (not supported)', () => {
+      const fractionalSeconds = [
+        '09:00:30.5',
+        '12:30:45.75',
+        '17:45:59.999'
+      ];
+      
+      fractionalSeconds.forEach(input => {
+        const result = formatTimeInput(input);
+        expect(result).toBe(input); // Seconds not supported, returned as-is
+      });
+    });
+  });
 });

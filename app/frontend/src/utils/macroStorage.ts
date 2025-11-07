@@ -16,6 +16,7 @@ const MACRO_COUNT = 5;
  * Macro row data structure (excludes date field)
  */
 export interface MacroRow {
+  name?: string;
   timeIn?: string;
   timeOut?: string;
   project?: string;
@@ -29,6 +30,7 @@ export interface MacroRow {
  */
 function createEmptyMacro(): MacroRow {
   return {
+    name: '',
     timeIn: '',
     timeOut: '',
     project: '',
@@ -53,7 +55,11 @@ export function loadMacros(): MacroRow[] {
       const parsed = JSON.parse(stored) as MacroRow[];
       // Ensure we always have exactly 5 macros
       if (Array.isArray(parsed) && parsed.length === MACRO_COUNT) {
-        return parsed;
+        // Ensure each macro has a name field (for backward compatibility)
+        return parsed.map((macro, index) => ({
+          ...macro,
+          name: macro.name ?? ''
+        }));
       }
     }
   } catch (error) {

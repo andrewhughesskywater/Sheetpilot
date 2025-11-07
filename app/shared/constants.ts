@@ -25,3 +25,9 @@ export const APP_NAME = 'Sheetpilot';
  */
 export const PRODUCT_NAME = 'Sheetpilot';
 
+/**
+ * Number of previous quarters allowed for date entry
+ * 0 = current quarter only
+ * 1 = current quarter + previous quarter
+ */
+export const ALLOWED_PREVIOUS_QUARTERS = 1;

@@ -63,7 +63,7 @@ vi.mock('../../src/services/database', () => ({
   }))
 }));
 
-vi.mock('../../src/services/timesheet_importer', () => ({
+vi.mock('../../src/services/timesheet-importer', () => ({
   submitTimesheets: vi.fn(async () => ({
     ok: true,
     submittedIds: [1],

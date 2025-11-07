@@ -200,7 +200,7 @@ export class BotOrchestrator {
    * @returns CSS selector for project-specific tool input or null if not found
    */
   private get_project_specific_tool_locator(project_name: string): string | null {
-    const map = Cfg.PROJECT_TO_TOOL_LABEL;
+    const map = this.cfg.PROJECT_TO_TOOL_LABEL;
     if (project_name && map[project_name]) return `input[aria-label='${map[project_name]}']`;
     return null;
   }
@@ -289,7 +289,7 @@ export class BotOrchestrator {
         );
         
         // Retry form submission with HTTP 200 validation
-        const maxRetries = Cfg.SUBMIT_RETRY_ATTEMPTS;
+        const maxRetries = this.cfg.SUBMIT_RETRY_ATTEMPTS;
         let submissionSuccess = false;
         
         for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -634,7 +634,7 @@ export class BotOrchestrator {
             );
             
             // Retry form submission with HTTP 200 validation
-            const maxRetries = Cfg.SUBMIT_RETRY_ATTEMPTS;
+            const maxRetries = this.cfg.SUBMIT_RETRY_ATTEMPTS;
             let submissionSuccess = false;
             
             for (let attempt = 0; attempt < maxRetries; attempt++) {

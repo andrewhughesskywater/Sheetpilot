@@ -1,0 +1,102 @@
+/* Keyboard Shortcuts Hint Dialog */
+.shortcuts-hint-content {
+  padding-top: var(--sp-space-3);
+  font-family: var(--md-sys-typescale-body-medium-font);
+  font-size: var(--md-sys-typescale-body-medium-size);
+  color: var(--md-sys-color-on-surface);
+}
+
+.hint-page {
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hint-story {
+  margin: 0 0 var(--sp-space-4) 0;
+  padding: var(--sp-space-3);
+  background-color: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  border-radius: var(--md-sys-shape-corner-medium);
+  font-family: var(--md-sys-typescale-body-large-font);
+  font-size: var(--md-sys-typescale-body-large-size);
+  line-height: 1.6;
+  font-style: italic;
+}
+
+.shortcuts-section {
+  margin-bottom: var(--sp-space-4);
+}
+
+.shortcuts-section:last-child {
+  margin-bottom: 0;
+}
+
+.shortcuts-section strong {
+  color: var(--md-sys-color-on-surface);
+  font-family: var(--md-sys-typescale-title-medium-font);
+  font-size: var(--md-sys-typescale-title-medium-size);
+  font-weight: var(--md-sys-typescale-title-medium-weight);
+  display: block;
+  margin-bottom: var(--sp-space-2);
+}
+
+.shortcuts-section ul {
+  margin: 0;
+  padding-left: var(--sp-space-5);
+  list-style-type: disc;
+}
+
+.shortcuts-section li {
+  margin-bottom: var(--sp-space-2);
+  line-height: 1.6;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.shortcuts-section li strong {
+  display: inline;
+  color: var(--md-sys-color-primary);
+  font-family: var(--md-sys-typescale-label-large-font);
+  font-size: var(--md-sys-typescale-body-medium-size);
+  font-weight: var(--md-sys-typescale-label-large-weight);
+  margin-bottom: 0;
+}
+
+.page-indicator {
+  display: flex;
+  justify-content: center;
+  gap: var(--sp-space-2);
+  margin-top: var(--sp-space-4);
+  padding: var(--sp-space-2) 0;
+}
+
+.page-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--md-sys-color-on-surface-variant);
+  opacity: 0.3;
+  transition: all 0.3s ease;
+}
+
+.page-dot.active {
+  background-color: var(--md-sys-color-primary);
+  opacity: 1;
+  transform: scale(1.2);
+}
+
+.navigation-buttons {
+  display: flex;
+  gap: var(--sp-space-2);
+  align-items: center;
+}
+

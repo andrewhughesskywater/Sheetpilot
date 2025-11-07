@@ -13,9 +13,10 @@ import {
     markTimesheetEntriesAsSubmitted,
     removeFailedTimesheetEntries,
     setDbPath,
+    openDb,
     closeConnection
 } from '../src/services/database';
-import { submitTimesheets, getPendingEntries } from '../src/services/timesheet_importer';
+import { submitTimesheets, getPendingEntries } from '../src/services/timesheet-importer';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -25,8 +26,12 @@ describe('Timesheet Submission Integration', () => {
     
     beforeEach(() => {
         // Clean up any existing test database
-        if (fs.existsSync(testDbPath)) {
-            fs.unlinkSync(testDbPath);
+        try {
+            if (fs.existsSync(testDbPath)) {
+                fs.unlinkSync(testDbPath);
+            }
+        } catch (err) {
+            // Ignore cleanup errors
         }
         setDbPath(testDbPath);
         ensureSchema();
@@ -35,8 +40,12 @@ describe('Timesheet Submission Integration', () => {
     afterEach(() => {
         // Clean up test database
         closeConnection();
-        if (fs.existsSync(testDbPath)) {
-            fs.unlinkSync(testDbPath);
+        try {
+            if (fs.existsSync(testDbPath)) {
+                fs.unlinkSync(testDbPath);
+            }
+        } catch (err) {
+            // Ignore cleanup errors
         }
     });
     
@@ -102,12 +111,24 @@ describe('Timesheet Submission Integration', () => {
         const pendingEntries = getPendingTimesheetEntries();
         const entryId = pendingEntries[0].id;
         
-        // Remove failed entry
+        // Mark as in_progress first (simulate submission attempt)
+        const db = openDb();
+        db.prepare('UPDATE timesheet SET status = ? WHERE id = ?').run('in_progress', entryId);
+        
+        // Verify it's no longer pending
+        const duringSubmission = getPendingTimesheetEntries();
+        expect(duringSubmission).toHaveLength(0);
+        
+        // Remove failed entry (reverts back to NULL/pending status)
         removeFailedTimesheetEntries([entryId]);
         
-        // Verify it's removed from database
-        const remainingPending = getPendingTimesheetEntries();
-        expect(remainingPending).toHaveLength(0);
+        // Verify it's reverted back to pending (status = NULL)
+        const afterRevert = getPendingTimesheetEntries();
+        expect(afterRevert).toHaveLength(1);
+        expect(afterRevert[0].id).toBe(entryId);
+        expect(afterRevert[0].status).toBeNull();
+        
+        db.close();
     });
     
     it('should handle empty pending entries gracefully', async () => {

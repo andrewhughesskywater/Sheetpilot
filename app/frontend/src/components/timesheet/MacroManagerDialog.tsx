@@ -82,8 +82,15 @@ const MacroManagerDialog = ({ open, onClose, onSave }: MacroManagerDialogProps) 
       return {};
     }
 
+    // Name column - make it stand out
+    if (col === 0) {
+      return {
+        className: 'macro-name-cell'
+      };
+    }
+
     // Tool column - dynamic dropdown based on selected project
-    if (col === 2) {
+    if (col === 4) {
       const project = rowData?.project;
       if (!project || !projectNeedsTools(project)) {
         return {
@@ -101,7 +108,7 @@ const MacroManagerDialog = ({ open, onClose, onSave }: MacroManagerDialogProps) 
     }
 
     // Charge code column - conditional based on selected tool
-    if (col === 3) {
+    if (col === 5) {
       const tool = rowData?.tool;
       if (!tool || !toolNeedsChargeCode(tool)) {
         return {
@@ -119,8 +126,9 @@ const MacroManagerDialog = ({ open, onClose, onSave }: MacroManagerDialogProps) 
     return {};
   }, [macroData]);
 
-  // Column definitions (without date column)
+  // Column definitions (with Name column first)
   const columnDefinitions = useMemo(() => [
+    { data: 'name', title: 'Macro Name', type: 'text', placeholder: '', className: 'htLeft macro-name-column' },
     { data: 'timeIn', title: 'Start Time', type: 'text', placeholder: '0000 to 2400', className: 'htCenter' },
     { data: 'timeOut', title: 'End Time', type: 'text', placeholder: '0000 to 2400', className: 'htCenter' },
     { data: 'project', title: 'Project', type: 'dropdown', source: projects, strict: true, allowInvalid: false, placeholder: 'Pick a project', className: 'htCenter', trimDropdown: false },
@@ -128,11 +136,6 @@ const MacroManagerDialog = ({ open, onClose, onSave }: MacroManagerDialogProps) 
     { data: 'chargeCode', title: 'Charge Code', type: 'dropdown', source: chargeCodes, strict: true, allowInvalid: false, placeholder: '', className: 'htCenter' },
     { data: 'taskDescription', title: 'Task Description', type: 'text', placeholder: '', className: 'htLeft', maxLength: 120 }
   ], []);
-
-  // Custom row headers for macro labels
-  const rowHeaders = useMemo(() => {
-    return ['Macro 1', 'Macro 2', 'Macro 3', 'Macro 4', 'Macro 5'];
-  }, []);
 
   const handleSave = useCallback(() => {
     saveMacros(macroData);
@@ -172,7 +175,7 @@ const MacroManagerDialog = ({ open, onClose, onSave }: MacroManagerDialogProps) 
             themeName="ht-theme-horizon"
             width="100%"
             height="auto"
-            rowHeaders={rowHeaders}
+            rowHeaders={true}
             colHeaders={true}
             customBorders={[]}
             contextMenu={false}

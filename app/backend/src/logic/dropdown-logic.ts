@@ -57,6 +57,8 @@ export const chargeCodes = [...CHARGE_CODES];
  */
 export function getToolOptions(project?: string): string[] {
   if (!project) return [];
+  // Handle whitespace-only strings
+  if (typeof project === 'string' && project.trim() === '') return [];
   return getToolsForProjectShared(project);
 }
 
@@ -66,7 +68,10 @@ export function getToolOptions(project?: string): string[] {
  * Re-exported for backward compatibility
  */
 export function toolNeedsChargeCode(tool?: string): boolean {
-  return !!tool && doesToolNeedChargeCode(tool);
+  if (!tool) return false;
+  // Handle whitespace-only strings
+  if (typeof tool === 'string' && tool.trim() === '') return false;
+  return doesToolNeedChargeCode(tool);
 }
 
 /**
@@ -75,6 +80,9 @@ export function toolNeedsChargeCode(tool?: string): boolean {
  * Re-exported for backward compatibility
  */
 export function projectNeedsTools(project?: string): boolean {
-  return !!project && doesProjectNeedTools(project);
+  if (!project) return false;
+  // Handle whitespace-only strings
+  if (typeof project === 'string' && project.trim() === '') return false;
+  return doesProjectNeedTools(project);
 }
 

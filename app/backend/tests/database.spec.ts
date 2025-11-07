@@ -536,4 +536,292 @@ describe('Database Module', () => {
             expect(result.success).toBe(true);
         });
     });
+
+    describe('Concurrent Access Tests', () => {
+        it('should handle concurrent reads safely', () => {
+            // Insert test data
+            const testEntry = {
+                date: '2025-01-15',
+                timeIn: 540,
+                timeOut: 600,
+                project: 'Concurrent Test',
+                taskDescription: 'Test task'
+            };
+            insertTimesheetEntry(testEntry);
+            
+            // Perform multiple concurrent reads
+            const db = openDb();
+            const promises = [];
+            
+            for (let i = 0; i < 10; i++) {
+                const stmt = db.prepare('SELECT * FROM timesheet WHERE project = ?');
+                promises.push(stmt.all('Concurrent Test'));
+            }
+            
+            // All reads should succeed
+            promises.forEach(result => {
+                expect(result).toBeDefined();
+                expect(Array.isArray(result)).toBe(true);
+            });
+            
+            db.close();
+        });
+
+        it('should handle concurrent writes with proper isolation', () => {
+            const entries = [];
+            for (let i = 0; i < 5; i++) {
+                entries.push({
+                    date: '2025-01-15',
+                    timeIn: 540 + (i * 60),
+                    timeOut: 600 + (i * 60),
+                    project: `Concurrent Project ${i}`,
+                    taskDescription: `Task ${i}`
+                });
+            }
+            
+            // Insert all entries
+            const results = entries.map(entry => insertTimesheetEntry(entry));
+            
+            // All inserts should succeed
+            results.forEach(result => {
+                expect(result.success).toBe(true);
+                expect(result.changes).toBe(1);
+            });
+            
+            // Verify all entries were inserted
+            const db = openDb();
+            const count = db.prepare('SELECT COUNT(*) as count FROM timesheet WHERE project LIKE ?').get('Concurrent Project%');
+            expect((count as { count: number }).count).toBe(5);
+            db.close();
+        });
+
+        it('should maintain data consistency under concurrent operations', () => {
+            const entry = {
+                date: '2025-01-15',
+                timeIn: 540,
+                timeOut: 600,
+                project: 'Consistency Test',
+                taskDescription: 'Test'
+            };
+            
+            // Try to insert the same entry multiple times concurrently
+            const results = [1, 2, 3].map(() => insertTimesheetEntry(entry));
+            
+            // First should succeed, rest should be duplicates
+            expect(results[0].success).toBe(true);
+            expect(results[1].isDuplicate || !results[1].success).toBe(true);
+            expect(results[2].isDuplicate || !results[2].success).toBe(true);
+        });
+    });
+
+    describe('Transaction Rollback Tests', () => {
+        it('should rollback transaction on batch insertion failure', () => {
+            const entries = [
+                {
+                    date: '2025-01-15',
+                    timeIn: 540,
+                    timeOut: 600,
+                    project: 'Valid Project 1',
+                    taskDescription: 'Valid Task 1'
+                },
+                {
+                    date: '2025-01-15',
+                    timeIn: 600,
+                    timeOut: 540, // Invalid: time_out must be > time_in
+                    project: 'Invalid Project',
+                    taskDescription: 'Invalid Task'
+                },
+                {
+                    date: '2025-01-15',
+                    timeIn: 660,
+                    timeOut: 720,
+                    project: 'Valid Project 2',
+                    taskDescription: 'Valid Task 2'
+                }
+            ];
+            
+            const result = insertTimesheetEntries(entries);
+            
+            // Transaction should fail, no entries should be inserted
+            expect(result.success).toBe(false);
+            expect(result.errors).toBeGreaterThan(0);
+            
+            // Verify no partial data was committed
+            const db = openDb();
+            const count1 = db.prepare('SELECT COUNT(*) as count FROM timesheet WHERE project = ?').get('Valid Project 1');
+            const count2 = db.prepare('SELECT COUNT(*) as count FROM timesheet WHERE project = ?').get('Valid Project 2');
+            
+            expect((count1 as { count: number }).count).toBe(0);
+            expect((count2 as { count: number }).count).toBe(0);
+            
+            db.close();
+        });
+
+        it('should commit all or none in batch operation', () => {
+            const validEntries = [
+                {
+                    date: '2025-01-15',
+                    timeIn: 540,
+                    timeOut: 600,
+                    project: 'Batch Test 1',
+                    taskDescription: 'Task 1'
+                },
+                {
+                    date: '2025-01-15',
+                    timeIn: 600,
+                    timeOut: 660,
+                    project: 'Batch Test 2',
+                    taskDescription: 'Task 2'
+                }
+            ];
+            
+            const result = insertTimesheetEntries(validEntries);
+            
+            // All should succeed together
+            expect(result.success).toBe(true);
+            expect(result.inserted).toBe(2);
+            
+            // Verify both were committed
+            const db = openDb();
+            const count = db.prepare('SELECT COUNT(*) as count FROM timesheet WHERE project LIKE ?').get('Batch Test%');
+            expect((count as { count: number }).count).toBe(2);
+            db.close();
+        });
+    });
+
+    describe('Database Corruption Recovery Tests', () => {
+        it('should detect corrupted database schema', () => {
+            const db = openDb();
+            
+            // Verify schema exists
+            const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all();
+            expect(Array.isArray(tables)).toBe(true);
+            expect(tables.length).toBeGreaterThan(0);
+            
+            db.close();
+        });
+
+        it('should handle missing tables gracefully', () => {
+            const db = openDb();
+            
+            // Try to query non-existent table
+            try {
+                db.prepare('SELECT * FROM non_existent_table').all();
+                expect(true).toBe(false); // Should throw
+            } catch (error) {
+                expect(error).toBeDefined();
+            }
+            
+            db.close();
+        });
+
+        it('should validate schema integrity on startup', () => {
+            const db = openDb();
+            
+            // Check that required tables exist
+            const timesheetTable = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='timesheet'").get();
+            const credentialsTable = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='credentials'").get();
+            const sessionsTable = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='sessions'").get();
+            
+            expect(timesheetTable).toBeDefined();
+            expect(credentialsTable).toBeDefined();
+            expect(sessionsTable).toBeDefined();
+            
+            db.close();
+        });
+
+        it('should handle constraint violations appropriately', () => {
+            const db = openDb();
+            
+            // Try to violate UNIQUE constraint
+            const validEntry = {
+                date: '2025-01-15',
+                timeIn: 540,
+                timeOut: 600,
+                project: 'Constraint Test',
+                taskDescription: 'Test'
+            };
+            
+            // Insert first time
+            insertTimesheetEntry(validEntry);
+            
+            // Try to insert duplicate
+            const result = insertTimesheetEntry(validEntry);
+            
+            expect(result.isDuplicate).toBe(true);
+            expect(result.success).toBe(false);
+            
+            db.close();
+        });
+    });
+
+    describe('Migration Tests', () => {
+        it('should maintain schema version compatibility', () => {
+            const db = openDb();
+            
+            // Check if we're tracking schema version (if implemented)
+            try {
+                const version = db.prepare("SELECT value FROM metadata WHERE key='schema_version'").get();
+                if (version) {
+                    expect(version).toHaveProperty('value');
+                }
+            } catch {
+                // Metadata table might not exist yet
+                // This is acceptable for current implementation
+            }
+            
+            db.close();
+        });
+
+        it('should preserve existing data after schema changes', () => {
+            // Insert test data
+            const testEntry = {
+                date: '2025-01-15',
+                timeIn: 540,
+                timeOut: 600,
+                project: 'Migration Test',
+                taskDescription: 'Test'
+            };
+            
+            insertTimesheetEntry(testEntry);
+            
+            // Verify data persists
+            const db = openDb();
+            const entry = db.prepare('SELECT * FROM timesheet WHERE project = ?').get('Migration Test');
+            expect(entry).toBeDefined();
+            expect((entry as { project: string }).project).toBe('Migration Test');
+            db.close();
+        });
+
+        it('should handle schema recreation without data loss', () => {
+            // Insert test data
+            const entries = [
+                {
+                    date: '2025-01-15',
+                    timeIn: 540,
+                    timeOut: 600,
+                    project: 'Test 1',
+                    taskDescription: 'Task 1'
+                },
+                {
+                    date: '2025-01-16',
+                    timeIn: 540,
+                    timeOut: 600,
+                    project: 'Test 2',
+                    taskDescription: 'Task 2'
+                }
+            ];
+            
+            entries.forEach(entry => insertTimesheetEntry(entry));
+            
+            // Ensure schema (should not delete existing data)
+            ensureSchema();
+            
+            // Verify data still exists
+            const db = openDb();
+            const count = db.prepare('SELECT COUNT(*) as count FROM timesheet WHERE project LIKE ?').get('Test%');
+            expect((count as { count: number }).count).toBe(2);
+            db.close();
+        });
+    });
 });

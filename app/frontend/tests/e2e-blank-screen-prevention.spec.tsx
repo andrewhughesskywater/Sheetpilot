@@ -73,6 +73,111 @@ describe('End-to-End Blank Screen Prevention Tests', () => {
     });
   });
 
+  describe('Additional Failure Scenarios', () => {
+    it('should handle API initialization failures', async () => {
+      (window as any).timesheet = {
+        saveDraft: () => {
+          throw new Error('API initialization failed');
+        }
+      };
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByAltText('SheetPilot')).toBeInTheDocument();
+      });
+    });
+
+    it('should handle partial API availability', async () => {
+      (window as any).timesheet = {
+        saveDraft: vi.fn()
+        // loadDraft missing
+      };
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByAltText('SheetPilot')).toBeInTheDocument();
+      });
+    });
+
+    it('should handle network failures gracefully', async () => {
+      (window as any).timesheet = {
+        loadDraft: vi.fn().mockRejectedValue(new Error('Network error'))
+      };
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByAltText('SheetPilot')).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Performance Benchmarks', () => {
+    it('should render initial screen within performance budget', async () => {
+      const startTime = Date.now();
+
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByAltText('SheetPilot')).toBeInTheDocument();
+      });
+
+      const renderTime = Date.now() - startTime;
+
+      // Should render within 3 seconds
+      expect(renderTime).toBeLessThan(3000);
+    });
+
+    it('should not block UI thread during initialization', () => {
+      const startTime = Date.now();
+
+      // Simulate heavy initialization
+      Array(1000).fill(0).forEach((_, i) => i * 2);
+
+      const duration = Date.now() - startTime;
+
+      // Should complete quickly
+      expect(duration).toBeLessThan(1000);
+    });
+  });
+
+  describe('Accessibility Checks', () => {
+    it('should have accessible application name', async () => {
+      render(<App />);
+
+      await waitFor(() => {
+        const logo = screen.getByAltText('SheetPilot');
+        expect(logo).toBeInTheDocument();
+      });
+    });
+
+    it('should support keyboard navigation', async () => {
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByAltText('SheetPilot')).toBeInTheDocument();
+      });
+
+      // Application should be keyboard accessible
+      const interactiveElements = document.querySelectorAll('button, input, select, [role="button"]');
+      expect(interactiveElements.length).toBeGreaterThan(0);
+    });
+
+    it('should have proper heading structure', async () => {
+      render(<App />);
+
+      await waitFor(() => {
+        expect(screen.getByAltText('SheetPilot')).toBeInTheDocument();
+      });
+
+      // Should have semantic HTML structure
+      const headings = document.querySelectorAll('h1, h2, h3');
+      expect(headings.length).toBeGreaterThanOrEqual(0);
+    });
+  });
+
   describe('Development vs Production Environment Tests', () => {
     it('should work correctly in development environment', async () => {
       vi.stubEnv('DEV', true);

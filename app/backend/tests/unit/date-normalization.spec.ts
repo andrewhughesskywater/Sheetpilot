@@ -347,6 +347,11 @@ describe('Date Normalization Unit Tests', () => {
       ];
       
       quarterDates.forEach(({ date, quarter }) => {
+        // Skip invalid dates
+        if (!date || date.split('/').length !== 3) {
+          return;
+        }
+        
         // Convert to ISO format
         const [month, day, year] = date.split('/').map(Number);
         void `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
@@ -356,6 +361,272 @@ describe('Date Normalization Unit Tests', () => {
         const calculatedQuarter = Math.floor(dateObj.getMonth() / 3) + 1;
         
         expect(calculatedQuarter).toBe(quarter);
+      });
+    });
+  });
+
+  describe('Advanced Edge Cases - Y2K-like Edge Cases', () => {
+    it('should handle Y2K boundary dates', () => {
+      const y2kDates = [
+        '12/31/1999',  // Day before Y2K
+        '01/01/2000',  // Y2K day
+        '02/29/2000',  // Leap year (divisible by 400)
+        '12/31/2000',  // Last day of Y2K year
+        '01/01/2001'   // First day of new millennium
+      ];
+      
+      y2kDates.forEach(date => {
+        expect(isValidDate(date)).toBe(true);
+      });
+    });
+
+    it('should handle century boundary leap years correctly', () => {
+      // Years divisible by 100 are NOT leap years unless divisible by 400
+      expect(isValidDate('02/29/1900')).toBe(false); // Not a leap year
+      expect(isValidDate('02/29/2000')).toBe(true);  // Leap year (divisible by 400)
+      expect(isValidDate('02/29/2100')).toBe(false); // Not a leap year
+      expect(isValidDate('02/29/2400')).toBe(true);  // Leap year (divisible by 400)
+    });
+
+    it('should handle two-digit year formats (should be invalid)', () => {
+      const twoDigitYears = [
+        '01/15/99',  // Should be invalid
+        '12/31/00',  // Should be invalid
+        '06/15/25',  // Should be invalid
+        '01/01/50'   // Should be invalid
+      ];
+      
+      twoDigitYears.forEach(date => {
+        expect(isValidDate(date)).toBe(false);
+      });
+    });
+
+    it('should handle very old dates', () => {
+      const oldDates = [
+        '01/01/1900',
+        '12/31/1899', // Should be valid (if before 1900 is allowed)
+        '01/01/1800',
+        '06/15/1776'  // Independence Day
+      ];
+      
+      oldDates.forEach(date => {
+        // These might be valid or invalid depending on business rules
+        // Testing the consistency of handling
+        const result = isValidDate(date);
+        expect(typeof result).toBe('boolean');
+      });
+    });
+
+    it('should handle far future dates', () => {
+      const futureDates = [
+        '01/01/2100',
+        '12/31/2099',
+        '06/15/3000',
+        '01/01/9999'
+      ];
+      
+      futureDates.forEach(date => {
+        const result = isValidDate(date);
+        expect(typeof result).toBe('boolean');
+      });
+    });
+
+    it('should handle year 1900 edge cases', () => {
+      expect(isValidDate('01/01/1900')).toBe(true);
+      expect(isValidDate('02/28/1900')).toBe(true);
+      expect(isValidDate('02/29/1900')).toBe(false); // Not a leap year
+      expect(isValidDate('12/31/1900')).toBe(true);
+    });
+  });
+
+  describe('Advanced Edge Cases - Timezone Boundary Dates', () => {
+    it('should handle dates that might cross timezone boundaries', () => {
+      // Dates that are different days in different timezones
+      const boundaryDates = [
+        '12/31/2024',  // New Year's Eve
+        '01/01/2025',  // New Year's Day
+        '03/31/2025',  // End of Q1
+        '04/01/2025',  // Start of Q2
+        '06/30/2025',  // End of Q2
+        '07/01/2025',  // Start of Q3
+        '09/30/2025',  // End of Q3
+        '10/01/2025'   // Start of Q4
+      ];
+      
+      boundaryDates.forEach(date => {
+        expect(isValidDate(date)).toBe(true);
+      });
+    });
+
+    it('should handle daylight saving time transition dates', () => {
+      // DST typically occurs in March and November in US
+      const dstDates = [
+        '03/10/2024',  // Spring forward (2nd Sunday of March 2024)
+        '11/03/2024',  // Fall back (1st Sunday of November 2024)
+        '03/09/2025',  // Spring forward (2nd Sunday of March 2025)
+        '11/02/2025'   // Fall back (1st Sunday of November 2025)
+      ];
+      
+      dstDates.forEach(date => {
+        expect(isValidDate(date)).toBe(true);
+      });
+    });
+
+    it('should handle international date line considerations', () => {
+      // These are all valid dates regardless of timezone
+      const internationalDates = [
+        '01/01/2025',
+        '06/15/2025',
+        '12/31/2025'
+      ];
+      
+      internationalDates.forEach(date => {
+        expect(isValidDate(date)).toBe(true);
+        
+        // Date validation should be consistent regardless of user's timezone
+        const [month, day, year] = date.split('/').map(Number);
+        const dateObj = new Date(year, month - 1, day);
+        expect(dateObj.getFullYear()).toBe(year);
+        expect(dateObj.getMonth()).toBe(month - 1);
+        expect(dateObj.getDate()).toBe(day);
+      });
+    });
+
+    it('should handle UTC midnight boundaries', () => {
+      // Dates at UTC midnight boundaries
+      const midnightDates = [
+        '01/01/2025',
+        '07/01/2025',
+        '12/31/2025'
+      ];
+      
+      midnightDates.forEach(date => {
+        expect(isValidDate(date)).toBe(true);
+      });
+    });
+  });
+
+  describe('Advanced Edge Cases - Invalid Calendar Dates', () => {
+    it('should reject February 30 and 31', () => {
+      expect(isValidDate('02/30/2025')).toBe(false);
+      expect(isValidDate('02/31/2025')).toBe(false);
+      expect(isValidDate('02/30/2024')).toBe(false); // Even in leap year
+      expect(isValidDate('02/31/2024')).toBe(false); // Even in leap year
+    });
+
+    it('should reject invalid days for 30-day months', () => {
+      const invalidDays = [
+        '04/31/2025',  // April
+        '06/31/2025',  // June
+        '09/31/2025',  // September
+        '11/31/2025'   // November
+      ];
+      
+      invalidDays.forEach(date => {
+        expect(isValidDate(date)).toBe(false);
+      });
+    });
+
+    it('should reject February 29 in non-leap years', () => {
+      const nonLeapYears = [
+        '02/29/2021',
+        '02/29/2022',
+        '02/29/2023',
+        '02/29/2025',
+        '02/29/2026',
+        '02/29/2027',
+        '02/29/2100'  // Divisible by 100 but not 400
+      ];
+      
+      nonLeapYears.forEach(date => {
+        expect(isValidDate(date)).toBe(false);
+      });
+    });
+
+    it('should accept February 29 in leap years', () => {
+      const leapYears = [
+        '02/29/2020',
+        '02/29/2024',
+        '02/29/2028',
+        '02/29/2000',  // Divisible by 400
+        '02/29/2400'   // Divisible by 400
+      ];
+      
+      leapYears.forEach(date => {
+        expect(isValidDate(date)).toBe(true);
+      });
+    });
+
+    it('should reject day 0 or negative days', () => {
+      const invalidDays = [
+        '01/00/2025',
+        '01/-1/2025',
+        '06/-5/2025'
+      ];
+      
+      invalidDays.forEach(date => {
+        expect(isValidDate(date)).toBe(false);
+      });
+    });
+
+    it('should reject month 0 or month > 12', () => {
+      const invalidMonths = [
+        '00/15/2025',  // Month 0
+        '13/15/2025',  // Month 13
+        '15/15/2025',  // Month 15
+        '99/15/2025'   // Month 99
+      ];
+      
+      invalidMonths.forEach(date => {
+        expect(isValidDate(date)).toBe(false);
+      });
+    });
+
+    it('should reject negative months', () => {
+      expect(isValidDate('-1/15/2025')).toBe(false);
+      expect(isValidDate('-12/15/2025')).toBe(false);
+    });
+
+    it('should handle all edge days for each month', () => {
+      const monthMaxDays = [
+        { month: 1, maxDay: 31 },
+        { month: 2, maxDay: 28 }, // Non-leap year
+        { month: 3, maxDay: 31 },
+        { month: 4, maxDay: 30 },
+        { month: 5, maxDay: 31 },
+        { month: 6, maxDay: 30 },
+        { month: 7, maxDay: 31 },
+        { month: 8, maxDay: 31 },
+        { month: 9, maxDay: 30 },
+        { month: 10, maxDay: 31 },
+        { month: 11, maxDay: 30 },
+        { month: 12, maxDay: 31 }
+      ];
+      
+      monthMaxDays.forEach(({ month, maxDay }) => {
+        const year = 2025; // Non-leap year
+        
+        // Max day should be valid
+        const validDate = `${month.toString().padStart(2, '0')}/${maxDay.toString().padStart(2, '0')}/${year}`;
+        expect(isValidDate(validDate)).toBe(true);
+        
+        // Day after max should be invalid
+        const invalidDate = `${month.toString().padStart(2, '0')}/${(maxDay + 1).toString().padStart(2, '0')}/${year}`;
+        expect(isValidDate(invalidDate)).toBe(false);
+      });
+    });
+
+    it('should handle calendar inconsistencies', () => {
+      // Test dates that might cause calendar confusion
+      const confusingDates = [
+        { date: '13/13/2025', valid: false },  // Month and day both invalid
+        { date: '31/12/2025', valid: false },  // Day/month swapped (UK vs US format)
+        { date: '00/00/0000', valid: false },  // All zeros
+        { date: '99/99/9999', valid: false }   // All out of range
+      ];
+      
+      confusingDates.forEach(({ date, valid }) => {
+        expect(isValidDate(date)).toBe(valid);
       });
     });
   });

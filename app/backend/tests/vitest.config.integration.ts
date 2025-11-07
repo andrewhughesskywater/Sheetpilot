@@ -15,6 +15,7 @@ export default defineConfig({
       'app/backend/tests/auto-updater.spec.ts',
       'app/backend/tests/database.spec.ts',
       'app/backend/tests/deprecated-constants.spec.ts',
+      'app/backend/tests/import-policy.spec.ts',
       'app/backend/tests/ipc-handlers-comprehensive.spec.ts',
       'app/backend/tests/ipc-main.spec.ts',
       'app/backend/tests/ipc-workflow-integration.spec.ts',

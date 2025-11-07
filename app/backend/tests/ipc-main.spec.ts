@@ -128,7 +128,7 @@ vi.mock('../src/services/database', () => {
   };
 });
 
-vi.mock('../src/services/timesheet_importer', () => {
+vi.mock('../src/services/timesheet-importer', () => {
   return {
     submitTimesheets: vi.fn(async () => ({ ok: true, submittedIds: [1], removedIds: [], totalProcessed: 1, successCount: 1, removedCount: 0 }))
   };
@@ -164,7 +164,7 @@ import { registerIPCHandlers } from '../src/main';
 
 // Re-get typed references to mocked modules for assertions
 import * as db from '../src/services/database';
-import * as imp from '../src/services/timesheet_importer';
+import * as imp from '../src/services/timesheet-importer';
 
 const mimps = imp as unknown as { submitTimesheets: ReturnType<typeof vi.fn> };
 
@@ -175,7 +175,10 @@ describe('Electron IPC Handlers (main.ts)', () => {
   beforeEach(() => {
     // Reset stub return values between tests
     (imp as { submitTimesheets: { mockClear?: () => void } }).submitTimesheets.mockClear?.();
-    (db as { getCredentials: { mockReset?: () => void } }).getCredentials.mockReset?.();
+    const dbTyped = db as { getCredentials: { mockReset?: () => void; mockReturnValue?: (value: unknown) => void } };
+    dbTyped.getCredentials.mockReset?.();
+    // Reset to default null value
+    dbTyped.getCredentials.mockReturnValue?.(null);
   });
 
   beforeAll(() => {
@@ -190,9 +193,15 @@ describe('Electron IPC Handlers (main.ts)', () => {
   });
 
   it('timesheet:submit submits with stored credentials', async () => {
-    (db as { getCredentials: { mockReturnValue: (value: unknown) => void } }).getCredentials.mockReturnValue({ email: 'user@test', password: 'pw' });
+    const dbTyped = db as { getCredentials: { mockReturnValue: (value: unknown) => void } };
+    dbTyped.getCredentials.mockReturnValue({ email: 'user@test', password: 'pw' });
+    
     const res = await handlers['timesheet:submit']('valid-token');
+    
+    // Verify the handler was called and returned proper structure
+    expect(res).toBeDefined();
     expect(mimps.submitTimesheets).toHaveBeenCalledWith('user@test', 'pw');
+    expect(res.submitResult).toBeDefined();
     expect(res.submitResult?.ok).toBe(true);
   });
 });

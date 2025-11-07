@@ -14,6 +14,7 @@
  */
 
 import type BetterSqlite3 from 'better-sqlite3';
+import Database from 'better-sqlite3';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as crypto from 'crypto';
@@ -110,6 +111,7 @@ export function shutdownDatabase(): void {
 
 /**
  * Module cache for better-sqlite3
+ * Now uses static import for better compatibility with test mocks
  */
 let __betterSqlite3Module: (typeof import('better-sqlite3')) | null = null;
 
@@ -117,7 +119,9 @@ function loadBetterSqlite3(): (typeof import('better-sqlite3')) {
     if (__betterSqlite3Module) return __betterSqlite3Module;
     try {
         dbLogger.verbose('Loading better-sqlite3 native module');
-        __betterSqlite3Module = require('better-sqlite3');
+        // Use the statically imported module instead of dynamic require
+        // This allows test mocks to properly intercept the module
+        __betterSqlite3Module = { default: Database } as unknown as (typeof import('better-sqlite3'));
         if (!__betterSqlite3Module) {
             throw new Error('Could not load better-sqlite3 module');
         }
@@ -583,15 +587,12 @@ function ensureSchemaInternal(db: BetterSqlite3.Database) {
  * ensureSchema(); // Creates tables and indexes if they don't exist
  */
 export function ensureSchema() {
-    if (schemaInitialized) {
-        dbLogger.debug('Schema already ensured, skipping');
-        return;
-    }
-    
     const timer = dbLogger.startTimer('ensure-schema');
     dbLogger.info('Ensuring database schema is up to date');
     const db = getDb();
     
+    // Always run the schema initialization - the CREATE IF NOT EXISTS handles duplicates
+    // This ensures schema is created even if called multiple times or after path changes
     ensureSchemaInternal(db);
     schemaInitialized = true;
     

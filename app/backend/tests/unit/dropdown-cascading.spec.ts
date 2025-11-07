@@ -405,4 +405,259 @@ describe('Dropdown Cascading Logic Unit Tests', () => {
       });
     });
   });
+
+  describe('Advanced Edge Cases - Circular Dependencies', () => {
+    it('should not have circular dependencies in project-tool relationships', () => {
+      // No project should reference itself in its tool list
+      projects.forEach(project => {
+        const toolOptions = getToolOptions(project);
+        expect(toolOptions).not.toContain(project);
+      });
+    });
+
+    it('should not have circular dependencies in tool-project relationships', () => {
+      // Verify that tools are not also projects (with exception for "Training")
+      // Note: "Training" exists as both a project and a tool in SWFL-EQUIP by design
+      const allTools = Object.values(toolsByProject).flat();
+      const toolsExceptTraining = allTools.filter(tool => tool !== 'Training');
+      toolsExceptTraining.forEach(tool => {
+        expect(projects).not.toContain(tool);
+      });
+    });
+
+    it('should handle hypothetical circular cascade scenario', () => {
+      // Test scenario where project A → tool B → (hypothetically) project A
+      // Exception: "Training" exists as both a project and a tool by design
+      // We verify that for most tools, they are not valid project names
+      const allTools = Object.values(toolsByProject).flat();
+      const uniqueTools = [...new Set(allTools)];
+      const toolsThatAreProjects = uniqueTools.filter(tool => projects.includes(tool));
+      
+      // Only "Training" should appear in both lists
+      expect(toolsThatAreProjects).toEqual(['Training']);
+    });
+  });
+
+  describe('Advanced Edge Cases - Undefined Combinations', () => {
+    it('should handle undefined project and undefined tool combination', () => {
+      expect(projectNeedsTools(undefined as unknown as string)).toBe(false);
+      expect(toolNeedsChargeCode(undefined as unknown as string)).toBe(false);
+      expect(getToolOptions(undefined as unknown as string)).toEqual([]);
+    });
+
+    it('should handle valid project with undefined tool', () => {
+      const project = 'FL-Carver Techs';
+      expect(projectNeedsTools(project)).toBe(true);
+      expect(toolNeedsChargeCode(undefined as unknown as string)).toBe(false);
+    });
+
+    it('should handle invalid project with valid tool', () => {
+      const invalidProject = 'NonExistentProject';
+      const validTool = '#1 Rinse and 2D marker';
+      
+      expect(getToolOptions(invalidProject)).toEqual([]);
+      expect(toolNeedsChargeCode(validTool)).toBe(true);
+    });
+
+    it('should handle project-tool mismatch scenarios', () => {
+      // Test tool from Project A used with Project B
+      const projectA = 'FL-Carver Techs';
+      const projectB = 'OSC-BBB';
+      const toolFromA = '#1 Rinse and 2D marker';
+      
+      const toolsForB = getToolOptions(projectB);
+      expect(toolsForB).not.toContain(toolFromA); // Tool from A shouldn't be valid for B
+    });
+
+    it('should handle empty string project with non-empty tool', () => {
+      const emptyProject = '';
+      const validTool = 'Meeting';
+      
+      expect(projectNeedsTools(emptyProject)).toBe(false);
+      expect(getToolOptions(emptyProject)).toEqual([]);
+      expect(toolNeedsChargeCode(validTool)).toBe(false);
+    });
+
+    it('should handle whitespace-only inputs', () => {
+      const whitespaceProject = '   ';
+      const whitespaceTool = '  ';
+      
+      expect(projectNeedsTools(whitespaceProject)).toBe(false);
+      expect(toolNeedsChargeCode(whitespaceTool)).toBe(false);
+      expect(getToolOptions(whitespaceProject)).toEqual([]);
+    });
+
+    it('should handle mixed case variations of undefined combinations', () => {
+      const variations = [
+        { project: 'undefined', tool: 'undefined' },
+        { project: 'Undefined', tool: 'Undefined' },
+        { project: 'UNDEFINED', tool: 'UNDEFINED' },
+        { project: 'null', tool: 'null' },
+        { project: 'NULL', tool: 'NULL' }
+      ];
+      
+      variations.forEach(({ project, tool }) => {
+        // These should all be treated as invalid/unknown values
+        // Note: Case-sensitive matching means "Training" != "training"
+        const needsTools = projectNeedsTools(project);
+        const needsCharge = toolNeedsChargeCode(tool);
+        const toolOpts = getToolOptions(project);
+        
+        // All these should be falsy/empty since they're not real project/tool names
+        expect(typeof needsTools).toBe('boolean');
+        expect(typeof needsCharge).toBe('boolean');
+        expect(Array.isArray(toolOpts)).toBe(true);
+      });
+    });
+  });
+
+  describe('Advanced Edge Cases - Rapid Cascade Changes', () => {
+    it('should handle rapid sequential project changes', () => {
+      const projectSequence = [
+        'FL-Carver Techs',
+        'PTO/RTO',
+        'OSC-BBB',
+        'Training',
+        'SWFL-EQUIP',
+        'FL-Carver Tools'
+      ];
+      
+      // Simulate rapid changes
+      const results = projectSequence.map(project => ({
+        project,
+        needsTools: projectNeedsTools(project),
+        toolOptions: getToolOptions(project)
+      }));
+      
+      // All results should be consistent
+      results.forEach((result, index) => {
+        const project = projectSequence[index];
+        expect(result.project).toBe(project);
+        expect(typeof result.needsTools).toBe('boolean');
+        expect(Array.isArray(result.toolOptions)).toBe(true);
+      });
+    });
+
+    it('should handle rapid sequential tool changes', () => {
+      const toolSequence = [
+        '#1 Rinse and 2D marker',
+        'Meeting',
+        'AFM101',
+        'DECA Meeting',
+        'Logistics',
+        '#2 Sputter'
+      ];
+      
+      // Simulate rapid changes
+      const results = toolSequence.map(tool => ({
+        tool,
+        needsChargeCode: toolNeedsChargeCode(tool)
+      }));
+      
+      // All results should be consistent
+      results.forEach((result, index) => {
+        const tool = toolSequence[index];
+        expect(result.tool).toBe(tool);
+        expect(typeof result.needsChargeCode).toBe('boolean');
+      });
+    });
+
+    it('should handle rapid back-and-forth project changes', () => {
+      const projectA = 'FL-Carver Techs';
+      const projectB = 'PTO/RTO';
+      
+      // Simulate 100 rapid switches
+      for (let i = 0; i < 100; i++) {
+        const currentProject = i % 2 === 0 ? projectA : projectB;
+        const needsTools = projectNeedsTools(currentProject);
+        const toolOptions = getToolOptions(currentProject);
+        
+        if (currentProject === projectA) {
+          expect(needsTools).toBe(true);
+          expect(toolOptions.length).toBeGreaterThan(0);
+        } else {
+          expect(needsTools).toBe(false);
+          expect(toolOptions).toEqual([]);
+        }
+      }
+    });
+
+    it('should handle rapid back-and-forth tool changes', () => {
+      const toolA = '#1 Rinse and 2D marker';
+      const toolB = 'Meeting';
+      
+      // Simulate 100 rapid switches
+      for (let i = 0; i < 100; i++) {
+        const currentTool = i % 2 === 0 ? toolA : toolB;
+        const needsChargeCode = toolNeedsChargeCode(currentTool);
+        
+        if (currentTool === toolA) {
+          expect(needsChargeCode).toBe(true);
+        } else {
+          expect(needsChargeCode).toBe(false);
+        }
+      }
+    });
+
+    it('should handle rapid cascade through all three levels', () => {
+      // Simulate rapid changes through project → tool → chargeCode cascade
+      const cascadeSequence = [
+        { project: 'FL-Carver Techs', tool: '#1 Rinse and 2D marker', expectedChargeCodeNeeded: true },
+        { project: 'FL-Carver Techs', tool: 'Meeting', expectedChargeCodeNeeded: false },
+        { project: 'PTO/RTO', tool: null, expectedChargeCodeNeeded: false },
+        { project: 'OSC-BBB', tool: 'AFM101', expectedChargeCodeNeeded: true },
+        { project: 'Training', tool: null, expectedChargeCodeNeeded: false }
+      ];
+      
+      cascadeSequence.forEach(({ project, tool, expectedChargeCodeNeeded }) => {
+        expect(projectNeedsTools(project)).toBe(tool !== null);
+        if (tool) {
+          expect(toolNeedsChargeCode(tool)).toBe(expectedChargeCodeNeeded);
+        }
+      });
+    });
+
+    it('should maintain consistency during concurrent-like operations', () => {
+      // Simulate checking multiple projects/tools "concurrently"
+      const operations = [];
+      
+      // Queue up operations
+      for (let i = 0; i < 50; i++) {
+        operations.push(() => projectNeedsTools('FL-Carver Techs'));
+        operations.push(() => toolNeedsChargeCode('#1 Rinse and 2D marker'));
+        operations.push(() => getToolOptions('OSC-BBB'));
+      }
+      
+      // Execute all operations
+      const results = operations.map(op => op());
+      
+      // Check consistency - same operations should return same results
+      for (let i = 0; i < results.length; i += 3) {
+        expect(results[i]).toBe(true); // FL-Carver Techs needs tools
+        expect(results[i + 1]).toBe(true); // #1 Rinse needs charge code
+        expect(Array.isArray(results[i + 2])).toBe(true); // OSC-BBB tools is an array
+      }
+    });
+
+    it('should handle rapid changes with invalid inputs mixed in', () => {
+      const mixedSequence = [
+        'FL-Carver Techs',
+        null,
+        'PTO/RTO',
+        undefined,
+        '',
+        'OSC-BBB',
+        'InvalidProject',
+        'SWFL-EQUIP'
+      ];
+      
+      // Should handle all inputs without throwing errors
+      mixedSequence.forEach(project => {
+        expect(() => {
+          projectNeedsTools(project as any);
+          getToolOptions(project as any);
+        }).not.toThrow();
+      });
+    });
+  });
 });

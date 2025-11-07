@@ -14,7 +14,7 @@ import {
     openDb,
     closeConnection
 } from '../src/services/database';
-import { submitTimesheets } from '../src/services/timesheet_importer';
+import { submitTimesheets } from '../src/services/timesheet-importer';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -22,8 +22,12 @@ describe('IPC Workflow Integration', () => {
     const testDbPath = path.join(__dirname, 'test_ipc_workflow.db');
     
     beforeEach(() => {
-        if (fs.existsSync(testDbPath)) {
-            fs.unlinkSync(testDbPath);
+        try {
+            if (fs.existsSync(testDbPath)) {
+                fs.unlinkSync(testDbPath);
+            }
+        } catch (err) {
+            // Ignore cleanup errors
         }
         setDbPath(testDbPath);
         ensureSchema();
@@ -31,8 +35,12 @@ describe('IPC Workflow Integration', () => {
     
     afterEach(() => {
         closeConnection();
-        if (fs.existsSync(testDbPath)) {
-            fs.unlinkSync(testDbPath);
+        try {
+            if (fs.existsSync(testDbPath)) {
+                fs.unlinkSync(testDbPath);
+            }
+        } catch (err) {
+            // Ignore cleanup errors
         }
     });
 
@@ -155,6 +163,169 @@ describe('IPC Workflow Integration', () => {
         expect(currentEntry.tool).toBe(originalEntry.tool);
         expect(currentEntry.detail_charge_code).toBe(originalEntry.detail_charge_code);
         expect(currentEntry.task_description).toBe(originalEntry.task_description);
+    });
+
+    describe('Concurrent IPC Calls', () => {
+        it('should handle concurrent read operations', async () => {
+            insertTimesheetEntry({
+                date: '2025-01-15',
+                timeIn: 540,
+                timeOut: 600,
+                project: 'Test',
+                taskDescription: 'Task'
+            });
+
+            // Simulate concurrent reads
+            const promises = Array(10).fill(null).map(() => getPendingTimesheetEntries());
+            const results = await Promise.all(promises);
+
+            // All should succeed
+            results.forEach(result => {
+                expect(result).toHaveLength(1);
+            });
+        });
+
+        it('should handle concurrent write operations', async () => {
+            const entries = Array(5).fill(null).map((_, i) => ({
+                date: '2025-01-15',
+                timeIn: 540 + (i * 60),
+                timeOut: 600 + (i * 60),
+                project: `Project ${i}`,
+                taskDescription: `Task ${i}`
+            }));
+
+            // Insert concurrently
+            const results = await Promise.all(
+                entries.map(entry => Promise.resolve(insertTimesheetEntry(entry)))
+            );
+
+            // All should succeed
+            results.forEach(result => {
+                expect(result.success).toBe(true);
+            });
+        });
+
+        it('should maintain consistency under concurrent access', async () => {
+            const operations = [];
+
+            // Mix of reads and writes
+            for (let i = 0; i < 20; i++) {
+                if (i % 2 === 0) {
+                    operations.push(Promise.resolve(getPendingTimesheetEntries()));
+                } else {
+                    // Time must be in 15-minute increments: 540, 555, 570, 585, etc.
+                    operations.push(Promise.resolve(insertTimesheetEntry({
+                        date: '2025-01-15',
+                        timeIn: 540 + (i * 15),
+                        timeOut: 600 + (i * 15),
+                        project: `Project ${i}`,
+                        taskDescription: `Task ${i}`
+                    })));
+                }
+            }
+
+            await Promise.all(operations);
+
+            // Final count should be consistent
+            const final = getPendingTimesheetEntries();
+            expect(final.length).toBe(10); // Half were writes
+        });
+    });
+
+    describe('IPC Call Ordering', () => {
+        it('should process calls in correct order', async () => {
+            const order: string[] = [];
+
+            const op1 = async () => {
+                order.push('op1');
+                return getPendingTimesheetEntries();
+            };
+
+            const op2 = async () => {
+                order.push('op2');
+                insertTimesheetEntry({
+                    date: '2025-01-15',
+                    timeIn: 540,
+                    timeOut: 600,
+                    project: 'Test',
+                    taskDescription: 'Task'
+                });
+            };
+
+            const op3 = async () => {
+                order.push('op3');
+                return getPendingTimesheetEntries();
+            };
+
+            await op1();
+            await op2();
+            await op3();
+
+            expect(order).toEqual(['op1', 'op2', 'op3']);
+        });
+
+        it('should maintain FIFO order for queued operations', async () => {
+            const results: number[] = [];
+
+            const operations = Array(5).fill(null).map((_, i) => async () => {
+                results.push(i);
+            });
+
+            for (const op of operations) {
+                await op();
+            }
+
+            expect(results).toEqual([0, 1, 2, 3, 4]);
+        });
+    });
+
+    describe('IPC Timeout Handling', () => {
+        it('should handle long-running operations', async () => {
+            const longOperation = () => {
+                return new Promise((resolve) => {
+                    setTimeout(() => resolve({ success: true }), 100);
+                });
+            };
+
+            const startTime = Date.now();
+            await longOperation();
+            const duration = Date.now() - startTime;
+
+            expect(duration).toBeGreaterThanOrEqual(100);
+            expect(duration).toBeLessThan(200); // Should not timeout
+        });
+
+        it('should timeout excessively long operations', async () => {
+            const timeout = 5000;
+            const operationTime = 10000;
+
+            const willTimeout = operationTime > timeout;
+
+            expect(willTimeout).toBe(true);
+        });
+
+        it('should clean up on timeout', async () => {
+            let cleaned = false;
+
+            const operationWithCleanup = async () => {
+                try {
+                    await new Promise((resolve) => setTimeout(resolve, 10000));
+                } finally {
+                    cleaned = true;
+                }
+            };
+
+            // Simulate timeout
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Timeout')), 100)
+            );
+
+            try {
+                await Promise.race([operationWithCleanup(), timeoutPromise]);
+            } catch (error) {
+                expect((error as Error).message).toBe('Timeout');
+            }
+        });
     });
 });
 

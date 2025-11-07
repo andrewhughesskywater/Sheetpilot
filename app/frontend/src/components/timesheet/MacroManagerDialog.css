@@ -52,3 +52,18 @@
   color: var(--md-sys-color-on-surface);
 }
 
+/* Macro Name column styling - make it prominent and easy to see */
+.macro-manager-table-container .handsontable td.macro-name-cell {
+  background-color: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  font-weight: var(--md-sys-typescale-label-large-weight);
+  font-size: var(--md-sys-typescale-body-large-size);
+}
+
+/* Macro Name column header styling */
+.macro-manager-table-container .handsontable th.macro-name-column {
+  background-color: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  font-weight: var(--md-sys-typescale-title-small-weight);
+}
+

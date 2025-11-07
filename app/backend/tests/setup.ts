@@ -33,60 +33,27 @@ vi.mock('fs', async () => {
 });
 
 // Mock better-sqlite3 to avoid NODE_MODULE_VERSION mismatch
-// Tests run on Node.js (v127) but better-sqlite3 is compiled for Electron (v139)
-// Uses INTERNAL in-memory database mock that stores data for proper test behavior
-// IMPORTANT: Mock factory must be synchronous for Vitest to intercept require() calls
-vi.mock('better-sqlite3', () => {
-  console.log('[SETUP] Mock factory for better-sqlite3 is being called');
-  // Use synchronous require() instead of async import()
-  const { createInMemoryDatabase } = require('./fixtures/in-memory-db-mock');
-  console.log('[SETUP] Successfully loaded in-memory-db-mock');
+// MUST be synchronous for proper hoisting
+vi.mock('better-sqlite3', async () => {
+  const pathModule = await import('path');
   
-  // Store database instances per path - cleared between tests for isolation
-  const databaseInstances = new Map<string, ReturnType<typeof createInMemoryDatabase>>();
+  // Import the comprehensive in-memory database mock
+  const { createInMemoryDatabase } = await import('./fixtures/in-memory-db-mock');
   
-  // Use a proper class to ensure constructor works correctly with 'new'
-  class MockDatabase {
-    path: string;
-    open: boolean;
-    prepare: ReturnType<typeof createInMemoryDatabase>['prepare'];
-    transaction: ReturnType<typeof createInMemoryDatabase>['transaction'];
-    exec: ReturnType<typeof createInMemoryDatabase>['exec'];
-    close: ReturnType<typeof createInMemoryDatabase>['close'];
-    pragma: ReturnType<typeof createInMemoryDatabase>['pragma'];
+  // Use the createInMemoryDatabase function which manages its own instance cache
+  // This ensures we don't have two separate caches that can get out of sync
+  function Database(path: string, _opts?: unknown) {
+    const resolvedPath = pathModule.resolve(path);
+    createdDbPaths.add(resolvedPath);
+    createdDbPaths.add(pathModule.dirname(resolvedPath));
     
-    constructor(path: string, _opts?: unknown) {
-      console.log('[SETUP] MockDatabase constructor called with path:', path);
-      const pathModule = require('path');
-      const resolvedPath = pathModule.resolve(path);
-      createdDbPaths.add(resolvedPath);
-      // Also track the directory
-      const dir = pathModule.dirname(resolvedPath);
-      createdDbPaths.add(dir);
-      
-      if (!databaseInstances.has(resolvedPath)) {
-        databaseInstances.set(resolvedPath, createInMemoryDatabase(resolvedPath));
-      }
-      const db = databaseInstances.get(resolvedPath)!;
-      this.path = resolvedPath;
-      this.open = true;
-      this.prepare = db.prepare.bind(db);
-      this.transaction = db.transaction.bind(db);
-      this.exec = db.exec.bind(db);
-      this.close = db.close.bind(db);
-      this.pragma = db.pragma.bind(db);
-    }
+    // Always use createInMemoryDatabase - it handles caching internally
+    return createInMemoryDatabase(resolvedPath);
   }
   
-  // For Vitest mocks with CommonJS, we need to export the constructor as default
-  // The real better-sqlite3 module exports: module.exports = Database
-  // Which means both require('better-sqlite3') and require('better-sqlite3').default work
-  // We mimic this by making default the primary export
-  
-  const mockExport = MockDatabase;
-  
   return {
-    default: mockExport,
+    default: Database,
+    Database: Database,
     __esModule: true
   };
 });
@@ -129,7 +96,10 @@ function createMockContext(page: ReturnType<typeof createMockPage>) {
   return {
     newPage: vi.fn(() => Promise.resolve(page)),
     close: vi.fn(() => Promise.resolve()),
-    pages: vi.fn(() => [page])
+    pages: vi.fn(() => [page]),
+    addInitScript: vi.fn(() => Promise.resolve()),
+    route: vi.fn(() => Promise.resolve()),
+    unroute: vi.fn(() => Promise.resolve())
   };
 }
 
@@ -154,12 +124,50 @@ vi.mock('playwright', () => ({
   }
 }));
 
+// Mock Electron to provide app.isPackaged and other required APIs
+vi.mock('electron', () => ({
+  app: {
+    isPackaged: false, // Always false in tests (development mode)
+    getPath: vi.fn((name: string) => {
+      if (name === 'userData') return '/tmp/test-userdata';
+      if (name === 'appData') return '/tmp/test-appdata';
+      return '/tmp/test-path';
+    }),
+    on: vi.fn(),
+    once: vi.fn(),
+    quit: vi.fn(),
+    exit: vi.fn()
+  },
+  ipcMain: {
+    handle: vi.fn(),
+    on: vi.fn(),
+    once: vi.fn(),
+    removeHandler: vi.fn()
+  },
+  BrowserWindow: vi.fn(),
+  dialog: {
+    showMessageBox: vi.fn(() => Promise.resolve({ response: 0 })),
+    showOpenDialog: vi.fn(() => Promise.resolve({ filePaths: [] })),
+    showSaveDialog: vi.fn(() => Promise.resolve({ filePath: '' }))
+  },
+  screen: {
+    getPrimaryDisplay: vi.fn(() => ({
+      workAreaSize: { width: 1920, height: 1080 }
+    }))
+  }
+}));
+
 // Clean up after each test to prevent memory leaks and test interference
-afterEach(() => {
+afterEach(async () => {
   // Clear created database paths and instances between tests for isolation
   createdDbPaths.clear();
+  // Reset database instances to ensure isolation between tests
+  try {
+    const { resetDatabaseInstances } = await import('./fixtures/in-memory-db-mock');
+    resetDatabaseInstances();
+  } catch {
+    // Ignore if reset fails
+  }
   // Browser mocks are created fresh for each test instance
-  // Note: databaseInstances Map is scoped to the mock factory, so it persists
-  // This is actually OK because each test uses a unique path (with Date.now())
 });
 
