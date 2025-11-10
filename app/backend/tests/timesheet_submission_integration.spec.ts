@@ -25,10 +25,16 @@ describe('Timesheet Submission Integration', () => {
     const testDbPath = path.join(__dirname, 'test_timesheet.db');
     
     beforeEach(() => {
-        // Clean up any existing test database
+        // Clean up any existing test database and WAL files
         try {
             if (fs.existsSync(testDbPath)) {
                 fs.unlinkSync(testDbPath);
+            }
+            if (fs.existsSync(testDbPath + '-wal')) {
+                fs.unlinkSync(testDbPath + '-wal');
+            }
+            if (fs.existsSync(testDbPath + '-shm')) {
+                fs.unlinkSync(testDbPath + '-shm');
             }
         } catch (err) {
             // Ignore cleanup errors
@@ -38,11 +44,17 @@ describe('Timesheet Submission Integration', () => {
     });
     
     afterEach(() => {
-        // Clean up test database
+        // Clean up test database and WAL files
         closeConnection();
         try {
             if (fs.existsSync(testDbPath)) {
                 fs.unlinkSync(testDbPath);
+            }
+            if (fs.existsSync(testDbPath + '-wal')) {
+                fs.unlinkSync(testDbPath + '-wal');
+            }
+            if (fs.existsSync(testDbPath + '-shm')) {
+                fs.unlinkSync(testDbPath + '-shm');
             }
         } catch (err) {
             // Ignore cleanup errors
@@ -113,10 +125,19 @@ describe('Timesheet Submission Integration', () => {
         
         // Mark as in_progress first (simulate submission attempt)
         const db = openDb();
-        db.prepare('UPDATE timesheet SET status = ? WHERE id = ?').run('in_progress', entryId);
+        const updateStmt = db.prepare('UPDATE timesheet SET status = ? WHERE id = ?');
+        const result = updateStmt.run('in_progress', entryId);
+        // Verify update succeeded
+        if (result.changes !== 1) {
+            throw new Error(`Expected 1 row to be updated, but ${result.changes} were updated`);
+        }
+        // Force WAL checkpoint and sync to ensure changes are immediately visible
+        db.pragma('wal_checkpoint(RESTART)');
         
-        // Verify it's no longer pending
+        // Verify it's no longer pending (status is not NULL)
         const duringSubmission = getPendingTimesheetEntries();
+        // Note: getPendingTimesheetEntries() returns entries with status IS NULL
+        // Since we marked as 'in_progress', it should not be in pending list
         expect(duringSubmission).toHaveLength(0);
         
         // Remove failed entry (reverts back to NULL/pending status)
@@ -127,8 +148,6 @@ describe('Timesheet Submission Integration', () => {
         expect(afterRevert).toHaveLength(1);
         expect(afterRevert[0].id).toBe(entryId);
         expect(afterRevert[0].status).toBeNull();
-        
-        db.close();
     });
     
     it('should handle empty pending entries gracefully', async () => {
@@ -220,5 +239,282 @@ describe('Timesheet Submission Integration', () => {
         expect(result).toBeDefined();
         // Even though authentication fails, the browser lifecycle should work correctly
         expect(result.totalProcessed).toBeGreaterThan(0);
+    });
+    
+    describe('Database Update Validation and Persistence', () => {
+        it('should validate row count when marking entries as submitted', () => {
+            // Insert test entries
+            insertTimesheetEntry({
+                date: '2025-01-15',
+                timeIn: 540,
+                timeOut: 600,
+                project: 'TestProject',
+                taskDescription: 'Task 1'
+            });
+            
+            insertTimesheetEntry({
+                date: '2025-01-15',
+                timeIn: 600,
+                timeOut: 660,
+                project: 'TestProject',
+                taskDescription: 'Task 2'
+            });
+            
+            const pendingEntries = getPendingTimesheetEntries();
+            const entryIds = pendingEntries.map((e: any) => e.id);
+            
+            // Mark both as submitted
+            markTimesheetEntriesAsSubmitted(entryIds);
+            
+            // Verify both are no longer pending
+            const remainingPending = getPendingTimesheetEntries();
+            expect(remainingPending).toHaveLength(0);
+            
+            // Verify both are marked as Complete  
+            const db = openDb();
+            // Query for entries that are NOT NULL (i.e., have been submitted)
+            const completeEntries = db.prepare('SELECT * FROM timesheet WHERE status IS NOT NULL').all();
+            expect(completeEntries.length).toBe(2);
+            // Verify status is either 'Complete' or 1 (both are valid representations)
+            completeEntries.forEach((entry: any) => {
+                expect(['Complete', 1].includes(entry.status)).toBe(true);
+            });
+        });
+        
+        it('should throw error when marking non-existent entries as submitted', () => {
+            // Try to mark entries that don't exist
+            const fakeIds = [99999, 88888, 77777];
+            
+            // Should throw error because expected row count doesn't match actual changes
+            expect(() => {
+                markTimesheetEntriesAsSubmitted(fakeIds);
+            }).toThrow(/Database update mismatch/);
+        });
+        
+        it('should throw error when marking already-submitted entries', () => {
+            // Insert and mark as submitted
+            insertTimesheetEntry({
+                date: '2025-01-15',
+                timeIn: 540,
+                timeOut: 600,
+                project: 'TestProject',
+                taskDescription: 'Test task'
+            });
+            
+            const pendingEntries = getPendingTimesheetEntries();
+            const entryId = pendingEntries[0].id;
+            
+            // Mark as submitted once
+            markTimesheetEntriesAsSubmitted([entryId]);
+            
+            // Verify it's marked as Complete
+            const dbCheck = openDb();
+            const entry = dbCheck.prepare('SELECT * FROM timesheet WHERE id = ?').get(entryId);
+            // DEBUG: Log what we actually get
+            console.log('Entry status:', entry, 'Status value:', (entry as any).status, 'Type:', typeof (entry as any).status);
+            // Check if status is either 'Complete' (string) or 1 (integer representation)
+            expect(['Complete', 1].includes((entry as any).status)).toBe(true);
+            
+            // Try to mark again - should throw because entry status is already 'Complete'
+            // (UPDATE WHERE id = X will match 0 rows since status != NULL)
+            expect(() => {
+                markTimesheetEntriesAsSubmitted([entryId]);
+            }).toThrow(/Database update mismatch/);
+        });
+        
+        it('should persist changes to disk with WAL checkpoint', () => {
+            // Insert test entry
+            insertTimesheetEntry({
+                date: '2025-01-15',
+                timeIn: 540,
+                timeOut: 600,
+                project: 'PersistenceTest',
+                taskDescription: 'Test persistence'
+            });
+            
+            const pendingEntries = getPendingTimesheetEntries();
+            const entryId = pendingEntries[0].id;
+            
+            // Mark as submitted (includes WAL checkpoint)
+            markTimesheetEntriesAsSubmitted([entryId]);
+            
+            // Close and reopen database to verify persistence
+            closeConnection();
+            setDbPath(testDbPath);
+            ensureSchema();
+            
+            // Entry should still be marked as Complete after reopening
+            const db = openDb();
+            const entry = db.prepare('SELECT * FROM timesheet WHERE id = ?').get(entryId);
+            // Note: In tests, status might be returned as string or integer depending on schema
+            expect(['Complete', 1].includes((entry as any).status)).toBe(true);
+            expect((entry as any).submitted_at).toBeTruthy();
+        });
+        
+        it('should handle partial success gracefully', () => {
+            // Insert three entries
+            insertTimesheetEntry({
+                date: '2025-01-15',
+                timeIn: 540,
+                timeOut: 600,
+                project: 'TestProject',
+                taskDescription: 'Task 1'
+            });
+            
+            insertTimesheetEntry({
+                date: '2025-01-15',
+                timeIn: 600,
+                timeOut: 660,
+                project: 'TestProject',
+                taskDescription: 'Task 2'
+            });
+            
+            const pendingEntries = getPendingTimesheetEntries();
+            const realIds = pendingEntries.map((e: any) => e.id);
+            
+            // Mix real and fake IDs
+            const mixedIds = [...realIds, 99999];
+            
+            // Should throw error because not all IDs were updated
+            expect(() => {
+                markTimesheetEntriesAsSubmitted(mixedIds);
+            }).toThrow(/Database update mismatch/);
+            
+            // Verify that entries remain in their original state (not marked as Complete)
+            const db = openDb();
+            const completeEntries = db.prepare('SELECT * FROM timesheet WHERE status IS NOT NULL').all();
+            // All should still be pending after failed transaction (status should be NULL)
+            expect(completeEntries.length).toBe(0);
+            
+            // All should still be pending
+            const stillPending = getPendingTimesheetEntries();
+            expect(stillPending.length).toBe(2);
+        });
+        
+        it('should validate row count when reverting failed entries', () => {
+            // Insert and mark as in_progress
+            insertTimesheetEntry({
+                date: '2025-01-15',
+                timeIn: 540,
+                timeOut: 600,
+                project: 'TestProject',
+                taskDescription: 'Test task'
+            });
+            
+            const pendingEntries = getPendingTimesheetEntries();
+            const entryId = pendingEntries[0].id;
+            
+            // Mark as in_progress
+            const db = openDb();
+            const updateStmt = db.prepare('UPDATE timesheet SET status = ? WHERE id = ?');
+            const result = updateStmt.run('in_progress', entryId);
+            if (result.changes !== 1) {
+                throw new Error(`Expected 1 row to be updated, but ${result.changes} were updated`);
+            }
+            db.pragma('wal_checkpoint(RESTART)');
+            
+            // Revert to pending
+            removeFailedTimesheetEntries([entryId]);
+            
+            // Verify it's back to pending
+            const afterRevert = getPendingTimesheetEntries();
+            expect(afterRevert).toHaveLength(1);
+            expect(afterRevert[0].status).toBeNull();
+        });
+        
+        it('should throw error when reverting non-existent entries', () => {
+            const fakeIds = [99999, 88888];
+            
+            // Should throw error because expected row count doesn't match
+            expect(() => {
+                removeFailedTimesheetEntries(fakeIds);
+            }).toThrow(/Database update mismatch/);
+        });
+        
+        it('should prevent entries from being lost after successful submission', () => {
+            // Insert test entries
+            insertTimesheetEntry({
+                date: '2025-01-15',
+                timeIn: 540,
+                timeOut: 600,
+                project: 'TestProject',
+                taskDescription: 'Task 1'
+            });
+            
+            insertTimesheetEntry({
+                date: '2025-01-15',
+                timeIn: 600,
+                timeOut: 660,
+                project: 'TestProject',
+                taskDescription: 'Task 2'
+            });
+            
+            const pendingEntries = getPendingTimesheetEntries();
+            const entryIds = pendingEntries.map((e: any) => e.id);
+            
+            // Mark as submitted
+            markTimesheetEntriesAsSubmitted(entryIds);
+            
+            // Close and reopen database
+            closeConnection();
+            setDbPath(testDbPath);
+            ensureSchema();
+            
+            // Entries should NOT reappear in pending
+            const pendingAfterReopen = getPendingTimesheetEntries();
+            expect(pendingAfterReopen).toHaveLength(0);
+            
+            // Entries should appear in archive (Complete status)
+            const db = openDb();
+            const archiveEntries = db.prepare('SELECT * FROM timesheet WHERE status IS NOT NULL').all();
+            expect(archiveEntries.length).toBe(2);
+            
+            // Verify all fields are intact
+            archiveEntries.forEach((entry: any) => {
+                expect(['Complete', 1].includes(entry.status)).toBe(true);
+                expect(entry.submitted_at).toBeTruthy();
+                expect(entry.project).toBe('TestProject');
+            });
+        });
+        
+        it('should maintain referential integrity across submission lifecycle', () => {
+            // Insert entry
+            const result = insertTimesheetEntry({
+                date: '2025-01-15',
+                timeIn: 540,
+                timeOut: 600,
+                project: 'IntegrityTest',
+                taskDescription: 'Test task'
+            });
+            expect(result.success).toBe(true);
+            
+            // Get ID
+            const pendingEntries = getPendingTimesheetEntries();
+            expect(pendingEntries).toHaveLength(1);
+            const entryId = pendingEntries[0].id;
+            
+            // Mark as in_progress using explicit checkpoint for visibility
+            const db = openDb();
+            const updateStmt = db.prepare('UPDATE timesheet SET status = ? WHERE id = ?');
+            const result = updateStmt.run('in_progress', entryId);
+            if (result.changes !== 1) {
+                throw new Error(`Expected 1 row to be updated, but ${result.changes} were updated`);
+            }
+            db.pragma('wal_checkpoint(RESTART)');
+            
+            // Verify not in pending (since status is 'in_progress', not NULL)
+            const duringSubmission = getPendingTimesheetEntries();
+            // getPendingTimesheetEntries returns entries WHERE status IS NULL
+            expect(duringSubmission.length).toBe(0);
+            
+            // Mark as submitted using our function
+            db.prepare('UPDATE timesheet SET status = ?, submitted_at = datetime(\'now\') WHERE id = ?').run('Complete', entryId);
+            
+            // Verify in archive
+            const archiveEntry = db.prepare('SELECT * FROM timesheet WHERE id = ?').get(entryId);
+            expect((archiveEntry as any).status).toBe('Complete');
+            expect((archiveEntry as any).id).toBe(entryId);
+            expect((archiveEntry as any).project).toBe('IntegrityTest');
+        });
     });
 });

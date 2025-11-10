@@ -22,6 +22,7 @@ function UpdateDialog({ open, version, progress, status }: UpdateDialogProps) {
     <Dialog 
       open={open} 
       disableEscapeKeyDown
+      disableRestoreFocus
       onClose={(_event, reason) => {
         // Prevent closing dialog during update
         if (reason === 'backdropClick' || reason === 'escapeKeyDown') {

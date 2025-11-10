@@ -1,6 +1,6 @@
 {
   "name": "sheetpilot",
-  "version": "1.4.2",
+  "version": "1.5.0",
   "private": true,
   "description": "Business timesheet management and reporting tool",
   "author": "Andrew Hughes",
@@ -99,6 +99,7 @@
       "!app/backend/node_modules/*/{example,examples,docs,doc}/**",
       "node_modules/tslib/**/*",
       "node_modules/playwright/**/*",
+      "node_modules/zod/**/*",
       "app/frontend/dist/**/*",
       "package.json",
       "plugin-config.json",

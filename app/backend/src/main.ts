@@ -1,30 +1,17 @@
-import { app, BrowserWindow, ipcMain, screen } from 'electron';
+import { app, BrowserWindow, screen } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import {
   setDbPath,
   ensureSchema,
-  getDbPath,
-  storeCredentials,
-  getCredentials,
-  listCredentials,
-  deleteCredentials,
-  getDb,
-  createSession,
-  validateSession,
-  clearSession,
-  clearUserSessions,
-  clearAllCredentials,
-  rebuildDatabase
+  getDbPath
 } from './services/database';
-import { submitTimesheets } from './services/timesheet-importer';
+import { APP_VERSION } from '../../shared/constants';
 // Defer logger import until after preflight; provide lightweight shims for early use
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let appLogger: any;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let dbLogger: any;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let ipcLogger: any;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let initializeLogging: any;
 
@@ -45,14 +32,6 @@ function createShimLogger(component: string) {
 
 appLogger = createShimLogger('Application');
 dbLogger = createShimLogger('Database');
-ipcLogger = createShimLogger('IPC');
-import {
-  CredentialsNotFoundError,
-  CredentialsStorageError,
-  createUserFriendlyMessage,
-  extractErrorCode,
-  isAppError
-} from '../../shared/errors';
 
 // Playwright uses bundled Chromium for consistent behavior across all systems
 const IS_SMOKE = process.env['SMOKE_PACKAGED'] === '1';
@@ -82,11 +61,7 @@ const PACKAGED_LIKE = app.isPackaged || IS_SMOKE;
 
 import { registerDefaultPlugins } from './middleware/bootstrap-plugins';
 
-// Lazy-load electron-updater AFTER module paths are configured
-// Skip loading during tests to avoid initialization issues
-const { autoUpdater } = (process.env['VITEST'] === 'true' 
-  ? { autoUpdater: null as unknown as typeof import('electron-updater').autoUpdater }
-  : require('electron-updater')) as typeof import('electron-updater');
+// Note: electron-updater is now handled in IPC handlers, not loaded here
 
 // Preflight: verify critical modules resolve before loading heavy subsystems
 function preflightResolve(): void {
@@ -112,75 +87,24 @@ preflightResolve();
 // In test mode, use placeholder loggers that will be mocked
 if (process.env['VITEST'] === 'true') {
   const mockLogger = () => ({ info: () => {}, warn: () => {}, error: () => {}, debug: () => {}, verbose: () => {}, silly: () => {}, audit: () => {}, security: () => {}, startTimer: () => ({ done: () => {} }) });
-  ({ initializeLogging, appLogger, dbLogger, ipcLogger } = {
+  ({ initializeLogging, appLogger, dbLogger } = {
     initializeLogging: () => {},
     appLogger: mockLogger(),
-    dbLogger: mockLogger(),
-    ipcLogger: mockLogger()
+    dbLogger: mockLogger()
   } as any);
 } else {
-  ({ initializeLogging, appLogger, dbLogger, ipcLogger } = require('../../shared/logger'));
-}
-function parseTimeToMinutes(timeStr: string): number {
-  const parts = timeStr.split(':');
-  if (parts.length !== 2 || !parts[0] || !parts[1]) {
-    throw new Error(`Invalid time format: ${timeStr}. Expected HH:mm`);
-  }
-  const hours = parseInt(parts[0], 10);
-  const minutes = parseInt(parts[1], 10);
-  if (isNaN(hours) || isNaN(minutes)) {
-    throw new Error(`Invalid time format: ${timeStr}. Expected HH:mm`);
-  }
-  return hours * 60 + minutes;
-}
-
-function formatMinutesToTime(minutes: number): string {
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+  ({ initializeLogging, appLogger, dbLogger } = require('../../shared/logger'));
 }
 
 // Note: isDateInCurrentQuarter removed
 // Quarter validation is now handled during submission routing, not at save time
 // This allows users to enter historical data from any quarter
+// Helper functions parseTimeToMinutes and formatMinutesToTime have been moved to IPC handlers
 
 let mainWindow: BrowserWindow | null = null;
-let splashWindow: BrowserWindow | null = null;
 
-// Update marker file to persist splash across relaunch after install
-function getUpdateMarkerPath(): string {
-  const userDataPath = app.getPath('userData');
-  return path.join(userDataPath, 'updating.json');
-}
-
-async function writeUpdateMarker(reason: string) {
-  try {
-    const markerPath = getUpdateMarkerPath();
-    await fs.promises.mkdir(path.dirname(markerPath), { recursive: true });
-    await fs.promises.writeFile(markerPath, JSON.stringify({ reason, at: Date.now() }));
-    appLogger.info('Wrote update marker', { markerPath, reason });
-  } catch (err) {
-    appLogger.warn('Could not write update marker', { error: err instanceof Error ? err.message : String(err) });
-  }
-}
-
-async function consumeUpdateMarker(): Promise<boolean> {
-  try {
-    const markerPath = getUpdateMarkerPath();
-    try {
-      await fs.promises.access(markerPath);
-      await fs.promises.unlink(markerPath);
-      appLogger.info('Consumed update marker', { markerPath });
-      return true;
-    } catch (accessErr) {
-      // File doesn't exist - not an error, just return false
-      return false;
-    }
-  } catch (err) {
-    appLogger.warn('Could not consume update marker', { error: err instanceof Error ? err.message : String(err) });
-  }
-  return false;
-}
+// Note: splashWindow has been removed - splash functionality moved to renderer
+// Note: Update marker functions (getUpdateMarkerPath, writeUpdateMarker) have been moved to IPC handlers
 
 // Window state management
 interface WindowState {
@@ -296,141 +220,7 @@ process.on('rejectionHandled', () => {
   appLogger.warn('Application handled previously unhandled rejection');
 });
 
-// Configure auto-updater
-function configureAutoUpdater() {
-  // Skip auto-updater configuration in test mode
-  if (!autoUpdater || process.env['VITEST'] === 'true') {
-    return;
-  }
-  
-  // Keep manual control of downloads to show UI before downloading
-  autoUpdater.autoDownload = false;
-  
-  // Configure logging
-  autoUpdater.logger = {
-    info: (message?: unknown) => appLogger.info('AutoUpdater', { message }),
-    warn: (message?: unknown) => appLogger.warn('AutoUpdater', { message }),
-    error: (message?: unknown) => appLogger.error('AutoUpdater error', { message }),
-    debug: (message?: unknown) => appLogger.debug('AutoUpdater', { message })
-  };
-
-  // Event listeners for update process
-  autoUpdater.on('checking-for-update', () => {
-    appLogger.info('Checking for updates');
-  });
-
-  autoUpdater.on('update-available', (info) => {
-    const version = info?.version || 'unknown';
-    appLogger.info('Update available', { version });
-    
-    // Send IPC event to splash or main
-    if (splashWindow && !splashWindow.isDestroyed()) {
-      splashWindow.webContents.send('update-available', version);
-    } else if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('update-available', version);
-    }
-    
-    // Start downloading the update
-    autoUpdater.downloadUpdate();
-  });
-
-  autoUpdater.on('update-not-available', (info) => {
-    appLogger.info('Update not available', { currentVersion: info?.version || 'unknown' });
-  });
-
-  autoUpdater.on('download-progress', (progress) => {
-    appLogger.info('Download progress', { 
-      percent: progress.percent.toFixed(2),
-      transferred: progress.transferred,
-      total: progress.total
-    });
-    
-    // Send progress to splash or main
-    const target = splashWindow && !splashWindow.isDestroyed() ? splashWindow : (mainWindow && !mainWindow.isDestroyed() ? mainWindow : null);
-    if (target) {
-      target.webContents.send('download-progress', {
-        percent: progress.percent,
-        transferred: progress.transferred,
-        total: progress.total
-      });
-    }
-  });
-
-  autoUpdater.on('update-downloaded', (info) => {
-    const version = info?.version || 'unknown';
-    appLogger.info('Update downloaded', { version });
-    
-    // Send IPC event to renderer to show installing status
-    if (splashWindow && !splashWindow.isDestroyed()) {
-      splashWindow.webContents.send('update-downloaded', version);
-    } else if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('update-downloaded', version);
-    }
-    
-    // Write marker and wait 3 seconds for user to see completion, then install
-    setTimeout(async () => {
-      appLogger.info('Installing update and restarting');
-      await writeUpdateMarker('update-downloaded');
-      autoUpdater.quitAndInstall();
-    }, 3000);
-  });
-
-  autoUpdater.on('error', (err) => {
-    appLogger.error('AutoUpdater error', { error: err.message, stack: err.stack });
-    
-    // Send error to renderer if window exists
-    if (splashWindow && !splashWindow.isDestroyed()) {
-      splashWindow.webContents.send('update-error', err.message);
-    } else if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('update-error', err.message);
-    }
-  });
-  
-  // IPC handler to cancel update
-  ipcMain.on('cancel-update', () => {
-    appLogger.info('Update cancelled by user');
-    // Download will be cancelled on app close, will resume on next launch
-  });
-  
-  // IPC handler to force quit and install
-  ipcMain.on('quit-and-install', () => {
-    appLogger.info('Quitting and installing update');
-    autoUpdater.quitAndInstall();
-  });
-}
-
-// Check for updates (called after app is ready)
-function checkForUpdates() {
-  // Only check for updates in production builds
-  if (!app.isPackaged) {
-    appLogger.info('Skipping update check in development mode');
-    return;
-  }
-
-  // On Windows, skip update check on first run due to Squirrel.Windows file lock
-  // See: https://github.com/electron/electron/issues/7155
-  // Skip update checks in test mode
-  if (!autoUpdater || process.env['VITEST'] === 'true') {
-    return;
-  }
-  
-  if (process.platform === 'win32' && process.argv.includes('--squirrel-firstrun')) {
-    appLogger.info('Skipping update check on first run (Squirrel.Windows file lock)');
-    // Schedule update check for 10 seconds later when file lock is released
-    setTimeout(() => {
-      appLogger.info('Starting delayed update check after first run');
-      autoUpdater.checkForUpdates().catch(err => {
-        appLogger.error('Could not check for updates', { error: err.message });
-      });
-    }, 10000);
-    return;
-  }
-
-  appLogger.info('Starting update check');
-  autoUpdater.checkForUpdates().catch(err => {
-    appLogger.error('Could not check for updates', { error: err.message });
-  });
-}
+// Note: configureAutoUpdater and checkForUpdates have been moved to IPC handlers
 
 // Synchronous version for backwards compatibility
 function bootstrapDatabase() {
@@ -438,26 +228,13 @@ function bootstrapDatabase() {
   const dbFile = path.join(app.getPath('userData'), 'sheetpilot.sqlite');
   dbLogger.verbose('Setting database path', { dbFile });
   setDbPath(dbFile);
+  dbLogger.verbose('Ensuring database schema exists');
   ensureSchema();
   dbLogger.info('Database initialized successfully', { dbPath: getDbPath() });
   timer.done();
 }
 
-// Asynchronous database initialization (non-blocking)
-async function bootstrapDatabaseAsync() {
-  return new Promise<void>((resolve) => {
-    // Run database initialization in next tick to avoid blocking
-    setImmediate(() => {
-      try {
-        bootstrapDatabase();
-        resolve();
-      } catch (error) {
-        dbLogger.error('Database initialization failed', error);
-        resolve(); // Don't block app startup on DB error
-      }
-    });
-  });
-}
+// Note: bootstrapDatabaseAsync has been removed - database initialization is now handled in IPC handlers
 
 function createWindow() {
   const windowState = getWindowState();
@@ -588,61 +365,12 @@ function createWindow() {
   }
 }
 
- function createSplashWindow(hash: string = '#splash') {
-  // Small, centered window; keep invisible menu, minimal chrome
-  // Determine icon path for both dev and production
-  const iconPath = PACKAGED_LIKE
-    ? path.join(process.resourcesPath, 'app', 'frontend', 'dist', 'icon.ico')
-    : path.join(__dirname, '..', '..', '..', '..', 'app', 'frontend', 'src', 'assets', 'images', 'icon.ico');
+// Note: createSplashWindow and showMainAndCloseSplash have been removed - splash functionality moved to renderer
 
-   const options: Electron.BrowserWindowConstructorOptions = {
-    width: 500,
-    height: 420,
-    resizable: false,
-    movable: true,
-    fullscreenable: false,
-    frame: true,
-    show: false,
-    backgroundColor: '#ffffff',
-    autoHideMenuBar: true,
-    icon: iconPath, // Application icon
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true,
-      webSecurity: true,
-      allowRunningInsecureContent: false,
-      experimentalFeatures: false
-    }
-  };
-
-  splashWindow = new BrowserWindow(options);
-  splashWindow.once('ready-to-show', () => splashWindow?.show());
-
-  const isDev = process.env['NODE_ENV'] === 'development' || process.env['ELECTRON_IS_DEV'] === '1';
-  if (isDev) {
-    splashWindow.loadURL(`http://localhost:5173/${hash}`);
-  } else {
-    const htmlPath = path.join(__dirname, '..', '..', '..', '..', 'app', 'frontend', 'dist', 'index.html');
-    splashWindow.loadFile(htmlPath, { hash });
-  }
-}
-
-function showMainAndCloseSplash() {
-  if (!mainWindow || mainWindow.isDestroyed()) {
-    createWindow();
-  }
-  if (splashWindow && !splashWindow.isDestroyed()) {
-    splashWindow.close();
-    splashWindow = null;
-  }
-}
-
-// Global flag to prevent concurrent timesheet submissions
-let isSubmissionInProgress = false;
-
-// Export function to register IPC handlers (for testing)
+// DEPRECATED: Old monolithic IPC handler registration function
+// This has been replaced with modular handlers in ./ipc/ directory
+// Kept for reference only - DO NOT USE
+/*
 export function registerIPCHandlers() {
   // Example: typed IPC handler
   ipcMain.handle('ping', async (_event, msg: string): Promise<string> => {
@@ -1535,76 +1263,10 @@ export function registerIPCHandlers() {
   ipcMain.on('logger:user-action', (_event, action: string, data?: unknown) => {
     ipcLogger.info(`User action: ${action}`, data);
   });
-
-  // Decide whether to show splash first
-  const isDev = process.env['NODE_ENV'] === 'development' || process.env['ELECTRON_IS_DEV'] === '1';
-  const forceSplashInDev = process.env['VITE_FORCE_SPLASH'] === 'true';
-  const shouldShowSplash = app.isPackaged || (isDev && forceSplashInDev);
-  let showedFinalizeSplash = false;
-
-  // Check for update marker and show appropriate splash (async)
-  (async () => {
-    try {
-      await fs.promises.access(getUpdateMarkerPath());
-      // Update marker exists - show finalize splash
-      if (shouldShowSplash) {
-        createSplashWindow('#splash?state=finalize');
-        showedFinalizeSplash = true;
-        // Consume marker shortly after splash is shown
-        setTimeout(async () => {
-          await consumeUpdateMarker();
-          // After brief finalize, show main
-          setTimeout(() => showMainAndCloseSplash(), 1000);
-        }, 500);
-      }
-    } catch {
-      // No update marker exists - normal startup
-      if (shouldShowSplash) {
-        createSplashWindow('#splash');
-      } else {
-        createWindow();
-      }
-    }
-  })();
-
-  // Initialize database asynchronously (non-blocking)
-  bootstrapDatabaseAsync().then(() => {
-    dbLogger.info('Database ready for operations');
-  }).catch(err => {
-    dbLogger.error('Database initialization failed', err);
-  });
-  
-  // Configure and check for updates asynchronously (non-blocking)
-  setImmediate(() => {
-    try {
-      configureAutoUpdater();
-      if (app.isPackaged) {
-        checkForUpdates();
-      } else if (!shouldShowSplash) {
-        // In dev without splash, still allow update UI in main if wired
-        checkForUpdates();
-      }
-    } catch (err) {
-      appLogger.error('Auto-updater setup failed', err);
-    }
-  });
-
-  // If we showed a non-finalize splash in production but no update is available, we will close it
-  // on the 'update-not-available' event by showing main. Hook that here by listening once.
-  if (autoUpdater && process.env['VITEST'] !== 'true') {
-    autoUpdater.once('update-not-available', () => {
-      if (shouldShowSplash && !showedFinalizeSplash) {
-        showMainAndCloseSplash();
-      }
-    });
-    // On updater error, do not block the app
-    autoUpdater.once('error', () => {
-      if (shouldShowSplash && !showedFinalizeSplash) {
-        showMainAndCloseSplash();
-      }
-    });
-  }
 }
+*/
+
+// End of deprecated registerIPCHandlers function
 
 // Initialize app when running as main entry point
 // Fix desktop shortcut icon on Windows
@@ -1647,7 +1309,12 @@ function fixDesktopShortcutIcon() {
 app.whenReady().then(() => {
   // Initialize logging first (fast, non-blocking)
   initializeLogging();
-  appLogger.info('Application startup initiated');
+  appLogger.info('Application startup initiated', {
+    version: APP_VERSION,
+    isPackaged: app.isPackaged,
+    execPath: app.getPath('exe'),
+    userDataPath: app.getPath('userData')
+  });
   
   // Ensure Windows taskbar uses our app identity (affects icon/notifications)
   try {
@@ -1658,16 +1325,84 @@ app.whenReady().then(() => {
   }
   
   // Fix desktop shortcut icon if needed (Windows only)
+  appLogger.verbose('Fixing desktop shortcut icon (Windows only)');
   fixDesktopShortcutIcon();
   
   // Register default plugins for the plugin system
+  appLogger.verbose('Registering default plugins');
   registerDefaultPlugins();
+  appLogger.verbose('Default plugins registered');
   
-  // Register IPC handlers immediately (required for renderer communication)
-  registerIPCHandlers();
+  // Initialize database (sets correct path and ensures schema exists)
+  bootstrapDatabase();
   
-  // Note: bootstrapDatabase() is now called asynchronously inside registerIPCHandlers()
-  // This allows the window to show before database is fully initialized
+  // Register IPC handlers BEFORE creating window (prevents race condition)
+  // Handlers must be registered before renderer loads to avoid "No handler registered" errors
+  try {
+    console.log('[Main] Loading IPC handlers from ./ipc/index');
+    appLogger.verbose('Loading IPC handlers module', { path: './ipc/index' });
+    
+    // Diagnostic: Check module resolution paths
+    appLogger.verbose('Module resolution environment', {
+      nodePath: process.env['NODE_PATH'],
+      cwd: process.cwd(),
+      resourcesPath: process.resourcesPath,
+      isPackaged: app.isPackaged
+    });
+    
+    // Check if critical dependencies are resolvable
+    const criticalModules = ['zod'];
+    for (const moduleName of criticalModules) {
+      try {
+        require.resolve(moduleName);
+        appLogger.verbose('Critical module is resolvable', { module: moduleName });
+      } catch (resolveErr) {
+        appLogger.warn('Critical module NOT resolvable', { 
+          module: moduleName,
+          error: resolveErr instanceof Error ? resolveErr.message : String(resolveErr) 
+        });
+      }
+    }
+    
+    const { registerAllIPCHandlers } = require('./ipc/index');
+    console.log('[Main] IPC handlers module loaded, calling registerAllIPCHandlers');
+    appLogger.verbose('IPC handlers module loaded successfully');
+    
+    registerAllIPCHandlers(null); // Pass null for now, will set mainWindow reference after window creation
+    console.log('[Main] IPC handlers registered successfully');
+    appLogger.info('All IPC handlers registered successfully');
+  } catch (err) {
+    console.error('[Main] FATAL: Could not register IPC handlers:', err);
+    appLogger.error('Could not register IPC handlers', { 
+      error: err instanceof Error ? err.message : String(err), 
+      stack: err instanceof Error ? err.stack : undefined,
+      requireStack: (err as NodeJS.ErrnoException).requireStack
+    });
+  }
+  
+  // Create main application window (starts loading renderer immediately)
+  appLogger.verbose('Creating main application window');
+  createWindow();
+  appLogger.verbose('Main window created', { 
+    width: mainWindow?.getBounds().width, 
+    height: mainWindow?.getBounds().height 
+  });
+  
+  // Update mainWindow reference for timesheet handlers (for progress updates)
+  if (mainWindow) {
+    try {
+      appLogger.verbose('Updating mainWindow reference for IPC handlers');
+      const { setMainWindow } = require('./ipc/index');
+      setMainWindow(mainWindow);
+      console.log('[Main] Updated mainWindow reference for IPC handlers');
+      appLogger.verbose('MainWindow reference updated successfully');
+    } catch (err) {
+      appLogger.warn('Could not update mainWindow reference', { 
+        error: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined
+      });
+    }
+  }
 });
 
 app.on('window-all-closed', () => {

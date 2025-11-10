@@ -188,14 +188,57 @@ export async function submitTimesheets(email: string, password: string, progress
             botLogger.info('Marking entries as submitted in database', { 
                 count: result.submittedIds.length 
             });
-            markTimesheetEntriesAsSubmitted(result.submittedIds);
+            try {
+                markTimesheetEntriesAsSubmitted(result.submittedIds);
+                botLogger.info('Successfully marked entries as submitted', { 
+                    count: result.submittedIds.length 
+                });
+            } catch (markError) {
+                botLogger.error('Could not mark entries as submitted in database', { 
+                    error: markError instanceof Error ? markError.message : String(markError),
+                    count: result.submittedIds.length,
+                    ids: result.submittedIds
+                });
+                // Even though bot submission succeeded, database update failed
+                // Reset these entries back to pending so user can retry
+                try {
+                    const { resetTimesheetEntriesStatus } = require('./database');
+                    resetTimesheetEntriesStatus(result.submittedIds);
+                    botLogger.info('Reset entries to pending after database update failure', { 
+                        count: result.submittedIds.length 
+                    });
+                } catch (resetError) {
+                    botLogger.error('Could not reset entries after database update failure', { 
+                        error: resetError instanceof Error ? resetError.message : String(resetError)
+                    });
+                }
+                // Return error result since database update failed
+                timer.done({ outcome: 'error', reason: 'database-update-failed' });
+                return {
+                    ok: false,
+                    submittedIds: [],
+                    removedIds: result.submittedIds, // Treat as failed since database update failed
+                    totalProcessed: dbRows.length,
+                    successCount: 0,
+                    removedCount: result.submittedIds.length,
+                    error: 'Submission to Smartsheet succeeded but database update failed. Entries have been reset to pending.'
+                };
+            }
         }
         
         if (result.removedIds && result.removedIds.length > 0) {
             botLogger.warn('Removing failed entries from database', { 
                 count: result.removedIds.length
             });
-            removeFailedTimesheetEntries(result.removedIds);
+            try {
+                removeFailedTimesheetEntries(result.removedIds);
+            } catch (removeError) {
+                botLogger.error('Could not remove failed entries from database', { 
+                    error: removeError instanceof Error ? removeError.message : String(removeError),
+                    count: result.removedIds.length
+                });
+                // Don't fail the entire operation if we can't update failed entries
+            }
         }
         
         timer.done({ outcome: result.ok ? 'success' : 'partial', result });

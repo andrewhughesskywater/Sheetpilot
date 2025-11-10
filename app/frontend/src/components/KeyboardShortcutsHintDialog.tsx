@@ -70,6 +70,7 @@ export default function KeyboardShortcutsHintDialog({ open, onClose }: KeyboardS
       onClose={handleClose}
       maxWidth="sm"
       fullWidth
+      disableRestoreFocus
       className="shortcuts-hint-dialog"
       PaperProps={{
         sx: {

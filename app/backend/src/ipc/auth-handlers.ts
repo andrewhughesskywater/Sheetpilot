@@ -41,9 +41,19 @@ if (!ADMIN_PASSWORD) {
  * Register all authentication-related IPC handlers
  */
 export function registerAuthHandlers(): void {
+  console.log('[Auth Handlers] Registering authentication IPC handlers');
+  
+  // Handler for ping (connectivity test)
+  ipcMain.handle('ping', async (_event, message?: string) => {
+    console.log('[Auth Handlers] ping handler called');
+    return `pong: ${message}`;
+  });
+  console.log('[Auth Handlers] Registered handler: ping');
   
   // Handler for user login
   ipcMain.handle('auth:login', async (_event, email: string, password: string, stayLoggedIn: boolean) => {
+    console.log('[Auth Handlers] auth:login handler called');
+
     // Validate input using Zod schema
     const validation = validateInput(loginSchema, { email, password, stayLoggedIn }, 'auth:login');
     if (!validation.success) {
@@ -84,6 +94,7 @@ export function registerAuthHandlers(): void {
       return { success: false, error: errorMessage };
     }
   });
+  console.log('[Auth Handlers] Registered handler: auth:login');
 
   // Handler for session validation
   ipcMain.handle('auth:validateSession', async (_event, token: string) => {
@@ -103,6 +114,7 @@ export function registerAuthHandlers(): void {
       return { valid: false };
     }
   });
+  console.log('[Auth Handlers] Registered handler: auth:validateSession');
 
   // Handler for logout
   ipcMain.handle('auth:logout', async (_event, token: string) => {
@@ -131,6 +143,7 @@ export function registerAuthHandlers(): void {
       return { success: false, error: err instanceof Error ? err.message : String(err) };
     }
   });
+  console.log('[Auth Handlers] Registered handler: auth:logout');
 
   // Handler for getting current session
   ipcMain.handle('auth:getCurrentSession', async (_event, token: string) => {
@@ -157,6 +170,8 @@ export function registerAuthHandlers(): void {
       return null;
     }
   });
+  console.log('[Auth Handlers] Registered handler: auth:getCurrentSession');
+  console.log('[Auth Handlers] All authentication handlers registered successfully');
 }
 
 

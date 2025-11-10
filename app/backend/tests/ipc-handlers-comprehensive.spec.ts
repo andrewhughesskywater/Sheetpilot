@@ -170,6 +170,7 @@ vi.mock('../../shared/logger', () => {
     verbose: vi.fn(),
     silly: vi.fn(),
     audit: vi.fn(),
+    security: vi.fn(),
     startTimer: vi.fn(() => ({ done: vi.fn() }))
   });
   
@@ -184,7 +185,7 @@ vi.mock('../../shared/logger', () => {
 });
 
 // Import after mocks
-import { registerIPCHandlers } from '../src/main';
+import { registerAllIPCHandlers } from '../src/ipc/index';
 import * as db from '../src/services/database';
 import * as imp from '../src/services/timesheet-importer';
 
@@ -212,8 +213,8 @@ describe('IPC Handlers Comprehensive Tests', () => {
   let handlers: Record<string, any>;
 
   beforeAll(() => {
-    // Register handlers once for all tests
-    registerIPCHandlers();
+    // Register handlers once for all tests (pass null for mainWindow in tests)
+    registerAllIPCHandlers(null);
     handlers = globalThis.__test_handlers!;
   });
 
@@ -311,7 +312,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
       const result = await handlers['credentials:store']('', '', '');
       
       expect(result.success).toBe(false);
-      expect(result.error).toContain('Invalid parameters');
+      expect(result.error).toContain('Invalid input');
     });
   });
 
@@ -644,7 +645,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
       const result = await handlers['timesheet:saveDraft'](invalidRow);
       
       expect(result.success).toBe(false);
-      expect(result.error).toContain('Date is required');
+      expect(result.error).toContain('Invalid input');
     });
 
     it('should validate time format', async () => {
@@ -801,7 +802,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
       const result = await handlers['timesheet:deleteDraft'](undefined);
       
       expect(result.success).toBe(false);
-      expect(result.error).toContain('Valid ID is required');
+      expect(result.error).toContain('Invalid input');
     });
 
     it('should handle non-existent entry', async () => {
@@ -872,8 +873,8 @@ describe('IPC Handlers Comprehensive Tests', () => {
       
       expect(result.submitResult).toBeDefined();
       expect(result.submitResult.ok).toBe(true);
-      // Verify that submitTimesheets was called with correct credentials
-      expect(mimps.submitTimesheets).toHaveBeenCalledWith('user@test.com', 'password123');
+      // Verify that submitTimesheets was called with correct credentials and progressCallback
+      expect(mimps.submitTimesheets).toHaveBeenCalledWith('user@test.com', 'password123', expect.any(Function));
       // With mocked database (0 entries), successCount should be 0
       expect(result.submitResult.successCount).toBe(0);
       expect(result.submitResult.totalProcessed).toBe(0);
@@ -900,8 +901,8 @@ describe('IPC Handlers Comprehensive Tests', () => {
       
       expect(result).toBeDefined();
       expect(result.submitResult).toBeDefined();
-      // Verify that submitTimesheets was called
-      expect(mimps.submitTimesheets).toHaveBeenCalledWith('user@test.com', 'password123');
+      // Verify that submitTimesheets was called with progressCallback
+      expect(mimps.submitTimesheets).toHaveBeenCalledWith('user@test.com', 'password123', expect.any(Function));
       // With mocked database (0 entries), the handler completes successfully
       expect(result.submitResult.ok).toBe(true);
       expect(result.submitResult.successCount).toBe(0);

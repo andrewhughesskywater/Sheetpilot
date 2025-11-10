@@ -99,6 +99,51 @@ export function registerDatabaseHandlers(): void {
     }
   });
 
+  // Handler for getting all archive data (timesheet + credentials) in a single call
+  ipcMain.handle('database:getAllArchiveData', async (_event, token: string) => {
+    // Validate session
+    if (!token) {
+      ipcLogger.security('database-access-denied', 'Unauthorized database access attempted', { handler: 'getAllArchiveData' });
+      return { success: false, error: 'Session token is required. Please log in to view archive data.' };
+    }
+
+    const session = validateSession(token);
+    if (!session.valid) {
+      ipcLogger.security('database-access-denied', 'Invalid session attempting database access', { handler: 'getAllArchiveData', token: token.substring(0, 8) + '...' });
+      return { success: false, error: 'Session is invalid or expired. Please log in again.' };
+    }
+
+    ipcLogger.verbose('Fetching all archive data (batched)', { email: session.email });
+    
+    try {
+      const db = getDb();
+      
+      // Get timesheet entries
+      const getTimesheet = db.prepare('SELECT * FROM timesheet WHERE status = \'Complete\' ORDER BY date DESC, time_in DESC');
+      const timesheet = getTimesheet.all();
+      
+      // Get credentials
+      const getCredentials = db.prepare('SELECT id, service, email, created_at, updated_at FROM credentials ORDER BY service');
+      const credentials = getCredentials.all();
+      
+      ipcLogger.verbose('Archive data retrieved', { 
+        timesheetCount: timesheet.length,
+        credentialsCount: credentials.length,
+        email: session.email 
+      });
+      
+      return { 
+        success: true, 
+        timesheet,
+        credentials
+      };
+    } catch (err: unknown) {
+      ipcLogger.error('Could not get archive data', err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      return { success: false, error: errorMessage };
+    }
+  });
+
   // Handler for clearing the entire database (dev only)
   ipcMain.handle('database:clearDatabase', async () => {
     ipcLogger.audit('clear-database', 'User clearing entire database');

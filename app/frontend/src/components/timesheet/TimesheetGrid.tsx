@@ -700,6 +700,10 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
     const previousRow = row > 0 ? timesheetDraftData[row - 1] : undefined;
     const smartPlaceholder = getSmartPlaceholder(previousRow, timesheetDraftData, weekdayPatternRef.current);
 
+    // Check if the date editor is currently open
+    const editor = hotInstance.getActiveEditor();
+    const isEditorOpen = editor && editor.isOpened && editor.isOpened();
+
     // Handle different key combinations
     if (event.key === 'Tab' && event.ctrlKey) {
       // Ctrl+Tab: insert day after the last entry (regardless of smart suggestion)
@@ -719,7 +723,7 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
         shouldPreventDefault = true;
       }
     } else if (event.key === 'Tab') {
-      // Tab: accept placeholder value
+      // Tab: accept placeholder value (works even when date picker is open)
       if (!rowData.date && smartPlaceholder) {
         dateToInsert = smartPlaceholder;
         shouldPreventDefault = true;
@@ -733,6 +737,11 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
     if (dateToInsert && shouldPreventDefault) {
       event.preventDefault();
       event.stopPropagation();
+      
+      // If editor is open, close it first
+      if (isEditorOpen && editor) {
+        editor.finishEditing(false, false);
+      }
       
       // Insert the date
       hotInstance.setDataAtCell(row, 0, dateToInsert);
@@ -781,51 +790,78 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
 
     // Check if all real rows are valid
     let hasErrors = false;
-    for (const row of realRows) {
+    let errorDetails: string[] = [];
+    
+    for (let i = 0; i < realRows.length; i++) {
+      const row = realRows[i];
+      const rowNum = i + 1;
+      
       // Check required fields
-      if (!row.date || !isValidDate(row.date)) {
+      if (!row.date) {
+        errorDetails.push(`Row ${rowNum}: Missing date`);
         hasErrors = true;
-        break;
-      }
-      if (!row.timeIn || !isValidTime(row.timeIn)) {
+      } else if (!isValidDate(row.date)) {
+        errorDetails.push(`Row ${rowNum}: Invalid date format "${row.date}"`);
         hasErrors = true;
-        break;
       }
-      if (!row.timeOut || !isValidTime(row.timeOut)) {
+      
+      if (!row.timeIn) {
+        errorDetails.push(`Row ${rowNum}: Missing start time`);
         hasErrors = true;
-        break;
+      } else if (!isValidTime(row.timeIn)) {
+        errorDetails.push(`Row ${rowNum}: Invalid start time "${row.timeIn}" (must be HH:MM in 15-min increments)`);
+        hasErrors = true;
       }
+      
+      if (!row.timeOut) {
+        errorDetails.push(`Row ${rowNum}: Missing end time`);
+        hasErrors = true;
+      } else if (!isValidTime(row.timeOut)) {
+        errorDetails.push(`Row ${rowNum}: Invalid end time "${row.timeOut}" (must be HH:MM in 15-min increments)`);
+        hasErrors = true;
+      }
+      
       if (!row.project) {
+        errorDetails.push(`Row ${rowNum}: Missing project`);
         hasErrors = true;
-        break;
       }
+      
       if (!row.taskDescription) {
+        errorDetails.push(`Row ${rowNum}: Missing task description`);
         hasErrors = true;
-        break;
       }
+      
       // Check if tool is required
-      if (projectNeedsTools(row.project) && !row.tool) {
+      if (row.project && projectNeedsTools(row.project) && !row.tool) {
+        errorDetails.push(`Row ${rowNum}: Project "${row.project}" requires a tool`);
         hasErrors = true;
-        break;
       }
+      
       // Check if charge code is required
       if (row.tool && toolNeedsChargeCode(row.tool) && !row.chargeCode) {
+        errorDetails.push(`Row ${rowNum}: Tool "${row.tool}" requires a charge code`);
         hasErrors = true;
-        break;
       }
-    }
-
-    if (hasErrors) {
-      return 'warning';
     }
 
     // Check for time overlaps
     for (let i = 0; i < timesheetDraftData.length; i++) {
       if (hasTimeOverlapWithPreviousEntries(i, timesheetDraftData)) {
-        return 'warning';
+        const row = timesheetDraftData[i];
+        errorDetails.push(`Row ${i + 1}: Time overlap detected on ${row.date}`);
+        hasErrors = true;
       }
     }
 
+    // Log validation errors to console for debugging
+    if (hasErrors) {
+      console.group('⚠️ Timesheet Validation Errors');
+      errorDetails.forEach(err => console.warn(err));
+      console.groupEnd();
+      return 'warning';
+    }
+
+    console.log('✅ All timesheet validations passed - button is ready');
     return 'ready';
   }, [timesheetDraftData]);
 

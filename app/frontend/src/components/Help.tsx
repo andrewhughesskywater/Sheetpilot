@@ -350,6 +350,7 @@ function Help() {
         }}
         maxWidth="sm"
         fullWidth
+        disableRestoreFocus
       >
         <DialogTitle>Export Application Logs</DialogTitle>
         <DialogContent>
@@ -391,6 +392,7 @@ function Help() {
         onClose={() => setShowUserGuideDialog(false)}
         maxWidth="md"
         fullWidth
+        disableRestoreFocus
       >
         <DialogTitle>User Guide</DialogTitle>
         <DialogContent>
@@ -413,6 +415,7 @@ function Help() {
           }}
           maxWidth="sm"
           fullWidth
+          disableRestoreFocus
         >
           <DialogTitle>
             <Box display="flex" alignItems="center" gap={1}>
@@ -490,6 +493,7 @@ function Help() {
         }}
         maxWidth="sm"
         fullWidth
+        disableRestoreFocus
       >
         <DialogTitle>
           {storedCredentials.length > 0 ? 'Update SmartSheet Credentials' : 'Add SmartSheet Credentials'}
@@ -559,6 +563,7 @@ function Help() {
         onClose={() => setShowClearCredentialsDialog(false)}
         maxWidth="sm"
         fullWidth
+        disableRestoreFocus
       >
         <DialogTitle>Clear All Credentials</DialogTitle>
         <DialogContent>
@@ -590,6 +595,7 @@ function Help() {
         onClose={() => setShowRebuildDatabaseDialog(false)}
         maxWidth="sm"
         fullWidth
+        disableRestoreFocus
       >
         <DialogTitle>Rebuild Database</DialogTitle>
         <DialogContent>

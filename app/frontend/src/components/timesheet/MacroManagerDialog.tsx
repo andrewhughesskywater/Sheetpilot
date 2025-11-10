@@ -153,6 +153,7 @@ const MacroManagerDialog = ({ open, onClose, onSave }: MacroManagerDialogProps) 
       onClose={handleCancel}
       maxWidth="lg"
       fullWidth
+      disableRestoreFocus
       PaperProps={{
         className: 'macro-manager-dialog-paper'
       }}

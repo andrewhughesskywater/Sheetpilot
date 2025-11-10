@@ -45,6 +45,9 @@ contextBridge.exposeInMainWorld('timesheet', {
   }> => ipcRenderer.invoke('timesheet:exportToCSV'),
   // Listen for submission progress updates
   onSubmissionProgress: (callback: (progress: { percent: number; current: number; total: number; message: string }) => void) => {
+    // Remove any existing listener first to prevent duplicates
+    ipcRenderer.removeAllListeners('timesheet:progress');
+    // Add the new listener
     ipcRenderer.on('timesheet:progress', (_event, progress) => callback(progress));
   },
   // Remove submission progress listener

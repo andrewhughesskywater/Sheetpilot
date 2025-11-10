@@ -689,6 +689,7 @@ export function resetTimesheetEntriesStatus(ids: number[]) {
  * Marks timesheet entries as successfully submitted
  * 
  * @param ids - Array of timesheet entry IDs to mark as complete
+ * @throws {Error} If the database update fails or doesn't affect all expected rows
  */
 export function markTimesheetEntriesAsSubmitted(ids: number[]) {
     if (ids.length === 0) {
@@ -697,23 +698,66 @@ export function markTimesheetEntriesAsSubmitted(ids: number[]) {
     }
     
     const timer = dbLogger.startTimer('mark-entries-submitted');
-    const db = getDb();
     
-    dbLogger.info('Marking timesheet entries as submitted', { count: ids.length, ids });
-    const placeholders = ids.map(() => '?').join(',');
-    const updateSubmitted = db.prepare(`
-        UPDATE timesheet 
-        SET status = 'Complete', 
-            submitted_at = datetime('now')
-        WHERE id IN (${placeholders})
-    `);
-    
-    const result = updateSubmitted.run(...ids);
-    dbLogger.audit('mark-submitted', 'Entries marked as submitted', { 
-        count: ids.length,
-        changes: result.changes 
-    });
-    timer.done({ count: ids.length, changes: result.changes });
+    try {
+        const db = getDb();
+        
+        dbLogger.info('Marking timesheet entries as submitted', { count: ids.length, ids });
+        const placeholders = ids.map(() => '?').join(',');
+        const updateSubmitted = db.prepare(`
+            UPDATE timesheet 
+            SET status = 'Complete', 
+                submitted_at = datetime('now')
+            WHERE id IN (${placeholders})
+              AND (status IS NULL OR status = 'in_progress')
+        `);
+        
+        // Wrap in a transaction so changes roll back on validation failure
+        const transaction = db.transaction(() => {
+            const result = updateSubmitted.run(...ids);
+            
+            // Validate that all expected rows were updated
+            if (result.changes !== ids.length) {
+                const errorMsg = `Database update mismatch: expected ${ids.length} changes, got ${result.changes}`;
+                dbLogger.error(errorMsg, { 
+                    expectedCount: ids.length,
+                    actualChanges: result.changes,
+                    ids 
+                });
+                throw new Error(errorMsg);
+            }
+            
+            return result;
+        });
+        
+        const result = transaction();
+        
+        // Force WAL checkpoint to ensure changes are persisted to disk and visible to all connections
+        try {
+            db.pragma('wal_checkpoint(FULL)');
+            dbLogger.debug('WAL checkpoint executed after marking entries as submitted');
+        } catch (checkpointError) {
+            dbLogger.warn('Could not execute WAL checkpoint', { 
+                error: checkpointError instanceof Error ? checkpointError.message : String(checkpointError)
+            });
+            // Don't throw - checkpoint failure is not critical, changes are still in WAL
+        }
+        
+        dbLogger.audit('mark-submitted', 'Entries marked as submitted', { 
+            count: ids.length,
+            changes: result.changes 
+        });
+        timer.done({ count: ids.length, changes: result.changes, success: true });
+    } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        dbLogger.error('Could not mark timesheet entries as submitted', { 
+            error: errorMsg,
+            count: ids.length,
+            ids 
+        });
+        timer.done({ outcome: 'error', error: errorMsg });
+        throw error;
+    }
 }
 
 /**
@@ -723,6 +767,7 @@ export function markTimesheetEntriesAsSubmitted(ids: number[]) {
  * so users can review and retry submission.
  * 
  * @param ids - Array of timesheet entry IDs that failed to submit
+ * @throws {Error} If the database update fails or doesn't affect all expected rows
  */
 export function removeFailedTimesheetEntries(ids: number[]) {
     if (ids.length === 0) {
@@ -731,22 +776,64 @@ export function removeFailedTimesheetEntries(ids: number[]) {
     }
     
     const timer = dbLogger.startTimer('revert-failed-entries');
-    const db = getDb();
     
-    dbLogger.warn('Reverting failed timesheet entries back to pending', { count: ids.length, ids });
-    const placeholders = ids.map(() => '?').join(',');
-    const revertFailed = db.prepare(`
-        UPDATE timesheet 
-        SET status = NULL
-        WHERE id IN (${placeholders})
-    `);
-    
-    const result = revertFailed.run(...ids);
-    dbLogger.audit('revert-failed', 'Failed entries reverted to pending status', { 
-        count: ids.length,
-        changes: result.changes 
-    });
-    timer.done({ count: ids.length, changes: result.changes });
+    try {
+        const db = getDb();
+        
+        dbLogger.warn('Reverting failed timesheet entries back to pending', { count: ids.length, ids });
+        const placeholders = ids.map(() => '?').join(',');
+        const revertFailed = db.prepare(`
+            UPDATE timesheet 
+            SET status = NULL
+            WHERE id IN (${placeholders})
+        `);
+        
+        // Wrap in a transaction so changes roll back on validation failure
+        const transaction = db.transaction(() => {
+            const result = revertFailed.run(...ids);
+            
+            // Validate that all expected rows were updated
+            if (result.changes !== ids.length) {
+                const errorMsg = `Database update mismatch: expected ${ids.length} changes, got ${result.changes}`;
+                dbLogger.error(errorMsg, { 
+                    expectedCount: ids.length,
+                    actualChanges: result.changes,
+                    ids 
+                });
+                throw new Error(errorMsg);
+            }
+            
+            return result;
+        });
+        
+        const result = transaction();
+        
+        // Force WAL checkpoint to ensure changes are persisted to disk and visible to all connections
+        try {
+            db.pragma('wal_checkpoint(FULL)');
+            dbLogger.debug('WAL checkpoint executed after reverting failed entries');
+        } catch (checkpointError) {
+            dbLogger.warn('Could not execute WAL checkpoint', { 
+                error: checkpointError instanceof Error ? checkpointError.message : String(checkpointError)
+            });
+            // Don't throw - checkpoint failure is not critical, changes are still in WAL
+        }
+        
+        dbLogger.audit('revert-failed', 'Failed entries reverted to pending status', { 
+            count: ids.length,
+            changes: result.changes 
+        });
+        timer.done({ count: ids.length, changes: result.changes, success: true });
+    } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        dbLogger.error('Could not revert failed timesheet entries', { 
+            error: errorMsg,
+            count: ids.length,
+            ids 
+        });
+        timer.done({ outcome: 'error', error: errorMsg });
+        throw error;
+    }
 }
 
 /**

@@ -300,6 +300,7 @@ function AppContent() {
           onClose={() => setShowAboutDialog(false)}
           maxWidth="sm"
           fullWidth
+          disableRestoreFocus
         >
           <DialogTitle>
             About

@@ -113,6 +113,7 @@ function LoginDialog({ open, onLoginSuccess }: LoginDialogProps) {
     <Dialog
       open={open}
       disableEscapeKeyDown
+      disableRestoreFocus
       maxWidth="sm"
       fullWidth
       PaperProps={{
