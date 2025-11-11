@@ -13,11 +13,11 @@ import {
 const Archive = lazy(() => import('./components/archive/DatabaseViewer'));
 const TimesheetGrid = lazy(() => import('./components/timesheet/TimesheetGrid'));
 import type { TimesheetGridHandle } from './components/timesheet/TimesheetGrid';
-import SheetPilotNavigation from './components/SheetPilotNavigation';
-const Help = lazy(() => import('./components/Help'));
+import Navigation from './components/Navigation';
+const Settings = lazy(() => import('./components/Settings'));
 import TimesheetSkeleton from './components/skeletons/TimesheetSkeleton';
 import ArchiveSkeleton from './components/skeletons/ArchiveSkeleton';
-import HelpSkeleton from './components/skeletons/HelpSkeleton';
+import SettingsSkeleton from './components/skeletons/SettingsSkeleton';
 import UpdateDialog from './components/UpdateDialog';
 import LoginDialog from './components/LoginDialog';
 import { DataProvider, useData } from './contexts/DataContext';
@@ -131,8 +131,6 @@ function AppContent() {
   const hasRefreshedEmptyOnceRef = useRef(false);
   const timesheetGridRef = useRef<TimesheetGridHandle>(null);
   
-  const [showAboutDialog, setShowAboutDialog] = useState(false);
-  
   // Update dialog state
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
   const [updateVersion, setUpdateVersion] = useState<string>('');
@@ -219,13 +217,9 @@ function AppContent() {
 
   return (
     <div className="app-container">
-      {/* SheetPilot Navigation */}
-      <SheetPilotNavigation 
+      {/* Navigation */}
+      <Navigation 
         activeTab={activeTab}
-        onLogoClick={() => {
-          window.logger?.userAction('about-dialog-opened');
-          setShowAboutDialog(true);
-        }}
         onTabChange={async (newTab) => {
           if (isTransitioning || newTab === activeTab) return;
           
@@ -278,8 +272,8 @@ function AppContent() {
               )}
 
               {displayedTab === 2 && (
-                <Suspense fallback={<HelpSkeleton />}>
-                  <Help />
+                <Suspense fallback={<SettingsSkeleton />}>
+                  <Settings />
                 </Suspense>
               )}
             </div>
@@ -293,42 +287,6 @@ function AppContent() {
           progress={updateProgress}
           status={updateStatus}
         />
-        
-        {/* About Dialog */}
-        <Dialog 
-          open={showAboutDialog} 
-          onClose={() => setShowAboutDialog(false)}
-          maxWidth="sm"
-          fullWidth
-          disableRestoreFocus
-        >
-          <DialogTitle>
-            About
-          </DialogTitle>
-          <DialogContent>
-            <Box className="about-dialog-content">
-              <img 
-                src={logoImage} 
-                alt="SheetPilot Logo" 
-                className="about-dialog-logo"
-              />
-              <Typography variant="body1" color="text.secondary" gutterBottom>
-                Version {APP_VERSION}
-              </Typography>
-              <Typography variant="body1" color="text.secondary">
-                Created by Andrew Hughes
-              </Typography>
-              <Typography variant="body2" color="text.secondary" className="about-dialog-description">
-                Automate timesheet data entry into web forms
-              </Typography>
-            </Box>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setShowAboutDialog(false)} variant="contained">
-              Close
-            </Button>
-          </DialogActions>
-        </Dialog>
       </div>
     </div>
   );

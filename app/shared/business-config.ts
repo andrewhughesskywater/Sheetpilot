@@ -122,7 +122,7 @@ export const TOOLS_BY_PROJECT: Record<string, readonly string[]> = {
     "#13 Environmental Chamber", "#14 FEMTO101", "#15 Compression Mold Tool", "#16 LMARK101", "#17 Wire Bonder"
   ],
   "SWFL-EQUIP": [
-    "Meeting", "Non Tool Related", "Training", "AFM101", "ALD101", "ALIGN101", "ANL101",
+    "Admin", "Meeting", "Non Tool Related", "AFM101", "ALD101", "ALIGN101", "ANL101",
     "ASET101", "ASH101", "BLUEM101", "BOLD101", "BOND101", "BOND102", "CLN101",
     "COAT101", "COAT102", "DEBOND101", "DEBOND102", "DPS101", "DPS102", "DSM8101",
     "DSS101", "ECI101", "ENDURA101", "ENDURA102", "ETEST101", "EVAP101", "FIB101",

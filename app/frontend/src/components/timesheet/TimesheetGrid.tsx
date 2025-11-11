@@ -14,10 +14,20 @@ import './TimesheetGrid.css';
 import type { TimesheetRow } from './timesheet.schema';
 import MacroManagerDialog from './MacroManagerDialog';
 import KeyboardShortcutsHintDialog from '../KeyboardShortcutsHintDialog';
+import { ValidationErrors } from './ValidationErrors';
+import { ValidationErrorDialog } from './ValidationErrorDialog';
 import type { MacroRow } from '../../utils/macroStorage';
 import { loadMacros, isMacroEmpty } from '../../utils/macroStorage';
 
 type ButtonStatus = 'neutral' | 'ready' | 'warning';
+
+interface ValidationError {
+  row: number;
+  col: number;
+  field: string;
+  message: string;
+}
+
 import { formatTimeInput, normalizeRowData, isValidDate, isValidTime, hasTimeOverlapWithPreviousEntries } from './timesheet.schema';
 import { projects, chargeCodes, projectsWithoutTools, toolsWithoutCharges, getToolOptions, toolNeedsChargeCode, projectNeedsTools } from './timesheet.options';
 import { submitTimesheet } from './timesheet.submit';
@@ -47,10 +57,6 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
   const [isProcessing, setIsProcessing] = useState(false);
   const isProcessingRef = useRef(false); // Synchronous guard against race conditions
   const isDirtyRef = useRef(false); // Track if data has changed since last save
-  const [submissionProgress, setSubmissionProgress] = useState(0);
-  const [currentEntry, setCurrentEntry] = useState(0);
-  const [totalEntries, setTotalEntries] = useState(0);
-  const [progressMessage, setProgressMessage] = useState('');
   const { token, isAdmin } = useSession();
   
   // Macro state
@@ -60,8 +66,15 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
   // Keyboard shortcuts hint dialog state
   const [showShortcutsHint, setShowShortcutsHint] = useState(false);
   
+  // Validation error state
+  const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
+  const [showErrorDialog, setShowErrorDialog] = useState(false);
+  
   // Track weekday pattern for smart date suggestions
   const weekdayPatternRef = useRef<boolean>(false);
+  
+  // Track previous cell selection for clearing invalid entries
+  const previousSelectionRef = useRef<{ row: number; col: number } | null>(null);
   
   // Use preloaded data from context
   const { 
@@ -222,28 +235,41 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
 
     // VALIDATION: Mark cells as invalid AFTER changes (doesn't block editing)
     if (hotInstance) {
+      const newErrors: ValidationError[] = [];
+      
       for (const change of changes) {
         const [rowIdx, prop, , newVal] = change;
         const propStr = String(prop);
         let isValid = true;
+        let errorMessage = '';
 
         // Validate dates
         if (propStr === 'date' && newVal) {
           isValid = isValidDate(String(newVal));
+          if (!isValid) {
+            errorMessage = `Invalid date format "${newVal}" (must be MM/DD/YYYY)`;
+          }
         }
         // Validate times and check for overlaps
         else if ((propStr === 'timeIn' || propStr === 'timeOut') && newVal) {
           isValid = isValidTime(String(newVal));
-          if (isValid && normalized[rowIdx]) {
+          if (!isValid) {
+            const fieldName = propStr === 'timeIn' ? 'start time' : 'end time';
+            errorMessage = `Invalid ${fieldName} "${newVal}" (must be HH:MM in 15-min increments)`;
+          } else if (normalized[rowIdx]) {
             // Check for time overlaps
             if (hasTimeOverlapWithPreviousEntries(rowIdx, normalized)) {
               isValid = false;
+              const rowData = normalized[rowIdx];
+              errorMessage = `Time overlap detected on ${rowData.date || 'this date'}`;
             }
           }
         }
         // Validate required fields
         else if ((propStr === 'project' || propStr === 'taskDescription') && !newVal) {
           isValid = false;
+          const fieldName = propStr === 'project' ? 'Project' : 'Task Description';
+          errorMessage = `${fieldName} is required`;
         }
 
         // Mark cell as invalid or clear the mark
@@ -251,11 +277,31 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
         if (typeof colIdx === 'number' && colIdx >= 0) {
           if (!isValid) {
             hotInstance.setCellMeta(rowIdx, colIdx, 'className', 'htInvalid');
+            newErrors.push({
+              row: rowIdx,
+              col: colIdx,
+              field: propStr,
+              message: errorMessage
+            });
           } else {
             hotInstance.setCellMeta(rowIdx, colIdx, 'className', '');
+            // Remove this cell's error from the list if it was previously invalid
+            setValidationErrors(prev => prev.filter(err => !(err.row === rowIdx && err.col === colIdx)));
           }
         }
       }
+      
+      // Add new errors to state
+      if (newErrors.length > 0) {
+        setValidationErrors(prev => {
+          // Remove duplicates and add new errors
+          const filtered = prev.filter(prevErr => 
+            !newErrors.some(newErr => newErr.row === prevErr.row && newErr.col === prevErr.col)
+          );
+          return [...filtered, ...newErrors];
+        });
+      }
+      
       hotInstance.render();
     }
   }, [timesheetDraftData, setTimesheetDraftData, onChange]);
@@ -365,9 +411,12 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
     });
   }, []);
 
-  // Handle editor opening - add date picker close handler
+  // Handle editor opening - add date picker close handler and dismiss errors
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleAfterBeginEditing = useCallback((_row: number, column: number) => {
+  const handleAfterBeginEditing = useCallback((row: number, column: number) => {
+    // Dismiss errors for this cell when user starts editing
+    setValidationErrors(prev => prev.filter(err => !(err.row === row && err.col === column)));
+    
     // CRITICAL: For date editor, attach close handler to prevent stuck editor
     if (column === 0) {
       const hotInstance = hotTableRef.current?.hotInstance;
@@ -391,26 +440,6 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
   }, []);
 
 
-  // Listen for submission progress events
-  useEffect(() => {
-    if (!window.timesheet?.onSubmissionProgress) {
-      return;
-    }
-    
-    // Set up progress listener
-    window.timesheet.onSubmissionProgress((progress: { percent: number; current: number; total: number; message: string }) => {
-      window.logger?.debug('Submission progress update', progress);
-      setSubmissionProgress(progress.percent);
-      setCurrentEntry(progress.current);
-      setTotalEntries(progress.total);
-      setProgressMessage(progress.message);
-    });
-    
-    // Cleanup on unmount
-    return () => {
-      window.timesheet?.removeProgressListener?.();
-    };
-  }, []);
 
   // Apply macro to current or first empty row
   const applyMacro = useCallback((macroIndex: number) => {
@@ -578,12 +607,6 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
       return;
     }
     
-    // Reset progress state
-    setSubmissionProgress(0);
-    setCurrentEntry(0);
-    setTotalEntries(0);
-    setProgressMessage('');
-    
     isProcessingRef.current = true; // Set synchronously to block subsequent calls immediately
     setIsProcessing(true);
     try {
@@ -614,8 +637,18 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
       window.logger?.error('Unexpected error during submission', { error: error instanceof Error ? error.message : String(error) });
       window.alert(errorMsg);
     } finally {
+      // CRITICAL: Always reset processing state, even if an error occurred
+      // This ensures the UI doesn't get stuck if the browser is manually closed
+      window.logger?.verbose('Resetting submission state in finally block');
       isProcessingRef.current = false; // Clear synchronous guard
       setIsProcessing(false);
+      
+      // Refresh timesheet data to ensure it's in sync with database
+      // This handles cases where the browser was closed manually or submission was interrupted
+      window.logger?.verbose('Refreshing timesheet data in finally block');
+      refreshTimesheetDraft().catch(err => {
+        window.logger?.error('Could not refresh timesheet data in finally block', { error: err });
+      });
     }
   };
 
@@ -753,6 +786,53 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
     }
   }, [timesheetDraftData]);
 
+  // Handle cell selection changes - clear invalid entries when user moves away
+  const handleAfterSelection = useCallback((row: number, col: number) => {
+    const hotInstance = hotTableRef.current?.hotInstance;
+    if (!hotInstance) return;
+
+    // Validate row and col are valid unsigned integers (Handsontable can pass -1 for headers)
+    if (row < 0 || col < 0 || !Number.isInteger(row) || !Number.isInteger(col)) {
+      return;
+    }
+
+    const prevSelection = previousSelectionRef.current;
+    
+    // If user moved away from a cell
+    if (prevSelection && (prevSelection.row !== row || prevSelection.col !== col)) {
+      // Validate previous selection coordinates before using them
+      if (prevSelection.row < 0 || prevSelection.col < 0 || 
+          !Number.isInteger(prevSelection.row) || !Number.isInteger(prevSelection.col)) {
+        // Update current selection and skip invalid cell cleanup
+        previousSelectionRef.current = { row, col };
+        return;
+      }
+      
+      // Check if previous cell was invalid
+      const cellMeta = hotInstance.getCellMeta(prevSelection.row, prevSelection.col);
+      if (cellMeta.className === 'htInvalid') {
+        // Clear the invalid cell value after a brief delay
+        setTimeout(() => {
+          hotInstance.setDataAtCell(prevSelection.row, prevSelection.col, '', 'clearInvalid');
+          
+          // Clear the validation error styling
+          hotInstance.setCellMeta(prevSelection.row, prevSelection.col, 'className', '');
+          hotInstance.render();
+          
+          // Remove the error from state
+          setValidationErrors(prev => 
+            prev.filter(err => !(err.row === prevSelection.row && err.col === prevSelection.col))
+          );
+          
+          window.logger?.verbose('Cleared invalid entry', { row: prevSelection.row, col: prevSelection.col });
+        }, 100);
+      }
+    }
+    
+    // Update previous selection
+    previousSelectionRef.current = { row, col };
+  }, []);
+
   // Column definitions - NO validators (validation happens in afterChange to prevent editor blocking)
   const columnDefinitions = useMemo(() => [
     { data: 'date', title: 'Date', type: 'date', dateFormat: 'MM/DD/YYYY', placeholder: 'MM/DD/YYYY', className: 'htCenter' },
@@ -858,7 +938,7 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
       console.group('⚠️ Timesheet Validation Errors');
       errorDetails.forEach(err => console.warn(err));
       console.groupEnd();
-      return 'warning';
+      return 'neutral';
     }
 
     console.log('✅ All timesheet validations passed - button is ready');
@@ -885,12 +965,81 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
     );
   }
 
+  // DEV ONLY: Simulate successful submission
+  const handleSimulateSuccess = async () => {
+    if (import.meta.env.MODE !== 'development') return;
+    
+    window.logger?.info('[DEV] Simulating successful submission');
+    
+    if (!window.timesheet?.devSimulateSuccess) {
+      window.alert('[DEV] Simulate success API not available');
+      return;
+    }
+    
+    try {
+      // Get all non-empty draft entries
+      const realRows = timesheetDraftData.filter((row: TimesheetRow) => {
+        return row.date && row.timeIn && row.timeOut && row.project && row.taskDescription;
+      });
+      
+      if (realRows.length === 0) {
+        window.alert('[DEV] No entries to submit');
+        return;
+      }
+      
+      // Show the process
+      setIsProcessing(true);
+      
+      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate delay
+      
+      // Call backend to mark entries as complete
+      window.logger?.info('[DEV] Marking entries as Complete');
+      const result = await window.timesheet.devSimulateSuccess();
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to simulate success');
+      }
+      
+      window.logger?.info('[DEV] Entries marked as Complete', { count: result.count });
+      
+      // Refresh the data
+      window.logger?.info('[DEV] Refreshing data after simulated submission');
+      await refreshTimesheetDraft();
+      await refreshArchiveData();
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      window.alert(`[DEV] ✅ Simulated submission of ${result.count} entries\n\nCheck the Archive tab to see them!`);
+      
+    } catch (error) {
+      window.logger?.error('[DEV] Simulation error', { error });
+      window.alert(`[DEV] ❌ Simulation failed: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   return (
     <div className="timesheet-page">
       <div className="timesheet-header">
         {isAdmin && (
           <Alert severity="warning" sx={{ mb: 2 }}>
             Admin users cannot submit timesheet entries to SmartSheet.
+          </Alert>
+        )}
+        {import.meta.env.MODE === 'development' && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span>DEV MODE</span>
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={handleSimulateSuccess}
+                disabled={isProcessing}
+              >
+                Simulate Success
+              </Button>
+            </div>
           </Alert>
         )}
       </div>
@@ -951,6 +1100,7 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
         afterPaste={handleAfterPaste}
         afterBeginEditing={handleAfterBeginEditing}
         beforeKeyDown={handleBeforeKeyDown}
+        afterSelection={handleAfterSelection}
         themeName="ht-theme-horizon"
         width="100%"
         rowHeaders={true}
@@ -985,20 +1135,27 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
         invalidCellClassName="htInvalid"
       />
       <div className="timesheet-footer">
+        <ValidationErrors
+          errors={validationErrors}
+          onShowAllErrors={() => setShowErrorDialog(true)}
+        />
         <SubmitProgressBar
           status={buttonStatus}
           onSubmit={handleSubmitTimesheet}
           isSubmitting={isProcessing}
-          progress={submissionProgress}
-          currentEntry={currentEntry}
-          totalEntries={totalEntries}
-          message={progressMessage}
           icon={<PlayArrowIcon />}
           disabled={isAdmin}
         >
           Submit Timesheet
         </SubmitProgressBar>
       </div>
+
+      {/* Validation Error Dialog */}
+      <ValidationErrorDialog
+        open={showErrorDialog}
+        errors={validationErrors}
+        onClose={() => setShowErrorDialog(false)}
+      />
 
       {/* Macro Manager Dialog */}
       <MacroManagerDialog
@@ -1021,3 +1178,4 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
 
 // Wrap with React.memo to prevent unnecessary re-renders
 export default memo(TimesheetGrid);
+

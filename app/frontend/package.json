@@ -15,14 +15,15 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@sheetpilot/shared": "^1.4.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@handsontable/react-wrapper": "^16.1.1",
     "@mui/icons-material": "^7.3.2",
+    "@mui/lab": "^7.0.1-beta.19",
     "@mui/material": "^7.3.2",
     "@radix-ui/react-separator": "^1.1.7",
     "@radix-ui/react-toolbar": "^1.1.11",
+    "@sheetpilot/shared": "^1.4.0",
     "handsontable": "^16.1.1",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"

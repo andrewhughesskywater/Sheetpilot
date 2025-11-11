@@ -65,10 +65,23 @@ export class PlaywrightBotService implements ISubmissionService {
   /**
    * Submit timesheet entries using browser automation
    */
-  public async submit(entries: TimesheetEntry[], credentials: Credentials, progressCallback?: (percent: number, message: string) => void): Promise<SubmissionResult> {
+  public async submit(entries: TimesheetEntry[], credentials: Credentials, progressCallback?: (percent: number, message: string) => void, abortSignal?: AbortSignal): Promise<SubmissionResult> {
     botLogger.info('Starting Playwright submission', { entryCount: entries.length });
     
     try {
+      // Check if aborted before starting
+      if (abortSignal?.aborted) {
+        botLogger.info('Submission aborted before starting');
+        return {
+          ok: false,
+          submittedIds: [],
+          removedIds: [],
+          totalProcessed: entries.length,
+          successCount: 0,
+          removedCount: 0,
+          error: 'Submission was cancelled'
+        };
+      }
       // Debug: Check each entry's quarter
       botLogger.debug('Checking entries for quarter assignment', {
         entries: entries.map(entry => ({
@@ -121,12 +134,20 @@ export class PlaywrightBotService implements ISubmissionService {
           formUrl: formConfig.BASE_URL,
           formId: formConfig.FORM_ID
         });
+        // Check if aborted before running this quarter
+        if (abortSignal?.aborted) {
+          botLogger.info('Submission aborted during quarter processing', { quarterId });
+          throw new Error('Submission was cancelled');
+        }
+        
         const { ok, submitted, errors } = await runTimesheet(
           botRows,
           credentials.email,
           credentials.password,
           formConfig,
-          progressCallback
+          progressCallback,
+          undefined,
+          abortSignal
         );
         botLogger.info('Bot automation completed', { 
           ok, 

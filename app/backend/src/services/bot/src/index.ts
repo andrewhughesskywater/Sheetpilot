@@ -13,6 +13,8 @@
 export { BotOrchestrator, TimesheetBot, type AutomationResult } from './bot_orchestation';
 import { BotOrchestrator } from './bot_orchestation';
 import * as Cfg from './automation_config';
+import { appSettings } from '../../../../../shared/constants';
+import { botLogger } from '../../../../../shared/logger';
 
 // Authentication and login management
 export { LoginManager, BotNavigationError } from './authentication_flow';
@@ -33,6 +35,9 @@ export * from './quarter_config';
  * @param email - Email for authentication
  * @param password - Password for authentication
  * @param formConfig - Form configuration for dynamic form URLs/IDs (required)
+ * @param progressCallback - Optional callback for progress updates
+ * @param headless - Whether to run browser in headless mode (default: read from environment variable)
+ * @param abortSignal - Optional abort signal for cancellation support
  * @returns Promise with automation results
  */
 export async function runTimesheet(
@@ -40,18 +45,39 @@ export async function runTimesheet(
   email: string, 
   password: string,
   formConfig: { BASE_URL: string; FORM_ID: string; SUBMISSION_ENDPOINT: string; SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[] },
-  progressCallback?: (percent: number, message: string) => void
+  progressCallback?: (percent: number, message: string) => void,
+  headless?: boolean,
+  abortSignal?: AbortSignal
 ): Promise<{
   ok: boolean;
   submitted: number[];
   errors: Array<[number, string]>;
 }> {
-  const bot = new BotOrchestrator(Cfg, formConfig, true, null, progressCallback); // Set headless to true
+  // Read headless setting from shared settings object if not explicitly provided
+  // appSettings.browserHeadless updates dynamically when changed via Settings UI
+  const useHeadless = headless !== undefined ? headless : appSettings.browserHeadless;
+  botLogger.info('Initializing bot orchestrator', { 
+    headlessParam: headless,
+    useHeadless, 
+    appSettingsBrowserHeadless: appSettings.browserHeadless,
+    hasProgressCallback: !!progressCallback 
+  });
+  const bot = new BotOrchestrator(Cfg, formConfig, useHeadless, null, progressCallback);
   
   try {
+    // Check if aborted before starting
+    if (abortSignal?.aborted) {
+      botLogger.info('Automation aborted before starting');
+      return {
+        ok: false,
+        submitted: [],
+        errors: [[0, 'Automation was cancelled']]
+      };
+    }
+    
     // Handle empty rows array - should succeed immediately
     if (rows.length === 0) {
-      console.log('[Bot] No rows to process, returning success');
+      botLogger.info('No rows to process, returning success immediately');
       return {
         ok: true,
         submitted: [],
@@ -60,13 +86,23 @@ export async function runTimesheet(
     }
     
     // Initialize the browser before running automation
-    console.log('[Bot] Starting browser initialization...');
+    botLogger.info('Starting browser initialization', { rowCount: rows.length });
     await bot.start();
-    console.log('[Bot] Browser started successfully');
+    botLogger.info('Browser started successfully');
     
-    console.log('[Bot] Starting automation with', rows.length, 'rows');
-    const [success, submitted_indices, errors] = await bot.run_automation(rows, [email, password]);
-    console.log('[Bot] Automation completed:', { success, submittedCount: submitted_indices.length, errorCount: errors.length });
+    // Check if aborted after browser start
+    if (abortSignal?.aborted) {
+      botLogger.info('Automation aborted after browser start');
+      return {
+        ok: false,
+        submitted: [],
+        errors: [[0, 'Automation was cancelled']]
+      };
+    }
+    
+    botLogger.info('Starting automation', { rowCount: rows.length });
+    const [success, submitted_indices, errors] = await bot.run_automation(rows, [email, password], abortSignal);
+    botLogger.info('Automation completed', { success, submittedCount: submitted_indices.length, errorCount: errors.length });
     
     return {
       ok: success,
@@ -74,18 +110,40 @@ export async function runTimesheet(
       errors: errors
     };
   } catch (error) {
-    console.error('[Bot] Error during automation:', error);
+    // Check if error is due to abort or browser closure
+    if (error instanceof Error) {
+      const errorMsg = error.message.toLowerCase();
+      if (errorMsg.includes('cancelled') || errorMsg.includes('aborted')) {
+        botLogger.info('Automation was cancelled');
+        return {
+          ok: false,
+          submitted: [],
+          errors: [[0, 'Automation was cancelled']]
+        };
+      }
+      // Check for Playwright browser closure errors
+      if (errorMsg.includes('browser has been closed') || errorMsg.includes('target closed')) {
+        botLogger.info('Browser was closed during automation');
+        return {
+          ok: false,
+          submitted: [],
+          errors: [[0, 'Automation was cancelled - browser closed']]
+        };
+      }
+    }
+    
+    botLogger.error('Error during automation', { error: error instanceof Error ? error.message : String(error) });
     // Re-throw the error so it can be properly handled by the calling code
     throw error;
   } finally {
     // Always clean up the browser, even if automation fails
     try {
-      console.log('[Bot] Closing browser...');
+      botLogger.verbose('Closing browser');
       await bot.close();
-      console.log('[Bot] Browser closed successfully');
+      botLogger.info('Browser closed successfully');
     } catch (closeError) {
       // Log but don't throw - we don't want cleanup errors to mask the real error
-      console.error('Error closing bot browser:', closeError);
+      botLogger.error('Could not close bot browser', { error: closeError instanceof Error ? closeError.message : String(closeError) });
     }
   }
 }

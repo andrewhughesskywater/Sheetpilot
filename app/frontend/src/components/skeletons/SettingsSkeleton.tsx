@@ -1,10 +1,10 @@
 import { Box, Skeleton, Card, CardContent } from '@mui/material';
 
 /**
- * Loading skeleton for the Help page
- * Matches the layout structure of Help component
+ * Loading skeleton for the Settings page
+ * Matches the layout structure of Settings component
  */
-export default function HelpSkeleton() {
+export default function SettingsSkeleton() {
   return (
     <Box sx={{ p: 3, maxWidth: 1200, margin: '0 auto' }}>
       {/* Header skeleton */}

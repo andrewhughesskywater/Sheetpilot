@@ -23,7 +23,6 @@
     "app/shared/**/*.ts"
   ],
   "exclude": [
-    "app/backend/src/services/bot/**/*",
     "app/backend/tests/**/*",
     "node_modules",
     "build",

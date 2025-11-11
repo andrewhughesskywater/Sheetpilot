@@ -49,7 +49,20 @@ export class MockSubmissionService implements ISubmissionService {
   /**
    * Submit timesheet entries (mock implementation)
    */
-  public async submit(entries: TimesheetEntry[], _credentials: Credentials): Promise<SubmissionResult> {
+  public async submit(entries: TimesheetEntry[], _credentials: Credentials, _progressCallback?: (percent: number, message: string) => void, abortSignal?: AbortSignal): Promise<SubmissionResult> {
+    // Check if aborted before starting
+    if (abortSignal?.aborted) {
+      return {
+        ok: false,
+        submittedIds: [],
+        removedIds: [],
+        totalProcessed: entries.length,
+        successCount: 0,
+        removedCount: 0,
+        error: 'Submission was cancelled'
+      };
+    }
+    
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 500));
 

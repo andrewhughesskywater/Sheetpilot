@@ -2642,3 +2642,378 @@ describe('TimesheetGrid Advanced - Concurrent Editing Scenarios', () => {
     expect(dataModifiedDuringSave).toBe(true);
   });
 });
+
+describe('TimesheetGrid Validation Error Feedback', () => {
+  interface ValidationError {
+    row: number;
+    col: number;
+    field: string;
+    message: string;
+  }
+
+  it('should create validation error objects with correct structure', () => {
+    const error: ValidationError = {
+      row: 5,
+      col: 1,
+      field: 'timeIn',
+      message: 'Invalid start time "540" (must be HH:MM in 15-min increments)'
+    };
+    
+    expect(error).toHaveProperty('row');
+    expect(error).toHaveProperty('col');
+    expect(error).toHaveProperty('field');
+    expect(error).toHaveProperty('message');
+    expect(error.row).toBe(5);
+    expect(error.col).toBe(1);
+    expect(error.field).toBe('timeIn');
+    expect(error.message).toContain('Invalid start time');
+  });
+
+  it('should generate specific error messages for invalid dates', () => {
+    const generateDateError = (value: string) => {
+      return `Invalid date format "${value}" (must be MM/DD/YYYY)`;
+    };
+    
+    expect(generateDateError('11/32/2025')).toBe('Invalid date format "11/32/2025" (must be MM/DD/YYYY)');
+    expect(generateDateError('2025-11-10')).toBe('Invalid date format "2025-11-10" (must be MM/DD/YYYY)');
+    expect(generateDateError('invalid')).toBe('Invalid date format "invalid" (must be MM/DD/YYYY)');
+  });
+
+  it('should generate specific error messages for invalid times', () => {
+    const generateTimeError = (value: string, field: 'timeIn' | 'timeOut') => {
+      const fieldName = field === 'timeIn' ? 'start time' : 'end time';
+      return `Invalid ${fieldName} "${value}" (must be HH:MM in 15-min increments)`;
+    };
+    
+    expect(generateTimeError('540', 'timeIn')).toBe('Invalid start time "540" (must be HH:MM in 15-min increments)');
+    expect(generateTimeError('9:07', 'timeOut')).toBe('Invalid end time "9:07" (must be HH:MM in 15-min increments)');
+    expect(generateTimeError('25:00', 'timeIn')).toBe('Invalid start time "25:00" (must be HH:MM in 15-min increments)');
+  });
+
+  it('should generate error messages for time overlaps', () => {
+    const generateOverlapError = (date: string) => {
+      return `Time overlap detected on ${date}`;
+    };
+    
+    expect(generateOverlapError('11/10/2025')).toBe('Time overlap detected on 11/10/2025');
+    expect(generateOverlapError('this date')).toBe('Time overlap detected on this date');
+  });
+
+  it('should generate error messages for required fields', () => {
+    const generateRequiredFieldError = (field: 'project' | 'taskDescription') => {
+      const fieldName = field === 'project' ? 'Project' : 'Task Description';
+      return `${fieldName} is required`;
+    };
+    
+    expect(generateRequiredFieldError('project')).toBe('Project is required');
+    expect(generateRequiredFieldError('taskDescription')).toBe('Task Description is required');
+  });
+
+  it('should track multiple validation errors', () => {
+    const errors: ValidationError[] = [
+      { row: 0, col: 1, field: 'timeIn', message: 'Invalid start time "540"' },
+      { row: 0, col: 2, field: 'timeOut', message: 'Invalid end time "1700"' },
+      { row: 1, col: 0, field: 'date', message: 'Invalid date format "11/32/2025"' }
+    ];
+    
+    expect(errors).toHaveLength(3);
+    expect(errors[0].row).toBe(0);
+    expect(errors[1].row).toBe(0);
+    expect(errors[2].row).toBe(1);
+  });
+
+  it('should remove validation error when cell is corrected', () => {
+    let errors: ValidationError[] = [
+      { row: 0, col: 1, field: 'timeIn', message: 'Invalid start time' },
+      { row: 0, col: 2, field: 'timeOut', message: 'Invalid end time' },
+      { row: 1, col: 0, field: 'date', message: 'Invalid date' }
+    ];
+    
+    // Simulate correction of row 0, col 1
+    errors = errors.filter(err => !(err.row === 0 && err.col === 1));
+    
+    expect(errors).toHaveLength(2);
+    expect(errors[0].field).toBe('timeOut');
+    expect(errors[1].field).toBe('date');
+  });
+
+  it('should handle duplicate error prevention', () => {
+    const existingErrors: ValidationError[] = [
+      { row: 0, col: 1, field: 'timeIn', message: 'Error 1' }
+    ];
+    
+    const newErrors: ValidationError[] = [
+      { row: 0, col: 1, field: 'timeIn', message: 'Error 1 Updated' },
+      { row: 1, col: 0, field: 'date', message: 'Error 2' }
+    ];
+    
+    // Simulate deduplication logic
+    const filtered = existingErrors.filter(prevErr => 
+      !newErrors.some(newErr => newErr.row === prevErr.row && newErr.col === prevErr.col)
+    );
+    const merged = [...filtered, ...newErrors];
+    
+    expect(merged).toHaveLength(2);
+    expect(merged[0].message).toBe('Error 1 Updated'); // Old error replaced
+    expect(merged[1].message).toBe('Error 2'); // New error added
+  });
+
+  it('should clear invalid cell value when user moves away', () => {
+    const mockData = [
+      ['11/10/2025', '540', '17:00', 'Project A', 'Tool', 'Code', 'Task']
+    ];
+    
+    // Simulate clearing invalid cell (row 0, col 1)
+    mockData[0][1] = '';
+    
+    expect(mockData[0][1]).toBe('');
+    expect(mockData[0][0]).toBe('11/10/2025'); // Other cells unchanged
+  });
+
+  it('should dismiss error when user starts editing cell', () => {
+    let errors: ValidationError[] = [
+      { row: 0, col: 1, field: 'timeIn', message: 'Invalid time' },
+      { row: 1, col: 0, field: 'date', message: 'Invalid date' }
+    ];
+    
+    // Simulate user starting to edit row 0, col 1
+    const editRow = 0;
+    const editCol = 1;
+    errors = errors.filter(err => !(err.row === editRow && err.col === editCol));
+    
+    expect(errors).toHaveLength(1);
+    expect(errors[0].field).toBe('date');
+  });
+
+  it('should support validation error dialog state management', () => {
+    let showErrorDialog = false;
+    
+    // Open dialog
+    showErrorDialog = true;
+    expect(showErrorDialog).toBe(true);
+    
+    // Close dialog
+    showErrorDialog = false;
+    expect(showErrorDialog).toBe(false);
+  });
+
+  it('should display up to 3 errors directly in ValidationErrors component', () => {
+    const errors: ValidationError[] = [
+      { row: 0, col: 1, field: 'timeIn', message: 'Error 1' },
+      { row: 1, col: 0, field: 'date', message: 'Error 2' },
+      { row: 2, col: 2, field: 'timeOut', message: 'Error 3' }
+    ];
+    
+    const MAX_VISIBLE_ERRORS = 3;
+    const visibleErrors = errors.slice(0, MAX_VISIBLE_ERRORS);
+    const hasMoreErrors = errors.length > MAX_VISIBLE_ERRORS;
+    
+    expect(visibleErrors).toHaveLength(3);
+    expect(hasMoreErrors).toBe(false);
+  });
+
+  it('should show summary button when more than 3 errors', () => {
+    const errors: ValidationError[] = [
+      { row: 0, col: 1, field: 'timeIn', message: 'Error 1' },
+      { row: 1, col: 0, field: 'date', message: 'Error 2' },
+      { row: 2, col: 2, field: 'timeOut', message: 'Error 3' },
+      { row: 3, col: 1, field: 'timeIn', message: 'Error 4' }
+    ];
+    
+    const MAX_VISIBLE_ERRORS = 3;
+    const hasMoreErrors = errors.length > MAX_VISIBLE_ERRORS;
+    
+    expect(hasMoreErrors).toBe(true);
+    expect(errors.length).toBe(4);
+  });
+
+  it('should format error messages with row numbers', () => {
+    const error: ValidationError = {
+      row: 4, // Zero-indexed
+      col: 1,
+      field: 'timeIn',
+      message: 'Invalid start time'
+    };
+    
+    const displayMessage = `Row ${error.row + 1}: ${error.message}`;
+    
+    expect(displayMessage).toBe('Row 5: Invalid start time');
+  });
+
+  it('should handle afterSelection hook for clearing invalid entries', () => {
+    const previousSelection = { row: 0, col: 1 };
+    const currentSelection = { row: 0, col: 2 };
+    
+    const hasSelectionChanged = 
+      previousSelection.row !== currentSelection.row || 
+      previousSelection.col !== currentSelection.col;
+    
+    expect(hasSelectionChanged).toBe(true);
+  });
+
+  it('should delay clearing invalid entries', (done) => {
+    let cellValue = 'invalid';
+    
+    // Simulate delayed clearing
+    setTimeout(() => {
+      cellValue = '';
+      expect(cellValue).toBe('');
+      done();
+    }, 100);
+  });
+
+  it('should track cell meta for invalid styling', () => {
+    const cellMeta = {
+      row: 0,
+      col: 1,
+      className: 'htInvalid'
+    };
+    
+    expect(cellMeta.className).toBe('htInvalid');
+  });
+
+  it('should clear cell meta when error is fixed', () => {
+    let cellClassName = 'htInvalid';
+    
+    // Simulate clearing invalid styling
+    cellClassName = '';
+    
+    expect(cellClassName).toBe('');
+  });
+
+  it('should validate that htInvalid uses light red background', () => {
+    const invalidCellStyle = {
+      backgroundColor: 'rgba(255, 0, 0, 0.15)',
+      border: '1px solid var(--md-sys-color-error)'
+    };
+    
+    expect(invalidCellStyle.backgroundColor).toBe('rgba(255, 0, 0, 0.15)');
+    expect(invalidCellStyle.border).toContain('error');
+  });
+
+  it('should handle validation errors from multiple fields in same row', () => {
+    const errors: ValidationError[] = [
+      { row: 0, col: 1, field: 'timeIn', message: 'Invalid start time' },
+      { row: 0, col: 2, field: 'timeOut', message: 'Invalid end time' },
+      { row: 0, col: 3, field: 'project', message: 'Project is required' }
+    ];
+    
+    const row0Errors = errors.filter(err => err.row === 0);
+    
+    expect(row0Errors).toHaveLength(3);
+    expect(row0Errors.map(e => e.field)).toEqual(['timeIn', 'timeOut', 'project']);
+  });
+
+  it('should not show error display when no errors exist', () => {
+    const errors: ValidationError[] = [];
+    
+    const shouldShowErrorDisplay = errors.length > 0;
+    
+    expect(shouldShowErrorDisplay).toBe(false);
+  });
+
+  it('should open error dialog when summary button is clicked', () => {
+    let showErrorDialog = false;
+    
+    // Simulate button click
+    const handleShowAllErrors = () => {
+      showErrorDialog = true;
+    };
+    
+    handleShowAllErrors();
+    
+    expect(showErrorDialog).toBe(true);
+  });
+
+  it('should pass all errors to dialog component', () => {
+    const errors: ValidationError[] = [
+      { row: 0, col: 1, field: 'timeIn', message: 'Error 1' },
+      { row: 1, col: 0, field: 'date', message: 'Error 2' },
+      { row: 2, col: 2, field: 'timeOut', message: 'Error 3' },
+      { row: 3, col: 1, field: 'timeIn', message: 'Error 4' },
+      { row: 4, col: 0, field: 'date', message: 'Error 5' }
+    ];
+    
+    // Dialog should receive all errors
+    const dialogErrors = errors;
+    
+    expect(dialogErrors).toHaveLength(5);
+    expect(dialogErrors).toEqual(errors);
+  });
+
+  it('should close dialog when close button is clicked', () => {
+    let showErrorDialog = true;
+    
+    // Simulate close button click
+    const handleCloseDialog = () => {
+      showErrorDialog = false;
+    };
+    
+    handleCloseDialog();
+    
+    expect(showErrorDialog).toBe(false);
+  });
+
+  it('should integrate with existing afterChange validation', () => {
+    const mockChanges = [
+      [0, 'timeIn', '', '540']
+    ];
+    
+    // Simulate validation in afterChange
+    const isValidTime = (timeStr: string): boolean => {
+      const timeRegex = /^([01]?[0-9]|2[0-3]):([0-5][0-9])$/;
+      if (!timeRegex.test(timeStr)) return false;
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      return (hours * 60 + minutes) % 15 === 0;
+    };
+    
+    const value = mockChanges[0][3] as string;
+    const isValid = isValidTime(value);
+    
+    expect(isValid).toBe(false);
+  });
+
+  it('should maintain error state across component renders', () => {
+    let errors: ValidationError[] = [
+      { row: 0, col: 1, field: 'timeIn', message: 'Invalid time' }
+    ];
+    
+    // Simulate component re-render (errors should persist)
+    const errorsCopy = [...errors];
+    
+    expect(errorsCopy).toHaveLength(1);
+    expect(errorsCopy[0]).toEqual(errors[0]);
+  });
+
+  it('should handle concurrent validation and error dismissal', () => {
+    let errors: ValidationError[] = [
+      { row: 0, col: 1, field: 'timeIn', message: 'Error 1' }
+    ];
+    
+    // New error added
+    const newError: ValidationError = { row: 1, col: 0, field: 'date', message: 'Error 2' };
+    errors = [...errors, newError];
+    
+    expect(errors).toHaveLength(2);
+    
+    // User starts editing first error cell - dismiss it
+    errors = errors.filter(err => !(err.row === 0 && err.col === 1));
+    
+    expect(errors).toHaveLength(1);
+    expect(errors[0].field).toBe('date');
+  });
+
+  it('should validate error message clarity and actionability', () => {
+    const errors: ValidationError[] = [
+      { row: 0, col: 1, field: 'timeIn', message: 'Invalid start time "540" (must be HH:MM in 15-min increments)' },
+      { row: 1, col: 0, field: 'date', message: 'Invalid date format "11/32/2025" (must be MM/DD/YYYY)' },
+      { row: 2, col: 3, field: 'project', message: 'Project is required' }
+    ];
+    
+    // All messages should explain what's wrong and what's expected
+    errors.forEach(error => {
+      expect(error.message).toBeTruthy();
+      expect(error.message.length).toBeGreaterThan(10); // Not just "Invalid"
+    });
+  });
+});

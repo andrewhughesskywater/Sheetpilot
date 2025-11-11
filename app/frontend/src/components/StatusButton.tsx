@@ -1,14 +1,13 @@
 /**
  * StatusButton Component
- * Reusable button with status-based coloring
+ * Thin wrapper around MUI LoadingButton with status-based coloring
  * - neutral: No data or inactive state (gray, disabled)
- * - ready: Ready for action (teal/green, enabled)
- * - warning: Has issues/validation errors (orange, disabled)
+ * - ready: Ready for action (success color, enabled)
+ * - warning: Has issues/validation errors (warning color, disabled)
  */
 
-import { Button, CircularProgress } from '@mui/material';
+import { LoadingButton } from '@mui/lab';
 import type { ReactNode } from 'react';
-import './StatusButton.css';
 
 export type ButtonStatus = 'neutral' | 'ready' | 'warning';
 
@@ -21,7 +20,7 @@ export interface StatusButtonProps {
   onClick: () => void;
   /** Is the button currently processing */
   isProcessing?: boolean;
-  /** Processing state text (e.g., "Submitting...") */
+  /** Processing state text (e.g., "Submitting...") - not used with LoadingButton */
   processingText?: string;
   /** Icon to display when not processing */
   icon?: ReactNode;
@@ -29,7 +28,7 @@ export interface StatusButtonProps {
   disabled?: boolean;
   /** Button size */
   size?: 'small' | 'medium' | 'large';
-  /** Additional CSS class names */
+  /** Additional CSS class names - not used */
   className?: string;
 }
 
@@ -38,29 +37,39 @@ export function StatusButton({
   children,
   onClick,
   isProcessing = false,
-  processingText,
   icon,
   disabled = false,
-  size = 'large',
-  className = ''
+  size = 'large'
 }: StatusButtonProps) {
   // Determine if button should be disabled
   const isDisabled = isProcessing || disabled || status === 'neutral' || status === 'warning';
 
-  // Determine status class
-  const statusClass = `status-button-${status}`;
+  // Map status to MUI color
+  const getColor = () => {
+    switch (status) {
+      case 'ready':
+        return 'success';
+      case 'warning':
+        return 'warning';
+      case 'neutral':
+      default:
+        return 'primary';
+    }
+  };
 
   return (
-    <Button
+    <LoadingButton
       variant="contained"
       size={size}
-      className={`status-button ${statusClass} ${className}`}
-      startIcon={isProcessing ? <CircularProgress size={20} color="inherit" /> : icon}
+      loading={isProcessing}
+      loadingPosition="start"
+      startIcon={icon}
       onClick={onClick}
       disabled={isDisabled}
+      color={getColor()}
     >
-      {isProcessing && processingText ? processingText : children}
-    </Button>
+      {children}
+    </LoadingButton>
   );
 }
 

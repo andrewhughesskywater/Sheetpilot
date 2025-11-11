@@ -36,9 +36,9 @@ export class WebformFiller {
   browser_kind: string;
   /** Playwright Browser instance (null until started) */
   browser: Browser | null = null;
-  /** Playwright BrowserContext instances for parallel processing */
+  /** Playwright BrowserContext instances */
   contexts: BrowserContext[] = [];
-  /** Playwright Page instances for parallel processing */
+  /** Playwright Page instances */
   pages: Page[] = [];
   /** Legacy single context (maintained for backwards compatibility) */
   context: BrowserContext | null = null;
@@ -86,17 +86,15 @@ export class WebformFiller {
       return; // Prevent multiple initializations
     }
     const timer = botLogger.startTimer('browser-startup');
-    const maxContexts = cfg.ENABLE_PARALLEL_PROCESSING ? cfg.MAX_PARALLEL_CONTEXTS : 1;
     botLogger.info('Starting browser', { 
       browserKind: this.browser_kind, 
-      headless: this.headless,
-      parallelContexts: maxContexts
+      headless: this.headless
     });
     
     await this._launch_browser();
     
-    // Create multiple contexts for parallel processing
-    for (let i = 0; i < maxContexts; i++) {
+    // Create browser context
+    for (let i = 0; i < 1; i++) {
       await this._create_context_at_index(i);
       await this._create_page_at_index(i);
     }
@@ -386,7 +384,7 @@ export class WebformFiller {
 
   /**
    * Navigates to the base URL for form interaction
-   * @param contextIndex - Optional context index for parallel processing
+   * @param contextIndex - Optional context index
    * @returns Promise that resolves when navigation is complete
    */
   async navigate_to_base(contextIndex?: number): Promise<void> {
@@ -396,7 +394,7 @@ export class WebformFiller {
 
   /**
    * Wait for the form to be ready for interaction
-   * @param contextIndex - Optional context index for parallel processing
+   * @param contextIndex - Optional context index
    */
   async wait_for_form_ready(contextIndex?: number): Promise<void> {
     const page = contextIndex !== undefined ? this.getPage(contextIndex) : this.require_page();
@@ -445,7 +443,7 @@ export class WebformFiller {
    * 
    * @param spec - Field specification containing locator and label
    * @param value - Value to inject into the field
-   * @param contextIndex - Optional context index for parallel processing
+   * @param contextIndex - Optional context index
    * @returns Promise that resolves when field is filled
    * @throws Error if field locator is missing or field doesn't become visible
    */
@@ -535,7 +533,7 @@ export class WebformFiller {
    * and validates the submission based on response patterns and content.
    * Includes comprehensive response validation similar to the Python version.
    * 
-   * @param contextIndex - Optional context index for parallel processing
+   * @param contextIndex - Optional context index
    * @returns Promise resolving to true if submission was successful, false otherwise
    */
   async submit_form(contextIndex?: number): Promise<boolean> {
@@ -553,28 +551,31 @@ export class WebformFiller {
     const handler = async (response: import('playwright').Response) => {
       allResponses.push({ status: response.status(), url: response.url() });
       
-      // Check if this is the specific Smartsheet form submission response
-      const isSubmissionResponse = (
-        // Check for the exact submission API endpoint
-        response.url().includes('/api/submit/') && 
-        response.url().includes('forms.smartsheet.com') &&
-        // Check for the specific form ID
-        response.url().includes(this.formConfig.FORM_ID)
+      // Check if this is a Smartsheet response with success status
+      const isSmartsheetDomain = (
+        response.url().includes('smartsheet.com') || 
+        response.url().includes('smartsheet.')
       );
       
-      // Also check for general Smartsheet responses as fallback
-      const isGeneralSmartsheetResponse = (
-        (response.url().includes('forms.smartsheet.com') || response.url().includes('app.smartsheet.com')) &&
-        (cfg.SUBMIT_SUCCESS_MIN_STATUS <= response.status() && response.status() <= cfg.SUBMIT_SUCCESS_MAX_STATUS)
+      const isSuccessStatus = (
+        cfg.SUBMIT_SUCCESS_MIN_STATUS <= response.status() && 
+        response.status() <= cfg.SUBMIT_SUCCESS_MAX_STATUS
       );
       
-      if (isSubmissionResponse || isGeneralSmartsheetResponse) {
-        botLogger.verbose('Received potential success response', { status: response.status(), url: response.url() });
+      // Only process Smartsheet responses with success status codes
+      if (isSmartsheetDomain && isSuccessStatus) {
+        botLogger.verbose('Received Smartsheet response', { 
+          status: response.status(), 
+          url: response.url() 
+        });
         
         try {
           // Get response content to validate submission success
           const responseText = await response.text();
-          botLogger.debug('Response content from', { url: response.url(), content: responseText.substring(0, 200) + '...' });
+          botLogger.debug('Response content', { 
+            url: response.url(), 
+            contentPreview: responseText.substring(0, 200) + '...' 
+          });
           
           // Extract additional metadata from response headers
           const responseHeaders = response.headers();
@@ -583,41 +584,58 @@ export class WebformFiller {
             botLogger.debug('Found request ID', { requestId: responseHeaders['x-smar-request-id'] });
           }
           
-          // Check for successful submission indicators
+          // Check for successful submission indicators in response content
           if (this._validate_submission_response(responseText)) {
             successResponses.push({ status: response.status(), url: response.url(), body: responseText });
             
-            // Extract submission ID if present
+            // Extract submission ID and token if present
             try {
               const responseData = JSON.parse(responseText);
               if ('submissionId' in responseData) {
                 submissionIds.push(responseData.submissionId);
-                botLogger.info('Form submission successful with ID', { submissionId: responseData.submissionId });
-              } else {
-                botLogger.info('Form submission successful (no submission ID)');
+                botLogger.info('Form submission successful', { 
+                  submissionId: responseData.submissionId,
+                  url: response.url()
+                });
               }
               
-              // Extract submission token if present
               if ('token' in responseData) {
                 submissionTokens.push(responseData.token);
                 botLogger.debug('Found submission token', { token: responseData.token });
               }
-            } catch {
+            } catch (parseError) {
               botLogger.info('Form submission successful (non-JSON response)');
             }
             
-            botLogger.info('Received HTTP response from', { status: response.status(), url: response.url() });
             return;
           }
+          
+          // Fallback: if content validation failed but we got a success status from Smartsheet,
+          // still accept it as successful (Smartsheet returned 200-299)
+          botLogger.warn('Response content validation failed, but accepting based on HTTP status', { 
+            status: response.status(),
+            url: response.url(),
+            contentPreview: responseText.substring(0, 200) + '...'
+          });
+          successResponses.push({ status: response.status(), url: response.url() });
+          return;
         } catch (contentError) {
-          botLogger.debug('Could not validate response content', { error: String(contentError) });
+          // If we can't even read the response content, still accept based on HTTP status
+          botLogger.warn('Could not read response content, accepting based on HTTP status', { 
+            error: String(contentError),
+            status: response.status(),
+            url: response.url()
+          });
+          successResponses.push({ status: response.status(), url: response.url() });
+          return;
         }
-        
-        // Fallback: if we can't validate content, accept HTTP status
-        successResponses.push({ status: response.status(), url: response.url() });
-        botLogger.info('Received HTTP response (content validation failed)', { status: response.status(), url: response.url() });
       } else {
-        botLogger.debug('Received HTTP response', { status: response.status(), url: response.url() });
+        botLogger.silly('Ignoring non-Smartsheet or non-success response', { 
+          status: response.status(), 
+          url: response.url(),
+          isSmartsheet: isSmartsheetDomain,
+          isSuccess: isSuccessStatus
+        });
       }
     };
 
@@ -661,69 +679,86 @@ export class WebformFiller {
       // Use DOM-based wait for submission verification
       const verifyTimeout = Math.min(cfg.SUBMIT_VERIFY_TIMEOUT_MS / 1000.0, cfg.GLOBAL_TIMEOUT);
       
+      // Track if we found DOM success indicators
+      let domSuccessFound = false;
+      
       // Wait for either HTTP response OR DOM success indicators
-      await cfg.dynamic_wait(async () => {
-        // Check for HTTP response success
-        if (successResponses.length > 0) {
-          return true;
-        }
-        
-        // Check for DOM success indicators
-        const successSelectors = [
-          '.submission-success',
-          '.form-success',
-          '[data-submission-status="success"]',
-          '.confirmation-message',
-          '.success-message',
-          '.alert-success'
-        ];
-        
-        for (const selector of successSelectors) {
-          try {
-            const element = page.locator(selector);
-            if (await element.isVisible().catch(() => false)) {
-              return true;
+      try {
+        await cfg.dynamic_wait(async () => {
+          // Check for HTTP response success
+          if (successResponses.length > 0) {
+            botLogger.verbose('HTTP response success detected');
+            return true;
+          }
+          
+          // Check for DOM success indicators
+          const successSelectors = [
+            '.submission-success',
+            '.form-success',
+            '[data-submission-status="success"]',
+            '.confirmation-message',
+            '.success-message',
+            '.alert-success'
+          ];
+          
+          for (const selector of successSelectors) {
+            try {
+              const element = page.locator(selector);
+              if (await element.isVisible().catch(() => false)) {
+                botLogger.info('DOM success indicator found', { selector });
+                domSuccessFound = true;
+                return true;
+              }
+            } catch {
+              continue;
             }
-          } catch {
-            continue;
+          }
+          
+          return false;
+        }, cfg.DYNAMIC_WAIT_BASE_TIMEOUT * 0.5, verifyTimeout, cfg.DYNAMIC_WAIT_MULTIPLIER, 'form submission verification');
+      } catch (waitError) {
+        botLogger.warn('Form submission verification wait timed out', { error: String(waitError) });
+      }
+      
+      // Check for successful submissions (HTTP response OR DOM indicator)
+      if (successResponses.length > 0 || domSuccessFound) {
+        const successDetails: string[] = [];
+        
+        if (domSuccessFound && successResponses.length === 0) {
+          successDetails.push('DOM success indicator detected');
+          botLogger.info('Form submission validated via DOM indicator');
+        } else {
+          if (submissionIds.length > 0) {
+            successDetails.push(`submission IDs: ${submissionIds.join(', ')}`);
+          }
+          if (submissionTokens.length > 0) {
+            successDetails.push(`tokens: ${submissionTokens.join(', ')}`);
+          }
+          if (requestIds.length > 0) {
+            successDetails.push(`request IDs: ${requestIds.join(', ')}`);
+          }
+          
+          if (successDetails.length > 0) {
+            botLogger.info('Form submission validated via HTTP response', { 
+              responseCount: successResponses.length, 
+              details: successDetails.join(', ')
+            });
+          } else {
+            botLogger.info('Form submission validated via HTTP response', { 
+              responseCount: successResponses.length,
+              statusRange: `${cfg.SUBMIT_SUCCESS_MIN_STATUS}-${cfg.SUBMIT_SUCCESS_MAX_STATUS}`
+            });
           }
         }
         
-        return false;
-      }, cfg.DYNAMIC_WAIT_BASE_TIMEOUT * 0.5, verifyTimeout, cfg.DYNAMIC_WAIT_MULTIPLIER, 'form submission verification');
-      
-      // Check for successful submissions
-      if (successResponses.length > 0) {
-        const successDetails: string[] = [];
-        if (submissionIds.length > 0) {
-          successDetails.push(`submission IDs: ${submissionIds.join(', ')}`);
-        }
-        if (submissionTokens.length > 0) {
-          successDetails.push(`tokens: ${submissionTokens.join(', ')}`);
-        }
-        if (requestIds.length > 0) {
-          successDetails.push(`request IDs: ${requestIds.join(', ')}`);
-        }
-        
-        if (successDetails.length > 0) {
-          botLogger.info('Form submission validated', { 
-            responseCount: successResponses.length, 
-            details: successDetails.join(', ')
-          });
-        } else {
-          botLogger.info('Form submission validated', { 
-            responseCount: successResponses.length,
-            statusRange: `${cfg.SUBMIT_SUCCESS_MIN_STATUS}-${cfg.SUBMIT_SUCCESS_MAX_STATUS}`
-          });
-        }
-        timer.done({ success: true });
+        timer.done({ success: true, method: domSuccessFound ? 'dom' : 'http' });
         return true;
       } else {
-        botLogger.warn('Form submission validation failed: No successful responses received');
+        botLogger.warn('Form submission validation failed: No HTTP responses or DOM indicators found');
         if (allResponses.length > 0) {
           const statusCodes = allResponses.map(r => r.status);
           const urls = allResponses.map(r => r.url);
-          botLogger.warn('Received responses with status codes', { statusCodes, urls });
+          botLogger.warn('Received HTTP responses with status codes', { statusCodes, urls });
         } else {
           botLogger.warn('No HTTP responses received during submission');
         }

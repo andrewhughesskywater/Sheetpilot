@@ -19,8 +19,8 @@
   font-weight: var(--md-sys-typescale-label-large-weight);
   letter-spacing: var(--md-sys-typescale-label-large-tracking);
   line-height: var(--md-sys-typescale-label-large-line-height);
-  padding: 10px 24px;
-  min-height: 40px;
+  padding: 8px 20px;
+  min-height: 36px;
   transition: box-shadow var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard),
               background-color var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard);
 }
@@ -69,7 +69,7 @@
 .MuiButton-text {
   background-color: transparent;
   color: var(--md-sys-color-primary);
-  padding: 10px 12px;
+  padding: 8px 12px;
 }
 
 .MuiButton-text:hover {
@@ -78,14 +78,14 @@
 
 /* Size variants */
 .MuiButton-sizeLarge {
-  min-height: 48px;
-  padding: 14px 28px;
+  min-height: 40px;
+  padding: 10px 24px;
   font-size: var(--md-sys-typescale-label-large-size);
 }
 
 .MuiButton-sizeSmall {
-  min-height: 32px;
-  padding: 6px 16px;
+  min-height: 28px;
+  padding: 4px 12px;
   font-size: var(--md-sys-typescale-label-medium-size);
 }
 
@@ -94,8 +94,8 @@
    ======================================== */
 
 .MuiIconButton-root {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border-radius: var(--md-sys-shape-corner-full);
   color: var(--md-sys-color-on-surface-variant);
   transition: background-color var(--md-sys-motion-duration-short2) var(--md-sys-motion-easing-standard);
@@ -127,7 +127,7 @@
 }
 
 .MuiCardContent-root {
-  padding: var(--sp-space-4);
+  padding: var(--sp-space-3);
 }
 
 /* ========================================
@@ -147,7 +147,7 @@
   font-weight: var(--md-sys-typescale-headline-small-weight);
   line-height: var(--md-sys-typescale-headline-small-line-height);
   color: var(--md-sys-color-on-surface);
-  padding: var(--sp-space-6) var(--sp-space-6) var(--sp-space-4);
+  padding: var(--sp-space-4) var(--sp-space-4) var(--sp-space-3);
 }
 
 .MuiDialogContent-root {
@@ -155,11 +155,11 @@
   font-size: var(--md-sys-typescale-body-medium-size);
   line-height: var(--md-sys-typescale-body-medium-line-height);
   color: var(--md-sys-color-on-surface-variant);
-  padding: var(--sp-space-4) var(--sp-space-6);
+  padding: var(--sp-space-3) var(--sp-space-4);
 }
 
 .MuiDialogActions-root {
-  padding: var(--sp-space-4) var(--sp-space-6) var(--sp-space-6);
+  padding: var(--sp-space-3) var(--sp-space-4) var(--sp-space-4);
   gap: var(--sp-space-2);
 }
 
@@ -233,7 +233,7 @@
    ======================================== */
 
 .MuiChip-root {
-  height: 32px;
+  height: 28px;
   border-radius: var(--md-sys-shape-corner-small);
   font-family: var(--md-sys-typescale-label-large-font);
   font-size: var(--md-sys-typescale-label-large-size);
@@ -268,7 +268,7 @@
 }
 
 .MuiChip-sizeSmall {
-  height: 24px;
+  height: 20px;
   font-size: var(--md-sys-typescale-label-small-size);
 }
 

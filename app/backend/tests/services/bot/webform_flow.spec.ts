@@ -10,9 +10,9 @@ describe('WebformFiller against mock form', () => {
 
   beforeAll(async () => {
     // Override config for deterministic headless run using environment variables
-    process.env['TIME_KNIGHT_BROWSER_CHANNEL'] = 'chromium';
-    process.env['TIME_KNIGHT_BROWSER_HEADLESS'] = 'true';
-    process.env['TIME_KNIGHT_GLOBAL_TIMEOUT'] = '10';
+    process.env['BROWSER_CHANNEL'] = 'chromium';
+    process.env['BROWSER_HEADLESS'] = 'true';
+    process.env['GLOBAL_TIMEOUT'] = '10';
 
     // Serve file:// mock page
     const mockPath = path.resolve(__dirname, './fixtures/mock-form.html');
@@ -23,11 +23,25 @@ describe('WebformFiller against mock form', () => {
     await filler.start();
     page = filler.require_page();
 
-    // Route the Smartsheet endpoint and return a success JSON (simulate 200 OK)
+    // Route the Smartsheet endpoint and return a success JSON matching real API response
     await page.route('**/*', async (route) => {
       const url = route.request().url();
       if (url.includes('forms.smartsheet.com/api/submit')) {
-        return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ submissionId: 'mock-123' }) });
+        // Return complete response structure matching actual Smartsheet API
+        const mockResponse = {
+          submissionId: 'mock-test-submission-id-123',
+          confirmation: {
+            type: 'RELOAD',
+            message: "Success! We've captured your submission.",
+            hideFooterOnConfirmation: false
+          },
+          token: 'mock-test-token-456'
+        };
+        return route.fulfill({ 
+          status: 200, 
+          contentType: 'application/json', 
+          body: JSON.stringify(mockResponse) 
+        });
       }
       return route.continue();
     });

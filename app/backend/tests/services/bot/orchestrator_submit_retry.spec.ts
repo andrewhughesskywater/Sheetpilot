@@ -20,6 +20,11 @@ const dummyFormConfig = createFormConfig(
   '0197cbae7daf72bdb96b3395b500d414'
 );
 
+/**
+ * FakeFiller simulates WebformFiller behavior for testing
+ * The submit_form() method returns true/false representing the final result
+ * after checking both HTTP responses AND DOM success indicators
+ */
 class FakeFiller {
   submitSequence: boolean[];
   submissions: number = 0;
@@ -36,6 +41,14 @@ class FakeFiller {
       waitForTimeout: async (_ms: number) => { /* no-op */ }
     };
   }
+  /**
+   * Mock submit_form returns the result of checking both:
+   * 1. HTTP response validation (submissionId, token, confirmation.message)
+   * 2. DOM success indicator detection (.success-message, .submission-success, etc.)
+   * 
+   * A 'true' return means EITHER validation method succeeded
+   * A 'false' return means BOTH validation methods failed
+   */
   async submit_form(): Promise<boolean> {
     const idx = Math.min(this.submissions, this.submitSequence.length - 1);
     const val = this.submitSequence[idx];
@@ -51,8 +64,8 @@ class FakeLoginManager { async run_login_steps(): Promise<void> { /* no-op */ } 
 
 function buildBotWithFakes(submitSeq: boolean[], totalAttempts: number = 2) {
   // Configure retry attempts: SUBMIT_RETRY_ATTEMPTS is the total number of attempts (not retries)
-  process.env['TIME_KNIGHT_SUBMIT_RETRY_ATTEMPTS'] = String(totalAttempts);
-  process.env['TIME_KNIGHT_SUBMIT'] = '1';
+  process.env['SUBMIT_RETRY_ATTEMPTS'] = String(totalAttempts);
+  process.env['SUBMIT'] = '1';
   
   // Create a custom config object with the desired retry attempts
   const customCfg = {
@@ -78,7 +91,7 @@ describe('BotOrchestrator submit retry behavior (one retry only)', () => {
 
   beforeEach(() => {
     // Reset environment variable and mock to default
-    delete process.env['TIME_KNIGHT_SUBMIT_RETRY_ATTEMPTS'];
+    delete process.env['SUBMIT_RETRY_ATTEMPTS'];
     // Reset the mock value
     vi.doMock('../../../src/services/bot/src/automation_config', async () => {
       const actual = await vi.importActual('../../../src/services/bot/src/automation_config');

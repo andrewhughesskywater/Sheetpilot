@@ -51,6 +51,9 @@ function formatMinutesToTime(minutes: number): string {
 // Global flag to prevent concurrent timesheet submissions
 let isSubmissionInProgress = false;
 
+// Global abort controller for cancellation support
+let currentSubmissionAbortController: AbortController | null = null;
+
 /**
  * Get main window reference (passed in from main.ts)
  */
@@ -84,6 +87,9 @@ export function registerTimesheetHandlers(): void {
     try {
       // Set flag to block concurrent submissions
       isSubmissionInProgress = true;
+      
+      // Create abort controller for this submission
+      currentSubmissionAbortController = new AbortController();
       
       // Validate session and check if admin
       if (!token) {
@@ -190,7 +196,12 @@ export function registerTimesheetHandlers(): void {
       
       try {
         // Submit pending data from database with progress callback
-        const submitResult = await submitTimesheets(credentials.email, credentials.password, progressCallback);
+        const submitResult = await submitTimesheets(
+          credentials.email, 
+          credentials.password, 
+          progressCallback,
+          currentSubmissionAbortController?.signal
+        );
         ipcLogger.info('submitTimesheets completed', { 
           ok: submitResult.ok,
           successCount: submitResult.successCount,
@@ -254,8 +265,41 @@ export function registerTimesheetHandlers(): void {
       
       return { error: errorMessage };
     } finally {
-      // Always clear the submission lock
+      // Always clear the submission lock and abort controller
       isSubmissionInProgress = false;
+      currentSubmissionAbortController = null;
+    }
+  });
+
+  // Handler for cancelling timesheet submission
+  ipcMain.handle('timesheet:cancel', async () => {
+    ipcLogger.info('Timesheet cancellation requested');
+    
+    if (!isSubmissionInProgress) {
+      ipcLogger.warn('No submission in progress to cancel');
+      return { success: false, error: 'No submission in progress' };
+    }
+    
+    if (!currentSubmissionAbortController) {
+      ipcLogger.warn('No abort controller available');
+      return { success: false, error: 'Cannot cancel submission' };
+    }
+    
+    try {
+      // Abort the current submission
+      currentSubmissionAbortController.abort();
+      ipcLogger.info('Submission cancelled successfully');
+      
+      // Reset the in-progress entries back to pending
+      const { resetInProgressTimesheetEntries } = require('../services/database');
+      const resetCount = resetInProgressTimesheetEntries();
+      ipcLogger.info('Reset in-progress entries to pending', { count: resetCount });
+      
+      return { success: true, message: 'Submission cancelled' };
+    } catch (err: unknown) {
+      ipcLogger.error('Could not cancel submission', err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      return { success: false, error: errorMessage };
     }
   });
 
@@ -472,6 +516,56 @@ export function registerTimesheetHandlers(): void {
       const errorMessage = err instanceof Error ? err.message : String(err);
       timer.done({ outcome: 'error', error: errorMessage });
       return { success: false, error: errorMessage, entries: [] };
+    }
+  });
+
+  // DEV ONLY: Handler for simulating successful submission (marks all pending entries as complete)
+  ipcMain.handle('timesheet:devSimulateSuccess', async () => {
+    // Only allow in development mode
+    if (process.env.NODE_ENV === 'production') {
+      ipcLogger.warn('Dev simulate success called in production - blocking');
+      return { success: false, error: 'Not available in production' };
+    }
+    
+    ipcLogger.info('[DEV] Simulating successful submission');
+    
+    try {
+      const db = getDb();
+      
+      // Get all pending entries
+      const getPending = db.prepare(`
+        SELECT id FROM timesheet WHERE status IS NULL
+      `);
+      const pendingEntries = getPending.all() as Array<{ id: number }>;
+      
+      if (pendingEntries.length === 0) {
+        ipcLogger.info('[DEV] No pending entries to mark as complete');
+        return { success: true, count: 0 };
+      }
+      
+      const ids = pendingEntries.map(e => e.id);
+      const placeholders = ids.map(() => '?').join(',');
+      
+      // Mark all pending entries as Complete with current timestamp
+      const markComplete = db.prepare(`
+        UPDATE timesheet 
+        SET status = 'Complete',
+            submitted_at = datetime('now')
+        WHERE id IN (${placeholders})
+      `);
+      
+      const result = markComplete.run(...ids);
+      
+      ipcLogger.info('[DEV] Marked entries as Complete', { 
+        count: result.changes,
+        ids 
+      });
+      
+      return { success: true, count: result.changes };
+    } catch (err: unknown) {
+      ipcLogger.error('[DEV] Could not simulate success', err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      return { success: false, error: errorMessage };
     }
   });
 

@@ -76,7 +76,7 @@ function preflightResolve(): void {
   }
   if (failures.length > 0) {
     const details = failures.map(f => `${f.name}: ${f.error}`).join(' | ');
-    console.error('Preflight module resolution failed', { details, nodePath: process.env['NODE_PATH'], resourcesPath: process.resourcesPath });
+    appLogger.error('Preflight module resolution failed', { details, nodePath: process.env['NODE_PATH'], resourcesPath: process.resourcesPath });
     app.exit(1);
   }
 }
@@ -312,15 +312,11 @@ function createWindow() {
 
   // Add error handling for failed loads
   mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
-    console.error('Failed to load:', validatedURL);
-    console.error('Error code:', errorCode);
-    console.error('Error description:', errorDescription);
     appLogger.error('Could not load renderer', { errorCode, errorDescription, validatedURL });
   });
 
   // Add success logging
   mainWindow.webContents.on('did-finish-load', () => {
-    console.log('Renderer loaded successfully');
     appLogger.info('Renderer loaded successfully');
   });
 
@@ -353,14 +349,13 @@ function createWindow() {
   // Check if we're in development mode by trying to connect to Vite dev server
   const isDev = process.env['NODE_ENV'] === 'development' || process.env['ELECTRON_IS_DEV'] === '1';
   if (isDev) {
-    console.log('Loading development URL: http://localhost:5173');
+    appLogger.verbose('Loading development URL', { url: 'http://localhost:5173' });
     mainWindow.loadURL('http://localhost:5173');
   } else {
     // In production/smoke, load compiled renderer from app/frontend/dist
     // __dirname = build/dist/backend/src → go up 4 to project root
     const htmlPath = path.join(__dirname, '..', '..', '..', '..', 'app', 'frontend', 'dist', 'index.html');
-    console.log('Loading production HTML from:', htmlPath);
-    console.log('File exists:', fs.existsSync(htmlPath));
+    appLogger.verbose('Loading production HTML', { htmlPath, fileExists: fs.existsSync(htmlPath) });
     mainWindow.loadFile(htmlPath);
   }
 }
@@ -1339,7 +1334,6 @@ app.whenReady().then(() => {
   // Register IPC handlers BEFORE creating window (prevents race condition)
   // Handlers must be registered before renderer loads to avoid "No handler registered" errors
   try {
-    console.log('[Main] Loading IPC handlers from ./ipc/index');
     appLogger.verbose('Loading IPC handlers module', { path: './ipc/index' });
     
     // Diagnostic: Check module resolution paths
@@ -1365,18 +1359,15 @@ app.whenReady().then(() => {
     }
     
     const { registerAllIPCHandlers } = require('./ipc/index');
-    console.log('[Main] IPC handlers module loaded, calling registerAllIPCHandlers');
     appLogger.verbose('IPC handlers module loaded successfully');
     
     registerAllIPCHandlers(null); // Pass null for now, will set mainWindow reference after window creation
-    console.log('[Main] IPC handlers registered successfully');
     appLogger.info('All IPC handlers registered successfully');
   } catch (err) {
-    console.error('[Main] FATAL: Could not register IPC handlers:', err);
     appLogger.error('Could not register IPC handlers', { 
       error: err instanceof Error ? err.message : String(err), 
       stack: err instanceof Error ? err.stack : undefined,
-      requireStack: (err as NodeJS.ErrnoException).requireStack
+      requireStack: (err as any).requireStack
     });
   }
   
@@ -1394,7 +1385,6 @@ app.whenReady().then(() => {
       appLogger.verbose('Updating mainWindow reference for IPC handlers');
       const { setMainWindow } = require('./ipc/index');
       setMainWindow(mainWindow);
-      console.log('[Main] Updated mainWindow reference for IPC handlers');
       appLogger.verbose('MainWindow reference updated successfully');
     } catch (err) {
       appLogger.warn('Could not update mainWindow reference', { 

@@ -9,6 +9,8 @@
  * @since 2025
  */
 
+import { botLogger } from '../../../../../shared/logger';
+
 // ============================================================================
 // TYPE DEFINITIONS
 // ============================================================================
@@ -85,92 +87,97 @@ export function createFormConfig(formUrl: string, formId: string) {
 
 /** Browser type to use for automation (chromium only) */
 export const BROWSER: string = process.env['TS_BROWSER'] ?? "chromium";
-/** Whether to run browser in headless mode */
-export const BROWSER_HEADLESS: boolean = (process.env['TIME_KNIGHT_BROWSER_HEADLESS'] ?? "false").toLowerCase() === "true";
+/** 
+ * Gets whether to run browser in headless mode
+ * Reads from environment variable dynamically to support runtime changes without restart
+ * @returns true if browser should run in headless mode, false otherwise
+ */
+export function getBrowserHeadless(): boolean {
+  const envValue = process.env['BROWSER_HEADLESS'] ?? "false";
+  const result = envValue.toLowerCase() === "true";
+  botLogger.debug('getBrowserHeadless called', { envValue, result });
+  return result;
+}
+/** 
+ * Whether to run browser in headless mode
+ * @deprecated Use getBrowserHeadless() function instead for dynamic runtime updates
+ */
+export const BROWSER_HEADLESS: boolean = getBrowserHeadless();
 /** Specific browser channel to use (e.g., 'chrome' for Chrome instead of Chromium) */
-export const BROWSER_CHANNEL: string = process.env['TIME_KNIGHT_BROWSER_CHANNEL'] ?? "chromium";
-
-// ============================================================================
-// PARALLEL PROCESSING CONFIGURATION
-// ============================================================================
-
-/** Maximum number of parallel browser contexts for concurrent processing */
-export const MAX_PARALLEL_CONTEXTS: number = Number(process.env['TIME_KNIGHT_MAX_PARALLEL_CONTEXTS'] ?? "3");
-/** Whether to enable parallel row processing */
-export const ENABLE_PARALLEL_PROCESSING: boolean = (process.env['TIME_KNIGHT_ENABLE_PARALLEL'] ?? "true").toLowerCase() === "true";
+export const BROWSER_CHANNEL: string = process.env['BROWSER_CHANNEL'] ?? "chromium";
 
 // ============================================================================
 // TIMEOUT CONFIGURATION
 // ============================================================================
 
 /** Default timeout for element operations in seconds */
-export const ELEMENT_WAIT_TIMEOUT: number = Number(process.env['TIME_KNIGHT_ELEMENT_WAIT'] ?? "10.0");
+export const ELEMENT_WAIT_TIMEOUT: number = Number(process.env['ELEMENT_WAIT'] ?? "10.0");
 /** Duration to cache page context in seconds */
-export const PAGE_CONTEXT_CACHE_DURATION: number = Number(process.env['TIME_KNIGHT_PAGE_CTX_CACHE'] ?? "2.0");
+export const PAGE_CONTEXT_CACHE_DURATION: number = Number(process.env['PAGE_CTX_CACHE'] ?? "2.0");
 
 // ============================================================================
 // DYNAMIC WAIT CONFIGURATION
 // ============================================================================
 
 /** Multiplier for optional element wait timeouts */
-export const DYNAMIC_FIELD_OPTIONAL_ELEMENT_MULTIPLIER: number = Number(process.env['TIME_KNIGHT_DYNAMIC_OPTIONAL_ELEMENT_MULT'] ?? "0.3");
+export const DYNAMIC_FIELD_OPTIONAL_ELEMENT_MULTIPLIER: number = Number(process.env['DYNAMIC_OPTIONAL_ELEMENT_MULT'] ?? "0.3");
 /** Multiplier for optional DOM wait timeouts */
-export const DYNAMIC_FIELD_OPTIONAL_DOM_MULTIPLIER: number = Number(process.env['TIME_KNIGHT_DYNAMIC_OPTIONAL_DOM_MULT'] ?? "0.1");
+export const DYNAMIC_FIELD_OPTIONAL_DOM_MULTIPLIER: number = Number(process.env['DYNAMIC_OPTIONAL_DOM_MULT'] ?? "0.1");
 /** Multiplier for optional network wait timeouts */
-export const DYNAMIC_FIELD_OPTIONAL_NETWORK_MULTIPLIER: number = Number(process.env['TIME_KNIGHT_DYNAMIC_OPTIONAL_NETWORK_MULT'] ?? "0.2");
+export const DYNAMIC_FIELD_OPTIONAL_NETWORK_MULTIPLIER: number = Number(process.env['DYNAMIC_OPTIONAL_NETWORK_MULT'] ?? "0.2");
 
 /** Multiplier for required element wait timeouts */
-export const DYNAMIC_FIELD_REQUIRED_ELEMENT_MULTIPLIER: number = Number(process.env['TIME_KNIGHT_DYNAMIC_REQUIRED_ELEMENT_MULT'] ?? "0.6");
+export const DYNAMIC_FIELD_REQUIRED_ELEMENT_MULTIPLIER: number = Number(process.env['DYNAMIC_REQUIRED_ELEMENT_MULT'] ?? "0.6");
 /** Multiplier for required DOM wait timeouts */
-export const DYNAMIC_FIELD_REQUIRED_DOM_MULTIPLIER: number = Number(process.env['TIME_KNIGHT_DYNAMIC_REQUIRED_DOM_MULT'] ?? "0.15");
+export const DYNAMIC_FIELD_REQUIRED_DOM_MULTIPLIER: number = Number(process.env['DYNAMIC_REQUIRED_DOM_MULT'] ?? "0.15");
 /** Multiplier for required network wait timeouts */
-export const DYNAMIC_FIELD_REQUIRED_NETWORK_MULTIPLIER: number = Number(process.env['TIME_KNIGHT_DYNAMIC_REQUIRED_NETWORK_MULT'] ?? "0.25");
+export const DYNAMIC_FIELD_REQUIRED_NETWORK_MULTIPLIER: number = Number(process.env['DYNAMIC_REQUIRED_NETWORK_MULT'] ?? "0.25");
 
 /** Global timeout for all operations in seconds */
-export const GLOBAL_TIMEOUT: number = Number(process.env['TIME_KNIGHT_GLOBAL_TIMEOUT'] ?? "10.0");
+export const GLOBAL_TIMEOUT: number = Number(process.env['GLOBAL_TIMEOUT'] ?? "10.0");
 
 /** Maximum timeout for element operations in seconds */
-export const DYNAMIC_FIELD_MAX_ELEMENT_TIMEOUT: number = Number(process.env['TIME_KNIGHT_DYNAMIC_MAX_ELEMENT_TIMEOUT'] ?? "6.0");
+export const DYNAMIC_FIELD_MAX_ELEMENT_TIMEOUT: number = Number(process.env['DYNAMIC_MAX_ELEMENT_TIMEOUT'] ?? "6.0");
 /** Maximum timeout for DOM operations in seconds */
-export const DYNAMIC_FIELD_MAX_DOM_TIMEOUT: number = Number(process.env['TIME_KNIGHT_DYNAMIC_MAX_DOM_TIMEOUT'] ?? "1.5");
+export const DYNAMIC_FIELD_MAX_DOM_TIMEOUT: number = Number(process.env['DYNAMIC_MAX_DOM_TIMEOUT'] ?? "1.5");
 /** Maximum timeout for network operations in seconds */
-export const DYNAMIC_FIELD_MAX_NETWORK_TIMEOUT: number = Number(process.env['TIME_KNIGHT_DYNAMIC_MAX_NETWORK_TIMEOUT'] ?? "2.5");
+export const DYNAMIC_FIELD_MAX_NETWORK_TIMEOUT: number = Number(process.env['DYNAMIC_MAX_NETWORK_TIMEOUT'] ?? "2.5");
 
 /** Whether dynamic wait functionality is enabled */
-export const DYNAMIC_WAIT_ENABLED: boolean = (process.env['TIME_KNIGHT_DYNAMIC_WAIT_ENABLED'] ?? "true").toLowerCase() === "true";
+export const DYNAMIC_WAIT_ENABLED: boolean = (process.env['DYNAMIC_WAIT_ENABLED'] ?? "true").toLowerCase() === "true";
 /** Base timeout for dynamic wait operations in seconds */
-export const DYNAMIC_WAIT_BASE_TIMEOUT: number = Number(process.env['TIME_KNIGHT_DYNAMIC_WAIT_BASE_TIMEOUT'] ?? "0.2");
+export const DYNAMIC_WAIT_BASE_TIMEOUT: number = Number(process.env['DYNAMIC_WAIT_BASE_TIMEOUT'] ?? "0.2");
 /** Maximum timeout for dynamic wait operations in seconds */
-export const DYNAMIC_WAIT_MAX_TIMEOUT: number = Number(process.env['TIME_KNIGHT_DYNAMIC_WAIT_MAX_TIMEOUT'] ?? "10.0");
+export const DYNAMIC_WAIT_MAX_TIMEOUT: number = Number(process.env['DYNAMIC_WAIT_MAX_TIMEOUT'] ?? "10.0");
 /** Multiplier for increasing wait timeouts in dynamic wait */
-export const DYNAMIC_WAIT_MULTIPLIER: number = Number(process.env['TIME_KNIGHT_DYNAMIC_WAIT_MULTIPLIER'] ?? "1.2");
+export const DYNAMIC_WAIT_MULTIPLIER: number = Number(process.env['DYNAMIC_WAIT_MULTIPLIER'] ?? "1.2");
 
 // ============================================================================
 // ADAPTIVE WAIT CONFIGURATION
 // ============================================================================
 
 /** Whether to enable adaptive wait times based on performance */
-export const ENABLE_ADAPTIVE_WAITS: boolean = (process.env['TIME_KNIGHT_ENABLE_ADAPTIVE_WAITS'] ?? "true").toLowerCase() === "true";
+export const ENABLE_ADAPTIVE_WAITS: boolean = (process.env['ENABLE_ADAPTIVE_WAITS'] ?? "true").toLowerCase() === "true";
 /** Minimum wait time multiplier for fast operations */
-export const ADAPTIVE_WAIT_MIN_MULTIPLIER: number = Number(process.env['TIME_KNIGHT_ADAPTIVE_WAIT_MIN'] ?? "0.3");
+export const ADAPTIVE_WAIT_MIN_MULTIPLIER: number = Number(process.env['ADAPTIVE_WAIT_MIN'] ?? "0.3");
 /** Maximum wait time multiplier for slow operations */
-export const ADAPTIVE_WAIT_MAX_MULTIPLIER: number = Number(process.env['TIME_KNIGHT_ADAPTIVE_WAIT_MAX'] ?? "2.0");
+export const ADAPTIVE_WAIT_MAX_MULTIPLIER: number = Number(process.env['ADAPTIVE_WAIT_MAX'] ?? "2.0");
 
 // ============================================================================
 // FORM SUBMISSION CONFIGURATION
 // ============================================================================
 
 /** Whether to automatically submit forms after filling */
-export const SUBMIT_FORM_AFTER_FILLING: boolean = (process.env['TIME_KNIGHT_SUBMIT'] ?? "1") === "1";
+export const SUBMIT_FORM_AFTER_FILLING: boolean = (process.env['SUBMIT'] ?? "1") === "1";
 /** Delay after filling before submitting form in seconds */
-export const SUBMIT_DELAY_AFTER_FILLING: number = Number(process.env['TIME_KNIGHT_SUBMIT_DELAY'] ?? "0.1");
+export const SUBMIT_DELAY_AFTER_FILLING: number = Number(process.env['SUBMIT_DELAY'] ?? "0.1");
 
 /** Timeout for verifying submission success in milliseconds */
-export const SUBMIT_VERIFY_TIMEOUT_MS: number = Number(process.env['TIME_KNIGHT_SUBMIT_VERIFY_MS'] ?? "3000");
+export const SUBMIT_VERIFY_TIMEOUT_MS: number = Number(process.env['SUBMIT_VERIFY_MS'] ?? "3000");
 /** Minimum HTTP status code considered successful for submission */
-export const SUBMIT_SUCCESS_MIN_STATUS: number = Number(process.env['TIME_KNIGHT_SUBMIT_MIN_STATUS'] ?? "200");
+export const SUBMIT_SUCCESS_MIN_STATUS: number = Number(process.env['SUBMIT_MIN_STATUS'] ?? "200");
 /** Maximum HTTP status code considered successful for submission */
-export const SUBMIT_SUCCESS_MAX_STATUS: number = Number(process.env['TIME_KNIGHT_SUBMIT_MAX_STATUS'] ?? "299");
+export const SUBMIT_SUCCESS_MAX_STATUS: number = Number(process.env['SUBMIT_MAX_STATUS'] ?? "299");
 /**
  * DEPRECATED: Do not use SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS constant directly.
  * 
@@ -205,7 +212,7 @@ export const FORM_ID = "DEPRECATED_USE_DYNAMIC_CONFIG";
 export const SUBMISSION_ENDPOINT = `https://forms.smartsheet.com/api/submit/${FORM_ID}`;
 
 /** Whether to validate response content for submission success */
-export const ENABLE_RESPONSE_CONTENT_VALIDATION: boolean = (process.env['TIME_KNIGHT_ENABLE_RESPONSE_VALIDATION'] ?? "1") === "1";
+export const ENABLE_RESPONSE_CONTENT_VALIDATION: boolean = (process.env['ENABLE_RESPONSE_VALIDATION'] ?? "1") === "1";
 /** Text indicators that suggest successful form submission */
 export const SUBMIT_SUCCESS_INDICATORS: string[] = [
   "submissionId",
@@ -216,9 +223,9 @@ export const SUBMIT_SUCCESS_INDICATORS: string[] = [
 ];
 
 /** Number of retry attempts for failed form submissions */
-export const SUBMIT_RETRY_ATTEMPTS: number = Number(process.env['TIME_KNIGHT_SUBMIT_RETRY_ATTEMPTS'] ?? "3");
+export const SUBMIT_RETRY_ATTEMPTS: number = Number(process.env['SUBMIT_RETRY_ATTEMPTS'] ?? "3");
 /** Delay between submission retry attempts in seconds */
-export const SUBMIT_RETRY_DELAY: number = Number(process.env['TIME_KNIGHT_SUBMIT_RETRY_DELAY'] ?? "2.0");
+export const SUBMIT_RETRY_DELAY: number = Number(process.env['SUBMIT_RETRY_DELAY'] ?? "2.0");
 
 // ============================================================================
 // SUBMIT BUTTON CONFIGURATION
@@ -242,48 +249,48 @@ export const SUBMIT_BUTTON_FALLBACK_LOCATORS: string[] = [
 ];
 
 /** Timeout for detecting submit button presence in milliseconds */
-export const SUBMIT_BUTTON_DETECTION_TIMEOUT_MS: number = Number(process.env['TIME_KNIGHT_SUBMIT_DETECTION_TIMEOUT_MS'] ?? "10000");
+export const SUBMIT_BUTTON_DETECTION_TIMEOUT_MS: number = Number(process.env['SUBMIT_DETECTION_TIMEOUT_MS'] ?? "10000");
 /** Whether to enable debugging output for submission process */
-export const ENABLE_SUBMIT_DEBUGGING: boolean = (process.env['TIME_KNIGHT_ENABLE_SUBMIT_DEBUG'] ?? "1") === "1";
+export const ENABLE_SUBMIT_DEBUGGING: boolean = (process.env['ENABLE_SUBMIT_DEBUG'] ?? "1") === "1";
 /** Whether to check for aria-disabled attribute on submit buttons */
-export const ENABLE_ARIA_DISABLED_CHECK: boolean = (process.env['TIME_KNIGHT_ENABLE_ARIA_DISABLED_CHECK'] ?? "1") === "1";
+export const ENABLE_ARIA_DISABLED_CHECK: boolean = (process.env['ENABLE_ARIA_DISABLED_CHECK'] ?? "1") === "1";
 /** Whether submit button must be enabled before clicking */
-export const SUBMIT_BUTTON_REQUIRE_ENABLED: boolean = (process.env['TIME_KNIGHT_SUBMIT_BUTTON_REQUIRE_ENABLED'] ?? "1") === "1";
+export const SUBMIT_BUTTON_REQUIRE_ENABLED: boolean = (process.env['SUBMIT_BUTTON_REQUIRE_ENABLED'] ?? "1") === "1";
 
 // ============================================================================
 // FIELD VALIDATION CONFIGURATION
 // ============================================================================
 
 /** Timeout for field validation operations in milliseconds */
-export const FIELD_VALIDATION_TIMEOUT_MS: number = Number(process.env['TIME_KNIGHT_FIELD_VALIDATION_TIMEOUT_MS'] ?? "1000");
+export const FIELD_VALIDATION_TIMEOUT_MS: number = Number(process.env['FIELD_VALIDATION_TIMEOUT_MS'] ?? "1000");
 /** Whether to stop validation on first failure */
-export const FIELD_VALIDATION_FAIL_FAST: boolean = ["1","true","yes"].includes((process.env['TIME_KNIGHT_FIELD_VALIDATION_FAIL_FAST'] ?? "true").toLowerCase());
+export const FIELD_VALIDATION_FAIL_FAST: boolean = ["1","true","yes"].includes((process.env['FIELD_VALIDATION_FAIL_FAST'] ?? "true").toLowerCase());
 /** Maximum number of retries for field validation */
-export const FIELD_VALIDATION_MAX_RETRIES: number = Number(process.env['TIME_KNIGHT_FIELD_VALIDATION_MAX_RETRIES'] ?? "1");
+export const FIELD_VALIDATION_MAX_RETRIES: number = Number(process.env['FIELD_VALIDATION_MAX_RETRIES'] ?? "1");
 
 // ============================================================================
 // AUTOMATION BEHAVIOR CONFIGURATION
 // ============================================================================
 
 /** Whether to stop automation when a row fails to process */
-export const AUTOMATION_STOP_ON_ROW_FAILURE: boolean = ["1","true","yes"].includes((process.env['TIME_KNIGHT_AUTOMATION_STOP_ON_ROW_FAILURE'] ?? "true").toLowerCase());
+export const AUTOMATION_STOP_ON_ROW_FAILURE: boolean = ["1","true","yes"].includes((process.env['AUTOMATION_STOP_ON_ROW_FAILURE'] ?? "true").toLowerCase());
 
 // ============================================================================
 // DEBUGGING AND SCREENSHOT CONFIGURATION
 // ============================================================================
 
 /** Whether to enable snapshot validation for debugging */
-export const ENABLE_SNAPSHOT_VALIDATION: boolean = (process.env['TIME_KNIGHT_ENABLE_SNAPSHOT_VALIDATION'] ?? "1") === "1";
+export const ENABLE_SNAPSHOT_VALIDATION: boolean = (process.env['ENABLE_SNAPSHOT_VALIDATION'] ?? "1") === "1";
 /** Timeout for snapshot validation in milliseconds */
-export const SNAPSHOT_VALIDATION_TIMEOUT_MS: number = Number(process.env['TIME_KNIGHT_SNAPSHOT_VALIDATION_TIMEOUT_MS'] ?? "5000");
+export const SNAPSHOT_VALIDATION_TIMEOUT_MS: number = Number(process.env['SNAPSHOT_VALIDATION_TIMEOUT_MS'] ?? "5000");
 /** Whether to capture screenshots on failures */
-export const ENABLE_FAILURE_SCREENSHOTS: boolean = (process.env['TIME_KNIGHT_ENABLE_SCREENSHOTS'] ?? "1") === "1";
+export const ENABLE_FAILURE_SCREENSHOTS: boolean = (process.env['ENABLE_SCREENSHOTS'] ?? "1") === "1";
 /** Directory path for storing failure screenshots */
-export const SCREENSHOT_DIRECTORY: string = process.env['TIME_KNIGHT_SCREENSHOT_DIR'] ?? "\\\\swfl-file01\\\\Maintenance\\\\Python Programs\\\\Time Knight\\\\logs\\\\screenshots";
+export const SCREENSHOT_DIRECTORY: string = process.env['SCREENSHOT_DIR'] ?? "\\\\swfl-file01\\\\Maintenance\\\\Python Programs\\\\logs\\\\screenshots";
 /** Whether to capture screenshots on submission failures */
-export const SCREENSHOT_ON_SUBMIT_FAILURE: boolean = (process.env['TIME_KNIGHT_SCREENSHOT_ON_FAILURE'] ?? "1") === "1";
+export const SCREENSHOT_ON_SUBMIT_FAILURE: boolean = (process.env['SCREENSHOT_ON_FAILURE'] ?? "1") === "1";
 /** Whether to capture screenshots on locator failures */
-export const SCREENSHOT_ON_LOCATOR_FAILURE: boolean = (process.env['TIME_KNIGHT_SCREENSHOT_ON_LOCATOR_FAILURE'] ?? "1") === "1";
+export const SCREENSHOT_ON_LOCATOR_FAILURE: boolean = (process.env['SCREENSHOT_ON_LOCATOR_FAILURE'] ?? "1") === "1";
 
 // ============================================================================
 // MISCELLANEOUS CONFIGURATION
@@ -294,11 +301,11 @@ export const JS_INJECTION_TIMEOUT_MS = 100;
 /** Starting range for bot operations */
 export const BOT_RANGE_START = 1;
 /** Maximum number of login attempts before giving up */
-export const LOGIN_MAX_ATTEMPTS = Number(process.env['TIME_KNIGHT_LOGIN_MAX_ATTEMPTS'] ?? "3");
+export const LOGIN_MAX_ATTEMPTS = Number(process.env['LOGIN_MAX_ATTEMPTS'] ?? "3");
 /** Backoff delay between login attempts in seconds */
-export const LOGIN_BACKOFF_SEC = Number(process.env['TIME_KNIGHT_LOGIN_BACKOFF_SEC'] ?? "1.0");
+export const LOGIN_BACKOFF_SEC = Number(process.env['LOGIN_BACKOFF_SEC'] ?? "1.0");
 /** Whether to enable debug logging for bot operations */
-export const BOT_DEBUG_LOGGING: boolean = (process.env['TIME_KNIGHT_BOT_DEBUG_LOGGING'] ?? "0") === "1";
+export const BOT_DEBUG_LOGGING: boolean = (process.env['BOT_DEBUG_LOGGING'] ?? "0") === "1";
 /** Exit code for locator failure errors */
 export const BOT_LOCATOR_FAILURE_EXIT_CODE = 1;
 /** Exit code for validation failure errors */

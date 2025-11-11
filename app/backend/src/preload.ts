@@ -10,6 +10,10 @@ contextBridge.exposeInMainWorld('timesheet', {
     dbPath?: string; 
     error?: string;
   }> => ipcRenderer.invoke('timesheet:submit', token),
+  cancel: (): Promise<{ success: boolean; message?: string; error?: string }> => 
+    ipcRenderer.invoke('timesheet:cancel'),
+  devSimulateSuccess: (): Promise<{ success: boolean; count?: number; error?: string }> =>
+    ipcRenderer.invoke('timesheet:devSimulateSuccess'),
   saveDraft: (row: {
     date: string;
     timeIn: string;
@@ -225,4 +229,14 @@ contextBridge.exposeInMainWorld('updates', {
     ipcRenderer.removeAllListeners('download-progress');
     ipcRenderer.removeAllListeners('update-downloaded');
   }
+});
+
+// Settings IPC bridge
+contextBridge.exposeInMainWorld('settings', {
+  get: (key: string): Promise<{ success: boolean; value?: unknown; error?: string }> =>
+    ipcRenderer.invoke('settings:get', key),
+  set: (key: string, value: unknown): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('settings:set', key, value),
+  getAll: (): Promise<{ success: boolean; settings?: Record<string, unknown>; error?: string }> =>
+    ipcRenderer.invoke('settings:getAll')
 });

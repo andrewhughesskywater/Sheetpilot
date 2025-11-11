@@ -11,6 +11,8 @@ declare global {
         dbPath?: string;
         error?: string;
       }>;
+      cancel: () => Promise<{ success: boolean; message?: string; error?: string }>;
+      devSimulateSuccess: () => Promise<{ success: boolean; count?: number; error?: string }>;
       saveDraft: (row: {
         date: string;
         timeIn: string;
@@ -127,6 +129,11 @@ declare global {
       cancelUpdate: () => void;
       quitAndInstall: () => void;
       removeAllListeners: () => void;
+    };
+    settings?: {
+      get: (key: string) => Promise<{ success: boolean; value?: unknown; error?: string }>;
+      set: (key: string, value: unknown) => Promise<{ success: boolean; error?: string }>;
+      getAll: () => Promise<{ success: boolean; settings?: Record<string, unknown>; error?: string }>;
     };
   }
 }

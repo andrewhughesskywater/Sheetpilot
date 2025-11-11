@@ -1,40 +1,40 @@
-.help-container {
-  padding: var(--sp-space-8);
+.settings-container {
+  padding: var(--sp-space-4);
   max-width: 900px;
   margin: 0 auto;
   min-height: 100vh;
 }
 
 /* Main Container Card */
-.help-main-card {
+.settings-main-card {
   border-radius: var(--md-sys-shape-corner-extra-large) !important;
   background: var(--md-sys-color-surface) !important;
   box-shadow: var(--md-sys-elevation-1) !important;
 }
 
-.help-main-card-content {
-  padding: var(--sp-space-8) !important;
+.settings-main-card-content {
+  padding: var(--sp-space-5) !important;
 }
 
 /* Section Header */
-.help-section-header {
+.settings-section-header {
   text-align: left;
-  margin-bottom: var(--sp-space-8);
+  margin-bottom: var(--sp-space-5);
 }
 
-.help-section-icon {
+.settings-section-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 72px;
-  height: 72px;
+  width: 56px;
+  height: 56px;
   border-radius: var(--md-sys-shape-corner-large);
   background: var(--md-sys-color-primary-container);
   color: var(--md-sys-color-primary);
-  margin-bottom: var(--sp-space-4);
+  margin-bottom: var(--sp-space-3);
 }
 
-.help-section-title {
+.settings-section-title {
   font-family: var(--md-sys-typescale-headline-large-font);
   font-size: var(--md-sys-typescale-headline-large-size);
   font-weight: var(--md-sys-typescale-headline-large-weight);
@@ -44,7 +44,7 @@
   margin-bottom: var(--sp-space-3) !important;
 }
 
-.help-section-subtitle {
+.settings-section-subtitle {
   font-family: var(--md-sys-typescale-body-large-font);
   font-size: var(--md-sys-typescale-body-large-size);
   font-weight: var(--md-sys-typescale-body-large-weight);
@@ -55,7 +55,7 @@
 }
 
 /* Feature Cards Grid */
-.help-cards-grid {
+.settings-cards-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: var(--sp-space-4);
@@ -63,30 +63,30 @@
 }
 
 /* Feature Card */
-.help-feature-card {
+.settings-feature-card {
   cursor: pointer;
   border-radius: var(--md-sys-shape-corner-large);
   background: var(--md-sys-color-surface-container);
   transition: all var(--md-sys-motion-duration-medium2) var(--md-sys-motion-easing-standard);
-  padding: var(--sp-space-6);
-  min-height: 100px;
+  padding: var(--sp-space-4);
+  min-height: 80px;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: flex-start;
 }
 
-.help-feature-card:hover {
+.settings-feature-card:hover {
   background: var(--md-sys-color-surface-container-high);
   transform: translateY(-2px);
   box-shadow: var(--md-sys-elevation-1);
 }
 
-.help-feature-card:active {
+.settings-feature-card:active {
   transform: translateY(0);
 }
 
-.help-feature-card-title {
+.settings-feature-card-title {
   font-family: var(--md-sys-typescale-title-large-font);
   font-size: var(--md-sys-typescale-title-large-size);
   font-weight: var(--md-sys-typescale-title-large-weight);
@@ -97,29 +97,29 @@
 }
 
 /* Admin Card Variant */
-.help-feature-card-admin {
+.settings-feature-card-admin {
   background: var(--md-sys-color-error-container);
 }
 
-.help-feature-card-admin .help-feature-card-title {
+.settings-feature-card-admin .settings-feature-card-title {
   color: var(--md-sys-color-error);
 }
 
-.help-feature-card-admin:hover {
+.settings-feature-card-admin:hover {
   background: var(--md-sys-color-error-container);
 }
 
 /* Warning Card Variant (Logout) */
-.help-feature-card-warning {
+.settings-feature-card-warning {
   background: var(--md-sys-color-error-container);
   opacity: 0.7;
 }
 
-.help-feature-card-warning .help-feature-card-title {
+.settings-feature-card-warning .settings-feature-card-title {
   color: var(--md-sys-color-error);
 }
 
-.help-feature-card-warning:hover {
+.settings-feature-card-warning:hover {
   background: var(--md-sys-color-error-container);
   opacity: 1;
 }
@@ -128,30 +128,30 @@
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-  .help-container {
-    padding: var(--sp-space-4);
+  .settings-container {
+    padding: var(--sp-space-3);
   }
 
-  .help-main-card-content {
-    padding: var(--sp-space-6) !important;
+  .settings-main-card-content {
+    padding: var(--sp-space-4) !important;
   }
 
-  .help-section-header {
-    margin-bottom: var(--sp-space-6);
+  .settings-section-header {
+    margin-bottom: var(--sp-space-4);
   }
 
-  .help-section-icon {
-    width: 56px;
-    height: 56px;
+  .settings-section-icon {
+    width: 48px;
+    height: 48px;
   }
 
-  .help-cards-grid {
+  .settings-cards-grid {
     grid-template-columns: 1fr;
-    gap: var(--sp-space-3);
+    gap: var(--sp-space-2);
   }
 
-  .help-feature-card {
-    min-height: 100px;
-    padding: var(--sp-space-5);
+  .settings-feature-card {
+    min-height: 70px;
+    padding: var(--sp-space-3);
   }
 }

@@ -11,7 +11,9 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  TextField
+  TextField,
+  Switch,
+  FormControlLabel
 } from '@mui/material';
 import {
   Download as DownloadIcon,
@@ -21,9 +23,11 @@ import {
 } from '@mui/icons-material';
 import UserManual from './UserManual';
 import { useSession } from '../contexts/SessionContext';
-import './Help.css';
+import { APP_VERSION } from '../../../shared/constants';
+import logoImage from '../assets/images/logo.svg';
+import './Settings.css';
 
-function Help() {
+function Settings() {
   const { token, isAdmin, logout: sessionLogout } = useSession();
   const [logPath, setLogPath] = useState<string>('');
   const [logFiles, setLogFiles] = useState<string[]>([]);
@@ -35,6 +39,8 @@ function Help() {
   const [showLogsDialog, setShowLogsDialog] = useState(false);
   const [showUserGuideDialog, setShowUserGuideDialog] = useState(false);
   const [showAdminDialog, setShowAdminDialog] = useState(false);
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
+  const [showAboutDialog, setShowAboutDialog] = useState(false);
   
   // Credentials management state
   const [storedCredentials, setStoredCredentials] = useState<Array<{
@@ -49,6 +55,10 @@ function Help() {
   const [showClearCredentialsDialog, setShowClearCredentialsDialog] = useState(false);
   const [showRebuildDatabaseDialog, setShowRebuildDatabaseDialog] = useState(false);
   const [isAdminActionLoading, setIsAdminActionLoading] = useState(false);
+  
+  // Settings state
+  const [headlessMode, setHeadlessMode] = useState<boolean>(false);
+  const [isLoadingSettings, setIsLoadingSettings] = useState(false);
 
   const loadStoredCredentials = async () => {
     try {
@@ -86,10 +96,46 @@ function Help() {
     }
   };
 
-  // Load log files and credentials on component mount
+  const loadSettings = async () => {
+    try {
+      if (window.settings?.get) {
+        const response = await window.settings.get('browserHeadless');
+        if (response?.success && response.value !== undefined) {
+          setHeadlessMode(Boolean(response.value));
+        }
+      }
+    } catch (err) {
+      console.error('Could not load settings', err);
+      window.logger?.error('Could not load settings', { error: err });
+    }
+  };
+
+  const handleHeadlessModeToggle = async (checked: boolean) => {
+    setIsLoadingSettings(true);
+    try {
+      if (window.settings?.set) {
+        const response = await window.settings.set('browserHeadless', checked);
+        if (response?.success) {
+          setHeadlessMode(checked);
+          window.logger?.info('Headless mode setting updated', { headlessMode: checked });
+        } else {
+          setError('Could not save headless mode setting');
+          window.logger?.error('Could not save headless mode setting', { error: response.error });
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unknown error');
+      window.logger?.error('Headless mode toggle error', { error: err });
+    } finally {
+      setIsLoadingSettings(false);
+    }
+  };
+
+  // Load log files, credentials, and settings on component mount
   useEffect(() => {
     loadLogFiles();
     loadStoredCredentials();
+    loadSettings();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -133,7 +179,7 @@ function Help() {
   const handleLogout = async () => {
     try {
       await sessionLogout();
-      window.logger?.info('User logged out from Help page');
+      window.logger?.info('User logged out from Settings page');
     } catch (err) {
       window.logger?.error('Could not logout', { error: err });
       setError('Could not logout');
@@ -238,41 +284,41 @@ function Help() {
   };
 
   return (
-    <div className="help-container">
+    <div className="settings-container">
       {/* Main Container Card */}
-      <Card className="help-main-card">
-        <CardContent className="help-main-card-content">
+      <Card className="settings-main-card">
+        <CardContent className="settings-main-card-content">
           {/* Header Section */}
-          <Box className="help-section-header">
-            <Box className="help-section-icon">
+          <Box className="settings-section-header">
+            <Box className="settings-section-icon">
               <SettingsIcon sx={{ fontSize: 48 }} />
             </Box>
-            <Typography variant="h4" component="h1" className="help-section-title">
-              Help & Support
+            <Typography variant="h4" component="h1" className="settings-section-title">
+              Settings
             </Typography>
-            <Typography variant="body1" className="help-section-subtitle">
-              Access tools, documentation, and support resources. SheetPilot ensures accurate logging of every minute, designed specifically for SkyWater Technology's manufacturing excellence standards.
+            <Typography variant="body1" className="settings-section-subtitle">
+              Configure application settings, manage credentials, and access support tools. SheetPilot ensures accurate logging of every minute, designed specifically for SkyWater Technology's manufacturing excellence standards.
             </Typography>
           </Box>
 
           {/* Feature Cards Grid */}
-          <Box className="help-cards-grid">
+          <Box className="settings-cards-grid">
             {/* Export Logs Card */}
             <Box 
-              className="help-feature-card"
+              className="settings-feature-card"
               onClick={() => setShowLogsDialog(true)}
               role="button"
               tabIndex={0}
               onKeyPress={(e) => e.key === 'Enter' && setShowLogsDialog(true)}
             >
-              <Typography variant="h6" component="h2" className="help-feature-card-title">
+              <Typography variant="h6" component="h2" className="settings-feature-card-title">
                 Export Logs
               </Typography>
             </Box>
 
             {/* Update Credentials Card */}
             <Box 
-              className="help-feature-card"
+              className="settings-feature-card"
               onClick={() => {
                 const existingCred = storedCredentials.find(c => c.service === 'smartsheet');
                 if (existingCred) {
@@ -292,33 +338,67 @@ function Help() {
                 }
               }}
             >
-              <Typography variant="h6" component="h2" className="help-feature-card-title">
+              <Typography variant="h6" component="h2" className="settings-feature-card-title">
                 Update Credentials
               </Typography>
             </Box>
 
             {/* User Guide Card */}
             <Box 
-              className="help-feature-card"
+              className="settings-feature-card"
               onClick={() => setShowUserGuideDialog(true)}
               role="button"
               tabIndex={0}
               onKeyPress={(e) => e.key === 'Enter' && setShowUserGuideDialog(true)}
             >
-              <Typography variant="h6" component="h2" className="help-feature-card-title">
+              <Typography variant="h6" component="h2" className="settings-feature-card-title">
                 User Guide
+              </Typography>
+            </Box>
+
+            {/* Settings Card */}
+            <Box 
+              className="settings-feature-card"
+              onClick={() => setShowSettingsDialog(true)}
+              role="button"
+              tabIndex={0}
+              onKeyPress={(e) => e.key === 'Enter' && setShowSettingsDialog(true)}
+            >
+              <Typography variant="h6" component="h2" className="settings-feature-card-title">
+                Application Settings
+              </Typography>
+            </Box>
+
+            {/* About SheetPilot Card */}
+            <Box 
+              className="settings-feature-card"
+              onClick={() => {
+                window.logger?.userAction('about-dialog-opened');
+                setShowAboutDialog(true);
+              }}
+              role="button"
+              tabIndex={0}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  window.logger?.userAction('about-dialog-opened');
+                  setShowAboutDialog(true);
+                }
+              }}
+            >
+              <Typography variant="h6" component="h2" className="settings-feature-card-title">
+                About SheetPilot
               </Typography>
             </Box>
 
             {/* Logout Card */}
             <Box 
-              className="help-feature-card help-feature-card-warning"
+              className="settings-feature-card settings-feature-card-warning"
               onClick={handleLogout}
               role="button"
               tabIndex={0}
               onKeyPress={(e) => e.key === 'Enter' && handleLogout()}
             >
-              <Typography variant="h6" component="h2" className="help-feature-card-title">
+              <Typography variant="h6" component="h2" className="settings-feature-card-title">
                 Logout
               </Typography>
             </Box>
@@ -326,13 +406,13 @@ function Help() {
             {/* Admin Tools Card - only show for admins */}
             {isAdmin && (
               <Box 
-                className="help-feature-card help-feature-card-admin"
+                className="settings-feature-card settings-feature-card-admin"
                 onClick={() => setShowAdminDialog(true)}
                 role="button"
                 tabIndex={0}
                 onKeyPress={(e) => e.key === 'Enter' && setShowAdminDialog(true)}
               >
-                <Typography variant="h6" component="h2" className="help-feature-card-title">
+                <Typography variant="h6" component="h2" className="settings-feature-card-title">
                   Admin Tools
                 </Typography>
               </Box>
@@ -623,8 +703,98 @@ function Help() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Application Settings Dialog */}
+      <Dialog
+        open={showSettingsDialog}
+        onClose={() => {
+          setShowSettingsDialog(false);
+          setError('');
+        }}
+        maxWidth="sm"
+        fullWidth
+        disableRestoreFocus
+      >
+        <DialogTitle>Application Settings</DialogTitle>
+        <DialogContent>
+          {error && (
+            <Alert severity="error" sx={{ mb: 2, mt: 2 }}>
+              {error}
+            </Alert>
+          )}
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="h6" gutterBottom>
+              Browser Settings
+            </Typography>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={headlessMode}
+                  onChange={(e) => handleHeadlessModeToggle(e.target.checked)}
+                  disabled={isLoadingSettings}
+                />
+              }
+              label={
+                <Box>
+                  <Typography variant="body1">Headless Mode</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Run browser automation without visible windows. Changes take effect on next submission.
+                  </Typography>
+                </Box>
+              }
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setShowSettingsDialog(false);
+              setError('');
+            }}
+            variant="contained"
+          >
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* About SheetPilot Dialog */}
+      <Dialog 
+        open={showAboutDialog} 
+        onClose={() => setShowAboutDialog(false)}
+        maxWidth="sm"
+        fullWidth
+        disableRestoreFocus
+      >
+        <DialogTitle>
+          About
+        </DialogTitle>
+        <DialogContent>
+          <Box className="about-dialog-content">
+            <img 
+              src={logoImage} 
+              alt="SheetPilot Logo" 
+              className="about-dialog-logo"
+            />
+            <Typography variant="body1" color="text.secondary" gutterBottom>
+              Version {APP_VERSION}
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              Created by Andrew Hughes
+            </Typography>
+            <Typography variant="body2" color="text.secondary" className="about-dialog-description">
+              Automate timesheet data entry into web forms
+            </Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowAboutDialog(false)} variant="contained">
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 };
 
-export default Help;
+export default Settings;

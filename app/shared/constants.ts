@@ -31,3 +31,40 @@ export const PRODUCT_NAME = 'Sheetpilot';
  * 1 = current quarter + previous quarter
  */
 export const ALLOWED_PREVIOUS_QUARTERS = 1;
+
+/**
+ * Application settings object
+ * Properties update everywhere automatically (object reference semantics)
+ * Settings are persisted to disk via settings-handlers.ts
+ */
+export const appSettings = {
+  /**
+   * Browser headless mode
+   * true = browser runs invisibly (headless)
+   * false = browser is visible during automation (default for better UX)
+   * This can be toggled via Settings UI
+   */
+  browserHeadless: false,
+};
+
+/**
+ * Get browser headless mode setting
+ * Convenience function for readability
+ */
+export function getBrowserHeadless(): boolean {
+  return appSettings.browserHeadless;
+}
+
+/**
+ * Set browser headless mode
+ * Should only be called from settings handlers
+ */
+export function setBrowserHeadless(value: boolean): void {
+  const oldValue = appSettings.browserHeadless;
+  appSettings.browserHeadless = value;
+  console.log('[Constants] Browser headless mode updated:', { 
+    oldValue, 
+    newValue: value,
+    appSettingsBrowserHeadless: appSettings.browserHeadless 
+  });
+}

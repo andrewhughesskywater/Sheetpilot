@@ -34,7 +34,7 @@ export class LoginManager {
   _wait_s: number;
   /** Dynamic form configuration */
   private formConfig: { BASE_URL: string; FORM_ID: string; SUBMISSION_ENDPOINT: string; SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[] };
-  /** Track login state for each context (for parallel processing) */
+  /** Track login state for each context */
   private loginStates: boolean[] = [];
 
   /**
@@ -58,7 +58,7 @@ export class LoginManager {
    * 
    * @param email - User email for authentication
    * @param password - User password for authentication
-   * @param contextIndex - Optional context index for parallel processing
+   * @param contextIndex - Optional context index
    * @returns Promise that resolves when login is complete
    * @throws BotNavigationError if navigation fails after retries
    */

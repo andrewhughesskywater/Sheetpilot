@@ -29,7 +29,7 @@
 
 /* Feature Cards */
 .manual-feature-card {
-  padding: var(--sp-space-3) !important;
+  padding: var(--sp-space-2) !important;
   background-color: var(--md-sys-color-surface-container-low) !important;
   border: 1px solid var(--md-sys-color-outline-variant) !important;
 }
@@ -85,7 +85,7 @@
 
 /* Spacing utilities */
 .manual-spacing-top {
-  margin-top: var(--sp-space-3) !important;
+  margin-top: var(--sp-space-2) !important;
 }
 
 .manual-spacing-bottom {
@@ -117,7 +117,7 @@
 }
 
 .manual-accordion.Mui-expanded {
-  margin: 0 0 var(--sp-space-4) 0 !important;
+  margin: 0 0 var(--sp-space-3) 0 !important;
 }
 
 .manual-accordion-summary {
@@ -125,13 +125,13 @@
 }
 
 .manual-accordion-summary.Mui-expanded {
-  min-height: 48px !important;
+  min-height: 40px !important;
   background-color: var(--md-sys-color-surface-container) !important;
   border-radius: var(--md-sys-shape-corner-small) var(--md-sys-shape-corner-small) 0 0 !important;
 }
 
 .manual-accordion-summary .MuiAccordionSummary-content,
 .manual-accordion-summary .MuiAccordionSummary-content.Mui-expanded {
-  margin: var(--sp-space-3) 0 !important;
+  margin: var(--sp-space-2) 0 !important;
 }
 

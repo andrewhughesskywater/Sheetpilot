@@ -16,6 +16,7 @@ import { MemoryDataService } from '../services/plugins/memory-data-service';
 import { SQLiteCredentialService } from '../services/plugins/sqlite-credential-service';
 import { PlaywrightBotService } from '../services/plugins/playwright-bot-service';
 import { MockSubmissionService } from '../services/plugins/mock-submission-service';
+import { appLogger } from '../../../shared/logger';
 import * as path from 'path';
 
 /**
@@ -40,10 +41,8 @@ export function registerDefaultPlugins(): void {
   registry.registerPlugin('submission', 'playwright', new PlaywrightBotService());
   registry.registerPlugin('submission', 'mock', new MockSubmissionService());
   
-  // Note: This file uses console.log for bootstrap logging before logger is fully initialized
-  // This is acceptable for plugin registration logging
-  console.log('Default plugins registered successfully');
-  console.log('Active plugins:', {
+  appLogger.info('Default plugins registered successfully');
+  appLogger.verbose('Active plugins configured', {
     data: registry.getActivePluginName('data'),
     credentials: registry.getActivePluginName('credentials'),
     submission: registry.getActivePluginName('submission')

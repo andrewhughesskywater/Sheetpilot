@@ -39,16 +39,36 @@
       <button data-client-id="form_submit_btn" id="submitBtn" type="button">Submit</button>
     </div>
 
+    <!-- Success banner (hidden by default, shown after successful submission) -->
+    <div id="successBanner" class="success-message" style="display: none; background-color: #1e3a8a; color: white; padding: 12px 16px; border-radius: 8px; margin-top: 16px;">
+      <span style="color: #22c55e; margin-right: 8px;">✓</span>
+      Success! We've captured your submission.
+      <button id="closeBanner" style="float: right; background: none; border: none; color: white; cursor: pointer;">✕</button>
+    </div>
+
     <script>
       // Simulate real page behavior: on submit, call the Smartsheet endpoint used by the bot
       const FORM_ID = '0197cbae7daf72bdb96b3395b500d414';
       const ENDPOINT = `https://forms.smartsheet.com/api/submit/${FORM_ID}`;
+      const successBanner = document.getElementById('successBanner');
+      const closeBanner = document.getElementById('closeBanner');
+      
       document.getElementById('submitBtn').addEventListener('click', async () => {
         try {
           await fetch(ENDPOINT, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ok: true }) });
+          
+          // Show success banner to simulate real Smartsheet behavior
+          successBanner.style.display = 'block';
         } catch (e) {
           // Ignore network errors here; Playwright will route and fulfill this request in tests
+          // Still show success banner since route.fulfill() will handle the response
+          successBanner.style.display = 'block';
         }
+      });
+      
+      // Allow dismissing the banner
+      closeBanner.addEventListener('click', () => {
+        successBanner.style.display = 'none';
       });
     </script>
   </body>

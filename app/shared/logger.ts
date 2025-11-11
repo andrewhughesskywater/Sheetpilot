@@ -91,7 +91,25 @@ export function configureLogger() {
     // Machine-parsable JSON format for log aggregation
     // Enables automated monitoring, alerting, and compliance reporting
     log.transports.file.format = (msg: { level: string; data: unknown[] }) => {
-        const logEntry = {
+        // Extract message and context from data
+        let message = '';
+        let context: Record<string, unknown> | undefined;
+        
+        if (msg.data.length === 1 && typeof msg.data[0] === 'object' && msg.data[0] !== null) {
+            // Single object: extract message and remaining properties as context
+            const obj = msg.data[0] as Record<string, unknown>;
+            message = String(obj['message'] || '');
+            const { message: _, ...rest } = obj;
+            context = Object.keys(rest).length > 0 ? rest : undefined;
+        } else if (msg.data.length > 0) {
+            // Multiple arguments: first is message, rest is context
+            message = String(msg.data[0]);
+            if (msg.data.length > 1 && typeof msg.data[1] === 'object' && msg.data[1] !== null) {
+                context = msg.data[1] as Record<string, unknown>;
+            }
+        }
+        
+        const logEntry: Record<string, unknown> = {
             // ISO 8601 timestamp for precise time tracking
             timestamp: new Date().toISOString(),
             
@@ -117,26 +135,65 @@ export function configureLogger() {
                 nodeVersion: process.version,
             },
             
-            // Primary message content
-            message: msg.data.map((d: unknown) => typeof d === 'object' ? JSON.stringify(d) : String(d)).join(' '),
-            
-            // Structured data for machine parsing
-            data: msg.data.length === 1 && typeof msg.data[0] === 'object' ? msg.data[0] : msg.data,
+            // Primary message content (plain text, not JSON encoded)
+            message,
         };
+        
+        // Add context as separate field if present
+        if (context) {
+            logEntry['context'] = context;
+        }
         
         return [JSON.stringify(logEntry)];
     };
     
-    // Structured console format for development
-    // Single-line JSON for consistency and greppability
+    // Human-readable console format for development
+    // Use JSON format only if LOG_FORMAT=json environment variable is set
+    const useJsonConsole = process.env['LOG_FORMAT'] === 'json';
+    
     log.transports.console.format = (msg: { level: string; data: unknown[] }) => {
-        const consoleEntry = {
-            timestamp: new Date().toISOString(),
-            level: msg.level,
-            component: 'Application',
-            message: msg.data.map((d: unknown) => typeof d === 'object' ? JSON.stringify(d) : String(d)).join(' '),
-        };
-        return [JSON.stringify(consoleEntry)];
+        if (useJsonConsole) {
+            // JSON format for machine parsing
+            const consoleEntry = {
+                timestamp: new Date().toISOString(),
+                level: msg.level,
+                component: 'Application',
+                message: msg.data.map((d: unknown) => typeof d === 'object' ? JSON.stringify(d) : String(d)).join(' '),
+            };
+            return [JSON.stringify(consoleEntry)];
+        }
+        
+        // Human-readable format for development
+        const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
+        const level = msg.level.toUpperCase().padEnd(7);
+        
+        // Extract message and context
+        let message = '';
+        let context: Record<string, unknown> | undefined;
+        let component = 'Application';
+        
+        if (msg.data.length === 1 && typeof msg.data[0] === 'object' && msg.data[0] !== null) {
+            const obj = msg.data[0] as Record<string, unknown>;
+            message = String(obj['message'] || '');
+            component = String(obj['component'] || component);
+            const { message: _, component: __, ...rest } = obj;
+            context = Object.keys(rest).length > 0 ? rest : undefined;
+        } else if (msg.data.length > 0) {
+            message = String(msg.data[0]);
+            if (msg.data.length > 1 && typeof msg.data[1] === 'object' && msg.data[1] !== null) {
+                context = msg.data[1] as Record<string, unknown>;
+            }
+        }
+        
+        // Format: [TIMESTAMP] LEVEL [COMPONENT] message
+        let output = `[${timestamp}] ${level} [${component}] ${message}`;
+        
+        // Add context on same line if present
+        if (context && Object.keys(context).length > 0) {
+            output += ` ${JSON.stringify(context)}`;
+        }
+        
+        return [output];
     };
     
     // Error handling for log system failures

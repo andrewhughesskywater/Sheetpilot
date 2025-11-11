@@ -14,20 +14,7 @@ import { WebformFiller } from './webform_flow';
 import { LoginManager } from './authentication_flow';
 import { botLogger } from '../../../../../shared/logger';
 import { getQuarterForDate } from './quarter_config';
-
-/**
- * Utility function to chunk an array into smaller arrays of specified size
- * @param rows - Array to chunk
- * @param size - Size of each chunk
- * @returns Array of chunked arrays
- */
-function chunkRows<T>(rows: T[], size: number): T[][] {
-  const chunks: T[][] = [];
-  for (let i = 0; i < rows.length; i += size) {
-    chunks.push(rows.slice(i, i + size));
-  }
-  return chunks;
-}
+import { appSettings } from '../../../../../shared/constants';
 
 /**
  * Result object returned after automation execution
@@ -75,14 +62,14 @@ export class BotOrchestrator {
    * Creates a new BotOrchestrator instance
    * @param injected_config - Configuration object for automation settings
    * @param formConfig - Dynamic form configuration (required)
-   * @param headless - Whether to run browser in headless mode (default: true)
+   * @param headless - Whether to run browser in headless mode (default: null = use appSettings.browserHeadless)
    * @param browser - Browser type to use (must be 'chromium')
    * @param progress_callback - Optional callback for progress updates
    */
   constructor(
     injected_config: typeof Cfg,
     formConfig: { BASE_URL: string; FORM_ID: string; SUBMISSION_ENDPOINT: string; SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[] },
-    headless: boolean | null = true,
+    headless: boolean | null = null,
     browser: string | null = null,
     progress_callback?: (pct: number, msg: string) => void
   ) {
@@ -90,7 +77,13 @@ export class BotOrchestrator {
       throw new Error('formConfig is required. Use createFormConfig() to create a valid form configuration.');
     }
     this.cfg = injected_config;
-    this.headless = headless === null ? Cfg.BROWSER_HEADLESS : Boolean(headless);
+    // Use appSettings.browserHeadless when headless is null, otherwise use the provided value
+    this.headless = headless === null ? appSettings.browserHeadless : Boolean(headless);
+    botLogger.debug('BotOrchestrator initialized with headless setting', { 
+      headlessParam: headless, 
+      resolvedHeadless: this.headless,
+      appSettingsBrowserHeadless: appSettings.browserHeadless
+    });
     this.browser_kind = browser ?? (this.cfg as Record<string, unknown>)['BROWSER'] as string ?? 'chromium';
     this.progress_callback = progress_callback;
     this.formConfig = formConfig;
@@ -118,10 +111,11 @@ export class BotOrchestrator {
    * 
    * @param df - Array of data rows, each containing column label -> value mappings
    * @param creds - Tuple containing [email, password] for authentication
+   * @param abortSignal - Optional abort signal for cancellation support
    * @returns Promise resolving to [success, submitted_indices, errors] tuple
    */
-  async run_automation(df: Array<Record<string, unknown>>, creds: [string, string]): Promise<[boolean, number[], Array<[number,string]>]> {
-    const result = await this._run_automation_internal(df, creds);
+  async run_automation(df: Array<Record<string, unknown>>, creds: [string, string], abortSignal?: AbortSignal): Promise<[boolean, number[], Array<[number,string]>]> {
+    const result = await this._run_automation_internal(df, creds, abortSignal);
     return [result.success, result.submitted_indices, result.errors];
   }
 
@@ -206,299 +200,54 @@ export class BotOrchestrator {
   }
 
   /**
-   * Processes a single row in a specific browser context
-   * @private
-   * @param row - Data row to process
-   * @param rowIndex - Index of the row in the original array
-   * @param contextIndex - Browser context index to use
-   * @param creds - Authentication credentials [email, password]
-   * @returns Promise resolving to row index on success
-   * @throws Error if row processing fails
-   */
-  private async _process_single_row(
-    row: Record<string, unknown>,
-    rowIndex: number,
-    contextIndex: number,
-    creds: [string, string]
-  ): Promise<number> {
-    const [email, password] = creds;
-    const status_col = ((this.cfg as Record<string, unknown>)['STATUS_COLUMN_NAME'] as string) ?? 'Status';
-    const complete_val = (this.cfg as Record<string, unknown>)['STATUS_COMPLETE'] ?? 'Complete';
-    
-    try {
-      botLogger.verbose('Processing row in context', { rowIndex, contextIndex });
-      
-      // Skip completed rows
-      if (status_col in row && String(row[status_col as string] ?? '').trim() === complete_val) {
-        botLogger.verbose('Skipping completed row', { rowIndex, contextIndex });
-        throw new Error('Row already complete');
-      }
-      
-      // Build fields from row
-      const fields = this._build_fields_from_row(row);
-      
-      // Validate required fields
-      if (!this._validate_required_fields(fields, rowIndex)) {
-        botLogger.warn('Row skipped', { rowIndex, contextIndex, reason: 'Missing required fields' });
-        throw new Error('Missing required fields');
-      }
-      
-      // Validate quarter
-      if (fields['date']) {
-        const dateStr = String(fields['date']);
-        const [month, day, year] = dateStr.split('/');
-        if (month && day && year) {
-          const isoDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-          const quarterDef = getQuarterForDate(isoDate);
-          
-          if (quarterDef && quarterDef.formId !== this.formConfig.FORM_ID) {
-            botLogger.error('Quarter mismatch detected', { 
-              rowIndex,
-              contextIndex,
-              entryDate: fields['date'],
-              entryQuarter: quarterDef.id,
-              configuredFormId: this.formConfig.FORM_ID,
-              expectedFormId: quarterDef.formId
-            });
-            throw new Error(`Date ${fields['date']} belongs to ${quarterDef.name} but form configured for different quarter`);
-          }
-        }
-      }
-      
-      // Ensure logged in for this context
-      await this.login_manager.run_login_steps(email, password, contextIndex);
-      
-      // Ensure page stability
-      await this.webform_filler.wait_for_form_ready(contextIndex);
-      
-      // Fill fields
-      botLogger.verbose('Filling form fields', { rowIndex, contextIndex });
-      await this._fill_fields_for_context(contextIndex, fields);
-      
-      // Submit form
-      if (Cfg.SUBMIT_FORM_AFTER_FILLING) {
-        botLogger.verbose('Waiting for form to stabilize before submission', { rowIndex, contextIndex });
-        const page = this.webform_filler.getPage(contextIndex);
-        await Cfg.wait_for_dom_stability(
-          page,
-          'form',
-          'visible',
-          Cfg.SUBMIT_DELAY_AFTER_FILLING,
-          Cfg.SUBMIT_DELAY_AFTER_FILLING * 2,
-          'form stabilization before submission'
-        );
-        
-        // Retry form submission with HTTP 200 validation
-        const maxRetries = this.cfg.SUBMIT_RETRY_ATTEMPTS;
-        let submissionSuccess = false;
-        
-        for (let attempt = 0; attempt < maxRetries; attempt++) {
-          botLogger.info('Submitting form', { rowIndex, contextIndex, attempt: attempt + 1, maxRetries });
-          const success = await this.webform_filler.submit_form(contextIndex);
-          
-          if (success) {
-            botLogger.info('Row submitted successfully', { rowIndex, contextIndex, httpStatus: 200 });
-            submissionSuccess = true;
-            break;
-          } else {
-            botLogger.warn('Submission attempt unsuccessful', { rowIndex, contextIndex, attempt: attempt + 1, reason: 'No HTTP 200 response' });
-            if (attempt < maxRetries - 1) {
-              const retryDelay = Cfg.SUBMIT_RETRY_DELAY;
-              botLogger.verbose('Waiting for page to stabilize before retry', { rowIndex, contextIndex, retryDelay });
-              await Cfg.wait_for_dom_stability(
-                page,
-                'body',
-                'visible',
-                retryDelay,
-                retryDelay * 2,
-                'page stabilization before retry'
-              );
-              
-              // Re-fill the form before retry
-              botLogger.verbose('Re-filling form fields for retry attempt', { rowIndex, contextIndex });
-              await this._fill_fields_for_context(contextIndex, fields);
-            }
-          }
-        }
-        
-        if (!submissionSuccess) {
-          botLogger.error('Row processing failed after retries', { rowIndex, contextIndex, maxRetries, reason: 'No HTTP 200 response' });
-          throw new Error(`Form submission failed after ${maxRetries} attempts`);
-        }
-      }
-      
-      botLogger.info('Row completed successfully', { rowIndex, contextIndex });
-      return rowIndex;
-      
-    } catch (error) {
-      const errorMsg = String((error as Error)?.message ?? error);
-      botLogger.error('Row processing encountered error', { rowIndex, contextIndex, error: errorMsg });
-      
-      // Attempt recovery
-      try {
-        botLogger.info('Attempting recovery', { rowIndex, contextIndex });
-        await this.webform_filler.navigate_to_base(contextIndex);
-      } catch (recoveryError) {
-        botLogger.error('Could not recover from page error', { rowIndex, contextIndex, recoveryError: String(recoveryError) });
-      }
-      
-      throw error;
-    }
-  }
-  
-  /**
-   * Fills form fields for a specific context
-   * @private
-   * @param contextIndex - Browser context index
-   * @param fields - Fields to fill
-   */
-  private async _fill_fields_for_context(contextIndex: number, fields: Record<string, unknown>): Promise<void> {
-    botLogger.verbose('Processing fields for form filling', { contextIndex, fieldCount: Object.keys(fields).length, fields });
-    
-    for (const [field_key, value] of Object.entries(fields)) {
-      let specBase: Record<string, unknown> | undefined;
-      try {
-        botLogger.debug('Processing field', { contextIndex, fieldKey: field_key, value });
-        
-        specBase = Cfg.FIELD_DEFINITIONS[field_key] as unknown as Record<string, unknown>;
-        if (!specBase) {
-          botLogger.debug('Skipping field', { contextIndex, fieldKey: field_key, reason: 'No specification found' });
-          continue;
-        }
-        
-        // Skip empty values
-        if (!this._should_process_field(field_key, fields)) {
-          botLogger.debug('Skipping field', { contextIndex, fieldKey: field_key, reason: 'Empty/invalid value', value: String(value) });
-          continue;
-        }
-        
-        // Check if project needs tool/detail code fields
-        if (field_key === 'tool' || field_key === 'detail_code') {
-          const project_name = String(fields['project_code'] ?? 'Unknown');
-          if (!this._should_process_field(field_key, fields)) {
-            botLogger.debug('Skipping field', { contextIndex, fieldKey: field_key, reason: 'Not required for project', projectName: project_name });
-            continue;
-          }
-        }
-        
-        let spec = { ...specBase };
-        
-        // Use project-specific locator for tool field if available
-        if (field_key === 'tool') {
-          const project_name = String(fields['project_code'] ?? 'Unknown');
-          const project_specific_locator = this.get_project_specific_tool_locator(project_name);
-          if (project_specific_locator) {
-            spec['locator'] = project_specific_locator;
-            botLogger.debug('Using project-specific locator', { 
-              contextIndex,
-              fieldKey: field_key, 
-              projectName: project_name, 
-              locator: project_specific_locator 
-            });
-          }
-        }
-        
-        // Log field specification details
-        botLogger.debug('Field specification', { 
-          contextIndex,
-          fieldKey: field_key,
-          label: spec['label'] || 'No label',
-          type: spec['type'] || 'text',
-          locator: spec['locator'] || 'No locator'
-        });
-        
-        // Inject the field value
-        botLogger.debug('Injecting field value', { contextIndex, fieldKey: field_key, value: String(value) });
-        await this.webform_filler.inject_field_value(spec, String(value), contextIndex);
-        
-        // CONDITIONAL FIELD HANDLING: Wait for dependent fields to appear after filling their prerequisites
-        const page = this.webform_filler.getPage(contextIndex);
-        
-        // After filling Project, wait for Tool field to appear (if Tool field will be filled)
-        if (field_key === 'project_code' && fields['tool']) {
-          const toolSpec = Cfg.FIELD_DEFINITIONS['tool'] as unknown as Record<string, unknown>;
-          if (toolSpec && toolSpec['locator']) {
-            const toolLocator = String(toolSpec['locator']);
-            botLogger.verbose('Waiting for Tool field to appear after Project selection', { contextIndex });
-            const toolAppeared = await Cfg.dynamic_wait_for_element(
-              page,
-              toolLocator,
-              'visible',
-              0.2,  // base: 200ms
-              2.0,  // max: 2s
-              'Tool field appearance'
-            );
-            if (toolAppeared) {
-              botLogger.verbose('Tool field appeared', { contextIndex });
-            } else {
-              botLogger.warn('Tool field did not appear within timeout', { contextIndex, timeout: '2s' });
-            }
-          }
-        }
-        
-        // After filling Tool, wait for Detail Charge Code field to appear (if Detail Charge Code will be filled)
-        if (field_key === 'tool' && fields['detail_code']) {
-          const detailCodeSpec = Cfg.FIELD_DEFINITIONS['detail_code'] as unknown as Record<string, unknown>;
-          if (detailCodeSpec && detailCodeSpec['locator']) {
-            const detailCodeLocator = String(detailCodeSpec['locator']);
-            botLogger.verbose('Waiting for Detail Charge Code field to appear after Tool selection', { contextIndex });
-            const detailCodeAppeared = await Cfg.dynamic_wait_for_element(
-              page,
-              detailCodeLocator,
-              'visible',
-              0.2,  // base: 200ms
-              2.0,  // max: 2s
-              'Detail Charge Code field appearance'
-            );
-            if (detailCodeAppeared) {
-              botLogger.verbose('Detail Charge Code field appeared', { contextIndex });
-            } else {
-              botLogger.warn('Detail Charge Code field did not appear within timeout', { contextIndex, timeout: '2s' });
-            }
-          }
-        }
-        
-      } catch (error) {
-        botLogger.error('Could not process field', { 
-          contextIndex,
-          fieldKey: field_key, 
-          value, 
-          fieldSpec: specBase ? JSON.stringify(specBase) : 'Not available',
-          error: String(error) 
-        });
-        throw error;
-      }
-    }
-  }
-
-  /**
    * Internal method that executes the core automation logic
    * @private
    * @param df - Array of data rows to process
    * @param creds - Authentication credentials [email, password]
+   * @param abortSignal - Optional abort signal for cancellation support
    * @returns Promise resolving to detailed automation results
    */
-  private async _run_automation_internal(df: Array<Record<string, unknown>>, creds: [string, string]): Promise<AutomationResult> {
+  private async _run_automation_internal(df: Array<Record<string, unknown>>, creds: [string, string], abortSignal?: AbortSignal): Promise<AutomationResult> {
     const [email, password] = creds;
     const submitted: number[] = [];
     const failed_rows: Array<[number, string]> = [];
     const total_rows = df.length;
 
+    // Set up abort listener to immediately stop browser when cancelled
+    const abortHandler = () => {
+      botLogger.info('Abort signal received, closing browser immediately');
+      // Close browser asynchronously but don't wait for it
+      this.close().catch(err => {
+        botLogger.error('Could not close browser during abort', { error: err instanceof Error ? err.message : String(err) });
+      });
+    };
+    
+    if (abortSignal) {
+      abortSignal.addEventListener('abort', abortHandler);
+    }
+    
     try {
-      const parallelEnabled = Cfg.ENABLE_PARALLEL_PROCESSING;
-      const maxParallel = parallelEnabled ? Cfg.MAX_PARALLEL_CONTEXTS : 1;
+      // Check if aborted before starting
+      if (abortSignal?.aborted) {
+        botLogger.info('Automation aborted before starting');
+        throw new Error('Automation was cancelled');
+      }
       
       botLogger.info('Starting automation workflow', { 
         totalRows: total_rows, 
-        email,
-        parallelProcessing: parallelEnabled,
-        maxParallelContexts: maxParallel
+        email
       });
       
       // Login to first context
       botLogger.info('Logging in to primary context', { progress: 10 });
       this.progress_callback?.(10, 'Logging in');
       await this.login_manager.run_login_steps(email, password, 0);
+      
+      // Check if aborted after login
+      if (abortSignal?.aborted) {
+        botLogger.info('Automation aborted after login');
+        throw new Error('Automation was cancelled');
+      }
       
       botLogger.info('Login complete', { progress: 20 });
       this.progress_callback?.(20, 'Login complete');
@@ -508,65 +257,17 @@ export class BotOrchestrator {
       botLogger.info('Processing rows', { 
         totalRows: total_rows, 
         statusColumn: status_col, 
-        completeValue: complete_val,
-        mode: parallelEnabled ? 'parallel' : 'sequential'
+        completeValue: complete_val
       });
 
-      if (parallelEnabled && maxParallel > 1) {
-        // PARALLEL PROCESSING MODE
-        botLogger.info('Using parallel processing', { maxParallel });
-        
-        // Create batches for parallel processing
-        const rowBatches = chunkRows(df, maxParallel);
-        let processedCount = 0;
-        
-        for (let batchIndex = 0; batchIndex < rowBatches.length; batchIndex++) {
-          const batch = rowBatches[batchIndex];
-          if (!batch) continue;
-          
-          botLogger.info('Processing batch', { 
-            batchIndex: batchIndex + 1, 
-            totalBatches: rowBatches.length,
-            batchSize: batch.length
-          });
-          
-          // Process batch in parallel using Promise.allSettled
-          const batchPromises = batch.map((row, batchOffset) => {
-            const globalRowIndex = batchIndex * maxParallel + batchOffset;
-            const contextIndex = batchOffset % maxParallel;
-            
-            return this._process_single_row(row, globalRowIndex, contextIndex, creds);
-          });
-          
-          const results = await Promise.allSettled(batchPromises);
-          
-          // Collect results
-          for (let i = 0; i < results.length; i++) {
-            const result = results[i];
-            if (!result) continue;
-            
-            const globalRowIndex = batchIndex * maxParallel + i;
-            
-            if (result.status === 'fulfilled') {
-              submitted.push(result.value);
-              botLogger.info('Batch row succeeded', { globalRowIndex, batchIndex, rowIndexInBatch: i });
-            } else if (result.status === 'rejected') {
-              const errorMsg = String(result.reason?.message ?? result.reason);
-              failed_rows.push([globalRowIndex, errorMsg]);
-              botLogger.warn('Batch row failed', { globalRowIndex, batchIndex, rowIndexInBatch: i, error: errorMsg });
-            }
+      // Process rows sequentially
+      for (let i = 0; i < df.length; i++) {
+          // Check if aborted before processing each row
+          if (abortSignal?.aborted) {
+            botLogger.info('Automation aborted during row processing', { currentRow: i+1, totalRows: total_rows });
+            throw new Error('Automation was cancelled');
           }
           
-          processedCount += batch.length;
-          const progress = 20 + Math.floor(60 * processedCount / total_rows);
-          this.progress_callback?.(progress, `Processed ${processedCount}/${total_rows} rows`);
-        }
-        
-      } else {
-        // SEQUENTIAL PROCESSING MODE (legacy/fallback)
-        botLogger.info('Using sequential processing');
-        
-        for (let i = 0; i < df.length; i++) {
           const idx = i; // Using array index as row identifier
           const row = df[i];
           if (!row) continue;
@@ -694,10 +395,9 @@ export class BotOrchestrator {
             botLogger.error('Could not recover from page error', { rowIndex: idx, recoveryError: String(recoveryError) });
           }
         }
-        }  // End of sequential for loop
-      }  // End of else block (sequential processing mode)
+      }
 
-      // Log final results (applies to both parallel and sequential modes)
+      // Log final results
       const success_count = submitted.length;
       const failure_count = failed_rows.length;
       const successRate = total_rows > 0 ? (success_count/total_rows*100).toFixed(1) : 'N/A';
@@ -725,6 +425,11 @@ export class BotOrchestrator {
         success_count: 0,
         failure_count: total_rows,
       };
+    } finally {
+      // Clean up abort listener
+      if (abortSignal) {
+        abortSignal.removeEventListener('abort', abortHandler);
+      }
     }
   }
 

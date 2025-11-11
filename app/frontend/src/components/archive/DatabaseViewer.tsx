@@ -4,7 +4,7 @@ import { registerAllModules } from 'handsontable/registry';
 import { Download as DownloadIcon } from '@mui/icons-material';
 import 'handsontable/styles/handsontable.css';
 import 'handsontable/styles/ht-theme-horizon.css';
-import { useSession } from '../../contexts/SessionContext';
+import { useData } from '../../contexts/DataContext';
 import { StatusButton } from '../StatusButton';
 import './DatabaseViewer.css';
 
@@ -44,76 +44,33 @@ function Archive() {
   console.log('[Archive] Component rendering');
   const [activeTab] = useState<'timesheet' | 'credentials'>('timesheet');
   const [isExporting, setIsExporting] = useState(false);
-  const [localArchiveData, setLocalArchiveData] = useState<{ timesheet: TimesheetEntry[]; credentials: Credential[] }>({ timesheet: [], credentials: [] });
-  const [localIsLoading, setLocalIsLoading] = useState(true);
-  const [localError, setLocalError] = useState<string | null>(null);
-  const { token } = useSession();
+  
+  // Use shared DataContext instead of local state
+  const { archiveData, isArchiveDataLoading, archiveDataError, refreshArchiveData } = useData();
 
-  // Always fetch fresh data from database on mount - no caching
+  // Fetch fresh data when component mounts
   useEffect(() => {
     let isMounted = true;
     
-    const fetchFreshData = async () => {
-      console.log('[Archive] Fetching fresh data from database');
-      setLocalIsLoading(true);
-      setLocalError(null);
-      
-      try {
-        if (!token) {
-          setLocalError('Session token is required. Please log in to view archive data.');
-          setLocalArchiveData({ timesheet: [], credentials: [] });
-          setLocalIsLoading(false);
-          return;
-        }
-        
-        // Fetch both timesheet and credentials in a single batched IPC call
-        const archiveResponse = await window.database?.getAllArchiveData(token);
-        
-        if (!isMounted) return;
-        
-        // Parse response
-        const timesheetData: TimesheetEntry[] = archiveResponse?.success 
-          ? archiveResponse.timesheet ?? []
-          : [];
-        const credentialsData: Credential[] = archiveResponse?.success
-          ? archiveResponse.credentials ?? []
-          : [];
-        
-        console.log('[Archive] Fresh data loaded (batched):', {
-          timesheetCount: timesheetData.length,
-          credentialsCount: credentialsData.length
-        });
-        
-        setLocalArchiveData({ timesheet: timesheetData, credentials: credentialsData });
-        
-        // Check for errors
-        if (!archiveResponse?.success) {
-          setLocalError(archiveResponse?.error || 'Could not load archive data');
-        }
-      } catch (error) {
-        if (!isMounted) return;
-        console.error('[Archive] Error loading data:', error);
-        setLocalError(error instanceof Error ? error.message : 'Could not load archive data');
-        setLocalArchiveData({ timesheet: [], credentials: [] });
-      } finally {
-        if (isMounted) {
-          setLocalIsLoading(false);
-        }
+    const loadData = async () => {
+      console.log('[Archive] Component mounted, refreshing archive data');
+      if (isMounted) {
+        await refreshArchiveData();
       }
     };
     
-    fetchFreshData();
+    loadData();
     
     return () => {
       isMounted = false;
     };
-  }, [token]);
+  }, [refreshArchiveData]);
   
   console.log('[Archive] State:', {
-    isLoading: localIsLoading,
-    error: localError,
-    timesheetCount: localArchiveData.timesheet.length,
-    credentialsCount: localArchiveData.credentials.length
+    isLoading: isArchiveDataLoading,
+    error: archiveDataError,
+    timesheetCount: archiveData.timesheet.length,
+    credentialsCount: archiveData.credentials.length
   });
 
   const formatTime = (minutes: number): string => {
@@ -198,13 +155,13 @@ function Archive() {
 
   // Validate archive data for button status - MUST be before early returns
   const buttonStatus: ButtonStatus = useMemo(() => {
-    if (localArchiveData.timesheet.length === 0) {
+    if (archiveData.timesheet.length === 0) {
       return 'neutral';
     }
     return 'ready';
-  }, [localArchiveData.timesheet.length]);
+  }, [archiveData.timesheet.length]);
 
-  if (localIsLoading) {
+  if (isArchiveDataLoading) {
     return (
       <div className="loading-container">
         <h3 className="md-typescale-title-large">Loading archive...</h3>
@@ -212,12 +169,12 @@ function Archive() {
     );
   }
 
-  if (localError) {
+  if (archiveDataError) {
     return (
       <div className="error-container">
         <h3 className="md-typescale-title-large">Error loading archive</h3>
         <p className="md-typescale-body-large archive-error-message">
-          {localError}
+          {archiveDataError}
         </p>
       </div>
     );
@@ -228,15 +185,15 @@ function Archive() {
       <div className="archive-header">
         {/* Header kept for layout consistency, but button moved to footer */}
       </div>
-      {localArchiveData.timesheet.length === 0 && localArchiveData.credentials.length === 0 ? (
+      {archiveData.timesheet.length === 0 && archiveData.credentials.length === 0 ? (
         <div className="no-data-message">
           <p>No data available. Submit some timesheet entries to see them here.</p>
-          <p>Timesheet entries: {localArchiveData.timesheet.length}</p>
-          <p>Credentials: {localArchiveData.credentials.length}</p>
+          <p>Timesheet entries: {archiveData.timesheet.length}</p>
+          <p>Credentials: {archiveData.credentials.length}</p>
         </div>
       ) : activeTab === 'timesheet' ? (
         <HotTable
-          data={formatTimesheetData(localArchiveData.timesheet)}
+          data={formatTimesheetData(archiveData.timesheet)}
           columns={timesheetColumns}
           colHeaders={true}
           rowHeaders={true}
@@ -255,7 +212,7 @@ function Archive() {
         />
       ) : (
         <HotTable
-          data={formatCredentialsData(localArchiveData.credentials)}
+          data={formatCredentialsData(archiveData.credentials)}
           columns={credentialsColumns}
           colHeaders={true}
           rowHeaders={true}

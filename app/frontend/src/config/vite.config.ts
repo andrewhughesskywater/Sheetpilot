@@ -6,7 +6,9 @@ import fs from 'fs'
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => ({
   plugins: [
-    react(),
+    react({
+      jsxImportSource: '@emotion/react',
+    }),
     // Copy icon.ico to dist root for electron-builder
     {
       name: 'copy-icon',
@@ -23,7 +25,18 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       '/fonts': path.resolve(__dirname, 'assets/fonts'),
+      '@emotion/react': path.resolve(__dirname, '../node_modules/@emotion/react'),
+      '@emotion/styled': path.resolve(__dirname, '../node_modules/@emotion/styled'),
     },
+  },
+  optimizeDeps: {
+    include: [
+      '@emotion/react',
+      '@emotion/styled',
+      '@mui/material',
+      '@mui/icons-material',
+      '@mui/lab',
+    ],
   },
   assetsInclude: ['**/*.ttf', '**/*.woff', '**/*.woff2', '**/*.ico'],
   build: {

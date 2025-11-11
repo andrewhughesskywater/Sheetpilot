@@ -42,9 +42,15 @@ export async function submitTimesheet(
   // Refresh data if entries were submitted
   if (res.submitResult && res.submitResult.successCount > 0 && onRefresh) {
     window.logger?.info('Triggering data refresh after successful submission');
-    requestAnimationFrame(async () => {
+    try {
       await onRefresh();
-    });
+      window.logger?.info('Data refresh completed successfully');
+    } catch (refreshError) {
+      window.logger?.error('Could not refresh data after submission', { 
+        error: refreshError instanceof Error ? refreshError.message : String(refreshError) 
+      });
+      // Don't fail the submission if refresh fails - just log it
+    }
   }
   
   return res;

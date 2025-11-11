@@ -18,6 +18,7 @@ import { registerAdminHandlers } from './admin-handlers';
 import { registerDatabaseHandlers } from './database-handlers';
 import { registerLogsHandlers } from './logs-handlers';
 import { registerLoggerHandlers } from './logger-handlers';
+import { registerSettingsHandlers } from './settings-handlers';
 
 /**
  * Register all IPC handlers
@@ -26,7 +27,6 @@ import { registerLoggerHandlers } from './logger-handlers';
  * @param mainWindow - Main browser window for sending events
  */
 export function registerAllIPCHandlers(mainWindow?: BrowserWindow | null): void {
-  console.log('[IPC Registry] registerAllIPCHandlers called');
   appLogger.verbose('Starting IPC handler registration', { hasMainWindow: !!mainWindow });
   
   // Set main window reference for timesheet handlers (progress updates)
@@ -37,42 +37,38 @@ export function registerAllIPCHandlers(mainWindow?: BrowserWindow | null): void 
   
   // Register all handler modules with verbose logging
   try {
-    console.log('[IPC Registry] Registering auth handlers');
     appLogger.verbose('Registering auth handlers');
     registerAuthHandlers();
     appLogger.verbose('Auth handlers registered successfully');
     
-    console.log('[IPC Registry] Registering credentials handlers');
     appLogger.verbose('Registering credentials handlers');
     registerCredentialsHandlers();
     appLogger.verbose('Credentials handlers registered successfully');
     
-    console.log('[IPC Registry] Registering timesheet handlers');
     appLogger.verbose('Registering timesheet handlers');
     registerTimesheetHandlers();
     appLogger.verbose('Timesheet handlers registered successfully');
     
-    console.log('[IPC Registry] Registering admin handlers');
     appLogger.verbose('Registering admin handlers');
     registerAdminHandlers();
     appLogger.verbose('Admin handlers registered successfully');
     
-    console.log('[IPC Registry] Registering database handlers');
     appLogger.verbose('Registering database handlers');
     registerDatabaseHandlers();
     appLogger.verbose('Database handlers registered successfully');
     
-    console.log('[IPC Registry] Registering logs handlers');
     appLogger.verbose('Registering logs handlers');
     registerLogsHandlers();
     appLogger.verbose('Logs handlers registered successfully');
     
-    console.log('[IPC Registry] Registering logger handlers');
     appLogger.verbose('Registering logger handlers');
     registerLoggerHandlers();
     appLogger.verbose('Logger handlers registered successfully');
     
-    console.log('[IPC Registry] All IPC handlers registered');
+    appLogger.verbose('Registering settings handlers');
+    registerSettingsHandlers();
+    appLogger.verbose('Settings handlers registered successfully');
+    
     appLogger.info('All IPC handler modules registered successfully', { 
       modulesRegistered: [
         'auth', 
@@ -81,7 +77,8 @@ export function registerAllIPCHandlers(mainWindow?: BrowserWindow | null): void 
         'admin', 
         'database', 
         'logs', 
-        'logger'
+        'logger',
+        'settings'
       ]
     });
   } catch (err) {
@@ -102,6 +99,7 @@ export {
   registerDatabaseHandlers,
   registerLogsHandlers,
   registerLoggerHandlers,
+  registerSettingsHandlers,
   setMainWindow
 };
 
