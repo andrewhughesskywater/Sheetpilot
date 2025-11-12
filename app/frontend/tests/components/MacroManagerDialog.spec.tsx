@@ -85,7 +85,7 @@ describe('MacroManagerDialog Component', () => {
     });
 
     it('should validate required fields for macro', () => {
-      const validateMacro = (macro: any) => {
+      const validateMacro = (macro: {name?: string; project?: string; taskDescription?: string}) => {
         return macro.name && macro.project && macro.taskDescription;
       };
       

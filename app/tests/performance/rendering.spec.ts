@@ -122,13 +122,13 @@ describe('Rendering Performance', () => {
     });
 
     it('should clean up event listeners', () => {
-      const listeners: any[] = [];
+      const listeners: Array<{event: string; handler: () => void}> = [];
       
-      const addEventListener = (event: string, handler: any) => {
+      const addEventListener = (event: string, handler: () => void) => {
         listeners.push({ event, handler });
       };
       
-      const removeEventListener = (event: string, handler: any) => {
+      const removeEventListener = (event: string, handler: () => void) => {
         const index = listeners.findIndex(l => l.event === event && l.handler === handler);
         if (index >= 0) listeners.splice(index, 1);
       };
@@ -144,7 +144,7 @@ describe('Rendering Performance', () => {
     it('should not accumulate data in memory unnecessarily', () => {
       const cache = new Map();
       
-      const addToCache = (key: string, value: any) => {
+      const addToCache = (key: string, value: unknown) => {
         cache.set(key, value);
       };
       
@@ -163,7 +163,7 @@ describe('Rendering Performance', () => {
 
   describe('Re-render Optimization', () => {
     it('should memoize expensive computations', () => {
-      const cache = new Map<string, any>();
+      const cache = new Map<string, unknown>();
       
       const memoizedCompute = (input: string) => {
         if (cache.has(input)) {
@@ -199,7 +199,8 @@ describe('Rendering Performance', () => {
     it('should use callback memoization', () => {
       const memoizedCallbacks = new Map();
       
-      const useCallback = (fn: Function, deps: any[]) => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
+      const useCallback = (fn: Function, deps: unknown[]) => {
         const key = deps.join(',');
         if (!memoizedCallbacks.has(key)) {
           memoizedCallbacks.set(key, fn);
@@ -207,8 +208,12 @@ describe('Rendering Performance', () => {
         return memoizedCallbacks.get(key);
       };
       
-      const fn1 = useCallback(() => {}, [1, 2]);
-      const fn2 = useCallback(() => {}, [1, 2]);
+      const dep1 = 1;
+      const dep2 = 2;
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      const fn1 = useCallback(() => {}, [dep1, dep2]);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      const fn2 = useCallback(() => {}, [dep1, dep2]);
       
       expect(fn1).toBe(fn2); // Same function instance
     });

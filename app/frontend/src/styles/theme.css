@@ -123,6 +123,7 @@
   --sp-radius-sm: var(--md-sys-shape-corner-small);
   --sp-radius-md: var(--md-sys-shape-corner-medium);
   --sp-radius-lg: var(--md-sys-shape-corner-large);
+  --sp-focus: 0 0 0 3px rgba(14, 165, 233, 0.35); /* Fallback for older browsers */
   --sp-focus: 0 0 0 3px color-mix(in srgb, var(--md-sys-color-primary) 35%, transparent);
 
   /*Components - Densified*/
@@ -183,17 +184,23 @@ body {
 .button--primary:disabled { opacity: var(--sp-disabled); cursor: not-allowed; }
 
 .button--secondary { 
+  background: rgba(14, 165, 233, 0.12); /* Fallback for older browsers */
   background: color-mix(in srgb, var(--md-sys-color-primary) 12%, transparent);
   color: var(--md-sys-color-primary); 
+  border-color: rgba(14, 165, 233, 0.40); /* Fallback for older browsers */
   border-color: color-mix(in srgb, var(--md-sys-color-primary) 40%, transparent);
 }
 .button--secondary:hover { 
+  background: rgba(14, 165, 233, 0.18); /* Fallback for older browsers */
   background: color-mix(in srgb, var(--md-sys-color-primary) 18%, transparent);
 }
 
 .button--danger { background: var(--sp-color-error); color: var(--md-sys-color-on-error); }
 .button--text { background: transparent; color: var(--sp-color-primary); border-color: transparent; }
-.button--text:hover { background: color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent); }
+.button--text:hover { 
+  background: rgba(14, 165, 233, 0.08); /* Fallback for older browsers */
+  background: color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent); 
+}
 
 /*---------- Inputs ----------*/
 .input, select.sp-select, textarea.input {
@@ -238,7 +245,10 @@ textarea.input { height: auto; padding: var(--sp-space-3); min-height: 96px; res
 .table { width: 100%; border-collapse: separate; border-spacing: 0; }
 .table th, .table td { padding: var(--sp-space-2) var(--sp-space-3); border-bottom: 1px solid var(--sp-outline); text-align: left; }
 .table thead th { font-weight: var(--sp-fw-semibold); color: var(--sp-text-2); }
-.table tr:hover td { background: color-mix(in srgb, var(--sp-color-primary) 6%, transparent); }
+.table tr:hover td { 
+  background: rgba(14, 165, 233, 0.06); /* Fallback for older browsers */
+  background: color-mix(in srgb, var(--sp-color-primary) 6%, transparent); 
+}
 
 /*---------- Links & utilities ----------*/
 .sp-link   { color: var(--sp-color-primary); text-decoration: none; }

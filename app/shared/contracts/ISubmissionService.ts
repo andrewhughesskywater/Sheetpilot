@@ -48,7 +48,7 @@ export interface ISubmissionService extends IPlugin {
    * @param abortSignal Optional abort signal for cancellation support
    * @returns Result of submission operation
    */
-  submit(entries: TimesheetEntry[], credentials: Credentials, progressCallback?: (percent: number, message: string) => void, abortSignal?: AbortSignal): Promise<SubmissionResult>;
+  submit(entries: TimesheetEntry[], credentials: Credentials, progressCallback?: (percent: number, message: string) => void, abortSignal?: {aborted: boolean; reason?: unknown}): Promise<SubmissionResult>;
 
   /**
    * Validate a timesheet entry before submission

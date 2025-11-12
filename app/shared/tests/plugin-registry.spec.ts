@@ -443,12 +443,14 @@ describe('Plugin Registry', () => {
 
     it('should handle null plugin implementation', () => {
       expect(() => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         registry.registerPlugin('data', 'null-plugin', null as any);
       }).not.toThrow();
     });
 
     it('should handle undefined plugin implementation', () => {
       expect(() => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         registry.registerPlugin('data', 'undefined-plugin', undefined as any);
       }).not.toThrow();
     });
@@ -458,6 +460,7 @@ describe('Plugin Registry', () => {
       
       registry.registerPlugin('data', 'plain', plainObject);
       
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const retrieved = registry.getPlugin<any>('data', 'plain');
       expect(retrieved).toEqual(plainObject);
     });

@@ -75,7 +75,7 @@ describe('End-to-End Blank Screen Prevention Tests', () => {
 
   describe('Additional Failure Scenarios', () => {
     it('should handle API initialization failures', async () => {
-      (window as any).timesheet = {
+      (window as {timesheet?: unknown}).timesheet = {
         saveDraft: () => {
           throw new Error('API initialization failed');
         }
@@ -89,7 +89,7 @@ describe('End-to-End Blank Screen Prevention Tests', () => {
     });
 
     it('should handle partial API availability', async () => {
-      (window as any).timesheet = {
+      (window as {timesheet?: unknown}).timesheet = {
         saveDraft: vi.fn()
         // loadDraft missing
       };
@@ -102,7 +102,7 @@ describe('End-to-End Blank Screen Prevention Tests', () => {
     });
 
     it('should handle network failures gracefully', async () => {
-      (window as any).timesheet = {
+      (window as {timesheet?: unknown}).timesheet = {
         loadDraft: vi.fn().mockRejectedValue(new Error('Network error'))
       };
 

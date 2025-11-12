@@ -1,10 +1,22 @@
 # SheetPilot Documentation
 
-**Last Updated**: November 3, 2025
+**Last Updated**: November 12, 2025
 
 ## 📚 Start Here
 
-### For New Developers
+### For End Users
+
+👉 **[USER_GUIDE.md](./USER_GUIDE.md)** - Comprehensive user guide
+
+Complete documentation for using SheetPilot, including:
+- Getting started and first-time setup
+- Timesheet entry and submission
+- Settings and credential management
+- Keyboard shortcuts
+- Troubleshooting common issues
+- Security and privacy information
+
+### For Developers
 
 👉 **[DEVELOPER_WIKI.md](./DEVELOPER_WIKI.md)** - Comprehensive reference guide
 
@@ -23,6 +35,10 @@ This wiki consolidates all essential information for developing SheetPilot, incl
 - Dependency validation
 - Deployment procedures
 - Troubleshooting guide (including Sophos configuration)
+- Fast development mode (dev workflows and watch mode)
+- Architecture documentation guide (XML navigation)
+- Feature documentation (overlap validation, etc.)
+- Changelog (version history)
 
 ---
 
@@ -108,20 +124,7 @@ Use the **Quick Reference** for essential commands and patterns.
 
 ## 📦 Release History
 
-### v1.3.6 (2025-10-30)
-
-**Scope**: Fix production build error for electron-updater
-
-**Fixes**:
-- Fixed "Cannot find module 'electron-updater'" error in production builds
-- Added `app/backend/package.json` to electron-builder files list
-- Added `app/backend/src/services/bot/package.json` to electron-builder files list
-- Configured `asarUnpack` to unpack electron-updater from app.asar (required for native binaries)
-
-**Developer Notes**:
-- electron-updater requires native binaries that must be unpacked from app.asar
-- Backend dependencies properly packaged via package.json files inclusion
-- All subdirectory package.json files now included for proper module resolution
+See the [Changelog section in DEVELOPER_WIKI.md](./DEVELOPER_WIKI.md#changelog) for complete version history.
 
 ---
 

@@ -9,7 +9,7 @@
  * @since 2025
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 describe('New User Journey E2E', () => {
   describe('First-Time User Experience', () => {

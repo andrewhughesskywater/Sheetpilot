@@ -1,11 +1,6 @@
 import { useState, useEffect, Suspense, lazy, useRef } from 'react';
 import {
   Box,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Typography,
   CircularProgress,
   LinearProgress
@@ -51,15 +46,13 @@ export function AboutBody() {
 
 export function Splash() {
   const [progress, setProgress] = useState<number | null>(null);
-  const [status, setStatus] = useState<'checking' | 'downloading' | 'installing' | 'finalizing' | 'ready'>('checking');
+  const [status, setStatus] = useState<'checking' | 'downloading' | 'installing' | 'finalizing' | 'ready'>(() => {
+    // Detect finalize state from URL hash on initial render
+    const hash = window.location.hash || '';
+    return hash.includes('state=finalize') ? 'finalizing' : 'checking';
+  });
 
   useEffect(() => {
-    // Detect finalize state from URL hash
-    const hash = window.location.hash || '';
-    if (hash.includes('state=finalize')) {
-      setStatus('finalizing');
-    }
-
     if (!window.updates) return;
 
     window.updates.onUpdateAvailable((_version) => {
@@ -120,9 +113,6 @@ export function Splash() {
 }
 
 function AppContent() {
-  if (process.env.NODE_ENV === 'development') {
-    console.debug(`[AppContent] render ts:${performance.now().toFixed(2)}ms`);
-  }
   const { isLoggedIn, isLoading: sessionLoading, login: sessionLogin } = useSession();
   const [activeTab, setActiveTab] = useState(0);
   const [displayedTab, setDisplayedTab] = useState(0);
@@ -293,11 +283,6 @@ function AppContent() {
 };
 
 export default function App() {
-  // Diagnostic logging (gated by development mode, aware of StrictMode double-render)
-  if (process.env.NODE_ENV === 'development') {
-    console.debug(`[App] render ts:${performance.now().toFixed(2)}ms env:${import.meta.env.DEV ? 'dev' : 'prod'}`);
-  }
-  
   return (
     <SessionProvider>
       <DataProvider>

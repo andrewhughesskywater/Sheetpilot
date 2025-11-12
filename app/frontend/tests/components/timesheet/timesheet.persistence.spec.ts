@@ -13,9 +13,31 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { saveLocalBackup, batchSaveToDatabase, deleteDraftRows } from '../../../src/components/timesheet/timesheet.persistence';
 import type { TimesheetRow } from '../../../src/components/timesheet/timesheet.schema';
 
+interface MockStorage {
+  getItem: (key: string) => string | null;
+  setItem: (key: string, value: string) => void;
+  removeItem: (key: string) => void;
+  clear: () => void;
+  length: number;
+  key: (index: number) => string | null;
+}
+
 describe('Timesheet Persistence Module', () => {
   let mockLocalStorage: Record<string, string>;
-  let mockWindow: any;
+  let mockWindow: {
+    timesheet: {
+      saveDraft: ReturnType<typeof vi.fn>;
+      loadDraft: ReturnType<typeof vi.fn>;
+      deleteDraft: ReturnType<typeof vi.fn>;
+    };
+    logger: {
+      debug: ReturnType<typeof vi.fn>;
+      warn: ReturnType<typeof vi.fn>;
+      error: ReturnType<typeof vi.fn>;
+      info: ReturnType<typeof vi.fn>;
+      verbose: ReturnType<typeof vi.fn>;
+    };
+  };
 
   beforeEach(() => {
     // Mock localStorage
@@ -33,7 +55,7 @@ describe('Timesheet Persistence Module', () => {
       },
       length: 0,
       key: () => null
-    } as Storage;
+    } as MockStorage;
 
     // Mock window
     mockWindow = {
@@ -51,7 +73,7 @@ describe('Timesheet Persistence Module', () => {
       }
     };
     
-    (global as any).window = mockWindow;
+    (global as {window?: unknown}).window = mockWindow;
   });
 
   describe('saveLocalBackup', () => {
@@ -235,7 +257,7 @@ describe('Timesheet Persistence Module', () => {
     });
 
     it('should handle API unavailable gracefully', async () => {
-      (global as any).window = { timesheet: undefined };
+      (global as {window?: unknown}).window = { timesheet: undefined };
       
       const data: TimesheetRow[] = [
         {
@@ -310,7 +332,7 @@ describe('Timesheet Persistence Module', () => {
     });
 
     it('should handle API unavailable', async () => {
-      (global as any).window = { timesheet: { deleteDraft: undefined } };
+      (global as {window?: unknown}).window = { timesheet: { deleteDraft: undefined } };
       
       const deletedCount = await deleteDraftRows([1, 2]);
       

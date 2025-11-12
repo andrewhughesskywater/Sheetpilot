@@ -136,7 +136,7 @@ function Settings() {
     loadLogFiles();
     loadStoredCredentials();
     loadSettings();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, []);
 
   const handleUpdateCredentials = async () => {
@@ -297,7 +297,7 @@ function Settings() {
               Settings
             </Typography>
             <Typography variant="body1" className="settings-section-subtitle">
-              Configure application settings, manage credentials, and access support tools. SheetPilot ensures accurate logging of every minute, designed specifically for SkyWater Technology's manufacturing excellence standards.
+              Configure application settings, manage credentials, and access support tools. SheetPilot ensures accurate logging of every minute, designed specifically for SkyWater Technology&apos;s manufacturing excellence standards.
             </Typography>
           </Box>
 

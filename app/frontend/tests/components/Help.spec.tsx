@@ -35,7 +35,7 @@ const mockWindow = {
 describe('Help Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (global as any).window = mockWindow;
+    (global as {window?: unknown}).window = mockWindow;
   });
 
   describe('Log Export Functionality', () => {
@@ -54,9 +54,9 @@ describe('Help Component', () => {
     });
 
     it('should handle log path API unavailable', async () => {
-      (global as any).window.logs = undefined;
+      (global as {window?: {logs?: unknown}}).window = {logs: undefined};
       
-      const hasLogsAPI = (global as any).window.logs?.getLogPath !== undefined;
+      const hasLogsAPI = (global as {window?: {logs?: {getLogPath?: unknown}}}).window?.logs?.getLogPath !== undefined;
       expect(hasLogsAPI).toBe(false);
     });
 
@@ -149,10 +149,10 @@ describe('Help Component', () => {
       });
       
       const response = await mockWindow.credentials.list();
-      const existingCred = response.credentials.find((c: any) => c.service === 'smartsheet');
+      const existingCred = response.credentials.find((c: {service: string; email?: string}) => c.service === 'smartsheet');
       
       expect(existingCred).toBeDefined();
-      expect(existingCred.email).toBe('existing@test.com');
+      expect(existingCred?.email).toBe('existing@test.com');
     });
 
     it('should update credentials successfully', async () => {
@@ -488,7 +488,7 @@ describe('Help Component', () => {
     });
 
     it('should handle empty credentials list', () => {
-      const credentials: any[] = [];
+      const credentials: unknown[] = [];
       const hasCredentials = credentials.length > 0;
       
       expect(hasCredentials).toBe(false);

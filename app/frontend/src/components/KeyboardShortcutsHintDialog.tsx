@@ -97,7 +97,7 @@ export default function KeyboardShortcutsHintDialog({ open, onClose }: KeyboardS
           <div className="hint-page">
             <p className="hint-story">
               Save time and speed through your timesheet! These date shortcuts help you quickly fill in entries 
-              without reaching for your mouse. Perfect for when you're entering multiple days in a row.
+              without reaching for your mouse. Perfect for when you&apos;re entering multiple days in a row.
             </p>
             <div className="shortcuts-section">
               <strong>Date Entry Shortcuts:</strong>
@@ -105,7 +105,7 @@ export default function KeyboardShortcutsHintDialog({ open, onClose }: KeyboardS
                 <li><strong>Tab</strong> - Accept the smart date placeholder</li>
                 <li><strong>Shift+Tab</strong> - Insert day after the placeholder</li>
                 <li><strong>Ctrl+Tab</strong> - Insert day after your last entry</li>
-                <li><strong>Ctrl+T</strong> - Insert today's date</li>
+                <li><strong>Ctrl+T</strong> - Insert today&apos;s date</li>
               </ul>
             </div>
           </div>
@@ -115,7 +115,7 @@ export default function KeyboardShortcutsHintDialog({ open, onClose }: KeyboardS
           <div className="hint-page">
             <p className="hint-story">
               Work smarter, not harder! Use these shortcuts to duplicate rows and apply saved macros. 
-              They're especially handy when you have repetitive entries or common task patterns.
+              They&apos;re especially handy when you have repetitive entries or common task patterns.
             </p>
             <div className="shortcuts-section">
               <strong>Other Shortcuts:</strong>
@@ -154,7 +154,7 @@ export default function KeyboardShortcutsHintDialog({ open, onClose }: KeyboardS
               }}
             />
           }
-          label="Don't show again"
+          label="Don&apos;t show again"
           sx={{ 
             color: 'var(--md-sys-color-on-surface-variant)',
             fontFamily: 'var(--md-sys-typescale-body-medium-font)',

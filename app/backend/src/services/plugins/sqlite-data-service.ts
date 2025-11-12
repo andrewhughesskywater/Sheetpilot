@@ -89,60 +89,56 @@ export class SQLiteDataService implements IDataService {
       const db = getDb();
       let result;
       
-      try {
-        // If entry has an id, UPDATE; otherwise INSERT
-        if (entry.id !== undefined && entry.id !== null) {
-          const update = db.prepare(`
-            UPDATE timesheet
-            SET date = ?,
-                time_in = ?,
-                time_out = ?,
-                project = ?,
-                tool = ?,
-                detail_charge_code = ?,
-                task_description = ?,
-                status = NULL
-            WHERE id = ?
-          `);
-          
-          result = update.run(
-            entry.date,
-            timeInMinutes,
-            timeOutMinutes,
-            entry.project,
-            entry.tool || null,
-            entry.chargeCode || null,
-            entry.taskDescription,
-            entry.id
-          );
-        } else {
-          // Insert with deduplication
-          const insert = db.prepare(`
-            INSERT INTO timesheet
-            (date, time_in, time_out, project, tool, detail_charge_code, task_description, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, NULL)
-            ON CONFLICT(date, time_in, project, task_description) DO UPDATE SET
-              time_out = excluded.time_out,
-              tool = excluded.tool,
-              detail_charge_code = excluded.detail_charge_code,
+      // If entry has an id, UPDATE; otherwise INSERT
+      if (entry.id !== undefined && entry.id !== null) {
+        const update = db.prepare(`
+          UPDATE timesheet
+          SET date = ?,
+              time_in = ?,
+              time_out = ?,
+              project = ?,
+              tool = ?,
+              detail_charge_code = ?,
+              task_description = ?,
               status = NULL
-          `);
-          
-          result = insert.run(
-            entry.date,
-            timeInMinutes,
-            timeOutMinutes,
-            entry.project,
-            entry.tool || null,
-            entry.chargeCode || null,
-            entry.taskDescription
-          );
-        }
+          WHERE id = ?
+        `);
         
-        return { success: true, changes: result.changes };
-      } catch (dbError) {
-        throw dbError;
+        result = update.run(
+          entry.date,
+          timeInMinutes,
+          timeOutMinutes,
+          entry.project,
+          entry.tool || null,
+          entry.chargeCode || null,
+          entry.taskDescription,
+          entry.id
+        );
+      } else {
+        // Insert with deduplication
+        const insert = db.prepare(`
+          INSERT INTO timesheet
+          (date, time_in, time_out, project, tool, detail_charge_code, task_description, status)
+          VALUES (?, ?, ?, ?, ?, ?, ?, NULL)
+          ON CONFLICT(date, time_in, project, task_description) DO UPDATE SET
+            time_out = excluded.time_out,
+            tool = excluded.tool,
+            detail_charge_code = excluded.detail_charge_code,
+            status = NULL
+        `);
+        
+        result = insert.run(
+          entry.date,
+          timeInMinutes,
+          timeOutMinutes,
+          entry.project,
+          entry.tool || null,
+          entry.chargeCode || null,
+          entry.taskDescription
+        );
       }
+      
+      return { success: true, changes: result.changes };
       // Note: Do NOT close db connection here - singleton pattern manages lifecycle
     } catch (error) {
       return {
@@ -159,42 +155,38 @@ export class SQLiteDataService implements IDataService {
     try {
       const db = getDb();
       
-      try {
-        const getPending = db.prepare(`
-          SELECT * FROM timesheet 
-          WHERE status IS NULL
-          ORDER BY date ASC, time_in ASC
-        `);
-        
-        const entries = getPending.all() as Array<{
-          id: number;
-          date: string;
-          time_in: number;
-          time_out: number;
-          project: string;
-          tool?: string;
-          detail_charge_code?: string;
-          task_description: string;
-        }>;
-        
-        // Convert database format to grid format
-        const gridData: TimesheetEntry[] = entries.map((entry) => ({
-          id: entry.id,
-          date: entry.date,
-          timeIn: this.formatMinutesToTime(entry.time_in),
-          timeOut: this.formatMinutesToTime(entry.time_out),
-          project: entry.project,
-          tool: entry.tool || null,
-          chargeCode: entry.detail_charge_code || null,
-          taskDescription: entry.task_description
-        }));
-        
-        // Return one blank row if no entries, otherwise return the entries
-        const entriesToReturn = gridData.length > 0 ? gridData : [{}] as TimesheetEntry[];
-        return { success: true, entries: entriesToReturn };
-      } catch (dbError) {
-        throw dbError;
-      }
+      const getPending = db.prepare(`
+        SELECT * FROM timesheet 
+        WHERE status IS NULL
+        ORDER BY date ASC, time_in ASC
+      `);
+      
+      const entries = getPending.all() as Array<{
+        id: number;
+        date: string;
+        time_in: number;
+        time_out: number;
+        project: string;
+        tool?: string;
+        detail_charge_code?: string;
+        task_description: string;
+      }>;
+      
+      // Convert database format to grid format
+      const gridData: TimesheetEntry[] = entries.map((entry) => ({
+        id: entry.id,
+        date: entry.date,
+        timeIn: this.formatMinutesToTime(entry.time_in),
+        timeOut: this.formatMinutesToTime(entry.time_out),
+        project: entry.project,
+        tool: entry.tool || null,
+        chargeCode: entry.detail_charge_code || null,
+        taskDescription: entry.task_description
+      }));
+      
+      // Return one blank row if no entries, otherwise return the entries
+      const entriesToReturn = gridData.length > 0 ? gridData : [{}] as TimesheetEntry[];
+      return { success: true, entries: entriesToReturn };
       // Note: Do NOT close db connection here - singleton pattern manages lifecycle
     } catch (error) {
       return {
@@ -216,22 +208,18 @@ export class SQLiteDataService implements IDataService {
 
       const db = getDb();
       
-      try {
-        const deleteStmt = db.prepare(`
-          DELETE FROM timesheet 
-          WHERE id = ? AND status IS NULL
-        `);
-        
-        const result = deleteStmt.run(id);
-        
-        if (result.changes === 0) {
-          return { success: false, error: 'Draft entry not found' };
-        }
-        
-        return { success: true };
-      } catch (dbError) {
-        throw dbError;
+      const deleteStmt = db.prepare(`
+        DELETE FROM timesheet 
+        WHERE id = ? AND status IS NULL
+      `);
+      
+      const result = deleteStmt.run(id);
+      
+      if (result.changes === 0) {
+        return { success: false, error: 'Draft entry not found' };
       }
+      
+      return { success: true };
       // Note: Do NOT close db connection here - singleton pattern manages lifecycle
     } catch (error) {
       return {
@@ -248,39 +236,35 @@ export class SQLiteDataService implements IDataService {
     try {
       const db = getDb();
       
-      try {
-        // Get completed timesheet entries
-        const getTimesheet = db.prepare(`
-          SELECT * FROM timesheet 
-          WHERE status = 'Complete'
-          ORDER BY date ASC, time_in ASC
-        `);
-        const timesheetEntries = getTimesheet.all() as DbTimesheetEntry[];
-        
-        // Get credentials (without passwords)
-        const getCredentials = db.prepare(`
-          SELECT id, service, email, created_at, updated_at 
-          FROM credentials 
-          ORDER BY service
-        `);
-        const credentials = getCredentials.all() as Array<{
-          id: number;
-          service: string;
-          email: string;
-          created_at: string;
-          updated_at: string;
-        }>;
-        
-        return {
-          success: true,
-          data: {
-            timesheet: timesheetEntries,
-            credentials: credentials
-          }
-        };
-      } catch (dbError) {
-        throw dbError;
-      }
+      // Get completed timesheet entries
+      const getTimesheet = db.prepare(`
+        SELECT * FROM timesheet 
+        WHERE status = 'Complete'
+        ORDER BY date ASC, time_in ASC
+      `);
+      const timesheetEntries = getTimesheet.all() as DbTimesheetEntry[];
+      
+      // Get credentials (without passwords)
+      const getCredentials = db.prepare(`
+        SELECT id, service, email, created_at, updated_at 
+        FROM credentials 
+        ORDER BY service
+      `);
+      const credentials = getCredentials.all() as Array<{
+        id: number;
+        service: string;
+        email: string;
+        created_at: string;
+        updated_at: string;
+      }>;
+      
+      return {
+        success: true,
+        data: {
+          timesheet: timesheetEntries,
+          credentials: credentials
+        }
+      };
       // Note: Do NOT close db connection here - singleton pattern manages lifecycle
     } catch (error) {
       return {
@@ -297,18 +281,14 @@ export class SQLiteDataService implements IDataService {
     try {
       const db = getDb();
       
-      try {
-        const getAll = db.prepare(`
-          SELECT * FROM timesheet 
-          WHERE status = 'Complete'
-          ORDER BY date DESC, time_in DESC
-        `);
-        const entries = getAll.all() as DbTimesheetEntry[];
-        
-        return { success: true, entries };
-      } catch (dbError) {
-        throw dbError;
-      }
+      const getAll = db.prepare(`
+        SELECT * FROM timesheet 
+        WHERE status = 'Complete'
+        ORDER BY date DESC, time_in DESC
+      `);
+      const entries = getAll.all() as DbTimesheetEntry[];
+      
+      return { success: true, entries };
       // Note: Do NOT close db connection here - singleton pattern manages lifecycle
     } catch (error) {
       return {

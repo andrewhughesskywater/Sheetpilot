@@ -3,6 +3,7 @@
  * Simple MUI Tabs-based navigation
  */
 
+import React from 'react';
 import { Tabs, Tab, Box } from '@mui/material';
 import { Schedule as ScheduleIcon, Archive as ArchiveIcon, Settings as SettingsIcon } from '@mui/icons-material';
 

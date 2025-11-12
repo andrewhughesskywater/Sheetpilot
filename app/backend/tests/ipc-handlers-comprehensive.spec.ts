@@ -16,7 +16,7 @@ import * as os from 'os';
 
 declare global {
   // Storage for mocked IPC handlers used by tests
-  // eslint-disable-next-line no-var
+   
   var __test_handlers: Record<string, (...args: unknown[]) => unknown> | undefined;
 }
 
@@ -210,7 +210,7 @@ const mimps = imp as unknown as {
 
 describe('IPC Handlers Comprehensive Tests', () => {
   let testDbPath: string;
-  let handlers: Record<string, any>;
+  let handlers: Record<string, (...args: unknown[]) => unknown>;
 
   beforeAll(() => {
     // Register handlers once for all tests (pass null for mainWindow in tests)

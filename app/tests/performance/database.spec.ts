@@ -187,7 +187,7 @@ describe('Database Performance', () => {
       const cache = new Map();
       const maxSize = 100;
       
-      const addToCache = (key: string, value: any) => {
+      const addToCache = (key: string, value: unknown) => {
         if (cache.size >= maxSize) {
           const firstKey = cache.keys().next().value;
           cache.delete(firstKey); // LRU eviction
@@ -224,7 +224,7 @@ describe('Database Performance', () => {
 
     it('should cancel pending operations on unmount', () => {
       let isMounted = true;
-      let pendingOperation: Promise<any> | null = null;
+      let pendingOperation: Promise<unknown> | null = null;
       
       const startOperation = () => {
         pendingOperation = new Promise(resolve => setTimeout(resolve, 1000));
@@ -288,7 +288,6 @@ describe('Database Performance', () => {
 
     it('should throttle scroll events', () => {
       let scrollHandlerCount = 0;
-      const throttleDelay = 100;
       
       const throttledScroll = () => {
         scrollHandlerCount++;

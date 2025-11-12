@@ -30,42 +30,9 @@ export async function batchSaveToDatabase(
   }
   
   try {
-    window.logger?.info('Starting batch save and database sync');
+    window.logger?.info('Starting batch save to database');
     
-    // Step 1: Load existing draft rows from database
-    const loadResult = await window.timesheet.loadDraft();
-    const dbRows = (loadResult.success && loadResult.entries) ? loadResult.entries : [];
-    
-    // Step 2: Get current IDs in Handsontable
-    const currentIds = new Set(
-      timesheetDraftData
-        .filter(row => row.id !== undefined && row.id !== null)
-        .map(row => row.id!)
-    );
-    
-    // Step 3: Delete orphaned rows (in database but not in Handsontable)
-    const orphanedRows = dbRows.filter(dbRow => dbRow.id && !currentIds.has(dbRow.id));
-    let deletedCount = 0;
-    for (const orphan of orphanedRows) {
-      if (orphan.id) {
-        try {
-          await window.timesheet.deleteDraft(orphan.id);
-          deletedCount++;
-          window.logger?.verbose('Deleted orphaned database row', { id: orphan.id });
-        } catch (error) {
-          window.logger?.warn('Could not delete orphaned row', { 
-            id: orphan.id,
-            error: error instanceof Error ? error.message : String(error)
-          });
-        }
-      }
-    }
-    
-    if (deletedCount > 0) {
-      window.logger?.info('Cleaned up orphaned database rows', { count: deletedCount });
-    }
-    
-    // Step 4: Save complete rows from Handsontable to database
+    // Save complete rows from Handsontable to database
     const completeRows = timesheetDraftData.filter(row => 
       row.date && row.timeIn && row.timeOut && row.project && row.taskDescription
     );
@@ -83,6 +50,7 @@ export async function batchSaveToDatabase(
     for (const row of completeRows) {
       try {
         const result = await window.timesheet.saveDraft({
+          id: row.id,  // CRITICAL: Include ID to update existing entry instead of creating new one
           date: row.date!,
           timeIn: row.timeIn!,
           timeOut: row.timeOut!,
@@ -115,8 +83,7 @@ export async function batchSaveToDatabase(
     window.logger?.info('Batch save completed', { 
       total: completeRows.length,
       saved: savedCount,
-      errors: errorCount,
-      orphansDeleted: deletedCount
+      errors: errorCount
     });
   } catch (error) {
     window.logger?.error('Batch save failed', { 

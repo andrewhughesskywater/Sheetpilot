@@ -26,7 +26,7 @@ const mockWindow = {
 describe('Authentication Flow Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (global as any).window = mockWindow;
+    (global as {window?: unknown}).window = mockWindow;
   });
 
   describe('Login to Logout Flow', () => {
@@ -100,7 +100,7 @@ describe('Authentication Flow Integration', () => {
       });
 
       // Login without stay logged in
-      const loginResult = await mockWindow.auth.login('user@test.com', 'password', false);
+      await mockWindow.auth.login('user@test.com', 'password', false);
 
       // Temporary session logic
       const stayLoggedIn = false;

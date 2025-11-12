@@ -28,8 +28,8 @@ describe('Dropdown Cascading Logic Unit Tests', () => {
       const expectedProjectsWithoutTools = ['ERT', 'PTO/RTO', 'SWFL-CHEM/GAS', 'Training'];
       
       expectedProjectsWithoutTools.forEach(project => {
-        expect(projectsWithoutTools.has(project as any)).toBe(true);
-        expect(projectNeedsTools(project as any)).toBe(false);
+        expect(projectsWithoutTools.has(project as string)).toBe(true);
+        expect(projectNeedsTools(project as string)).toBe(false);
       });
     });
 
@@ -37,8 +37,8 @@ describe('Dropdown Cascading Logic Unit Tests', () => {
       const expectedProjectsWithTools = ['FL-Carver Techs', 'FL-Carver Tools', 'OSC-BBB', 'SWFL-EQUIP'];
       
       expectedProjectsWithTools.forEach(project => {
-        expect(projectsWithoutTools.has(project as any)).toBe(false);
-        expect(projectNeedsTools(project as any)).toBe(true);
+        expect(projectsWithoutTools.has(project as string)).toBe(false);
+        expect(projectNeedsTools(project as string)).toBe(true);
       });
     });
 
@@ -93,8 +93,8 @@ describe('Dropdown Cascading Logic Unit Tests', () => {
       ];
       
       expectedToolsWithoutCharges.forEach(tool => {
-        expect(toolsWithoutCharges.has(tool as any)).toBe(true);
-        expect(toolNeedsChargeCode(tool as any)).toBe(false);
+        expect(toolsWithoutCharges.has(tool as string)).toBe(true);
+        expect(toolNeedsChargeCode(tool as string)).toBe(false);
       });
     });
 
@@ -105,8 +105,8 @@ describe('Dropdown Cascading Logic Unit Tests', () => {
       ];
       
       expectedToolsWithCharges.forEach(tool => {
-        expect(toolsWithoutCharges.has(tool as any)).toBe(false);
-        expect(toolNeedsChargeCode(tool as any)).toBe(true);
+        expect(toolsWithoutCharges.has(tool as string)).toBe(false);
+        expect(toolNeedsChargeCode(tool as string)).toBe(true);
       });
     });
 
@@ -461,7 +461,7 @@ describe('Dropdown Cascading Logic Unit Tests', () => {
 
     it('should handle project-tool mismatch scenarios', () => {
       // Test tool from Project A used with Project B
-      const projectA = 'FL-Carver Techs';
+      const _projectA = 'FL-Carver Techs';
       const projectB = 'OSC-BBB';
       const toolFromA = '#1 Rinse and 2D marker';
       
@@ -654,8 +654,8 @@ describe('Dropdown Cascading Logic Unit Tests', () => {
       // Should handle all inputs without throwing errors
       mixedSequence.forEach(project => {
         expect(() => {
-          projectNeedsTools(project as any);
-          getToolOptions(project as any);
+          projectNeedsTools(project as string);
+          getToolOptions(project as string);
         }).not.toThrow();
       });
     });

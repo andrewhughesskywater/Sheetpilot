@@ -10,6 +10,25 @@
       label { display: block; margin-bottom: 4px; }
       input, textarea, button { font-size: 14px; padding: 8px; }
       textarea { width: 400px; height: 120px; }
+      .success-message {
+        display: none;
+        background-color: #1e3a8a;
+        color: white;
+        padding: 12px 16px;
+        border-radius: 8px;
+        margin-top: 16px;
+      }
+      .success-message .check-icon {
+        color: #22c55e;
+        margin-right: 8px;
+      }
+      .success-message .close-btn {
+        float: right;
+        background: none;
+        border: none;
+        color: white;
+        cursor: pointer;
+      }
     </style>
   </head>
   <body>
@@ -40,10 +59,10 @@
     </div>
 
     <!-- Success banner (hidden by default, shown after successful submission) -->
-    <div id="successBanner" class="success-message" style="display: none; background-color: #1e3a8a; color: white; padding: 12px 16px; border-radius: 8px; margin-top: 16px;">
-      <span style="color: #22c55e; margin-right: 8px;">✓</span>
+    <div id="successBanner" class="success-message">
+      <span class="check-icon">✓</span>
       Success! We've captured your submission.
-      <button id="closeBanner" style="float: right; background: none; border: none; color: white; cursor: pointer;">✕</button>
+      <button id="closeBanner" class="close-btn">✕</button>
     </div>
 
     <script>

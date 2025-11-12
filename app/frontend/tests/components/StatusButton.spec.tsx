@@ -115,7 +115,9 @@ describe('StatusButton Component', () => {
       ];
       
       testCases.forEach(({ status, expected }) => {
-        const isDisabled = true || false || status === 'neutral' || status === 'warning';
+        const isProcessing = true;
+        const disabled = false;
+        const isDisabled = isProcessing || disabled || status === 'neutral' || status === 'warning';
         expect(isDisabled).toBe(expected);
       });
     });

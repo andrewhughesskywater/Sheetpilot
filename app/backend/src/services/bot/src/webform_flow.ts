@@ -603,7 +603,7 @@ export class WebformFiller {
                 submissionTokens.push(responseData.token);
                 botLogger.debug('Found submission token', { token: responseData.token });
               }
-            } catch (parseError) {
+            } catch {
               botLogger.info('Form submission successful (non-JSON response)');
             }
             

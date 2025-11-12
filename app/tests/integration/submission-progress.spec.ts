@@ -14,7 +14,7 @@ import type { BrowserWindow } from 'electron';
 
 declare global {
   // Storage for mocked IPC handlers used by tests
-  // eslint-disable-next-line no-var
+   
   var __test_handlers: Record<string, (...args: unknown[]) => unknown> | undefined;
 }
 
@@ -35,7 +35,9 @@ const mockMainWindow: Partial<BrowserWindow> = {
     on: vi.fn(),
     once: vi.fn(),
     executeJavaScript: vi.fn(),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   isDestroyed: vi.fn(() => false) as any,
 } as Partial<BrowserWindow>;
 
@@ -333,6 +335,7 @@ describe('Submission Progress Integration Test', () => {
 
   it('should handle window destroyed during submission', async () => {
     // Mock window as destroyed
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(mockMainWindow.isDestroyed as any).mockReturnValueOnce(true);
 
     // Import and register handlers

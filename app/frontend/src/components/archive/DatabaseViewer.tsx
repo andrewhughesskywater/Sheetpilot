@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, memo } from 'react';
 import { HotTable } from '@handsontable/react-wrapper';
 import { registerAllModules } from 'handsontable/registry';
-import { Download as DownloadIcon } from '@mui/icons-material';
+import { Download as DownloadIcon, Refresh as RefreshIcon } from '@mui/icons-material';
+import { IconButton, Tooltip, CircularProgress } from '@mui/material';
 import 'handsontable/styles/handsontable.css';
 import 'handsontable/styles/ht-theme-horizon.css';
 import { useData } from '../../contexts/DataContext';
@@ -44,6 +45,7 @@ function Archive() {
   console.log('[Archive] Component rendering');
   const [activeTab] = useState<'timesheet' | 'credentials'>('timesheet');
   const [isExporting, setIsExporting] = useState(false);
+  const [isManualRefreshing, setIsManualRefreshing] = useState(false);
   
   // Use shared DataContext instead of local state
   const { archiveData, isArchiveDataLoading, archiveDataError, refreshArchiveData } = useData();
@@ -109,7 +111,6 @@ function Archive() {
 
   const formatCredentialsData = (credentials: Credential[]) => {
     return credentials.map(cred => ({
-      id: cred.id,
       service: cred.service,
       email: cred.email,
       createdAt: cred.created_at,
@@ -129,12 +130,28 @@ function Archive() {
   ];
 
   const credentialsColumns = [
-    { data: 'id', title: 'ID', width: 60 },
     { data: 'service', title: 'Service', width: 120 },
     { data: 'email', title: 'Email', width: 200 },
     { data: 'createdAt', title: 'Created', width: 150 },
     { data: 'updatedAt', title: 'Updated', width: 150 }
   ];
+
+  const handleManualRefresh = async () => {
+    // Prevent multiple simultaneous refreshes
+    if (isManualRefreshing || isArchiveDataLoading) return;
+    
+    window.logger?.userAction('archive-manual-refresh-clicked');
+    setIsManualRefreshing(true);
+    
+    try {
+      await refreshArchiveData();
+      window.logger?.info('Archive data manually refreshed');
+    } catch (error) {
+      window.logger?.error('Manual refresh error', { error: error instanceof Error ? error.message : String(error) });
+    } finally {
+      setIsManualRefreshing(false);
+    }
+  };
 
   const exportToCSV = async () => {
     // Prevent multiple simultaneous exports
@@ -183,7 +200,31 @@ function Archive() {
   return (
     <div className="archive-page">
       <div className="archive-header">
-        {/* Header kept for layout consistency, but button moved to footer */}
+        <Tooltip title="Refresh archive data" placement="bottom">
+          <span>
+            <IconButton
+              onClick={handleManualRefresh}
+              disabled={isManualRefreshing || isArchiveDataLoading}
+              aria-label="refresh archive"
+              sx={{
+                color: 'var(--md-sys-color-on-surface)',
+                '&:hover': {
+                  backgroundColor: 'var(--md-sys-color-surface-variant)'
+                },
+                '&:disabled': {
+                  color: 'var(--md-sys-color-on-surface)',
+                  opacity: 0.38
+                }
+              }}
+            >
+              {isManualRefreshing || isArchiveDataLoading ? (
+                <CircularProgress size={24} sx={{ color: 'var(--md-sys-color-primary)' }} />
+              ) : (
+                <RefreshIcon />
+              )}
+            </IconButton>
+          </span>
+        </Tooltip>
       </div>
       {archiveData.timesheet.length === 0 && archiveData.credentials.length === 0 ? (
         <div className="no-data-message">

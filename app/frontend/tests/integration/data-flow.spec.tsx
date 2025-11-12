@@ -23,7 +23,7 @@ const mockWindow = {
 describe('Data Flow Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (global as any).window = mockWindow;
+    (global as {window?: unknown}).window = mockWindow;
   });
 
   describe('Data Entry to Load Flow', () => {
@@ -143,7 +143,7 @@ describe('Data Flow Integration', () => {
     it('should preserve data in localStorage on save failure', () => {
       const mockLocalStorage: Record<string, string> = {};
 
-      const saveToLocalStorage = (data: any) => {
+      const saveToLocalStorage = (data: unknown) => {
         mockLocalStorage['backup'] = JSON.stringify(data);
       };
 

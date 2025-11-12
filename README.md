@@ -157,6 +157,11 @@ Some enterprise antivirus solutions may flag Sheetpilot due to browser automatio
 
 ## Documentation
 
+### For Users
+- [User Guide](docs/USER_GUIDE.md) - Comprehensive guide for end users
+
+### For Developers
+- [Developer Wiki](docs/DEVELOPER_WIKI.md) - Complete developer reference
 - [Auto Updates](docs/AUTO_UPDATES.md)
 - [Dependency Validation Guide](docs/DEPENDENCY_VALIDATION.md)
 - [Testing Strategy](docs/TESTING_STRATEGY.md)

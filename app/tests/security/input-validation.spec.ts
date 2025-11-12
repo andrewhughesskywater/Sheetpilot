@@ -10,6 +10,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import { resolve, normalize } from 'path';
 
 describe('Input Validation Security', () => {
   describe('SQL Injection Prevention', () => {
@@ -46,8 +47,6 @@ describe('Input Validation Security', () => {
     });
 
     it('should prevent second-order SQL injection', () => {
-      const storedValue = "'; DROP TABLE users; --";
-      
       // When retrieving stored value, still use parameterized queries
       const usesParameterizedOnRead = true;
       expect(usesParameterizedOnRead).toBe(true);
@@ -166,9 +165,8 @@ describe('Input Validation Security', () => {
 
     it('should validate file paths are within allowed directories', () => {
       const isPathSafe = (userPath: string, allowedDir: string) => {
-        const path = require('path');
-        const resolved = path.resolve(allowedDir, userPath);
-        return resolved.startsWith(path.resolve(allowedDir));
+        const resolved = resolve(allowedDir, userPath);
+        return resolved.startsWith(resolve(allowedDir));
       };
       
       expect(isPathSafe('file.log', '/logs')).toBe(true);
@@ -194,8 +192,7 @@ describe('Input Validation Security', () => {
 
     it('should normalize and validate paths', () => {
       const normalizePath = (userPath: string) => {
-        const path = require('path');
-        return path.normalize(userPath);
+        return normalize(userPath);
       };
       
       const normalized = normalizePath('../../../etc/passwd');

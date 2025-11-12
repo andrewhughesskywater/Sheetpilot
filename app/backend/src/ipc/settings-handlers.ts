@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { app } from 'electron';
 import { ipcLogger } from '../../../shared/logger';
+import { setBrowserHeadless } from '../../../shared/constants';
 
 /**
  * Settings Handlers

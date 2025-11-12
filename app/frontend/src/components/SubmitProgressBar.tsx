@@ -1,29 +1,29 @@
 /**
  * SubmitProgressBar Component
  * 
- * Simple submit button using MUI LoadingButton
+ * Simple submit button using MUI Button with loading functionality
  */
 
-import { LoadingButton } from '@mui/lab';
+import { Button } from '@mui/material';
 import { PlayArrow as PlayArrowIcon } from '@mui/icons-material';
 import type { ReactNode } from 'react';
 
 export interface SubmitProgressBarProps {
   /** Whether submission is in progress */
   isSubmitting: boolean;
-  /** Progress percentage (0-100) - not used with LoadingButton */
+  /** Progress percentage (0-100) - not used with Button loading */
   progress?: number;
-  /** Current entry number being processed - not used with LoadingButton */
+  /** Current entry number being processed - not used with Button loading */
   currentEntry?: number;
-  /** Total number of entries to process - not used with LoadingButton */
+  /** Total number of entries to process - not used with Button loading */
   totalEntries?: number;
-  /** Progress message - not used with LoadingButton */
+  /** Progress message - not used with Button loading */
   message?: string;
   /** Button text when not submitting */
   children: ReactNode;
   /** Click handler for submit button */
   onSubmit: () => void;
-  /** Click handler for cancel button - not supported with LoadingButton */
+  /** Click handler for cancel button - not supported with Button loading */
   onCancel?: () => void;
   /** Button status for styling */
   status: 'neutral' | 'ready' | 'warning';
@@ -58,7 +58,7 @@ export function SubmitProgressBar({
   };
 
   return (
-    <LoadingButton
+    <Button
       variant="contained"
       size="large"
       loading={isSubmitting}
@@ -70,7 +70,7 @@ export function SubmitProgressBar({
       sx={{ minWidth: 200 }}
     >
       {children}
-    </LoadingButton>
+    </Button>
   );
 }
 

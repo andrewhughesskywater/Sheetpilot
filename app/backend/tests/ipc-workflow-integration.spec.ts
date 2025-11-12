@@ -26,7 +26,7 @@ describe('IPC Workflow Integration', () => {
             if (fs.existsSync(testDbPath)) {
                 fs.unlinkSync(testDbPath);
             }
-        } catch (err) {
+        } catch {
             // Ignore cleanup errors
         }
         setDbPath(testDbPath);
@@ -39,7 +39,7 @@ describe('IPC Workflow Integration', () => {
             if (fs.existsSync(testDbPath)) {
                 fs.unlinkSync(testDbPath);
             }
-        } catch (err) {
+        } catch {
             // Ignore cleanup errors
         }
     });
@@ -305,13 +305,13 @@ describe('IPC Workflow Integration', () => {
         });
 
         it('should clean up on timeout', async () => {
-            let cleaned = false;
+            let _cleaned = false;
 
             const operationWithCleanup = async () => {
                 try {
                     await new Promise((resolve) => setTimeout(resolve, 10000));
                 } finally {
-                    cleaned = true;
+                    _cleaned = true;
                 }
             };
 

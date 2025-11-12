@@ -164,6 +164,12 @@ export class PlaywrightBotService implements ISubmissionService {
         }
         
         // Map bot indices back to entry IDs
+        botLogger.debug('Bot returned indices', { 
+          submitted, 
+          errors,
+          idsArray: ids
+        });
+        
         const submittedIds = submitted
           .filter(i => i >= 0 && i < ids.length)
           .map(i => ids[i])
@@ -174,9 +180,12 @@ export class PlaywrightBotService implements ISubmissionService {
           .map(([i]) => ids[i])
           .filter((id): id is number => id !== undefined);
         
-        botLogger.debug('Mapped bot results to IDs', { 
+        botLogger.info('Mapped bot results to IDs', { 
+          submittedIndices: submitted,
           submittedIds, 
-          failedIds 
+          failedIndices: errors.map(([i]) => i),
+          failedIds,
+          totalIds: ids.length
         });
         
         allSubmittedIds.push(...submittedIds);

@@ -34,6 +34,9 @@ import {
 } from '../../src/repositories/credentials-repository';
 import { setDbPath, openDb, ensureSchema } from '../../src/services/database';
 
+// Type for database row
+interface DbRow { [key: string]: unknown }
+
 describe('Credentials Repository', () => {
   let testDbPath: string;
   let originalDbPath: string;
@@ -83,8 +86,8 @@ describe('Credentials Repository', () => {
       db.close();
       
       expect(row).toBeDefined();
-      expect((row as { password: string }).password).not.toBe('password123'); // Should be encrypted
-      expect((row as { password: string }).password.length).toBeGreaterThan(20); // Encrypted is longer
+      expect((row as DbRow).password as string).not.toBe('password123'); // Should be encrypted
+      expect(((row as DbRow).password as string).length).toBeGreaterThan(20); // Encrypted is longer
     });
 
     it('should update existing credentials', () => {
@@ -99,7 +102,7 @@ describe('Credentials Repository', () => {
       // Verify only one entry exists
       const db = openDb();
       const count = db.prepare('SELECT COUNT(*) as count FROM credentials WHERE service = ?').get('smartsheet');
-      expect((count as { count: number }).count).toBe(1);
+      expect((count as DbRow).count as number).toBe(1);
       db.close();
     });
 
@@ -109,7 +112,7 @@ describe('Credentials Repository', () => {
       
       const db = openDb();
       const count = db.prepare('SELECT COUNT(*) as count FROM credentials').get();
-      expect((count as { count: number }).count).toBe(2);
+      expect((count as DbRow).count as number).toBe(2);
       db.close();
     });
 
@@ -265,7 +268,7 @@ describe('Credentials Repository', () => {
       db.close();
       
       // Same password should have different encrypted values (due to random IV)
-      expect((cred1 as { password: string }).password).not.toBe((cred2 as { password: string }).password);
+      expect((cred1 as DbRow).password as string).not.toBe((cred2 as DbRow).password as string);
     });
 
     it('should decrypt to correct plaintext', () => {
@@ -365,7 +368,7 @@ describe('Credentials Repository', () => {
       db.close();
       
       // Even with same password, encrypted values should differ
-      expect((cred1 as { password: string }).password).not.toBe((cred2 as { password: string }).password);
+      expect((cred1 as DbRow).password as string).not.toBe((cred2 as DbRow).password as string);
     });
 
     it('should validate service name to prevent injection', () => {
@@ -408,6 +411,7 @@ describe('Credentials Repository', () => {
 
     it('should handle null values gracefully', () => {
       try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         storeCredentials(null as any, null as any, null as any);
       } catch (error) {
         expect(error).toBeDefined();
@@ -416,6 +420,7 @@ describe('Credentials Repository', () => {
 
     it('should handle undefined values gracefully', () => {
       try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         storeCredentials(undefined as any, undefined as any, undefined as any);
       } catch (error) {
         expect(error).toBeDefined();
@@ -452,7 +457,7 @@ describe('Credentials Repository', () => {
         db2.close();
         
         // updated_at should change
-        expect((after as { updated_at: string }).updated_at).not.toBe((before as { updated_at: string }).updated_at);
+        expect((after as DbRow).updated_at as string).not.toBe((before as DbRow).updated_at as string);
       }, 100);
     });
 
@@ -471,7 +476,7 @@ describe('Credentials Repository', () => {
       db2.close();
       
       // created_at should not change
-      expect((stillCreated as { created_at: string }).created_at).toBe((created as { created_at: string }).created_at);
+      expect((stillCreated as DbRow).created_at as string).toBe((created as DbRow).created_at as string);
     });
   });
 

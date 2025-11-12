@@ -46,7 +46,7 @@ describe('Screen Reader Accessibility', () => {
     it('should use aria-required for required fields', () => {
       const requiredFields = ['date', 'timeIn', 'timeOut', 'project', 'taskDescription'];
       
-      requiredFields.forEach(field => {
+      requiredFields.forEach(_field => {
         const ariaRequired = 'true';
         expect(ariaRequired).toBe('true');
       });
@@ -147,7 +147,7 @@ describe('Screen Reader Accessibility', () => {
         complementary: 'complementary'
       };
       
-      Object.entries(roles).forEach(([element, role]) => {
+      Object.entries(roles).forEach(([_element, role]) => {
         expect(role).toBeDefined();
       });
     });

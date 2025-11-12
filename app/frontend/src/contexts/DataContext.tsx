@@ -112,7 +112,7 @@ export function DataProvider({ children }: DataProviderProps) {
   };
 
   // Load timesheet draft data - with proper yielding to prevent blocking
-  const loadTimesheetDraftData = async () => {
+  const loadTimesheetDraftData = useCallback(async () => {
     try {
       window.logger?.debug('[DataContext] Setting loading true for timesheet draft');
       setIsTimesheetDraftLoading(true);
@@ -174,7 +174,7 @@ export function DataProvider({ children }: DataProviderProps) {
       window.logger?.debug('[DataContext] Setting loading false for timesheet draft');
       setIsTimesheetDraftLoading(false);
     }
-  };
+  }, []);
 
   // Load archive data - with proper yielding to prevent blocking
   // Wrapped in useCallback to prevent stale closure bug
@@ -255,7 +255,7 @@ export function DataProvider({ children }: DataProviderProps) {
   const refreshTimesheetDraft = useCallback(async () => {
     window.logger?.info('[DataContext] Refreshing timesheet draft data');
     await loadTimesheetDraftData();
-  }, []);
+  }, [loadTimesheetDraftData]);
 
   // Refresh archive data - now simply calls loadArchiveData which has proper token dependency
   const refreshArchiveData = useCallback(async () => {

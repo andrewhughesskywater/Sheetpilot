@@ -91,6 +91,7 @@ if (process.env['VITEST'] === 'true') {
     initializeLogging: () => {},
     appLogger: mockLogger(),
     dbLogger: mockLogger()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any);
 } else {
   ({ initializeLogging, appLogger, dbLogger } = require('../../shared/logger'));
@@ -1367,6 +1368,7 @@ app.whenReady().then(() => {
     appLogger.error('Could not register IPC handlers', { 
       error: err instanceof Error ? err.message : String(err), 
       stack: err instanceof Error ? err.stack : undefined,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       requireStack: (err as any).requireStack
     });
   }

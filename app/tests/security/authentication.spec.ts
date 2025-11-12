@@ -10,6 +10,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import { randomUUID } from 'node:crypto';
 
 describe('Authentication Security', () => {
   describe('Password Security', () => {
@@ -30,7 +31,7 @@ describe('Authentication Security', () => {
 
     it('should use unique initialization vectors per encryption', () => {
       // Simulate two encryptions of same password
-      const ivSize = 16; // 16 bytes for AES
+      // 16 bytes for AES
       const iv1 = Math.random().toString();
       const iv2 = Math.random().toString();
       
@@ -103,8 +104,7 @@ describe('Authentication Security', () => {
   describe('Session Security', () => {
     it('should generate cryptographically secure session tokens', () => {
       const generateToken = () => {
-        const crypto = require('crypto');
-        return crypto.randomUUID();
+        return randomUUID();
       };
       
       const token1 = generateToken();
@@ -165,7 +165,7 @@ describe('Authentication Security', () => {
 
     it('should prevent session fixation attacks', () => {
       const userProvidedToken = 'attacker-chosen-token';
-      const systemGeneratedToken = require('crypto').randomUUID();
+      const systemGeneratedToken = randomUUID();
       
       // System should generate token, not accept user-provided
       expect(systemGeneratedToken).not.toBe(userProvidedToken);
@@ -265,7 +265,6 @@ describe('Authentication Security', () => {
 
     it('should prevent SQL injection in authentication', () => {
       const maliciousEmail = "admin'--";
-      const maliciousPassword = "' OR '1'='1";
       
       // Parameterized queries should prevent injection
       // Email should be validated as email format

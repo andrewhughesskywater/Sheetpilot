@@ -2,6 +2,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 import fs from 'fs'
+import { visualizer } from 'rollup-plugin-visualizer'
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => ({
@@ -19,21 +20,32 @@ export default defineConfig(({ mode }) => ({
           fs.copyFileSync(iconSrc, iconDest);
         }
       }
-    }
+    },
+    // Bundle analyzer - only in production build with ANALYZE=true
+    ...(mode === 'production' && process.env.ANALYZE === 'true' ? [
+      visualizer({
+        filename: './dist/stats.html',
+        open: true,
+        gzipSize: true,
+        brotliSize: true,
+      })
+    ] : [])
   ],
   base: './', // Use relative paths for assets in production builds
   resolve: {
     alias: {
       '/fonts': path.resolve(__dirname, 'assets/fonts'),
-      '@emotion/react': path.resolve(__dirname, '../node_modules/@emotion/react'),
-      '@emotion/styled': path.resolve(__dirname, '../node_modules/@emotion/styled'),
+      '@emotion/react': path.resolve(__dirname, '../../node_modules/@emotion/react'),
+      '@emotion/styled': path.resolve(__dirname, '../../node_modules/@emotion/styled'),
     },
   },
   optimizeDeps: {
     include: [
       '@emotion/react',
+      '@emotion/react/jsx-runtime',
       '@emotion/styled',
       '@mui/material',
+      '@mui/styled-engine',
       '@mui/icons-material',
       '@mui/lab',
     ],

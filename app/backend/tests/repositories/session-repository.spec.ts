@@ -33,6 +33,9 @@ import {
 } from '../../src/repositories/session-repository';
 import { setDbPath, openDb, ensureSchema } from '../../src/services/database';
 
+// Type for database row
+interface DbRow { [key: string]: unknown }
+
 describe('Session Repository', () => {
   let testDbPath: string;
   let originalDbPath: string;
@@ -90,7 +93,7 @@ describe('Session Repository', () => {
       db.close();
       
       expect(session).toBeDefined();
-      expect((session as { expires_at: string | null }).expires_at).toBeNull(); // No expiration for non-persistent
+      expect((session as DbRow).expires_at as string | null).toBeNull(); // No expiration for non-persistent
     });
 
     it('should create session with 30-day expiration for stayLoggedIn', () => {
@@ -101,10 +104,10 @@ describe('Session Repository', () => {
       db.close();
       
       expect(session).toBeDefined();
-      expect((session as { expires_at: string | null }).expires_at).toBeTruthy();
+      expect((session as DbRow).expires_at as string | null).toBeTruthy();
       
       // Verify expiration is approximately 30 days from now
-      const expiresAt = new Date((session as { expires_at: string }).expires_at);
+      const expiresAt = new Date((session as DbRow).expires_at as string);
       const now = new Date();
       const diffDays = (expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
       
@@ -374,6 +377,7 @@ describe('Session Repository', () => {
 
     it('should handle null email', () => {
       try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         createSession(null as any, false);
       } catch (error) {
         expect(error).toBeDefined();

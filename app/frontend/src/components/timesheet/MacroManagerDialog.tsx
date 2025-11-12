@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -19,7 +19,7 @@ import {
 import { ExpandMore as ExpandMoreIcon } from '@mui/icons-material';
 import type { MacroRow } from '../../utils/macroStorage';
 import { saveMacros, loadMacros } from '../../utils/macroStorage';
-import { projects, chargeCodes, getToolOptions, toolNeedsChargeCode, projectNeedsTools } from './timesheet.options';
+import { PROJECTS, CHARGE_CODES, getToolsForProject, doesToolNeedChargeCode, doesProjectNeedTools } from '../../config/business-config';
 import { formatTimeInput } from './timesheet.schema';
 
 interface MacroManagerDialogProps {
@@ -36,7 +36,8 @@ const MacroManagerDialog = ({ open, onClose, onSave }: MacroManagerDialogProps) 
   useEffect(() => {
     if (open) {
       const loaded = loadMacros();
-      setMacroData(loaded);
+      // Use setTimeout to defer setState to avoid sync setState in effect
+      setTimeout(() => setMacroData(loaded), 0);
     }
   }, [open]);
 
@@ -50,7 +51,7 @@ const MacroManagerDialog = ({ open, onClose, onSave }: MacroManagerDialogProps) 
     
     // Cascade project → tool → chargeCode
     if (field === 'project') {
-      const needsTools = value && projectNeedsTools(value);
+      const needsTools = value && doesProjectNeedTools(value);
       next[index] = {
         ...next[index],
         project: value || '',
@@ -58,7 +59,7 @@ const MacroManagerDialog = ({ open, onClose, onSave }: MacroManagerDialogProps) 
         chargeCode: needsTools ? next[index].chargeCode : null
       };
     } else if (field === 'tool') {
-      const needsCharge = value && toolNeedsChargeCode(value);
+      const needsCharge = value && doesToolNeedChargeCode(value);
       next[index] = {
         ...next[index],
         tool: value,
@@ -147,7 +148,7 @@ const MacroManagerDialog = ({ open, onClose, onSave }: MacroManagerDialogProps) 
                     <MenuItem value="">
                       <em>None</em>
                     </MenuItem>
-                    {projects.map((project) => (
+                    {PROJECTS.map((project) => (
                       <MenuItem key={project} value={project}>
                         {project}
                       </MenuItem>
@@ -155,7 +156,7 @@ const MacroManagerDialog = ({ open, onClose, onSave }: MacroManagerDialogProps) 
                   </Select>
                 </FormControl>
                 
-                {macro.project && projectNeedsTools(macro.project) && (
+                {macro.project && doesProjectNeedTools(macro.project) && (
                   <FormControl fullWidth size="small">
                     <InputLabel>Tool</InputLabel>
                     <Select
@@ -166,7 +167,7 @@ const MacroManagerDialog = ({ open, onClose, onSave }: MacroManagerDialogProps) 
                       <MenuItem value="">
                         <em>None</em>
                       </MenuItem>
-                      {getToolOptions(macro.project).map((tool) => (
+                      {getToolsForProject(macro.project).map((tool) => (
                         <MenuItem key={tool} value={tool}>
                           {tool}
                         </MenuItem>
@@ -175,7 +176,7 @@ const MacroManagerDialog = ({ open, onClose, onSave }: MacroManagerDialogProps) 
                   </FormControl>
                 )}
                 
-                {macro.tool && toolNeedsChargeCode(macro.tool) && (
+                {macro.tool && doesToolNeedChargeCode(macro.tool) && (
                   <FormControl fullWidth size="small">
                     <InputLabel>Charge Code</InputLabel>
                     <Select
@@ -186,7 +187,7 @@ const MacroManagerDialog = ({ open, onClose, onSave }: MacroManagerDialogProps) 
                       <MenuItem value="">
                         <em>None</em>
                       </MenuItem>
-                      {chargeCodes.map((code) => (
+                      {CHARGE_CODES.map((code) => (
                         <MenuItem key={code} value={code}>
                           {code}
                         </MenuItem>

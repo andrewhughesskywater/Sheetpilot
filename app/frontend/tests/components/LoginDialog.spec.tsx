@@ -30,7 +30,7 @@ const mockWindow = {
 describe('LoginDialog Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (global as any).window = mockWindow;
+    (global as {window?: unknown}).window = mockWindow;
   });
 
   describe('Email Auto-completion', () => {
@@ -110,9 +110,9 @@ describe('LoginDialog Component', () => {
     });
 
     it('should handle missing API gracefully', () => {
-      (global as any).window = { auth: undefined };
+      (global as {window?: unknown}).window = { auth: undefined };
       
-      const hasAPI = (global as any).window.auth?.login !== undefined;
+      const hasAPI = (global as {window?: {auth?: {login?: unknown}}}).window?.auth?.login !== undefined;
       expect(hasAPI).toBe(false);
     });
   });

@@ -169,7 +169,7 @@ import * as imp from '../src/services/timesheet-importer';
 const mimps = imp as unknown as { submitTimesheets: ReturnType<typeof vi.fn> };
 
 // Create local reference to handlers after all imports
-const handlers: Record<string, any> = globalThis.__test_handlers! as Record<string, any>;
+const handlers: Record<string, (...args: unknown[]) => unknown> = globalThis.__test_handlers! as Record<string, (...args: unknown[]) => unknown>;
 
 describe('Electron IPC Handlers (main.ts)', () => {
   beforeEach(() => {

@@ -232,7 +232,7 @@ describe('Connection Manager', () => {
       }
       
       // All queries should succeed
-      results.forEach((result, index) => {
+      results.forEach((result) => {
         expect(result).toBeDefined();
       });
     });

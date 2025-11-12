@@ -362,6 +362,10 @@ export function registerTimesheetHandlers(): void {
       // If row has an id, UPDATE the existing row
       if (validatedRow.id !== undefined && validatedRow.id !== null) {
         ipcLogger.debug('Updating existing timesheet entry', { id: validatedRow.id });
+        
+        // CRITICAL: Only update entries with status=NULL (pending drafts)
+        // Do NOT update entries that have been submitted (status='in_progress' or 'Complete')
+        // This prevents batch saves from overwriting successfully submitted entries
         const update = db.prepare(`
           UPDATE timesheet
           SET date = ?,
@@ -370,9 +374,8 @@ export function registerTimesheetHandlers(): void {
               project = ?,
               tool = ?,
               detail_charge_code = ?,
-              task_description = ?,
-              status = NULL
-          WHERE id = ?
+              task_description = ?
+          WHERE id = ? AND status IS NULL
         `);
         
         result = update.run(
@@ -395,8 +398,8 @@ export function registerTimesheetHandlers(): void {
           ON CONFLICT(date, time_in, project, task_description) DO UPDATE SET
             time_out = excluded.time_out,
             tool = excluded.tool,
-            detail_charge_code = excluded.detail_charge_code,
-            status = NULL
+            detail_charge_code = excluded.detail_charge_code
+          WHERE status IS NULL
         `);
         
         result = insert.run(
@@ -439,30 +442,42 @@ export function registerTimesheetHandlers(): void {
     const validatedData = validation.data!;
 
     try {
-      ipcLogger.verbose('Deleting draft timesheet entry', { id: validatedData.id });
+      ipcLogger.verbose('Deleting timesheet entry', { id: validatedData.id });
       
       const db = getDb();
+      
+      // Check current status before deleting
+      const checkStmt = db.prepare(`SELECT id, status FROM timesheet WHERE id = ?`);
+      const entry = checkStmt.get(validatedData.id) as { id: number; status: string | null } | undefined;
+      
+      if (entry) {
+        ipcLogger.info('Deleting entry with status', { id: validatedData.id, status: entry.status });
+      }
+      
+      // Delete ANY entry when user explicitly removes it from Handsontable
+      // This allows users to delete submitted entries if they made a mistake
       const deleteStmt = db.prepare(`
         DELETE FROM timesheet 
-        WHERE id = ? AND status IS NULL
+        WHERE id = ?
       `);
       
       const result = deleteStmt.run(validatedData.id);
       
       if (result.changes === 0) {
-        ipcLogger.warn('No draft entry found to delete', { id: validatedData.id });
+        ipcLogger.warn('Entry not found to delete', { id: validatedData.id });
         timer.done({ outcome: 'not_found' });
-        return { success: false, error: 'Draft entry not found' };
+        return { success: false, error: 'Entry not found' };
       }
       
-      ipcLogger.info('Draft timesheet entry deleted', { 
+      ipcLogger.info('Timesheet entry deleted', { 
         id: validatedData.id,
-        changes: result.changes
+        changes: result.changes,
+        previousStatus: entry?.status
       });
       timer.done({ changes: result.changes });
       return { success: true };
     } catch (err: unknown) {
-      ipcLogger.error('Could not delete draft timesheet entry', err);
+      ipcLogger.error('Could not delete timesheet entry', err);
       const errorMessage = err instanceof Error ? err.message : String(err);
       timer.done({ outcome: 'error', error: errorMessage });
       return { success: false, error: errorMessage };

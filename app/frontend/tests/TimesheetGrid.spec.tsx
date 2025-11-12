@@ -2275,7 +2275,7 @@ describe('TimesheetGrid Time Overlap Validation', () => {
     };
     
     // Mock Handsontable validator context
-    const mockContext = {
+    const _mockContext = {
       row: 1,
       col: 1,
       instance: {
@@ -2366,7 +2366,6 @@ describe('Save Status Button', () => {
     let currentStatus: 'local' | 'database' | 'error' = 'local';
     
     // Simulate failed save
-    const saveSuccess = true;
     const hasErrors = true;
     
     if (hasErrors) {
@@ -2446,8 +2445,8 @@ describe('TimesheetGrid Advanced - Keyboard Navigation Edge Cases', () => {
   });
 
   it('should handle Home and End keys', () => {
-    const handleHome = (currentCol: number) => 0;
-    const handleEnd = (currentCol: number, maxCols: number) => maxCols - 1;
+    const handleHome = (_currentCol: number) => 0;
+    const handleEnd = (_currentCol: number, maxCols: number) => maxCols - 1;
     
     expect(handleHome(5)).toBe(0);
     expect(handleEnd(3, 7)).toBe(6);
@@ -2582,7 +2581,6 @@ describe('TimesheetGrid Advanced - Undo/Redo Functionality', () => {
   });
 
   it('should clear redo stack on new edit', () => {
-    const undoStack = ['action1', 'action2'];
     let redoStack = ['undone1', 'undone2'];
     
     // Simulate new edit
@@ -2627,14 +2625,11 @@ describe('TimesheetGrid Advanced - Concurrent Editing Scenarios', () => {
   });
 
   it('should handle data changes during save operation', () => {
-    let isSaving = false;
     let dataModifiedDuringSave = false;
     
     const simulateSave = () => {
-      isSaving = true;
       // Data modified while saving
       dataModifiedDuringSave = true;
-      isSaving = false;
     };
     
     simulateSave();

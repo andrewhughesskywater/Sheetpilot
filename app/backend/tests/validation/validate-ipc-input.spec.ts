@@ -29,7 +29,6 @@ describe('IPC Input Validation Utility', () => {
 
   describe('validateInput Function', () => {
     const stringSchema = z.string().min(1);
-    const numberSchema = z.number().positive();
     const objectSchema = z.object({
       name: z.string(),
       age: z.number()

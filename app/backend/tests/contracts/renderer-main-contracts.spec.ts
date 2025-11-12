@@ -51,8 +51,6 @@ vi.mock('electron', () => {
       isMaximized: vi.fn(() => false)
     }))
   };
-  // Ensure handlers is read at least once to satisfy noUnusedLocals
-  void handlers;
 });
 
 describe('Renderer-Main Communication Contracts', () => {

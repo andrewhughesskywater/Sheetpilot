@@ -132,7 +132,7 @@ export class MarkdownReporter implements Reporter {
     const outputDir = dirname(this.outputFile);
     try {
       mkdirSync(outputDir, { recursive: true });
-    } catch (error) {
+    } catch {
       // Directory might already exist, ignore error
     }
 

@@ -196,13 +196,16 @@ export async function submitTimesheets(email: string, password: string, progress
         botLogger.info('Submission completed via plugin system', { 
             ok: result.ok,
             successCount: result.successCount,
-            removedCount: result.removedCount
+            removedCount: result.removedCount,
+            submittedIds: result.submittedIds,
+            removedIds: result.removedIds
         });
         
         // Update database based on results
         if (result.submittedIds && result.submittedIds.length > 0) {
             botLogger.info('Marking entries as submitted in database', { 
-                count: result.submittedIds.length 
+                count: result.submittedIds.length,
+                ids: result.submittedIds
             });
             try {
                 markTimesheetEntriesAsSubmitted(result.submittedIds);

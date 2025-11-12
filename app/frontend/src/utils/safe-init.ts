@@ -25,13 +25,13 @@ export function runOnce(initFn: () => void, debugLabel: string): void {
     window.__appInitialized = true;
     
     if (process.env.NODE_ENV === 'development') {
-      console.debug(`[app] init:1 ts:${performance.now().toFixed(2)}ms label:${debugLabel}`);
+      console.debug(`[app] init:1 ts:${globalThis.performance.now().toFixed(2)}ms label:${debugLabel}`);
     }
     
     initFn();
   } else {
     if (process.env.NODE_ENV === 'development') {
-      console.debug(`[app] init:skipped ts:${performance.now().toFixed(2)}ms label:${debugLabel} (already initialized)`);
+      console.debug(`[app] init:skipped ts:${globalThis.performance.now().toFixed(2)}ms label:${debugLabel} (already initialized)`);
     }
   }
 }

@@ -11,7 +11,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Import types for contract validation (used in type assertions)
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ 
 // Types validated via runtime assertion helper; explicit type imports not needed here
 import { assertPluginInterface } from '../helpers/assertion-helpers';
 
@@ -89,6 +89,7 @@ describe('Plugin Contract Validation', () => {
   describe('IDataService Contract', () => {
     it('should validate SQLiteDataService implements IDataService', async () => {
       const { SQLiteDataService } = await import('../../src/services/plugins/sqlite-data-service');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const service: any = new SQLiteDataService();
       
       assertPluginInterface(service, 'IDataService');
@@ -103,6 +104,7 @@ describe('Plugin Contract Validation', () => {
 
     it('should validate MemoryDataService implements IDataService', async () => {
       const { MemoryDataService } = await import('../../src/services/plugins/memory-data-service');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const service: any = new MemoryDataService();
       
       assertPluginInterface(service, 'IDataService');
@@ -117,6 +119,7 @@ describe('Plugin Contract Validation', () => {
 
     it('should validate saveDraft method signature', async () => {
       const { SQLiteDataService } = await import('../../src/services/plugins/sqlite-data-service');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const service: any = new SQLiteDataService();
       
       const mockEntry = {
@@ -148,6 +151,7 @@ describe('Plugin Contract Validation', () => {
 
     it('should validate loadDraft method signature', async () => {
       const { SQLiteDataService } = await import('../../src/services/plugins/sqlite-data-service');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const service: any = new SQLiteDataService();
       
       const mockEntries = [
@@ -178,6 +182,7 @@ describe('Plugin Contract Validation', () => {
 
     it('should validate deleteDraft method signature', async () => {
       const { SQLiteDataService } = await import('../../src/services/plugins/sqlite-data-service');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const service: any = new SQLiteDataService();
       
       (service.deleteDraft as unknown as import('vitest').Mock).mockResolvedValue({
@@ -192,6 +197,7 @@ describe('Plugin Contract Validation', () => {
 
     it('should validate getArchiveData method signature', async () => {
       const { SQLiteDataService } = await import('../../src/services/plugins/sqlite-data-service');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const service: any = new SQLiteDataService();
       
       const mockArchiveData = {
@@ -250,6 +256,7 @@ describe('Plugin Contract Validation', () => {
   describe('ISubmissionService Contract', () => {
     it('should validate PlaywrightBotService implements ISubmissionService', async () => {
       const { PlaywrightBotService } = await import('../../src/services/plugins/playwright-bot-service');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const service: any = new PlaywrightBotService();
       
       assertPluginInterface(service, 'ISubmissionService');
@@ -262,6 +269,7 @@ describe('Plugin Contract Validation', () => {
 
     it('should validate MockSubmissionService implements ISubmissionService', async () => {
       const { MockSubmissionService } = await import('../../src/services/plugins/mock-submission-service');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const service: any = new MockSubmissionService();
       
       assertPluginInterface(service, 'ISubmissionService');
@@ -274,6 +282,7 @@ describe('Plugin Contract Validation', () => {
 
     it('should validate submit method signature', async () => {
       const { PlaywrightBotService } = await import('../../src/services/plugins/playwright-bot-service');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const service: any = new PlaywrightBotService();
       
       const mockEntries = [
@@ -320,6 +329,7 @@ describe('Plugin Contract Validation', () => {
 
     it('should validate validateEntry method signature', async () => {
       const { PlaywrightBotService } = await import('../../src/services/plugins/playwright-bot-service');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const service: any = new PlaywrightBotService();
       
       const mockEntry = {
@@ -363,6 +373,7 @@ describe('Plugin Contract Validation', () => {
   describe('ICredentialService Contract', () => {
     it('should validate SQLiteCredentialService implements ICredentialService', async () => {
       const { SQLiteCredentialService } = await import('../../src/services/plugins/sqlite-credential-service');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const service: any = new SQLiteCredentialService();
       
       assertPluginInterface(service, 'ICredentialService');
@@ -376,6 +387,7 @@ describe('Plugin Contract Validation', () => {
 
     it('should validate store method signature', async () => {
       const { SQLiteCredentialService } = await import('../../src/services/plugins/sqlite-credential-service');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const service: any = new SQLiteCredentialService();
       
       service.store.mockResolvedValue({
@@ -396,6 +408,7 @@ describe('Plugin Contract Validation', () => {
 
     it('should validate get method signature', async () => {
       const { SQLiteCredentialService } = await import('../../src/services/plugins/sqlite-credential-service');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const service: any = new SQLiteCredentialService();
       
       service.get.mockResolvedValue({
@@ -488,6 +501,7 @@ describe('Plugin Contract Validation', () => {
       ];
       
       plugins.forEach(PluginClass => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const plugin: any = new PluginClass();
         
         expect(plugin).toHaveProperty('name');
@@ -495,15 +509,20 @@ describe('Plugin Contract Validation', () => {
         expect(plugin).toHaveProperty('initialize');
         expect(plugin).toHaveProperty('cleanup');
         
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         expect(typeof (plugin as any).name).toBe('string');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         expect(typeof (plugin as any).version).toBe('string');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         expect(typeof (plugin as any).initialize).toBe('function');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         expect(typeof (plugin as any).cleanup).toBe('function');
       });
     });
 
     it('should validate plugin initialization', async () => {
       const { SQLiteDataService } = await import('../../src/services/plugins/sqlite-data-service');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const service: any = new SQLiteDataService();
       
       service.initialize.mockResolvedValue(true);
@@ -515,6 +534,7 @@ describe('Plugin Contract Validation', () => {
 
     it('should validate plugin cleanup', async () => {
       const { SQLiteDataService } = await import('../../src/services/plugins/sqlite-data-service');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const service: any = new SQLiteDataService();
       
       service.cleanup.mockResolvedValue(true);
@@ -547,12 +567,14 @@ describe('Plugin Contract Validation', () => {
       expect(result).toHaveProperty('error');
       expect(result.success).toBe(false);
       if ('error' in result) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         expect(typeof (result as any).error).toBe('string');
       }
     });
 
     it('should validate error messages are user-friendly', async () => {
       const { PlaywrightBotService } = await import('../../src/services/plugins/playwright-bot-service');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const service: any = new PlaywrightBotService();
       
       (service.submit as unknown as import('vitest').Mock).mockResolvedValue({
@@ -567,9 +589,13 @@ describe('Plugin Contract Validation', () => {
       
       const result = await service.submit([], { email: 'test@example.com', password: 'password' });
       
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if ('error' in result && typeof (result as any).error === 'string') {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         expect((result as any).error.length).toBeLessThan(100);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         expect((result as any).error).not.toContain('undefined');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         expect((result as any).error).not.toContain('null');
       } else {
         throw new Error('error field missing or invalid');

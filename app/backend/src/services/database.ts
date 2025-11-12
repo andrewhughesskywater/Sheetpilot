@@ -638,6 +638,16 @@ export function markTimesheetEntriesAsInProgress(ids: number[]) {
     const timer = dbLogger.startTimer('mark-entries-in-progress');
     const db = getDb();
     
+    // Check current status before updating
+    const placeholdersCheck = ids.map(() => '?').join(',');
+    const checkStmt = db.prepare(`SELECT id, status FROM timesheet WHERE id IN (${placeholdersCheck})`);
+    const currentStatuses = checkStmt.all(...ids);
+    dbLogger.info('Current entry statuses before marking as in-progress', { 
+        count: ids.length, 
+        ids,
+        statuses: currentStatuses
+    });
+    
     dbLogger.info('Marking timesheet entries as in-progress', { count: ids.length, ids });
     const placeholders = ids.map(() => '?').join(',');
     const updateInProgress = db.prepare(`
@@ -647,9 +657,20 @@ export function markTimesheetEntriesAsInProgress(ids: number[]) {
     `);
     
     const result = updateInProgress.run(...ids);
+    
+    // Verify the update worked
+    if (result.changes !== ids.length) {
+        dbLogger.error('Mismatch in mark as in-progress update', {
+            expected: ids.length,
+            actual: result.changes,
+            ids
+        });
+    }
+    
     dbLogger.audit('mark-in-progress', 'Entries marked as in-progress', { 
         count: ids.length,
-        changes: result.changes 
+        changes: result.changes,
+        success: result.changes === ids.length
     });
     timer.done({ count: ids.length, changes: result.changes });
 }
@@ -699,7 +720,7 @@ export function resetInProgressTimesheetEntries(): number {
     const resetStatus = db.prepare(`
         UPDATE timesheet 
         SET status = NULL
-        WHERE status = 'in-progress'
+        WHERE status = 'in_progress'
     `);
     
     const result = resetStatus.run();
@@ -727,6 +748,16 @@ export function markTimesheetEntriesAsSubmitted(ids: number[]) {
     
     try {
         const db = getDb();
+        
+        // Check current status of entries before updating
+        const placeholdersCheck = ids.map(() => '?').join(',');
+        const checkStmt = db.prepare(`SELECT id, status FROM timesheet WHERE id IN (${placeholdersCheck})`);
+        const currentStatuses = checkStmt.all(...ids);
+        dbLogger.info('Current entry statuses before marking as submitted', { 
+            count: ids.length, 
+            ids,
+            statuses: currentStatuses
+        });
         
         dbLogger.info('Marking timesheet entries as submitted', { count: ids.length, ids });
         const placeholders = ids.map(() => '?').join(',');

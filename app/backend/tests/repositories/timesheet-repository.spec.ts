@@ -35,6 +35,9 @@ import {
 } from '../../src/repositories/timesheet-repository';
 import { setDbPath, openDb, ensureSchema } from '../../src/services/database';
 
+// Type for database row
+interface DbRow { [key: string]: unknown }
+
 describe('Timesheet Repository', () => {
   let testDbPath: string;
   let originalDbPath: string;
@@ -138,7 +141,7 @@ describe('Timesheet Repository', () => {
       // Get the entry ID
       const db = openDb();
       const row = db.prepare('SELECT id FROM timesheet WHERE project = ?').get('Test');
-      const entryId = (row as { id: number }).id;
+      const entryId = (row as DbRow).id as number;
       db.close();
       
       // Update status
@@ -147,7 +150,7 @@ describe('Timesheet Repository', () => {
       // Verify status updated
       const db2 = openDb();
       const updated = db2.prepare('SELECT status FROM timesheet WHERE id = ?').get(entryId);
-      expect((updated as { status: string }).status).toBe('Complete');
+      expect((updated as DbRow).status as string).toBe('Complete');
       db2.close();
     });
 
@@ -164,7 +167,7 @@ describe('Timesheet Repository', () => {
       
       const db = openDb();
       const row = db.prepare('SELECT id FROM timesheet WHERE project = ?').get('Delete Test');
-      const entryId = (row as { id: number }).id;
+      const entryId = (row as DbRow).id as number;
       db.close();
       
       const result = deleteTimesheetEntry(entryId);
@@ -364,11 +367,11 @@ describe('Timesheet Repository', () => {
       db.close();
       
       expect(row).toBeDefined();
-      expect((row as any).date).toBe('2025-01-15');
-      expect((row as any).time_in).toBe(540);
-      expect((row as any).time_out).toBe(1020);
-      expect((row as any).project).toBe('Integrity Test');
-      expect((row as any).task_description).toBe('Test');
+      expect((row as DbRow).date as string).toBe('2025-01-15');
+      expect((row as DbRow).time_in as number).toBe(540);
+      expect((row as DbRow).time_out as number).toBe(1020);
+      expect((row as DbRow).project as string).toBe('Integrity Test');
+      expect((row as DbRow).task_description as string).toBe('Test');
     });
 
     it('should calculate hours correctly', () => {
@@ -386,7 +389,7 @@ describe('Timesheet Repository', () => {
       const row = db.prepare('SELECT hours FROM timesheet WHERE project = ?').get('Hours Test');
       db.close();
       
-      expect((row as { hours: number }).hours).toBe(8.0);
+      expect((row as DbRow).hours as number).toBe(8.0);
     });
 
     it('should handle NULL values in optional fields', () => {
@@ -406,8 +409,8 @@ describe('Timesheet Repository', () => {
       const row = db.prepare('SELECT tool, detail_charge_code FROM timesheet WHERE project = ?').get('Null Test');
       db.close();
       
-      expect((row as any).tool).toBeNull();
-      expect((row as any).detail_charge_code).toBeNull();
+      expect((row as DbRow).tool).toBeNull();
+      expect((row as DbRow).detail_charge_code).toBeNull();
     });
   });
 

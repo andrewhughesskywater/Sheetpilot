@@ -47,7 +47,7 @@ describe('Backend Timesheet Validation Logic', () => {
       ];
       
       invalidFormats.forEach(date => {
-        expect(isValidDate(date as any)).toBe(false);
+        expect(isValidDate(date as string | undefined | null)).toBe(false);
       });
     });
 
@@ -172,7 +172,7 @@ describe('Backend Timesheet Validation Logic', () => {
       ];
       
       invalidTimes.forEach(time => {
-        expect(isValidTime(time as any)).toBe(false);
+        expect(isValidTime(time as string | undefined | null)).toBe(false);
       });
     });
 

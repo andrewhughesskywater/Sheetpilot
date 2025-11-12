@@ -192,7 +192,7 @@ describe('Keyboard Navigation Accessibility', () => {
         'settings'
       ];
       
-      features.forEach(feature => {
+      features.forEach(_feature => {
         const accessibleViaKeyboard = true;
         expect(accessibleViaKeyboard).toBe(true);
       });

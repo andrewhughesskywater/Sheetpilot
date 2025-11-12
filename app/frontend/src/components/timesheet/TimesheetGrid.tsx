@@ -29,7 +29,7 @@ interface ValidationError {
 }
 
 import { formatTimeInput, normalizeRowData, isValidDate, isValidTime, hasTimeOverlapWithPreviousEntries } from './timesheet.schema';
-import { projects, chargeCodes, projectsWithoutTools, toolsWithoutCharges, getToolOptions, toolNeedsChargeCode, projectNeedsTools } from './timesheet.options';
+import { PROJECTS, CHARGE_CODES, getToolsForProject, doesToolNeedChargeCode, doesProjectNeedTools } from '../../config/business-config';
 import { submitTimesheet } from './timesheet.submit';
 import { saveLocalBackup, batchSaveToDatabase as batchSaveToDatabaseUtil, deleteDraftRows } from './timesheet.persistence';
 import { SpellcheckEditor } from './SpellcheckEditor';
@@ -40,6 +40,10 @@ registerAllModules();
 
 // Register custom spellcheck editor
 registerEditor('spellcheckText', SpellcheckEditor);
+
+// Wrapper functions to match expected signatures
+const projectNeedsToolsWrapper = (p?: string) => doesProjectNeedTools(p || '');
+const toolNeedsChargeCodeWrapper = (t?: string) => doesToolNeedChargeCode(t || '');
 
 // NOTE: Column validators removed - they block editor closing and cause navigation issues
 // Validation now happens in afterChange hook using setCellMeta for visual feedback
@@ -215,12 +219,12 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
       // Cascade project → tool → chargeCode
       if (propStr === 'project' && newVal !== oldVal) {
         const project = String(newVal ?? '');
-        next[rowIdx] = projectsWithoutTools.has(project)
+        next[rowIdx] = !doesProjectNeedTools(project)
           ? { ...currentRow, project, tool: null, chargeCode: null }
           : { ...currentRow, project };
       } else if (propStr === 'tool' && newVal !== oldVal) {
         const tool = String(newVal ?? '');
-        next[rowIdx] = toolsWithoutCharges.has(tool)
+        next[rowIdx] = !doesToolNeedChargeCode(tool)
           ? { ...currentRow, tool, chargeCode: null }
           : { ...currentRow, tool };
       } else {
@@ -228,7 +232,7 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
       }
     }
     
-    const normalized = next.map(row => normalizeRowData(row, projectNeedsTools, toolNeedsChargeCode));
+    const normalized = next.map(row => normalizeRowData(row, projectNeedsToolsWrapper, toolNeedsChargeCodeWrapper));
     setTimesheetDraftData(normalized);
     onChange?.(normalized);
     saveLocalBackup(normalized);
@@ -356,10 +360,10 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
         let normalizedTool = tool;
         let normalizedChargeCode = chargeCode;
         
-        if (typeof project === 'string' && projectsWithoutTools.has(project)) {
+        if (typeof project === 'string' && !doesProjectNeedTools(project)) {
           normalizedTool = null;
           normalizedChargeCode = null;
-        } else if (typeof tool === 'string' && toolsWithoutCharges.has(tool)) {
+        } else if (typeof tool === 'string' && !doesToolNeedChargeCode(tool)) {
           normalizedChargeCode = null;
         }
         
@@ -388,7 +392,7 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
         const [_date, _timeIn, _timeOut, project, tool, chargeCode, _taskDescription] = row;
         
         // Only apply if project exists and needs tools
-        if (project && projectNeedsTools(project as string)) {
+        if (project && doesProjectNeedTools(project as string)) {
           const toolCol = hotInstance.propToCol('tool');
           const currentTool = hotInstance.getDataAtCell(targetRow, toolCol as number);
           
@@ -398,7 +402,7 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
           }
           
           // Similarly for charge code
-          if (tool && toolNeedsChargeCode(tool as string)) {
+          if (tool && doesToolNeedChargeCode(tool as string)) {
             const chargeCodeCol = hotInstance.propToCol('chargeCode');
             const currentChargeCode = hotInstance.getDataAtCell(targetRow, chargeCodeCol as number);
             
@@ -412,7 +416,7 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
   }, []);
 
   // Handle editor opening - add date picker close handler and dismiss errors
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const handleAfterBeginEditing = useCallback((row: number, column: number) => {
     // Dismiss errors for this cell when user starts editing
     setValidationErrors(prev => prev.filter(err => !(err.row === row && err.col === column)));
@@ -422,10 +426,12 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
       const hotInstance = hotTableRef.current?.hotInstance;
       const editor = hotInstance?.getActiveEditor();
       if (editor) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const dateEditor = editor as any;
         if (dateEditor.$datePicker && dateEditor.$datePicker._o) {
           const originalOnSelect = dateEditor.$datePicker._o.onSelect;
-          dateEditor.$datePicker._o.onSelect = function(this: any, date: any) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any, react-hooks/unsupported-syntax
+          dateEditor.$datePicker._o.onSelect = function(this: any, date: Date) {
             if (originalOnSelect) originalOnSelect.call(this, date);
             // Close editor after date selection
             setTimeout(() => {
@@ -501,7 +507,7 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
     if (macro.taskDescription) updatedRow.taskDescription = macro.taskDescription;
 
     // Normalize the row data based on cascading rules (validation/cleanup)
-    const normalizedRow = normalizeRowData(updatedRow, projectNeedsTools, toolNeedsChargeCode);
+    const normalizedRow = normalizeRowData(updatedRow, projectNeedsToolsWrapper, toolNeedsChargeCodeWrapper);
     
     // Update the source data
     sourceData[targetRow] = normalizedRow;
@@ -558,7 +564,7 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
 
   // Keyboard shortcuts handler
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const handleKeyDown = (e: globalThis.KeyboardEvent) => {
       // Only handle shortcuts when Ctrl is pressed
       if (!e.ctrlKey) return;
 
@@ -643,12 +649,18 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
       isProcessingRef.current = false; // Clear synchronous guard
       setIsProcessing(false);
       
-      // Refresh timesheet data to ensure it's in sync with database
+      // Refresh both timesheet and archive data to ensure they're in sync with database
       // This handles cases where the browser was closed manually or submission was interrupted
-      window.logger?.verbose('Refreshing timesheet data in finally block');
-      refreshTimesheetDraft().catch(err => {
-        window.logger?.error('Could not refresh timesheet data in finally block', { error: err });
-      });
+      // or when submission had partial success (some entries succeeded, some failed)
+      window.logger?.verbose('Refreshing data in finally block');
+      Promise.all([
+        refreshTimesheetDraft().catch(err => {
+          window.logger?.error('Could not refresh timesheet data in finally block', { error: err });
+        }),
+        refreshArchiveData().catch(err => {
+          window.logger?.error('Could not refresh archive data in finally block', { error: err });
+        })
+      ]);
     }
   };
 
@@ -676,7 +688,7 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
     // Tool column - dynamic dropdown based on selected project
     if (col === 4) {
       const project = rowData?.project;
-      if (!project || !projectNeedsTools(project)) {
+      if (!project || !doesProjectNeedTools(project)) {
         return { 
           className: 'htDimmed', 
           placeholder: project ? 'N/A' : '',
@@ -685,7 +697,7 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
         };
       }
       return { 
-        source: getToolOptions(project), 
+        source: getToolsForProject(project), 
         placeholder: 'Pick a Tool',
         readOnly: false
       };
@@ -694,7 +706,7 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
     // Charge code column - conditional based on selected tool
     if (col === 5) {
       const tool = rowData?.tool;
-      if (!tool || !toolNeedsChargeCode(tool)) {
+      if (!tool || !doesToolNeedChargeCode(tool)) {
         return { 
           className: 'htDimmed', 
           placeholder: tool ? 'N/A' : '',
@@ -711,7 +723,7 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
   }, [timesheetDraftData]);
 
   // Keyboard shortcuts for date column
-  const handleBeforeKeyDown = useCallback((event: KeyboardEvent) => {
+  const handleBeforeKeyDown = useCallback((event: globalThis.KeyboardEvent) => {
     const hotInstance = hotTableRef.current?.hotInstance;
     if (!hotInstance) return;
 
@@ -841,7 +853,7 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
     { data: 'project', 
       title: 'Project', 
       type: 'dropdown', 
-      source: projects, 
+      source: [...PROJECTS], 
       strict: true, 
       allowInvalid: false, 
       placeholder: 'Pick a project', 
@@ -849,7 +861,7 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
       trimDropdown: false
     },
     { data: 'tool', title: 'Tool', type: 'dropdown', source: [], strict: true, allowInvalid: false, placeholder: '', className: 'htCenter' },
-    { data: 'chargeCode', title: 'Charge Code', type: 'dropdown', source: chargeCodes, strict: true, allowInvalid: false, placeholder: '', className: 'htCenter' },
+    { data: 'chargeCode', title: 'Charge Code', type: 'dropdown', source: [...CHARGE_CODES], strict: true, allowInvalid: false, placeholder: '', className: 'htCenter' },
     { data: 'taskDescription', title: 'Task Description', editor: 'spellcheckText', placeholder: '', className: 'htLeft', maxLength: 120 }
   ], []);
 
@@ -912,13 +924,13 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
       }
       
       // Check if tool is required
-      if (row.project && projectNeedsTools(row.project) && !row.tool) {
+      if (row.project && doesProjectNeedTools(row.project) && !row.tool) {
         errorDetails.push(`Row ${rowNum}: Project "${row.project}" requires a tool`);
         hasErrors = true;
       }
       
       // Check if charge code is required
-      if (row.tool && toolNeedsChargeCode(row.tool) && !row.chargeCode) {
+      if (row.tool && doesToolNeedChargeCode(row.tool) && !row.chargeCode) {
         errorDetails.push(`Row ${rowNum}: Tool "${row.tool}" requires a charge code`);
         hasErrors = true;
       }
@@ -938,7 +950,7 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
       console.group('⚠️ Timesheet Validation Errors');
       errorDetails.forEach(err => console.warn(err));
       console.groupEnd();
-      return 'neutral';
+      return 'warning';
     }
 
     console.log('✅ All timesheet validations passed - button is ready');
@@ -965,81 +977,12 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
     );
   }
 
-  // DEV ONLY: Simulate successful submission
-  const handleSimulateSuccess = async () => {
-    if (import.meta.env.MODE !== 'development') return;
-    
-    window.logger?.info('[DEV] Simulating successful submission');
-    
-    if (!window.timesheet?.devSimulateSuccess) {
-      window.alert('[DEV] Simulate success API not available');
-      return;
-    }
-    
-    try {
-      // Get all non-empty draft entries
-      const realRows = timesheetDraftData.filter((row: TimesheetRow) => {
-        return row.date && row.timeIn && row.timeOut && row.project && row.taskDescription;
-      });
-      
-      if (realRows.length === 0) {
-        window.alert('[DEV] No entries to submit');
-        return;
-      }
-      
-      // Show the process
-      setIsProcessing(true);
-      
-      await new Promise(resolve => setTimeout(resolve, 500)); // Simulate delay
-      
-      // Call backend to mark entries as complete
-      window.logger?.info('[DEV] Marking entries as Complete');
-      const result = await window.timesheet.devSimulateSuccess();
-      
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to simulate success');
-      }
-      
-      window.logger?.info('[DEV] Entries marked as Complete', { count: result.count });
-      
-      // Refresh the data
-      window.logger?.info('[DEV] Refreshing data after simulated submission');
-      await refreshTimesheetDraft();
-      await refreshArchiveData();
-      
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      window.alert(`[DEV] ✅ Simulated submission of ${result.count} entries\n\nCheck the Archive tab to see them!`);
-      
-    } catch (error) {
-      window.logger?.error('[DEV] Simulation error', { error });
-      window.alert(`[DEV] ❌ Simulation failed: ${error instanceof Error ? error.message : String(error)}`);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
   return (
     <div className="timesheet-page">
       <div className="timesheet-header">
         {isAdmin && (
           <Alert severity="warning" sx={{ mb: 2 }}>
             Admin users cannot submit timesheet entries to SmartSheet.
-          </Alert>
-        )}
-        {import.meta.env.MODE === 'development' && (
-          <Alert severity="info" sx={{ mb: 2 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span>DEV MODE</span>
-              <Button
-                size="small"
-                variant="outlined"
-                onClick={handleSimulateSuccess}
-                disabled={isProcessing}
-              >
-                Simulate Success
-              </Button>
-            </div>
           </Alert>
         )}
       </div>

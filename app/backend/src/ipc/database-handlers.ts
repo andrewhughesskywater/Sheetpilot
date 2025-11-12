@@ -55,7 +55,7 @@ export function registerDatabaseHandlers(): void {
       const getAll = db.prepare(`
         SELECT * FROM timesheet 
         WHERE status = 'Complete' 
-        ORDER BY date DESC, time_in DESC 
+        ORDER BY date ASC, time_in ASC 
         LIMIT ? OFFSET ?
       `);
       const entries = getAll.all(pageSize, offset);
@@ -119,7 +119,7 @@ export function registerDatabaseHandlers(): void {
       const db = getDb();
       
       // Get timesheet entries
-      const getTimesheet = db.prepare('SELECT * FROM timesheet WHERE status = \'Complete\' ORDER BY date DESC, time_in DESC');
+      const getTimesheet = db.prepare('SELECT * FROM timesheet WHERE status = \'Complete\' ORDER BY date ASC, time_in ASC');
       const timesheet = getTimesheet.all();
       
       // Get credentials

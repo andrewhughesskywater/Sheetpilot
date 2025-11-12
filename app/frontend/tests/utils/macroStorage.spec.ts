@@ -9,8 +9,17 @@
  * @since 2025
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { saveMacros, loadMacros, type MacroRow } from '../../../src/utils/macroStorage';
+
+interface MockStorage {
+  getItem: (key: string) => string | null;
+  setItem: (key: string, value: string) => void;
+  removeItem: (key: string) => void;
+  clear: () => void;
+  length: number;
+  key: (index: number) => string | null;
+}
 
 describe('Macro Storage Utility', () => {
   let mockLocalStorage: Record<string, string>;
@@ -31,7 +40,7 @@ describe('Macro Storage Utility', () => {
       },
       length: 0,
       key: () => null
-    } as Storage;
+    } as MockStorage;
   });
 
   describe('saveMacros', () => {

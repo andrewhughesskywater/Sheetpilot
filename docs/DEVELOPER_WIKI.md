@@ -1,6 +1,6 @@
 # SheetPilot Developer Wiki
 
-**Last Updated**: November 3, 2025  
+**Last Updated**: November 12, 2025  
 **Purpose**: Consolidated reference for developers working on SheetPilot
 
 ---
@@ -20,6 +20,10 @@
 11. [Dependency Validation](#dependency-validation)
 12. [Deployment](#deployment)
 13. [Troubleshooting](#troubleshooting)
+14. [Fast Development Mode](#fast-development-mode)
+15. [Architecture Documentation Guide](#architecture-documentation-guide)
+16. [Feature Documentation](#feature-documentation)
+17. [Changelog](#changelog)
 
 ---
 
@@ -1853,6 +1857,370 @@ npm run clean        # Clean build artifacts
 
 ---
 
+## Fast Development Mode
+
+### Performance Improvements Summary
+
+#### Before Optimizations
+
+- **First Start**: ~30-60 seconds
+- **Subsequent Starts**: ~30-60 seconds (no caching)
+- **File Change**: Manual restart required
+
+#### After Optimizations
+
+1. **TypeScript Incremental Compilation**: 50-80% faster on subsequent builds
+2. **Skip Native Module Rebuild**: 5-15 seconds saved per start
+3. **esbuild**: 10-100x faster than TypeScript compiler
+4. **Watch Mode**: 0.5-2 second restart on file changes
+
+### Available Development Modes
+
+#### 1. `npm run dev` - Standard Mode (Recommended for Most Use)
+
+**Uses**: TypeScript compiler with incremental compilation
+
+```bash
+npm run dev
+```
+
+**Features**:
+
+- Full TypeScript type-checking during build
+- Incremental compilation caches unchanged files
+- Skips native module rebuild (now happens only during `npm install`)
+- Best for: Regular development with type safety
+
+**Speed**:
+
+- First run: ~15-25 seconds
+- Subsequent runs: ~5-10 seconds (with incremental cache)
+
+#### 2. `npm run dev:watch` - Ultra-Fast Watch Mode ⚡
+
+**Uses**: esbuild + nodemon for automatic restarts
+
+```bash
+npm run dev:watch
+```
+
+**Features**:
+
+- **Lightning-fast compilation** with esbuild (10-100x faster than tsc)
+- **Auto-restart** when files change (no manual restart needed)
+- **Live reload** - just save your file and Electron restarts automatically
+- Runs 3 processes concurrently:
+  1. Vite (frontend dev server)
+  2. esbuild in watch mode (backend compilation)
+  3. Nodemon (auto-restart Electron on changes)
+
+**Speed**:
+
+- Initial build: ~2-5 seconds
+- File change rebuild: ~0.5-2 seconds
+- Best for: Active development with frequent changes
+
+**How it works**:
+
+1. esbuild watches `app/backend/src` and `app/shared`
+2. When you save a `.ts` file, esbuild recompiles it instantly
+3. Nodemon detects the compiled `.js` file change
+4. Electron automatically restarts with your changes
+
+**Type-checking**:
+
+- esbuild only transpiles TypeScript (doesn't type-check)
+- Run `npm run type-check` periodically to catch type errors
+- Or enable TypeScript checking in your IDE (VS Code, etc.)
+
+### Recommended Workflow
+
+#### For Active Development (Making Lots of Changes)
+
+```bash
+npm run dev:watch
+```
+
+- Ultra-fast hot reload
+- Save file → Auto restart in ~1 second
+- Run `npm run type-check` before committing
+
+#### For Occasional Development or Debugging
+
+```bash
+npm run dev
+```
+
+- Full type-checking during build
+- More stable for debugging
+- Catches type errors immediately
+
+#### Before Committing
+
+```bash
+npm run type-check
+npm run lint
+npm test
+```
+
+### Troubleshooting Fast Dev Mode
+
+#### "Module not found" errors
+
+If you see module resolution errors after switching between modes:
+
+```bash
+npm run clean
+npm install
+```
+
+#### Native module errors (better-sqlite3)
+
+If Electron crashes with native module errors:
+
+```bash
+npm run rebuild
+```
+
+#### esbuild not updating
+
+If watch mode isn't detecting changes:
+
+1. Stop `npm run dev:watch` (Ctrl+C)
+2. Clear build: `npm run clean`
+3. Restart: `npm run dev:watch`
+
+#### Type errors not showing
+
+Remember: esbuild doesn't type-check! Run:
+
+```bash
+npm run type-check
+```
+
+### Performance Comparison
+
+| Mode | Initial Build | File Change | Type-Checking | Auto-Restart |
+|------|--------------|-------------|---------------|--------------|
+| **Old `dev`** | 30-60s | Manual restart | ✅ Yes | ❌ No |
+| **New `dev`** | 5-10s | Manual restart | ✅ Yes | ❌ No |
+| **`dev:watch`** | 2-5s | 0.5-2s | ❌ No* | ✅ Yes |
+
+*Use `npm run type-check` for type-checking with `dev:watch` mode
+
+---
+
+## Architecture Documentation Guide
+
+### Architecture Files
+
+This project includes comprehensive XML documentation of the application architecture:
+
+- `docs/app-architecture-hierarchical.xml` - File structure and component responsibilities
+- `docs/app-architecture-dataflow.xml` - Operation flows and data transformations
+
+### Quick Architecture Navigation
+
+**I want to understand...**
+
+- 🔐 **How authentication works** → See authentication flows in dataflow XML
+- 📊 **How timesheet data flows** → See timesheet operations in dataflow XML
+- 🤖 **How automated submission works** → See browser automation flows
+- 🔌 **How the plugin system works** → See plugin system in hierarchical XML
+- 💾 **How data is persisted** → See data persistence patterns
+- 🔄 **How IPC communication works** → See IPC communication patterns
+
+### Common Architecture Tasks
+
+#### Understanding Authentication
+
+**Files involved**:
+
+- `frontend/components/LoginDialog.tsx` - Login UI
+- `frontend/contexts/SessionContext.tsx` - Session state management
+- `backend/src/main.ts` - Auth IPC handlers
+- `backend/src/services/database.ts` - Session persistence
+
+**Key concepts**:
+
+- Admin login bypasses credential storage
+- Session tokens stored in localStorage
+- Sessions table tracks expiry
+
+#### Understanding Timesheet Operations
+
+**Files involved**:
+
+- `frontend/components/timesheet/TimesheetGrid.tsx` - Grid UI
+- `frontend/contexts/DataContext.tsx` - Draft data state
+- `backend/src/main.ts` - Timesheet IPC handlers
+- `backend/src/services/database.ts` - Timesheet CRUD
+
+**Data transformations**:
+
+- Database: `{ time_in: 480, time_out: 1020 }` (minutes since midnight)
+- Grid: `{ timeIn: "08:00", timeOut: "17:00" }` (HH:MM format)
+
+#### Understanding Browser Automation
+
+**Files involved**:
+
+- `backend/src/services/timesheet-importer.ts` - Submission orchestrator
+- `backend/src/services/plugins/playwright-bot-service.ts` - Bot service
+- `backend/src/services/bot/src/bot_orchestation.ts` - Browser coordinator
+- `backend/src/services/bot/src/authentication_flow.ts` - Web portal login
+- `backend/src/services/bot/src/webform_flow.ts` - Form filling logic
+
+**Key concepts**:
+
+- Entries grouped by quarter (different forms per quarter)
+- Playwright runs in headless mode
+- Entries marked as 'in_progress' during submission
+- Failed entries revert to NULL status (pending)
+- Successful entries marked as 'Complete' with timestamp
+
+### Three-Layer Architecture
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│                     FRONTEND (Renderer)                      │
+│  React UI • Handsontable • MUI • Context API • localStorage │
+│                                                              │
+│  Files: frontend/src/{components,contexts,hooks,utils}      │
+│  Role: User interface and client-side state management      │
+└──────────────────────┬───────────────────────────────────────┘
+                       │ IPC Bridge (preload.ts)
+                       │ Type-safe communication
+┌──────────────────────▼───────────────────────────────────────┐
+│                     BACKEND (Main Process)                    │
+│  Node.js • Electron • SQLite • Playwright • Plugin System   │
+│                                                              │
+│  Files: backend/src/{main.ts,services,repositories,bot}     │
+│  Role: Business logic, database, file I/O, automation       │
+└──────────────────────┬───────────────────────────────────────┘
+                       │ Shared contracts and utilities
+┌──────────────────────▼───────────────────────────────────────┐
+│                     SHARED (Common Code)                      │
+│  Interfaces • Plugin Registry • Logger • Error Classes       │
+│                                                              │
+│  Files: shared/{contracts,plugin-*,logger,errors}           │
+│  Role: Type definitions, plugin system, cross-layer utils   │
+└───────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Feature Documentation
+
+### Timesheet Overlap Validation
+
+#### Overview
+
+Validation to detect and prevent duplicate/overlapping time entries on the same date.
+
+#### Validation Rules
+
+**What is Rejected:**
+
+1. **Overlapping time ranges** on the same date
+   - Example: Entry A `09:00-12:00` overlaps with Entry B `11:00-14:00` ❌
+
+2. **Exact duplicate entries** on the same date  
+   - Example: Two entries with `09:00-12:00` on `01/15/2024` ❌
+
+**What is Allowed:**
+
+1. **Adjacent time ranges** (no overlap at boundaries)
+   - Example: Entry A `09:00-12:00` followed by Entry B `12:00-15:00` ✅
+
+2. **Overlapping times on different dates**
+   - Example: `09:00-12:00` on `01/15/2024` and `09:00-12:00` on `01/16/2024` ✅
+
+#### First-In Rule
+
+When overlaps are detected:
+
+- The **first entry** (earlier row) is always accepted
+- The **second entry** (later row) is rejected with an error message
+- Error message: "The time range you entered overlaps with a previous entry, please adjust your entry accordingly"
+
+#### Validation Timing
+
+- Validates when the user **moves to another cell** (on blur)
+- Does not validate while actively typing
+- Checks both `timeIn` and `timeOut` field changes
+
+#### Implementation
+
+**Files:**
+
+- `timesheet.schema.ts` - Overlap detection functions
+- `timesheet.validation.ts` - Field validation logic
+- `TimesheetGrid.tsx` - Handsontable validators
+- `timesheet-overlap-validation.spec.ts` - Test suite (33 tests)
+
+**Key Functions:**
+
+- `timeRangesOverlap()` - Checks if two time ranges overlap
+- `hasTimeOverlapWithPreviousEntries()` - Checks current row against all previous rows
+- `validateField()` - Enhanced for `timeIn` and `timeOut` with overlap checking
+
+---
+
+## Changelog
+
+All notable changes to this project are documented here.
+
+### [1.4.0] - 2025-11-04
+
+#### Fixed
+
+- **Duplicate initialization logs in development mode**: Implemented global initialization guard (`window.__appInitialized`) to prevent duplicate module-level initializations caused by Hot Module Replacement (HMR) and React StrictMode double-renders
+  
+- **Electron CSP security warning**: Removed `'unsafe-eval'` from Content-Security-Policy. CSP now enforces strict security without allowing unsafe evaluations
+
+- **Excessive console logging**: Replaced console.log with console.debug, gated behind `process.env.NODE_ENV === 'development'` checks
+
+#### Added
+
+- **Safe initialization utility** (`app/frontend/src/utils/safe-init.ts`): New utility providing `runOnce()` function for idempotent initialization
+
+- **Development smoke test scripts**:
+  - `scripts/dev-smoke.sh` (Linux/Mac)
+  - `scripts/dev-smoke.ps1` (Windows)
+
+#### Security
+
+- **Hardened Content-Security-Policy**: Removed `'unsafe-eval'`, explicit `object-src 'none'`
+
+- **Electron security settings verified**:
+  - `contextIsolation: true`
+  - `nodeIntegration: false`
+  - `sandbox: true`
+  - `webSecurity: true`
+  - `allowRunningInsecureContent: false`
+
+### [1.3.6] - 2025-10-30
+
+#### Scope
+
+Fix production build error for electron-updater
+
+#### Fixes
+
+- Fixed "Cannot find module 'electron-updater'" error in production builds
+- Added `app/backend/package.json` to electron-builder files list
+- Added `app/backend/src/services/bot/package.json` to electron-builder files list
+- Configured `asarUnpack` to unpack electron-updater from app.asar (required for native binaries)
+
+#### Developer Notes
+
+- electron-updater requires native binaries that must be unpacked from app.asar
+- Backend dependencies properly packaged via package.json files inclusion
+- All subdirectory package.json files now included for proper module resolution
+
+---
+
 ## Document History
 
 | Version | Date | Changes |
@@ -1861,6 +2229,7 @@ npm run clean        # Clean build artifacts
 | 1.1 | 2025-10-20 | Added Handsontable sorting configuration documentation |
 | 2.0 | 2025-10-22 | Comprehensive consolidation: Updated auto-updates (GitHub), added plugin architecture, expanded logging system, added Sophos configuration |
 | 3.0 | 2025-11-03 | Final consolidation: Added Error Handling, expanded Testing Strategy, added Dependency Validation sections |
+| 4.0 | 2025-11-12 | Merged documentation: Added Fast Development Mode, Architecture Documentation Guide, Feature Documentation (Overlap Validation), and Changelog |
 
 **Consolidated from**:
 
@@ -1876,6 +2245,10 @@ npm run clean        # Clean build artifacts
 - SOPHOS_CONFIGURATION.md
 - TESTING_STRATEGY.md
 - TIMESHEET_FIXES_DOCUMENTATION.md
+- FAST_DEV_MODE.md
+- ARCHITECTURE_DOCS.md
+- timesheet-overlap-validation.md
+- CHANGELOG.md
 
 **Maintained by**: Development Team
 

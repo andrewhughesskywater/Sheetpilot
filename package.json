@@ -27,6 +27,7 @@
     "dev": "concurrently -k -n VITE,ELECTRON -c auto \"npm:vite\" \"wait-on tcp:5173 && npm run build:main:dev && cross-env ELECTRON_IS_DEV=1 npm run electron:dev\"",
     "dev:watch": "concurrently -k -n VITE,BUILD,ELECTRON -c auto \"npm:vite\" \"npm run build:main:watch\" \"wait-on tcp:5173 build/dist/backend/src/main.js && npm run electron:watch\"",
     "build:renderer": "npm run -w @sheetpilot/frontend build",
+    "build:renderer:analyze": "npm run -w @sheetpilot/frontend build:analyze",
     "build:bot": "cd app/backend/src/services/bot && npm run build",
     "bundle:browsers": "node scripts/bundle-playwright-browsers.js",
     "build": "npm run build:main && npm run build:renderer && npm run build:bot && npm run bundle:browsers && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder",
@@ -72,11 +73,16 @@
     "cross-env": "^10.1.0",
     "esbuild": "^0.25.12",
     "eslint": "^9.36.0",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "fontkit": "^2.0.4",
     "glob": "^11.0.3",
     "nodemon": "^3.1.9",
     "png-to-ico": "^2.1.8",
     "rimraf": "^6.0.1",
     "sharp": "^0.33.5",
+    "subset-font": "^2.4.0",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4",
     "wait-on": "^9.0.1"
@@ -109,11 +115,13 @@
       "plugin-config.json",
       "scripts/fix-shortcut-icon.ps1"
     ],
+    "asar": true,
     "asarUnpack": [
       "**/node_modules/better-sqlite3/**/*",
       "**/node_modules/playwright/**/*",
       "**/build/playwright-browsers/**/*"
     ],
+    "compression": "maximum",
     "extraMetadata": {
       "main": "build/dist/backend/src/main.js"
     },

@@ -10,14 +10,18 @@
 
 import { describe, it, expect } from 'vitest';
 import {
-  projects,
-  chargeCodes,
-  projectsWithoutTools,
-  toolsWithoutCharges,
-  getToolOptions,
-  projectNeedsTools,
-  toolNeedsChargeCode
-} from '../../../src/components/timesheet/timesheet.options';
+  PROJECTS as projects,
+  CHARGE_CODES as chargeCodes,
+  PROJECTS_WITHOUT_TOOLS,
+  TOOLS_WITHOUT_CHARGES,
+  getToolsForProject as getToolOptions,
+  doesProjectNeedTools as projectNeedsTools,
+  doesToolNeedChargeCode as toolNeedsChargeCode
+} from '../../../src/config/business-config';
+
+// Convert arrays to Sets for backward compatibility with tests
+const projectsWithoutTools = new Set(PROJECTS_WITHOUT_TOOLS);
+const toolsWithoutCharges = new Set(TOOLS_WITHOUT_CHARGES);
 
 describe('Timesheet Options Module', () => {
   describe('Project Options', () => {
@@ -128,7 +132,7 @@ describe('Timesheet Options Module', () => {
     });
 
     it('should handle null tool', () => {
-      expect(toolNeedsChargeCode(null as any)).toBe(false);
+      expect(toolNeedsChargeCode(null as unknown as string)).toBe(false);
     });
   });
 

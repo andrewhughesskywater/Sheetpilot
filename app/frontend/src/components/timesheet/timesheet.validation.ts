@@ -1,6 +1,6 @@
 import type { TimesheetRow } from './timesheet.schema';
 import { isValidDate, isValidTime, isTimeOutAfterTimeIn, hasTimeOverlapWithPreviousEntries } from './timesheet.schema';
-import { projectNeedsTools, toolNeedsChargeCode } from './timesheet.options';
+import { doesProjectNeedTools, doesToolNeedChargeCode } from '../../config/business-config';
 import { isDateInAllowedRange } from '../../utils/smartDate';
 
 /**
@@ -55,7 +55,7 @@ export function validateField(
       
     case 'tool': {
       const project = rowData?.project;
-      if (!projectNeedsTools(project)) {
+      if (!project || !doesProjectNeedTools(project)) {
         // Tool is N/A for this project, normalize to null
         return null;
       }
@@ -65,7 +65,7 @@ export function validateField(
       
     case 'chargeCode': {
       const tool = rowData?.tool;
-      if (!toolNeedsChargeCode(tool || undefined)) {
+      if (!tool || !doesToolNeedChargeCode(tool)) {
         // Charge code is N/A for this tool, normalize to null
         return null;
       }

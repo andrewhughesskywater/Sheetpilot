@@ -48,6 +48,9 @@ module.exports = [
         setImmediate: 'readonly',
         console: 'readonly',
         global: 'readonly',
+        AbortController: 'readonly',
+        AbortSignal: 'readonly',
+        NodeJS: 'readonly',
         // Electron globals
         Electron: 'readonly'
       }
@@ -250,6 +253,7 @@ module.exports = [
       ...react.configs.recommended.rules,
       ...reactHooks.configs.recommended.rules,
       '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-require-imports': 'off',
       '@typescript-eslint/no-unused-vars': ['error', { 
         argsIgnorePattern: '^_',
         varsIgnorePattern: '^_'

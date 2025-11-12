@@ -10,11 +10,12 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import { createHash } from 'node:crypto';
 
 describe('Data Protection Security', () => {
   describe('Sensitive Data Handling', () => {
     it('should never log passwords', () => {
-      const logSafeData = (email: string, password: string) => {
+      const logSafeData = (email: string, _password: string) => {
         return { email }; // Password excluded from logs
       };
       
@@ -119,10 +120,9 @@ describe('Data Protection Security', () => {
 
     it('should hash PII consistently for correlation', () => {
       const username = 'john.doe';
-      const crypto = require('crypto');
       
-      const hash1 = crypto.createHash('sha256').update(username).digest('hex').substring(0, 8);
-      const hash2 = crypto.createHash('sha256').update(username).digest('hex').substring(0, 8);
+      const hash1 = createHash('sha256').update(username).digest('hex').substring(0, 8);
+      const hash2 = createHash('sha256').update(username).digest('hex').substring(0, 8);
       
       expect(hash1).toBe(hash2);
       expect(hash1.length).toBe(8);

@@ -14,6 +14,7 @@ declare global {
       cancel: () => Promise<{ success: boolean; message?: string; error?: string }>;
       devSimulateSuccess: () => Promise<{ success: boolean; count?: number; error?: string }>;
       saveDraft: (row: {
+        id?: number;
         date: string;
         timeIn: string;
         timeOut: string;

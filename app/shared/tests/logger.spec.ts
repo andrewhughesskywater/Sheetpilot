@@ -10,6 +10,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import { createHash } from 'node:crypto';
 
 describe('Logger Module', () => {
   describe('Log Levels', () => {
@@ -118,10 +119,9 @@ describe('Logger Module', () => {
 
     it('should hash username consistently', () => {
       const username = 'test.user';
-      const crypto = require('crypto');
       
-      const hash1 = crypto.createHash('sha256').update(username).digest('hex').substring(0, 8);
-      const hash2 = crypto.createHash('sha256').update(username).digest('hex').substring(0, 8);
+      const hash1 = createHash('sha256').update(username).digest('hex').substring(0, 8);
+      const hash2 = createHash('sha256').update(username).digest('hex').substring(0, 8);
       
       expect(hash1).toBe(hash2);
     });
