@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { Button, Alert, Navbar, NavBrand, NavLi, NavUl, NavHamburger } from 'flowbite-svelte';
   import Login from './lib/components/Login.svelte';
-  import TimesheetGrid from './lib/components/TimesheetGrid.svelte';
+  import TimesheetGridHandsontable from './lib/components/TimesheetGridHandsontable.svelte';
   import { sessionStore, isLoggedIn, isAdmin, currentUser } from './lib/stores/session';
   
   let showLogin = false;
@@ -72,7 +72,7 @@
         </Alert>
       {/if}
       
-      <TimesheetGrid />
+      <TimesheetGridHandsontable />
     {:else}
       <div class="flex items-center justify-center h-96">
         <div class="text-center">
