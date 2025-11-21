@@ -39,6 +39,7 @@ This document tracks the progress of migrating SheetPilot from Electron to Tauri
 ## Completed ✅ (continued)
 
 ### Phase 2: Backend - Database Commands
+
 - ✅ **Database Commands** - Fully implemented:
   - ✅ `save_timesheet_draft` - Create/update entries with validation
   - ✅ `load_timesheet_draft` - Load pending entries from database
@@ -52,6 +53,7 @@ This document tracks the progress of migrating SheetPilot from Electron to Tauri
 ## In Progress 🚧
 
 ### Phase 2: Backend - Submission Service
+
 - 🚧 **Submission Service** - Need to implement:
   - Browser automation with chromiumoxide
   - Port bot orchestration from TypeScript
