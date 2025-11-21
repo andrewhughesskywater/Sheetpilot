@@ -67,19 +67,27 @@ The application now has:
 
 ### Phase 4: Backend - Browser Automation & Submission
 
-- ✅ **Browser Automation Foundation - STARTED**
+- ✅ **Browser Automation Foundation - COMPLETE**
   - ✅ Created `bot/browser.rs` module with chromiumoxide
   - ✅ Chrome detection for Windows (system Chrome connection)
   - ✅ Browser lifecycle management (start/close)
   - ✅ Page creation and management
   - ✅ Error handling with BrowserError enum
   - ✅ Async/await support with tokio + futures
-- 🚧 **Next: Port bot logic from TypeScript**
-  - ⏳ Port bot orchestration (`app/backend/src/services/bot/`)
+- ✅ **Bot Orchestration - COMPLETE**
+  - ✅ Created `bot/orchestration.rs` module
+  - ✅ BotOrchestrator for coordinating automation
+  - ✅ AutomationResult for tracking submissions
+  - ✅ TimesheetRow and FormConfig structs
+  - ✅ run_timesheet() high-level API
+  - ✅ Wired up to timesheet_submit Tauri command
+  - ✅ Added "Submit to Portal" button in UI
+- 🚧 **Next: Implement automation logic**
   - ⏳ Port authentication flow (`authentication_flow.ts` → Rust)
   - ⏳ Port webform filling logic (`webform_fill.ts` → Rust)
   - ⏳ Implement quarter routing (`quarter_router.ts` → Rust)
-  - ⏳ Port Smartsheet API integration
+  - ⏳ Implement form field mapping and data entry
+  - ⏳ Implement submission detection and validation
 
 ## Completed ✅ (Phase 3)
 
