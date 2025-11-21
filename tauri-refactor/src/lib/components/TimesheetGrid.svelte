@@ -34,8 +34,16 @@
     const row = timesheetData[index];
     if (!row) return;
     
+    // Don't save if row is incomplete
+    if (!row.date || !row.timeIn || !row.timeOut || !row.project || !row.taskDescription) {
+      return; // Skip validation for incomplete rows
+    }
+    
     const result = await dataStore.saveTimesheetRow(row);
-    if (!result.success) {
+    if (result.success) {
+      // Show success briefly
+      console.log('Row saved successfully');
+    } else {
       alert(`Failed to save: ${result.error}`);
     }
   }
@@ -104,40 +112,36 @@
                 <Input
                   type="text"
                   size="sm"
-                  placeholder="MM/DD/YYYY"
+                  placeholder="MM/DD/YYYY *"
                   value={row.date}
                   on:input={(e) => updateRow(index, 'date', e.target.value)}
-                  on:blur={() => saveRow(index)}
                 />
               </TableBodyCell>
               <TableBodyCell>
                 <Input
                   type="text"
                   size="sm"
-                  placeholder="HH:MM"
+                  placeholder="HH:MM *"
                   value={row.timeIn}
                   on:input={(e) => updateRow(index, 'timeIn', e.target.value)}
-                  on:blur={() => saveRow(index)}
                 />
               </TableBodyCell>
               <TableBodyCell>
                 <Input
                   type="text"
                   size="sm"
-                  placeholder="HH:MM"
+                  placeholder="HH:MM *"
                   value={row.timeOut}
                   on:input={(e) => updateRow(index, 'timeOut', e.target.value)}
-                  on:blur={() => saveRow(index)}
                 />
               </TableBodyCell>
               <TableBodyCell>
                 <Input
                   type="text"
                   size="sm"
-                  placeholder="Project"
+                  placeholder="Project *"
                   value={row.project}
                   on:input={(e) => updateRow(index, 'project', e.target.value)}
-                  on:blur={() => saveRow(index)}
                 />
               </TableBodyCell>
               <TableBodyCell>
@@ -147,7 +151,6 @@
                   placeholder="Tool"
                   value={row.tool || ''}
                   on:input={(e) => updateRow(index, 'tool', e.target.value || null)}
-                  on:blur={() => saveRow(index)}
                 />
               </TableBodyCell>
               <TableBodyCell>
@@ -157,27 +160,35 @@
                   placeholder="Code"
                   value={row.chargeCode || ''}
                   on:input={(e) => updateRow(index, 'chargeCode', e.target.value || null)}
-                  on:blur={() => saveRow(index)}
                 />
               </TableBodyCell>
               <TableBodyCell>
                 <Input
                   type="text"
                   size="sm"
-                  placeholder="Task description"
+                  placeholder="Task description *"
                   value={row.taskDescription}
                   on:input={(e) => updateRow(index, 'taskDescription', e.target.value)}
-                  on:blur={() => saveRow(index)}
                 />
               </TableBodyCell>
               <TableBodyCell>
-                <Button
-                  size="xs"
-                  color="red"
-                  on:click={() => deleteRow(index)}
-                >
-                  Delete
-                </Button>
+                <div class="flex gap-1">
+                  <Button
+                    size="xs"
+                    color="blue"
+                    on:click={() => saveRow(index)}
+                    disabled={!row.date || !row.timeIn || !row.timeOut || !row.project || !row.taskDescription}
+                  >
+                    Save
+                  </Button>
+                  <Button
+                    size="xs"
+                    color="red"
+                    on:click={() => deleteRow(index)}
+                  >
+                    Delete
+                  </Button>
+                </div>
               </TableBodyCell>
             </TableBodyRow>
           {/each}
