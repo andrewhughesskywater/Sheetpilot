@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use rusqlite::params;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TimesheetRow {
@@ -69,17 +68,21 @@ fn parse_time_to_minutes(time_str: &str) -> Result<i64, String> {
     if parts.len() != 2 {
         return Err(format!("Invalid time format: {}", time_str));
     }
-    
-    let hours: i64 = parts[0].parse().map_err(|_| format!("Invalid hours: {}", parts[0]))?;
-    let minutes: i64 = parts[1].parse().map_err(|_| format!("Invalid minutes: {}", parts[1]))?;
-    
+
+    let hours: i64 = parts[0]
+        .parse()
+        .map_err(|_| format!("Invalid hours: {}", parts[0]))?;
+    let minutes: i64 = parts[1]
+        .parse()
+        .map_err(|_| format!("Invalid minutes: {}", parts[1]))?;
+
     if hours < 0 || hours > 23 {
         return Err(format!("Hours must be 0-23: {}", hours));
     }
     if minutes < 0 || minutes > 59 {
         return Err(format!("Minutes must be 0-59: {}", minutes));
     }
-    
+
     Ok(hours * 60 + minutes)
 }
 
@@ -114,26 +117,30 @@ pub async fn save_timesheet_draft(row: TimesheetRow) -> SaveDraftResponse {
             error: Some("Task description is required".to_string()),
         };
     }
-    
+
     // Parse times to minutes
     let time_in_minutes = match parse_time_to_minutes(&row.time_in) {
         Ok(m) => m,
-        Err(e) => return SaveDraftResponse {
-            success: false,
-            changes: None,
-            error: Some(e),
-        },
+        Err(e) => {
+            return SaveDraftResponse {
+                success: false,
+                changes: None,
+                error: Some(e),
+            }
+        }
     };
-    
+
     let time_out_minutes = match parse_time_to_minutes(&row.time_out) {
         Ok(m) => m,
-        Err(e) => return SaveDraftResponse {
-            success: false,
-            changes: None,
-            error: Some(e),
-        },
+        Err(e) => {
+            return SaveDraftResponse {
+                success: false,
+                changes: None,
+                error: Some(e),
+            }
+        }
     };
-    
+
     // Validate times are 15-minute increments
     if time_in_minutes % 15 != 0 || time_out_minutes % 15 != 0 {
         return SaveDraftResponse {
@@ -142,7 +149,7 @@ pub async fn save_timesheet_draft(row: TimesheetRow) -> SaveDraftResponse {
             error: Some("Times must be in 15-minute increments".to_string()),
         };
     }
-    
+
     // Validate time_out > time_in
     if time_out_minutes <= time_in_minutes {
         return SaveDraftResponse {
@@ -151,70 +158,69 @@ pub async fn save_timesheet_draft(row: TimesheetRow) -> SaveDraftResponse {
             error: Some("Time Out must be after Time In".to_string()),
         };
     }
-    
-    // Get database connection
-    let db_guard = match crate::database::get_connection() {
-        Ok(g) => g,
-        Err(e) => return SaveDraftResponse {
-            success: false,
-            changes: None,
-            error: Some(format!("Database error: {}", e)),
-        },
+
+    // Get database pool
+    let pool = match crate::database::get_pool() {
+        Ok(p) => p,
+        Err(e) => {
+            return SaveDraftResponse {
+                success: false,
+                changes: None,
+                error: Some(format!("Database error: {}", e)),
+            }
+        }
     };
-    
-    let conn = match db_guard.as_ref() {
-        Some(c) => c,
-        None => return SaveDraftResponse {
-            success: false,
-            changes: None,
-            error: Some("Database not initialized".to_string()),
-        },
-    };
-    
+
+    // Calculate hours
+    let hours = (time_out_minutes - time_in_minutes) as f64 / 60.0;
+
     // If row has an id, UPDATE; otherwise INSERT
     let result = if let Some(id) = row.id {
-        conn.execute(
+        sqlx::query!(
             "UPDATE timesheet
-             SET date = ?, time_in = ?, time_out = ?, project = ?, tool = ?, 
+             SET date = ?, time_in = ?, time_out = ?, hours = ?, project = ?, tool = ?, 
                  detail_charge_code = ?, task_description = ?, status = NULL
              WHERE id = ?",
-            params![
-                &row.date,
-                time_in_minutes,
-                time_out_minutes,
-                &row.project,
-                row.tool.as_deref(),
-                row.charge_code.as_deref(),
-                &row.task_description,
-                id
-            ],
+            row.date,
+            time_in_minutes,
+            time_out_minutes,
+            hours,
+            row.project,
+            row.tool,
+            row.charge_code,
+            row.task_description,
+            id
         )
+        .execute(pool)
+        .await
     } else {
-        conn.execute(
+        sqlx::query!(
             "INSERT INTO timesheet
-             (date, time_in, time_out, project, tool, detail_charge_code, task_description, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, NULL)
+             (date, time_in, time_out, hours, project, tool, detail_charge_code, task_description, status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)
              ON CONFLICT(date, time_in, project, task_description) DO UPDATE SET
                time_out = excluded.time_out,
+               hours = excluded.hours,
                tool = excluded.tool,
                detail_charge_code = excluded.detail_charge_code,
                status = NULL",
-            params![
-                &row.date,
-                time_in_minutes,
-                time_out_minutes,
-                &row.project,
-                row.tool.as_deref(),
-                row.charge_code.as_deref(),
-                &row.task_description
-            ],
+            row.date,
+            time_in_minutes,
+            time_out_minutes,
+            hours,
+            row.project,
+            row.tool,
+            row.charge_code,
+            row.task_description
         )
+        .execute(pool)
+        .await
     };
-    
+
     match result {
-        Ok(changes) => SaveDraftResponse {
+        Ok(result) => SaveDraftResponse {
             success: true,
-            changes: Some(changes),
+            changes: Some(result.rows_affected() as usize),
             error: None,
         },
         Err(e) => SaveDraftResponse {
@@ -227,57 +233,44 @@ pub async fn save_timesheet_draft(row: TimesheetRow) -> SaveDraftResponse {
 
 #[tauri::command]
 pub async fn load_timesheet_draft() -> LoadDraftResponse {
-    // Get database connection
-    let db_guard = match crate::database::get_connection() {
-        Ok(g) => g,
-        Err(e) => return LoadDraftResponse {
-            success: false,
-            entries: vec![],
-            error: Some(format!("Database error: {}", e)),
-        },
+    // Get database pool
+    let pool = match crate::database::get_pool() {
+        Ok(p) => p,
+        Err(e) => {
+            return LoadDraftResponse {
+                success: false,
+                entries: vec![],
+                error: Some(format!("Database error: {}", e)),
+            }
+        }
     };
-    
-    let conn = match db_guard.as_ref() {
-        Some(c) => c,
-        None => return LoadDraftResponse {
-            success: false,
-            entries: vec![],
-            error: Some("Database not initialized".to_string()),
-        },
-    };
-    
+
     // Query pending entries (status IS NULL)
-    let mut stmt = match conn.prepare(
+    let result = sqlx::query!(
         "SELECT id, date, time_in, time_out, project, tool, detail_charge_code, task_description
          FROM timesheet
          WHERE status IS NULL
          ORDER BY date ASC, time_in ASC"
-    ) {
-        Ok(s) => s,
-        Err(e) => return LoadDraftResponse {
-            success: false,
-            entries: vec![],
-            error: Some(format!("Failed to prepare query: {}", e)),
-        },
-    };
-    
-    let entries_iter = stmt.query_map([], |row| {
-        Ok(TimesheetRow {
-            id: Some(row.get(0)?),
-            date: row.get(1)?,
-            time_in: format_minutes_to_time(row.get(2)?),
-            time_out: format_minutes_to_time(row.get(3)?),
-            project: row.get(4)?,
-            tool: row.get(5)?,
-            charge_code: row.get(6)?,
-            task_description: row.get(7)?,
-        })
-    });
-    
-    match entries_iter {
-        Ok(iter) => {
-            let entries: Vec<TimesheetRow> = iter.filter_map(|r| r.ok()).collect();
-            
+    )
+    .fetch_all(pool)
+    .await;
+
+    match result {
+        Ok(rows) => {
+            let entries: Vec<TimesheetRow> = rows
+                .into_iter()
+                .map(|row| TimesheetRow {
+                    id: row.id,
+                    date: row.date,
+                    time_in: format_minutes_to_time(row.time_in),
+                    time_out: format_minutes_to_time(row.time_out),
+                    project: row.project,
+                    tool: row.tool,
+                    charge_code: row.detail_charge_code,
+                    task_description: row.task_description,
+                })
+                .collect();
+
             // Return one blank row if no entries
             let entries_to_return = if entries.is_empty() {
                 vec![TimesheetRow {
@@ -293,7 +286,7 @@ pub async fn load_timesheet_draft() -> LoadDraftResponse {
             } else {
                 entries
             };
-            
+
             LoadDraftResponse {
                 success: true,
                 entries: entries_to_return,
@@ -310,33 +303,29 @@ pub async fn load_timesheet_draft() -> LoadDraftResponse {
 
 #[tauri::command]
 pub async fn delete_timesheet_draft(id: i64) -> SaveDraftResponse {
-    // Get database connection
-    let db_guard = match crate::database::get_connection() {
-        Ok(g) => g,
-        Err(e) => return SaveDraftResponse {
-            success: false,
-            changes: None,
-            error: Some(format!("Database error: {}", e)),
-        },
+    // Get database pool
+    let pool = match crate::database::get_pool() {
+        Ok(p) => p,
+        Err(e) => {
+            return SaveDraftResponse {
+                success: false,
+                changes: None,
+                error: Some(format!("Database error: {}", e)),
+            }
+        }
     };
-    
-    let conn = match db_guard.as_ref() {
-        Some(c) => c,
-        None => return SaveDraftResponse {
-            success: false,
-            changes: None,
-            error: Some("Database not initialized".to_string()),
-        },
-    };
-    
+
     // Delete entry if it's in draft state (status IS NULL)
-    let result = conn.execute(
+    let result = sqlx::query!(
         "DELETE FROM timesheet WHERE id = ? AND status IS NULL",
-        params![id],
-    );
-    
+        id
+    )
+    .execute(pool)
+    .await;
+
     match result {
-        Ok(changes) => {
+        Ok(result) => {
+            let changes = result.rows_affected() as usize;
             if changes == 0 {
                 SaveDraftResponse {
                     success: false,
@@ -362,7 +351,7 @@ pub async fn delete_timesheet_draft(id: i64) -> SaveDraftResponse {
 #[tauri::command]
 pub async fn get_all_archive_data(token: String) -> ArchiveDataResponse {
     // Validate session
-    let session = crate::auth::validate_session(&token);
+    let session = crate::auth::validate_session(&token).await;
     if !session.valid {
         return ArchiveDataResponse {
             success: false,
@@ -371,105 +360,103 @@ pub async fn get_all_archive_data(token: String) -> ArchiveDataResponse {
             error: Some("Session is invalid or expired. Please log in again.".to_string()),
         };
     }
-    
-    // Get database connection
-    let db_guard = match crate::database::get_connection() {
-        Ok(g) => g,
-        Err(e) => return ArchiveDataResponse {
-            success: false,
-            timesheet: vec![],
-            credentials: vec![],
-            error: Some(format!("Database error: {}", e)),
-        },
+
+    // Get database pool
+    let pool = match crate::database::get_pool() {
+        Ok(p) => p,
+        Err(e) => {
+            return ArchiveDataResponse {
+                success: false,
+                timesheet: vec![],
+                credentials: vec![],
+                error: Some(format!("Database error: {}", e)),
+            }
+        }
     };
-    
-    let conn = match db_guard.as_ref() {
-        Some(c) => c,
-        None => return ArchiveDataResponse {
-            success: false,
-            timesheet: vec![],
-            credentials: vec![],
-            error: Some("Database not initialized".to_string()),
-        },
-    };
-    
+
     // Fetch timesheet entries (Complete status only)
-    let mut timesheet_stmt = match conn.prepare(
+    let timesheet_result = sqlx::query!(
         "SELECT id, date, time_in, time_out, hours, project, tool, detail_charge_code, 
                 task_description, status, submitted_at
          FROM timesheet
          WHERE status = 'Complete'
          ORDER BY date DESC, time_in DESC"
-    ) {
-        Ok(s) => s,
-        Err(e) => return ArchiveDataResponse {
-            success: false,
-            timesheet: vec![],
-            credentials: vec![],
-            error: Some(format!("Failed to prepare timesheet query: {}", e)),
-        },
+    )
+    .fetch_all(pool)
+    .await;
+
+    let timesheet: Vec<ArchiveEntry> = match timesheet_result {
+        Ok(rows) => rows
+            .into_iter()
+            .filter_map(|row| row.id.map(|id| ArchiveEntry {
+                id,
+                date: row.date,
+                time_in: row.time_in,
+                time_out: row.time_out,
+                hours: row.hours,
+                project: row.project,
+                tool: row.tool,
+                detail_charge_code: row.detail_charge_code,
+                task_description: row.task_description,
+                status: row.status.unwrap_or_default(),
+                submitted_at: row.submitted_at,
+            }))
+            .collect(),
+        Err(e) => {
+            return ArchiveDataResponse {
+                success: false,
+                timesheet: vec![],
+                credentials: vec![],
+                error: Some(format!("Failed to fetch timesheet: {}", e)),
+            }
+        }
     };
-    
-    let timesheet_iter = timesheet_stmt.query_map([], |row| {
-        Ok(ArchiveEntry {
-            id: row.get(0)?,
-            date: row.get(1)?,
-            time_in: row.get(2)?,
-            time_out: row.get(3)?,
-            hours: row.get(4)?,
-            project: row.get(5)?,
-            tool: row.get(6)?,
-            detail_charge_code: row.get(7)?,
-            task_description: row.get(8)?,
-            status: row.get(9)?,
-            submitted_at: row.get(10)?,
-        })
-    });
-    
-    let timesheet: Vec<ArchiveEntry> = match timesheet_iter {
-        Ok(iter) => iter.filter_map(|r| r.ok()).collect(),
-        Err(e) => return ArchiveDataResponse {
-            success: false,
-            timesheet: vec![],
-            credentials: vec![],
-            error: Some(format!("Failed to fetch timesheet: {}", e)),
-        },
-    };
-    
+
     // Fetch credentials (without passwords)
-    let mut cred_stmt = match conn.prepare(
+    let cred_result = sqlx::query!(
         "SELECT id, service, email, created_at, updated_at
          FROM credentials
          ORDER BY service"
-    ) {
-        Ok(s) => s,
-        Err(e) => return ArchiveDataResponse {
-            success: true,
-            timesheet,
-            credentials: vec![],
-            error: Some(format!("Failed to prepare credentials query: {}", e)),
-        },
-    };
-    
-    let cred_iter = cred_stmt.query_map([], |row| {
-        Ok(CredentialInfo {
-            id: row.get(0)?,
-            service: row.get(1)?,
-            email: row.get(2)?,
-            created_at: row.get(3)?,
-            updated_at: row.get(4)?,
-        })
-    });
-    
-    let credentials: Vec<CredentialInfo> = match cred_iter {
-        Ok(iter) => iter.filter_map(|r| r.ok()).collect(),
+    )
+    .fetch_all(pool)
+    .await;
+
+    let credentials: Vec<CredentialInfo> = match cred_result {
+        Ok(rows) => rows
+            .into_iter()
+            .filter_map(|row| row.id.map(|id| CredentialInfo {
+                id,
+                service: row.service,
+                email: row.email,
+                created_at: row.created_at.unwrap_or_default(),
+                updated_at: row.updated_at.unwrap_or_default(),
+            }))
+            .collect(),
         Err(_) => vec![],
     };
-    
+
     ArchiveDataResponse {
         success: true,
         timesheet,
         credentials,
         error: None,
     }
+}
+
+#[tauri::command]
+pub async fn get_failed_entries() -> Result<Vec<crate::recovery::FailedEntry>, String> {
+    let pool = crate::database::get_pool()?;
+    crate::recovery::get_failed_entries(pool).await
+}
+
+#[tauri::command]
+pub async fn reset_failed_to_draft() -> Result<usize, String> {
+    let pool = crate::database::get_pool()?;
+    crate::recovery::reset_failed_to_draft(pool).await
+}
+
+#[tauri::command]
+pub async fn get_submission_status() -> Result<bool, String> {
+    let pool = crate::database::get_pool()?;
+    crate::recovery::is_submission_in_progress(pool).await
 }

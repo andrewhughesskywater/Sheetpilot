@@ -7,6 +7,7 @@ A high-performance desktop application for automated timesheet management and su
 SheetPilot is a time-tracking application that combines a modern Svelte UI with automated web form submission capabilities. Built with Tauri v2 and Rust, it provides exceptional performance and a tiny deployment footprint while maintaining all the features of the original Electron version.
 
 **Size Achievements:**
+
 - ✅ **97.8% smaller installer**: 101.71 MB → 2.23 MB
 - ✅ **98.4% smaller executable**: 384.68 MB → 6.09 MB
 
@@ -24,6 +25,7 @@ SheetPilot is a time-tracking application that combines a modern Svelte UI with 
 ## Tech Stack
 
 ### Frontend
+
 - **Svelte 5** - Reactive UI framework
 - **Flowbite Svelte 0.46** - Material Design 3 components
 - **Handsontable 16.1** - Spreadsheet grid
@@ -31,6 +33,7 @@ SheetPilot is a time-tracking application that combines a modern Svelte UI with 
 - **Vite 6** - Build tool
 
 ### Backend
+
 - **Tauri 2.9** - Desktop framework
 - **Rust** - Native performance
 - **rusqlite 0.31** - SQLite with bundled binary
@@ -57,11 +60,13 @@ npm install
 You need **two terminals**:
 
 **Terminal 1 - Frontend Dev Server:**
+
 ```bash
 npm run dev
 ```
 
 **Terminal 2 - Tauri App:**
+
 ```bash
 npm run tauri:dev
 ```
@@ -71,10 +76,12 @@ The application will open in a native window. The frontend dev server runs on po
 ### Default Credentials
 
 **Admin Account:**
+
 - Username: `Admin`
 - Password: `SWFL_ADMIN`
 
 **Regular Users:**
+
 - Any email/password combination creates a user account
 
 ## Building for Production
@@ -84,18 +91,20 @@ npm run tauri:build
 ```
 
 The installer will be created in:
-```
+
+```text
 backend/target/release/bundle/nsis/SheetPilot_1.4.0_x64-setup.exe
 ```
 
 The portable executable:
-```
+
+```text
 backend/target/release/sheetpilot.exe
 ```
 
 ## Project Structure
 
-```
+```text
 SheetPilot/
 ├── frontend/                 # Frontend (Svelte)
 │   ├── lib/
@@ -165,7 +174,8 @@ npm run test:coverage
 ## Database Location
 
 **Development/Production:**
-```
+
+```text
 Windows: C:\Users\[USERNAME]\AppData\Roaming\com.sheetpilot.app\sheetpilot.sqlite
 macOS: ~/Library/Application Support/com.sheetpilot.app/sheetpilot.sqlite
 Linux: ~/.config/com.sheetpilot.app/sheetpilot.sqlite
@@ -220,6 +230,7 @@ The bot connects to your system's installed Chrome browser (not bundled).
 ### Port Already in Use
 
 If port 1420 is already in use:
+
 ```bash
 # Find and kill the process using port 1420 (Windows)
 netstat -ano | findstr :1420
@@ -229,6 +240,7 @@ taskkill /PID [PID] /F
 ### Rust Build Errors
 
 Ensure you have the latest Rust toolchain:
+
 ```bash
 rustup update stable
 ```

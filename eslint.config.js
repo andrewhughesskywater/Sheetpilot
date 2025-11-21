@@ -32,16 +32,19 @@ export default [
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       'no-debugger': 'warn',
       'no-unused-vars': 'off',
-      '@typescript-eslint/no-unused-vars': ['error', { 
-        argsIgnorePattern: '^_',
-        varsIgnorePattern: '^_',
-      }],
-      
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+        },
+      ],
+
       // Code quality
       'prefer-const': 'error',
       'no-var': 'error',
-      'eqeqeq': ['error', 'always', { null: 'ignore' }],
-      
+      eqeqeq: ['error', 'always', { null: 'ignore' }],
+
       // Svelte specific
       'svelte/no-at-html-tags': 'warn',
       'svelte/valid-compile': 'error',
@@ -70,4 +73,3 @@ export default [
     ],
   },
 ];
-

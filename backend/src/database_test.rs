@@ -5,7 +5,7 @@ mod tests {
 
     // Note: Full database tests require database module refactoring for testability
     // These are placeholder tests that verify basic Rust testing infrastructure
-    
+
     #[test]
     fn test_tempfile_creation() {
         let temp_dir = TempDir::new().unwrap();
@@ -16,10 +16,9 @@ mod tests {
     // Note: Database tests require database module to be refactored for better testability
     // Current architecture couples database with Tauri app_handle
     // Future improvement: Create injectable database interface for testing
-    
+
     #[test]
     fn test_basic_rust_functionality() {
         assert_eq!(2 + 2, 4);
     }
 }
-

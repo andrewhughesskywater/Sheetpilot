@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE timesheet\n             SET date = ?, time_in = ?, time_out = ?, hours = ?, project = ?, tool = ?, \n                 detail_charge_code = ?, task_description = ?, status = NULL\n             WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 9
+    },
+    "nullable": []
+  },
+  "hash": "a2b74ce71c7e6ed5f4f9cd6477bf413d695de5ef289bc937b54aabf88dcd9582"
+}

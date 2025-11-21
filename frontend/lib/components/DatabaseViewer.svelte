@@ -1,8 +1,19 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { Button, Alert, Table, TableBody, TableBodyCell, TableBodyRow, TableHead, TableHeadCell, Input, Select } from 'flowbite-svelte';
+  import {
+    Button,
+    Alert,
+    Table,
+    TableBody,
+    TableBodyCell,
+    TableBodyRow,
+    TableHead,
+    TableHeadCell,
+    Input,
+    Select,
+  } from 'flowbite-svelte';
   import { invoke } from '@tauri-apps/api/core';
-  
+
   interface ArchiveEntry {
     id: number;
     date: string;
@@ -15,31 +26,31 @@
     status: string;
     submittedAt: string | null;
   }
-  
+
   let archiveData: ArchiveEntry[] = [];
   let filteredData: ArchiveEntry[] = [];
   let isLoading = false;
   let error = '';
-  
+
   let filterDate = '';
   let filterProject = '';
   let filterStatus = 'all';
-  
+
   onMount(async () => {
     await loadArchiveData();
   });
-  
+
   async function loadArchiveData() {
     isLoading = true;
     error = '';
-    
+
     try {
       const result = await invoke<{
         success: boolean;
         entries: ArchiveEntry[];
         error?: string;
       }>('get_all_archive_data');
-      
+
       if (result.success) {
         archiveData = result.entries;
         applyFilters();
@@ -52,35 +63,35 @@
       isLoading = false;
     }
   }
-  
+
   function applyFilters() {
-    filteredData = archiveData.filter(entry => {
+    filteredData = archiveData.filter((entry) => {
       // Date filter
       if (filterDate && !entry.date.includes(filterDate)) {
         return false;
       }
-      
+
       // Project filter
       if (filterProject && !entry.project.toLowerCase().includes(filterProject.toLowerCase())) {
         return false;
       }
-      
+
       // Status filter
       if (filterStatus !== 'all' && entry.status !== filterStatus) {
         return false;
       }
-      
+
       return true;
     });
   }
-  
+
   function clearFilters() {
     filterDate = '';
     filterProject = '';
     filterStatus = 'all';
     applyFilters();
   }
-  
+
   async function handleExportCSV() {
     try {
       const result = await invoke<{
@@ -90,7 +101,7 @@
       }>('timesheet_export_csv', {
         entries: filteredData,
       });
-      
+
       if (result.success && result.path) {
         alert(`CSV exported to: ${result.path}`);
       } else {
@@ -100,67 +111,65 @@
       error = String(err);
     }
   }
-  
-  $: {
-    // Reapply filters when filter values change
+
+  // Watch filter changes and reapply filters
+  $: if (filterDate || filterProject || filterStatus) {
     applyFilters();
   }
 </script>
 
 <div class="database-viewer-container p-4">
   <div class="flex justify-between items-center mb-6">
-    <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
-      Archive / Submitted Timesheets
-    </h2>
+    <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Archive / Submitted Timesheets</h2>
     <div class="flex gap-2">
-      <Button size="sm" on:click={loadArchiveData}>
-        Refresh
-      </Button>
-      <Button size="sm" color="blue" on:click={handleExportCSV} disabled={filteredData.length === 0}>
+      <Button size="sm" on:click={loadArchiveData}>Refresh</Button>
+      <Button
+        size="sm"
+        color="blue"
+        on:click={handleExportCSV}
+        disabled={filteredData.length === 0}
+      >
         Export CSV ({filteredData.length})
       </Button>
     </div>
   </div>
-  
+
   {#if error}
     <Alert color="red" class="mb-4">
       {error}
     </Alert>
   {/if}
-  
+
   <!-- Filters -->
-  <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+  <div
+    class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg"
+  >
     <div>
-      <label class="block text-sm font-medium mb-2">Date</label>
-      <Input
-        type="text"
-        placeholder="MM/DD/YYYY"
-        bind:value={filterDate}
-      />
+      <label for="filter-date" class="block text-sm font-medium mb-2">Date</label>
+      <Input id="filter-date" type="text" placeholder="MM/DD/YYYY" bind:value={filterDate} />
     </div>
     <div>
-      <label class="block text-sm font-medium mb-2">Project</label>
+      <label for="filter-project" class="block text-sm font-medium mb-2">Project</label>
       <Input
+        id="filter-project"
         type="text"
         placeholder="Search project"
         bind:value={filterProject}
       />
     </div>
     <div>
-      <label class="block text-sm font-medium mb-2">Status</label>
-      <Select bind:value={filterStatus}>
+      <label for="filter-status" class="block text-sm font-medium mb-2">Status</label>
+      <Select id="filter-status" bind:value={filterStatus}>
         <option value="all">All</option>
         <option value="submitted">Submitted</option>
         <option value="pending">Pending</option>
       </Select>
     </div>
     <div class="flex items-end">
-      <Button size="sm" color="alternative" on:click={clearFilters}>
-        Clear Filters
-      </Button>
+      <Button size="sm" color="alternative" on:click={clearFilters}>Clear Filters</Button>
     </div>
   </div>
-  
+
   {#if isLoading}
     <div class="text-center py-8">
       <p class="text-gray-500">Loading archive data...</p>
@@ -187,7 +196,7 @@
           <TableHeadCell>Submitted</TableHeadCell>
         </TableHead>
         <TableBody>
-          {#each filteredData as entry}
+          {#each filteredData as entry (entry.id)}
             <TableBodyRow>
               <TableBodyCell>{entry.date}</TableBodyCell>
               <TableBodyCell>{entry.timeIn}</TableBodyCell>
@@ -197,7 +206,11 @@
               <TableBodyCell>{entry.chargeCode || '-'}</TableBodyCell>
               <TableBodyCell>{entry.taskDescription}</TableBodyCell>
               <TableBodyCell>
-                <span class="px-2 py-1 text-xs rounded {entry.status === 'submitted' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'}">
+                <span
+                  class="px-2 py-1 text-xs rounded {entry.status === 'submitted'
+                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+                    : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'}"
+                >
                   {entry.status || 'pending'}
                 </span>
               </TableBodyCell>
@@ -213,7 +226,7 @@
         </TableBody>
       </Table>
     </div>
-    
+
     <div class="mt-4 text-sm text-gray-600 dark:text-gray-400">
       Showing {filteredData.length} of {archiveData.length} entries
     </div>
@@ -225,4 +238,3 @@
     max-width: 100%;
   }
 </style>
-

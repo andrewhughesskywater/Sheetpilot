@@ -62,4 +62,3 @@ describe('Session Store', () => {
     expect(state.sessionId).toBe(null);
   });
 });
-

@@ -1,0 +1,74 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT date, time_in, time_out, hours, project, tool, detail_charge_code, task_description, status, submitted_at\n         FROM timesheet\n         WHERE status = 'Complete'\n         ORDER BY date DESC, time_in DESC",
+  "describe": {
+    "columns": [
+      {
+        "name": "date",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "time_in",
+        "ordinal": 1,
+        "type_info": "Integer"
+      },
+      {
+        "name": "time_out",
+        "ordinal": 2,
+        "type_info": "Integer"
+      },
+      {
+        "name": "hours",
+        "ordinal": 3,
+        "type_info": "Float"
+      },
+      {
+        "name": "project",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "tool",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "detail_charge_code",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "task_description",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "status",
+        "ordinal": 8,
+        "type_info": "Text"
+      },
+      {
+        "name": "submitted_at",
+        "ordinal": 9,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "5025bceaba458a34295eff689fb9c37d30372e6d70347fb9761921c58c79463a"
+}

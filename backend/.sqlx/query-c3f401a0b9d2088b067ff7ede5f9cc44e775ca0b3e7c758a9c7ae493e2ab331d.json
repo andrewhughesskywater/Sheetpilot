@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM timesheet WHERE id = ? AND status IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "c3f401a0b9d2088b067ff7ede5f9cc44e775ca0b3e7c758a9c7ae493e2ab331d"
+}

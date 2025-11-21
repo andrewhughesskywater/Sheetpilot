@@ -23,7 +23,9 @@
     "format:js": "prettier --write .",
     "format:js:check": "prettier --check .",
     "format:rust": "cd backend && cargo fmt",
-    "format:rust:check": "cd backend && cargo fmt -- --check"
+    "format:rust:check": "cd backend && cargo fmt -- --check",
+    "prepare": "npx simple-git-hooks || true",
+    "lint-staged": "lint-staged"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.9.0",
@@ -46,6 +48,7 @@
     "eslint-plugin-svelte": "^3.13.0",
     "globals": "^16.5.0",
     "jsdom": "^27.2.0",
+    "lint-staged": "^16.2.7",
     "postcss": "^8.4.49",
     "prettier": "^3.6.2",
     "prettier-plugin-svelte": "^3.4.0",

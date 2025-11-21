@@ -1,53 +1,63 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { Button, Table, TableBody, TableBodyCell, TableBodyRow, TableHead, TableHeadCell, Input, Alert } from 'flowbite-svelte';
+  import {
+    Button,
+    Table,
+    TableBody,
+    TableBodyCell,
+    TableBodyRow,
+    TableHead,
+    TableHeadCell,
+    Input,
+    Alert,
+  } from 'flowbite-svelte';
   import { dataStore } from '../stores/data';
   import type { TimesheetRow } from '../stores/data';
-  
+
   let timesheetData: TimesheetRow[] = [];
   let isLoading = false;
   let error = '';
-  
+
   $: {
     timesheetData = $dataStore.timesheetDraft;
     isLoading = $dataStore.isLoading;
     error = $dataStore.error || '';
   }
-  
+
   onMount(async () => {
     await dataStore.loadTimesheetDraft();
   });
-  
+
   function addRow() {
-    timesheetData = [...timesheetData, {
-      date: '',
-      timeIn: '',
-      timeOut: '',
-      project: '',
-      tool: null,
-      chargeCode: null,
-      taskDescription: '',
-    }];
+    timesheetData = [
+      ...timesheetData,
+      {
+        date: '',
+        timeIn: '',
+        timeOut: '',
+        project: '',
+        tool: null,
+        chargeCode: null,
+        taskDescription: '',
+      },
+    ];
   }
-  
+
   async function saveRow(index: number) {
     const row = timesheetData[index];
     if (!row) return;
-    
+
     // Don't save if row is incomplete
     if (!row.date || !row.timeIn || !row.timeOut || !row.project || !row.taskDescription) {
       return; // Skip validation for incomplete rows
     }
-    
+
     const result = await dataStore.saveTimesheetRow(row);
-    if (result.success) {
-      // Show success briefly
-      console.log('Row saved successfully');
-    } else {
+    if (!result.success) {
       alert(`Failed to save: ${result.error}`);
     }
   }
-  
+
   async function deleteRow(index: number) {
     const row = timesheetData[index];
     if (row.id) {
@@ -60,7 +70,7 @@
       timesheetData = timesheetData.filter((_, i) => i !== index);
     }
   }
-  
+
   function updateRow(index: number, field: keyof TimesheetRow, value: any) {
     const updatedRow = { ...timesheetData[index], [field]: value };
     dataStore.updateLocalRow(index, updatedRow);
@@ -69,25 +79,21 @@
 
 <div class="timesheet-container p-4">
   <div class="flex justify-between items-center mb-4">
-    <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
-      Timesheet
-    </h2>
+    <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Timesheet</h2>
     <div class="flex gap-2">
-      <Button on:click={addRow} size="sm">
-        Add Row
-      </Button>
+      <Button on:click={addRow} size="sm">Add Row</Button>
       <Button on:click={() => dataStore.loadTimesheetDraft()} size="sm" color="alternative">
         Refresh
       </Button>
     </div>
   </div>
-  
+
   {#if error}
     <Alert color="red" class="mb-4">
       {error}
     </Alert>
   {/if}
-  
+
   {#if isLoading}
     <div class="text-center py-8">
       <p class="text-gray-500">Loading timesheet data...</p>
@@ -106,7 +112,7 @@
           <TableHeadCell>Actions</TableHeadCell>
         </TableHead>
         <TableBody>
-          {#each timesheetData as row, index}
+          {#each timesheetData as row, index (row.id || index)}
             <TableBodyRow>
               <TableBodyCell>
                 <Input
@@ -177,24 +183,22 @@
                     size="xs"
                     color="blue"
                     on:click={() => saveRow(index)}
-                    disabled={!row.date || !row.timeIn || !row.timeOut || !row.project || !row.taskDescription}
+                    disabled={!row.date ||
+                      !row.timeIn ||
+                      !row.timeOut ||
+                      !row.project ||
+                      !row.taskDescription}
                   >
                     Save
                   </Button>
-                  <Button
-                    size="xs"
-                    color="red"
-                    on:click={() => deleteRow(index)}
-                  >
-                    Delete
-                  </Button>
+                  <Button size="xs" color="red" on:click={() => deleteRow(index)}>Delete</Button>
                 </div>
               </TableBodyCell>
             </TableBodyRow>
           {/each}
         </TableBody>
       </Table>
-      
+
       {#if timesheetData.length === 0}
         <div class="text-center py-8">
           <p class="text-gray-500 mb-4">No timesheet entries yet</p>
@@ -210,4 +214,3 @@
     max-width: 100%;
   }
 </style>
-

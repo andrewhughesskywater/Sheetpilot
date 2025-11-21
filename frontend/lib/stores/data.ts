@@ -29,25 +29,25 @@ function createDataStore() {
 
   return {
     subscribe,
-    
+
     async loadTimesheetDraft() {
-      update(state => ({ ...state, isLoading: true, error: null }));
-      
+      update((state) => ({ ...state, isLoading: true, error: null }));
+
       try {
         const response = await invoke<{
           success: boolean;
           entries: TimesheetRow[];
           error?: string;
         }>('load_timesheet_draft');
-        
+
         if (response.success) {
-          update(state => ({
+          update((state) => ({
             ...state,
             timesheetDraft: response.entries,
             isLoading: false,
           }));
         } else {
-          update(state => ({
+          update((state) => ({
             ...state,
             error: response.error || 'Failed to load timesheet',
             isLoading: false,
@@ -55,14 +55,19 @@ function createDataStore() {
         }
       } catch (error) {
         console.error('Load timesheet error:', error);
-        update(state => ({
+        await invoke('frontend_log', {
+          level: 'error',
+          message: 'Failed to load timesheet draft',
+          context: { action: 'load_timesheet', error: String(error) },
+        });
+        update((state) => ({
           ...state,
           error: String(error),
           isLoading: false,
         }));
       }
     },
-    
+
     async saveTimesheetRow(row: TimesheetRow) {
       try {
         const response = await invoke<{
@@ -70,7 +75,7 @@ function createDataStore() {
           changes?: number;
           error?: string;
         }>('save_timesheet_draft', { row });
-        
+
         if (response.success) {
           // Reload the draft to get updated data
           await this.loadTimesheetDraft();
@@ -80,10 +85,15 @@ function createDataStore() {
         }
       } catch (error) {
         console.error('Save row error:', error);
+        await invoke('frontend_log', {
+          level: 'error',
+          message: 'Failed to save timesheet row',
+          context: { action: 'save_row', error: String(error) },
+        });
         return { success: false, error: String(error) };
       }
     },
-    
+
     async deleteTimesheetRow(id: number) {
       try {
         const response = await invoke<{
@@ -91,12 +101,12 @@ function createDataStore() {
           changes?: number;
           error?: string;
         }>('delete_timesheet_draft', { id });
-        
+
         if (response.success) {
           // Remove from local state
-          update(state => ({
+          update((state) => ({
             ...state,
-            timesheetDraft: state.timesheetDraft.filter(row => row.id !== id),
+            timesheetDraft: state.timesheetDraft.filter((row) => row.id !== id),
           }));
           return { success: true };
         } else {
@@ -104,12 +114,17 @@ function createDataStore() {
         }
       } catch (error) {
         console.error('Delete row error:', error);
+        await invoke('frontend_log', {
+          level: 'error',
+          message: 'Failed to delete timesheet row',
+          context: { action: 'delete_row', rowId: id, error: String(error) },
+        });
         return { success: false, error: String(error) };
       }
     },
-    
+
     updateLocalRow(index: number, row: TimesheetRow) {
-      update(state => {
+      update((state) => {
         const newDraft = [...state.timesheetDraft];
         newDraft[index] = row;
         return { ...state, timesheetDraft: newDraft };
@@ -119,4 +134,3 @@ function createDataStore() {
 }
 
 export const dataStore = createDataStore();
-

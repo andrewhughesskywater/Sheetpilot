@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT email, is_admin, expires_at FROM sessions WHERE token = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "email",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "is_admin",
+        "ordinal": 1,
+        "type_info": "Integer"
+      },
+      {
+        "name": "expires_at",
+        "ordinal": 2,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "2b51cd198abbb0e84c1c31474e54a971094393a1b4a7a0c03d15ce2291a0e31a"
+}

@@ -1,0 +1,62 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id, date, time_in, time_out, project, tool, detail_charge_code, task_description\n         FROM timesheet\n         WHERE status IS NULL\n         ORDER BY date ASC, time_in ASC",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "date",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "time_in",
+        "ordinal": 2,
+        "type_info": "Integer"
+      },
+      {
+        "name": "time_out",
+        "ordinal": 3,
+        "type_info": "Integer"
+      },
+      {
+        "name": "project",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "tool",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "detail_charge_code",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "task_description",
+        "ordinal": 7,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "3f719bd2aebf15118ac045db68515e18999f8f2e8b70e040e078f296c2542310"
+}

@@ -1,4 +1,4 @@
-use super::browser::{BrowserManager, BrowserError};
+use super::browser::{BrowserError, BrowserManager};
 use serde::{Deserialize, Serialize};
 
 /// Result of automation execution
@@ -55,7 +55,7 @@ impl BotOrchestrator {
             form_config,
         })
     }
-    
+
     /// Starts the browser
     pub async fn start(&mut self) -> Result<(), BrowserError> {
         let mut browser = BrowserManager::new(self.headless)?;
@@ -63,7 +63,7 @@ impl BotOrchestrator {
         self.browser_manager = Some(browser);
         Ok(())
     }
-    
+
     /// Closes the browser
     pub async fn close(&mut self) -> Result<(), BrowserError> {
         if let Some(mut browser) = self.browser_manager.take() {
@@ -71,7 +71,7 @@ impl BotOrchestrator {
         }
         Ok(())
     }
-    
+
     /// Runs the automation process
     pub async fn run_automation(
         &mut self,
@@ -81,30 +81,34 @@ impl BotOrchestrator {
     ) -> Result<AutomationResult, String> {
         use super::authentication::LoginManager;
         use super::webform::WebformFiller;
-        
+
         // Check if browser is started
-        let browser = self.browser_manager.as_ref()
+        let browser = self
+            .browser_manager
+            .as_ref()
             .ok_or("Browser not started".to_string())?;
-        
+
         let total_rows = rows.len();
         let mut submitted_indices = Vec::new();
         let mut errors = Vec::new();
-        
+
         // Create a page for automation
-        let page = browser.new_page().await
+        let page = browser
+            .new_page()
+            .await
             .map_err(|e| format!("Failed to create page: {}", e))?;
-        
-        println!("Starting automation for {} rows", total_rows);
-        
+
+        tracing::info!(rows = total_rows, "Starting automation");
+
         // Step 1: Login
-        println!("Step 1: Authenticating");
+        tracing::info!("Step 1: Authenticating");
         let login_manager = LoginManager::new(self.form_config.base_url.clone());
-        
+
         match login_manager.run_login(&page, &email, &password).await {
-            Ok(_) => println!("Authentication successful"),
+            Ok(_) => tracing::info!("Authentication successful"),
             Err(e) => {
                 let error_msg = format!("Authentication failed: {}", e);
-                println!("{}", error_msg);
+                tracing::error!("{}", error_msg);
                 // Mark all rows as failed due to auth failure
                 for idx in 0..total_rows {
                     errors.push((idx, error_msg.clone()));
@@ -119,16 +123,17 @@ impl BotOrchestrator {
                 });
             }
         }
-        
+
         // Step 2: Navigate to form
-        println!("Step 2: Navigating to form");
-        let webform_filler = WebformFiller::new(
-            self.form_config.form_id.clone(),
-        );
-        
-        if let Err(e) = webform_filler.navigate_to_form(&page, &self.form_config.base_url).await {
+        tracing::info!("Step 2: Navigating to form");
+        let webform_filler = WebformFiller::new(self.form_config.form_id.clone());
+
+        if let Err(e) = webform_filler
+            .navigate_to_form(&page, &self.form_config.base_url)
+            .await
+        {
             let error_msg = format!("Failed to navigate to form: {}", e);
-            println!("{}", error_msg);
+            tracing::error!("{}", error_msg);
             for idx in 0..total_rows {
                 errors.push((idx, error_msg.clone()));
             }
@@ -141,41 +146,41 @@ impl BotOrchestrator {
                 failure_count: total_rows,
             });
         }
-        
+
         // Step 3: Fill and submit entries
-        println!("Step 3: Filling timesheet entries");
+        tracing::info!("Step 3: Filling timesheet entries");
         for (idx, row) in rows.iter().enumerate() {
-            println!("Processing row {}/{}", idx + 1, total_rows);
-            
+            tracing::info!(row = idx + 1, total = total_rows, "Processing row");
+
             match webform_filler.fill_entry(&page, row, idx).await {
                 Ok(_) => {
-                    println!("Row {} filled successfully", idx + 1);
+                    tracing::info!(row = idx + 1, "Row filled successfully");
                     submitted_indices.push(idx);
                 }
                 Err(e) => {
                     let error_msg = format!("Failed to fill row: {}", e);
-                    println!("{}", error_msg);
+                    tracing::error!(row = idx + 1, error = %e, "Failed to fill row");
                     errors.push((idx, error_msg));
                 }
             }
         }
-        
+
         // Step 4: Submit the form (if any entries were filled)
         if !submitted_indices.is_empty() {
-            println!("Step 4: Submitting form");
+            tracing::info!("Step 4: Submitting form");
             match webform_filler.submit_form(&page).await {
                 Ok(_) => {
-                    println!("Form submitted");
+                    tracing::info!("Form submitted");
                     // Verify submission
                     match webform_filler.verify_submission(&page).await {
-                        Ok(true) => println!("Submission verified"),
-                        Ok(false) => println!("Warning: Could not verify submission"),
-                        Err(e) => println!("Warning: Verification error: {}", e),
+                        Ok(true) => tracing::info!("Submission verified"),
+                        Ok(false) => tracing::warn!("Could not verify submission"),
+                        Err(e) => tracing::warn!(error = %e, "Verification error"),
                     }
                 }
                 Err(e) => {
                     let error_msg = format!("Failed to submit form: {}", e);
-                    println!("{}", error_msg);
+                    tracing::error!(error = %e, "Failed to submit form");
                     // Mark all submitted indices as errors
                     for idx in submitted_indices.iter() {
                         errors.push((*idx, error_msg.clone()));
@@ -184,12 +189,16 @@ impl BotOrchestrator {
                 }
             }
         }
-        
+
         let success_count = submitted_indices.len();
         let failure_count = errors.len();
-        
-        println!("Automation complete: {} succeeded, {} failed", success_count, failure_count);
-        
+
+        tracing::info!(
+            succeeded = success_count,
+            failed = failure_count,
+            "Automation complete"
+        );
+
         Ok(AutomationResult {
             success: success_count > 0,
             submitted_indices,
@@ -220,21 +229,21 @@ pub async fn run_timesheet(
             failure_count: 0,
         });
     }
-    
+
     // Create and start bot
     let mut bot = BotOrchestrator::new(headless, form_config)
         .map_err(|e| format!("Failed to create bot: {}", e))?;
-    
+
     // Start browser
-    bot.start().await
+    bot.start()
+        .await
         .map_err(|e| format!("Failed to start browser: {}", e))?;
-    
+
     // Run automation
     let result = bot.run_automation(rows, email, password).await;
-    
+
     // Always close browser
     let _ = bot.close().await;
-    
+
     result
 }
-

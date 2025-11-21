@@ -17,8 +17,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '$lib': '/frontend/lib',
+      $lib: '/frontend/lib',
     },
   },
 });
-

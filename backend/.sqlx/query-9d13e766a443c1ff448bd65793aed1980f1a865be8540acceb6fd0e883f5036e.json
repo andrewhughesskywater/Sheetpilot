@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO credentials (service, email, password) VALUES (?, ?, ?)\n         ON CONFLICT(service) DO UPDATE SET email = ?, password = ?, updated_at = CURRENT_TIMESTAMP",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "9d13e766a443c1ff448bd65793aed1980f1a865be8540acceb6fd0e883f5036e"
+}

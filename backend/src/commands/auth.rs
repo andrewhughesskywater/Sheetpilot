@@ -33,10 +33,10 @@ pub struct CurrentSessionResponse {
 pub async fn auth_login(email: String, password: String, stay_logged_in: bool) -> LoginResponse {
     // Check if admin login
     let is_admin = auth::is_admin_login(&email, &password);
-    
+
     if is_admin {
         // Admin login - no credential storage needed
-        match auth::create_session(email.clone(), stay_logged_in, true) {
+        match auth::create_session(email.clone(), stay_logged_in, true).await {
             Ok(token) => LoginResponse {
                 success: true,
                 token: Some(token),
@@ -53,7 +53,7 @@ pub async fn auth_login(email: String, password: String, stay_logged_in: bool) -
     } else {
         // Regular user login - store credentials and create session
         // TODO: Store credentials in database
-        match auth::create_session(email.clone(), stay_logged_in, false) {
+        match auth::create_session(email.clone(), stay_logged_in, false).await {
             Ok(token) => LoginResponse {
                 success: true,
                 token: Some(token),
@@ -73,10 +73,10 @@ pub async fn auth_login(email: String, password: String, stay_logged_in: bool) -
 #[tauri::command]
 pub async fn auth_logout(token: String) -> LogoutResponse {
     // Get session info before clearing
-    let session = auth::validate_session(&token);
-    
+    let session = auth::validate_session(&token).await;
+
     if session.valid {
-        match auth::clear_user_sessions(&session.email) {
+        match auth::clear_user_sessions(&session.email).await {
             Ok(_) => LogoutResponse {
                 success: true,
                 error: None,
@@ -87,7 +87,7 @@ pub async fn auth_logout(token: String) -> LogoutResponse {
             },
         }
     } else {
-        match auth::clear_session(&token) {
+        match auth::clear_session(&token).await {
             Ok(_) => LogoutResponse {
                 success: true,
                 error: None,
@@ -102,19 +102,23 @@ pub async fn auth_logout(token: String) -> LogoutResponse {
 
 #[tauri::command]
 pub async fn auth_validate_session(token: String) -> SessionResponse {
-    let session = auth::validate_session(&token);
-    
+    let session = auth::validate_session(&token).await;
+
     SessionResponse {
         valid: session.valid,
-        email: if session.valid { Some(session.email) } else { None },
+        email: if session.valid {
+            Some(session.email)
+        } else {
+            None
+        },
         is_admin: session.is_admin,
     }
 }
 
 #[tauri::command]
 pub async fn auth_get_current_session(token: String) -> Option<CurrentSessionResponse> {
-    let session = auth::validate_session(&token);
-    
+    let session = auth::validate_session(&token).await;
+
     if session.valid {
         Some(CurrentSessionResponse {
             email: session.email,
@@ -125,4 +129,3 @@ pub async fn auth_get_current_session(token: String) -> Option<CurrentSessionRes
         None
     }
 }
-

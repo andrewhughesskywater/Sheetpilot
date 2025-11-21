@@ -9,4 +9,3 @@ vi.mock('@tauri-apps/api/core', () => ({
 
 // Export mock for tests to use
 export { mockInvoke };
-

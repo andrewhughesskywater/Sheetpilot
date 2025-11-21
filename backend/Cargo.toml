@@ -20,14 +20,19 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-rusqlite = { version = "0.31", features = ["bundled"] }
+sqlx = { version = "0.8", features = ["runtime-tokio-native-tls", "sqlite", "migrate"] }
 chromiumoxide = "0.7"
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 chrono = "0.4"
 uuid = { version = "1", features = ["v4"] }
 futures = "0.3"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+tracing-appender = "0.2"
 
 [dev-dependencies]
 tempfile = "3"

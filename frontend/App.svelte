@@ -1,20 +1,29 @@
 <script>
   import { onMount } from 'svelte';
-  import { Button, Alert, Navbar, NavBrand, NavLi, NavUl, NavHamburger, Tabs, TabItem } from 'flowbite-svelte';
+  import {
+    Button,
+    Alert,
+    Navbar,
+    NavBrand,
+    NavLi,
+    NavUl,
+    NavHamburger,
+    Tabs,
+    TabItem,
+  } from 'flowbite-svelte';
   import Login from './lib/components/Login.svelte';
   import TimesheetGridHandsontable from './lib/components/TimesheetGridHandsontable.svelte';
   import DatabaseViewer from './lib/components/DatabaseViewer.svelte';
   import Settings from './lib/components/Settings.svelte';
   import { sessionStore, isLoggedIn, isAdmin, currentUser } from './lib/stores/session';
-  
+
   let showLogin = false;
   let activeTab = 'timesheet';
-  
+
   onMount(async () => {
-    console.log('App mounted - initializing session...');
     await sessionStore.initialize();
   });
-  
+
   $: {
     // Show login if not logged in and not loading
     if (!$sessionStore.isLoading && !$isLoggedIn) {
@@ -23,7 +32,7 @@
       showLogin = false;
     }
   }
-  
+
   async function handleLogout() {
     await sessionStore.logout();
   }
@@ -44,27 +53,29 @@
           <span class="text-gray-700 dark:text-gray-300">
             {$currentUser}
             {#if $isAdmin}
-              <span class="ml-1 text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 px-2 py-0.5 rounded">
+              <span
+                class="ml-1 text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300 px-2 py-0.5 rounded"
+              >
                 Admin
               </span>
             {/if}
           </span>
         </NavLi>
         <NavLi>
-          <Button size="sm" color="alternative" on:click={handleLogout}>
-            Logout
-          </Button>
+          <Button size="sm" color="alternative" on:click={handleLogout}>Logout</Button>
         </NavLi>
       {/if}
     </NavUl>
   </Navbar>
-  
+
   <!-- Main Content -->
   <main class="container mx-auto p-4">
     {#if $sessionStore.isLoading}
       <div class="flex items-center justify-center h-96">
         <div class="text-center">
-          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-700 mx-auto mb-4"></div>
+          <div
+            class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-700 mx-auto mb-4"
+          ></div>
           <p class="text-gray-600 dark:text-gray-400">Loading...</p>
         </div>
       </div>
@@ -74,19 +85,19 @@
           <span class="font-medium">Admin Mode:</span> You are logged in as an administrator.
         </Alert>
       {/if}
-      
+
       <Tabs style="underline">
-        <TabItem open={activeTab === 'timesheet'} on:click={() => activeTab = 'timesheet'}>
+        <TabItem open={activeTab === 'timesheet'} on:click={() => (activeTab = 'timesheet')}>
           <span slot="title">Timesheet</span>
           <TimesheetGridHandsontable />
         </TabItem>
-        
-        <TabItem open={activeTab === 'archive'} on:click={() => activeTab = 'archive'}>
+
+        <TabItem open={activeTab === 'archive'} on:click={() => (activeTab = 'archive')}>
           <span slot="title">Archive</span>
           <DatabaseViewer />
         </TabItem>
-        
-        <TabItem open={activeTab === 'settings'} on:click={() => activeTab = 'settings'}>
+
+        <TabItem open={activeTab === 'settings'} on:click={() => (activeTab = 'settings')}>
           <span slot="title">Settings</span>
           <Settings />
         </TabItem>
@@ -97,17 +108,13 @@
           <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-4">
             Welcome to SheetPilot
           </h1>
-          <p class="text-gray-600 dark:text-gray-400 mb-6">
-            Please log in to continue
-          </p>
-          <Button on:click={() => showLogin = true}>
-            Login
-          </Button>
+          <p class="text-gray-600 dark:text-gray-400 mb-6">Please log in to continue</p>
+          <Button on:click={() => (showLogin = true)}>Login</Button>
         </div>
       </div>
     {/if}
   </main>
-  
+
   <!-- Login Modal -->
   <Login bind:open={showLogin} />
 </div>
@@ -117,7 +124,7 @@
     margin: 0;
     padding: 0;
   }
-  
+
   .app-container {
     min-height: 100vh;
   }

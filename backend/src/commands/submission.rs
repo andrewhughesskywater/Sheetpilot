@@ -47,36 +47,195 @@ pub struct TimesheetEntry {
 }
 
 #[tauri::command]
-pub async fn timesheet_submit(_token: String, request: SubmitRequest) -> SubmitResponse {
-    // Use bot automation to submit entries
-    use crate::bot::{run_timesheet, TimesheetRow, FormConfig};
-    
-    // Convert entries to bot format
-    let rows: Vec<TimesheetRow> = request.entries.into_iter().map(|entry| TimesheetRow {
-        date: entry.date,
-        time_in: entry.time_in,
-        time_out: entry.time_out,
-        project: entry.project,
-        tool: entry.tool,
-        charge_code: entry.charge_code,
-        task_description: entry.task_description,
-    }).collect();
-    
-    // Create form config
-    let form_config = FormConfig {
-        base_url: request.base_url,
-        form_id: request.form_id,
-        submission_endpoint: String::new(), // TODO: Get from config
+pub async fn timesheet_submit(
+    _token: String,
+    service: String,
+    base_url: String,
+    form_id: String,
+) -> SubmitResponse {
+    use crate::bot::{run_timesheet, FormConfig, TimesheetRow};
+
+    // Get database pool
+    let pool = match crate::database::get_pool() {
+        Ok(p) => p,
+        Err(e) => {
+            return SubmitResponse {
+                error: Some(format!("Database error: {}", e)),
+                submit_result: None,
+            }
+        }
     };
-    
-    // Run automation (headless = false for now for debugging)
-    match run_timesheet(rows, request.email, request.password, form_config, false).await {
+
+    // STEP 1: Retrieve stored credentials
+    let credentials = match sqlx::query!(
+        "SELECT email, password FROM credentials WHERE service = ?",
+        service
+    )
+    .fetch_optional(pool)
+    .await
+    {
+        Ok(Some(cred)) => cred,
+        Ok(None) => {
+            return SubmitResponse {
+                error: Some(format!(
+                    "No credentials found for service '{}'. Please store credentials first.",
+                    service
+                )),
+                submit_result: None,
+            }
+        }
+        Err(e) => {
+            return SubmitResponse {
+                error: Some(format!("Failed to retrieve credentials: {}", e)),
+                submit_result: None,
+            }
+        }
+    };
+
+    // STEP 2: Mark draft entries as "Submitting" with timestamp
+    let mark_result = sqlx::query!(
+        "UPDATE timesheet 
+         SET status = 'Submitting',
+             submission_started_at = datetime('now')
+         WHERE status IS NULL"
+    )
+    .execute(pool)
+    .await;
+
+    if let Err(e) = mark_result {
+        return SubmitResponse {
+            error: Some(format!("Failed to lock entries for submission: {}", e)),
+            submit_result: None,
+        };
+    }
+
+    let rows_marked = mark_result.unwrap().rows_affected();
+    if rows_marked == 0 {
+        return SubmitResponse {
+            error: Some("No draft entries to submit".to_string()),
+            submit_result: None,
+        };
+    }
+
+    tracing::info!("Marked {} entries for submission", rows_marked);
+
+    // STEP 3: Load entries from database (source of truth)
+    let db_entries = match sqlx::query!(
+        "SELECT id, date, time_in, time_out, project, tool, 
+                detail_charge_code, task_description
+         FROM timesheet
+         WHERE status = 'Submitting'
+         ORDER BY date ASC, time_in ASC"
+    )
+    .fetch_all(pool)
+    .await
+    {
+        Ok(entries) => entries,
+        Err(e) => {
+            // Rollback on error
+            let _ = sqlx::query!(
+                "UPDATE timesheet 
+                 SET status = NULL, submission_started_at = NULL 
+                 WHERE status = 'Submitting'"
+            )
+            .execute(pool)
+            .await;
+            
+            return SubmitResponse {
+                error: Some(format!("Failed to load entries from database: {}", e)),
+                submit_result: None,
+            };
+        }
+    };
+
+    // Convert to bot format
+    let rows: Vec<TimesheetRow> = db_entries
+        .iter()
+        .map(|entry| TimesheetRow {
+            date: entry.date.clone(),
+            time_in: format_time(entry.time_in),
+            time_out: format_time(entry.time_out),
+            project: entry.project.clone(),
+            tool: entry.tool.clone(),
+            charge_code: entry.detail_charge_code.clone(),
+            task_description: entry.task_description.clone(),
+        })
+        .collect();
+
+    // STEP 4: Create form config and run bot
+    let form_config = FormConfig {
+        base_url,
+        form_id,
+        submission_endpoint: String::new(),
+    };
+
+    tracing::info!("Starting bot automation for {} entries", rows.len());
+
+    let bot_result = run_timesheet(
+        rows,
+        credentials.email,
+        credentials.password,
+        form_config,
+        false,
+    )
+    .await;
+
+    // STEP 5: Update database based on bot results
+    match bot_result {
         Ok(result) => {
+            let mut submitted_ids = Vec::new();
+            let mut failed_count = 0;
+
+            // Mark successful entries as Complete
+            for (idx, entry) in db_entries.iter().enumerate() {
+                if result.submitted_indices.contains(&idx) {
+                    let update_result = sqlx::query!(
+                        "UPDATE timesheet 
+                         SET status = 'Complete',
+                             submitted_at = datetime('now'),
+                             submission_started_at = NULL
+                         WHERE id = ?",
+                        entry.id
+                    )
+                    .execute(pool)
+                    .await;
+
+                    if update_result.is_ok() {
+                        submitted_ids.push(entry.id);
+                        tracing::info!("Entry {} marked as Complete", entry.id);
+                    }
+                } else {
+                    // Mark failed entries
+                    let _ = sqlx::query!(
+                        "UPDATE timesheet 
+                         SET status = 'Failed',
+                             submission_started_at = NULL
+                         WHERE id = ?",
+                        entry.id
+                    )
+                    .execute(pool)
+                    .await;
+                    
+                    failed_count += 1;
+                    tracing::warn!("Entry {} marked as Failed", entry.id);
+                }
+            }
+
+            tracing::info!(
+                "Submission complete: {} succeeded, {} failed",
+                submitted_ids.len(),
+                failed_count
+            );
+
             SubmitResponse {
-                error: if result.success { None } else { Some("Some entries failed to submit".to_string()) },
+                error: if failed_count > 0 {
+                    Some(format!("{} entries failed to submit", failed_count))
+                } else {
+                    None
+                },
                 submit_result: Some(SubmissionResult {
                     ok: result.success,
-                    submitted_ids: vec![], // TODO: Track IDs
+                    submitted_ids,
                     removed_ids: vec![],
                     total_processed: result.total_rows,
                     success_count: result.success_count,
@@ -86,6 +245,18 @@ pub async fn timesheet_submit(_token: String, request: SubmitRequest) -> SubmitR
             }
         }
         Err(e) => {
+            // Bot failed completely - mark all as Failed
+            let _ = sqlx::query!(
+                "UPDATE timesheet 
+                 SET status = 'Failed',
+                     submission_started_at = NULL
+                 WHERE status = 'Submitting'"
+            )
+            .execute(pool)
+            .await;
+
+            tracing::error!("Bot automation failed: {}", e);
+
             SubmitResponse {
                 error: Some(format!("Automation failed: {}", e)),
                 submit_result: None,
@@ -103,71 +274,56 @@ fn format_time(minutes: i64) -> String {
 
 #[tauri::command]
 pub async fn timesheet_export_csv() -> ExportResponse {
-    let db_guard = match crate::database::get_connection() {
-        Ok(g) => g,
-        Err(e) => return ExportResponse {
-            success: false,
-            csv_data: None,
-            entry_count: None,
-            filename: None,
-            error: Some(format!("Failed to access database: {}", e)),
-        },
+    let pool = match crate::database::get_pool() {
+        Ok(p) => p,
+        Err(e) => {
+            return ExportResponse {
+                success: false,
+                csv_data: None,
+                entry_count: None,
+                filename: None,
+                error: Some(format!("Failed to access database: {}", e)),
+            }
+        }
     };
-    
-    let conn = match db_guard.as_ref() {
-        Some(c) => c,
-        None => return ExportResponse {
-            success: false,
-            csv_data: None,
-            entry_count: None,
-            filename: None,
-            error: Some("Database not initialized".to_string()),
-        },
-    };
-    
+
     // Get submitted entries
-    let mut stmt = match conn.prepare(
+    let result = sqlx::query!(
         "SELECT date, time_in, time_out, hours, project, tool, detail_charge_code, task_description, status, submitted_at
          FROM timesheet
          WHERE status = 'Complete'
          ORDER BY date DESC, time_in DESC"
-    ) {
-        Ok(s) => s,
-        Err(e) => return ExportResponse {
-            success: false,
-            csv_data: None,
-            entry_count: None,
-            filename: None,
-            error: Some(format!("Failed to prepare query: {}", e)),
-        },
+    )
+    .fetch_all(pool)
+    .await;
+
+    let entries: Vec<_> = match result {
+        Ok(rows) => rows
+            .into_iter()
+            .map(|row| (
+                row.date,
+                row.time_in,
+                row.time_out,
+                row.hours,
+                row.project,
+                row.tool,
+                row.detail_charge_code,
+                row.task_description,
+                row.status.unwrap_or_default(),
+                row.submitted_at.unwrap_or_default(),
+            ))
+            .collect(),
+        Err(e) => {
+            return ExportResponse {
+                success: false,
+                csv_data: None,
+                entry_count: None,
+                filename: None,
+                error: Some(format!("Failed to fetch entries: {}", e)),
+            }
+        }
     };
-    
-    let entries_iter = stmt.query_map([], |row| {
-        Ok((
-            row.get::<_, String>(0)?,   // date
-            row.get::<_, i64>(1)?,       // time_in
-            row.get::<_, i64>(2)?,       // time_out
-            row.get::<_, f64>(3)?,       // hours
-            row.get::<_, String>(4)?,    // project
-            row.get::<_, Option<String>>(5)?,  // tool
-            row.get::<_, Option<String>>(6)?,  // detail_charge_code
-            row.get::<_, String>(7)?,    // task_description
-            row.get::<_, String>(8)?,    // status
-            row.get::<_, String>(9)?,    // submitted_at
-        ))
-    });
-    
-    let entries: Vec<_> = match entries_iter {
-        Ok(iter) => iter.filter_map(|r| r.ok()).collect(),
-        Err(e) => return ExportResponse {
-            success: false,
-            csv_data: None,
-            entry_count: None,
-            filename: None,
-            error: Some(format!("Failed to fetch entries: {}", e)),
-        },
-    };
-    
+
     if entries.is_empty() {
         return ExportResponse {
             success: false,
@@ -177,13 +333,25 @@ pub async fn timesheet_export_csv() -> ExportResponse {
             error: Some("No submitted timesheet entries found to export".to_string()),
         };
     }
-    
+
     // Build CSV
     let mut csv_rows = vec![
         "Date,Start Time,End Time,Hours,Project,Tool,Charge Code,Task Description,Status,Submitted At".to_string()
     ];
-    
-    for (date, time_in, time_out, hours, project, tool, charge_code, task_description, status, submitted_at) in entries.iter() {
+
+    for (
+        date,
+        time_in,
+        time_out,
+        hours,
+        project,
+        tool,
+        charge_code,
+        task_description,
+        status,
+        submitted_at,
+    ) in entries.iter()
+    {
         let row = format!(
             "{},{},{},{},{},{},{},{},{},{}",
             date,
@@ -199,13 +367,16 @@ pub async fn timesheet_export_csv() -> ExportResponse {
         );
         csv_rows.push(row);
     }
-    
+
     let csv_content = csv_rows.join("\n");
     let entry_count = entries.len();
-    
+
     // Generate filename with current date
-    let filename = format!("timesheet_export_{}.csv", chrono::Local::now().format("%Y-%m-%d"));
-    
+    let filename = format!(
+        "timesheet_export_{}.csv",
+        chrono::Local::now().format("%Y-%m-%d")
+    );
+
     ExportResponse {
         success: true,
         csv_data: Some(csv_content),

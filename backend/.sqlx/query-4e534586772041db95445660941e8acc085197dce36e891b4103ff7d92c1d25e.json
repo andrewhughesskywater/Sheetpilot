@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO timesheet\n             (date, time_in, time_out, hours, project, tool, detail_charge_code, task_description, status)\n             VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)\n             ON CONFLICT(date, time_in, project, task_description) DO UPDATE SET\n               time_out = excluded.time_out,\n               hours = excluded.hours,\n               tool = excluded.tool,\n               detail_charge_code = excluded.detail_charge_code,\n               status = NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 8
+    },
+    "nullable": []
+  },
+  "hash": "4e534586772041db95445660941e8acc085197dce36e891b4103ff7d92c1d25e"
+}

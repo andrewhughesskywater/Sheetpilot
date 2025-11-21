@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT service, email FROM credentials ORDER BY service",
+  "describe": {
+    "columns": [
+      {
+        "name": "service",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "email",
+        "ordinal": 1,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "d3a1aeac048c2dc311202856bd83c35aaa6b71aa471cc9ddaa753baf9228923a"
+}
