@@ -26,18 +26,72 @@ pub struct ExportResponse {
     pub error: Option<String>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct SubmitRequest {
+    pub entries: Vec<TimesheetEntry>,
+    pub email: String,
+    pub password: String,
+    pub base_url: String,
+    pub form_id: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct TimesheetEntry {
+    pub date: String,
+    pub time_in: String,
+    pub time_out: String,
+    pub project: String,
+    pub tool: Option<String>,
+    pub charge_code: Option<String>,
+    pub task_description: String,
+}
+
 #[tauri::command]
-pub async fn timesheet_submit(_token: String) -> SubmitResponse {
-    // TODO: Implement timesheet submission
-    // 1. Validate session
-    // 2. Get credentials
-    // 3. Load pending entries from database
-    // 4. Use bot automation to submit entries
-    // 5. Update database with submission status
+pub async fn timesheet_submit(_token: String, request: SubmitRequest) -> SubmitResponse {
+    // Use bot automation to submit entries
+    use crate::bot::{run_timesheet, TimesheetRow, FormConfig};
     
-    SubmitResponse {
-        error: Some("Timesheet submission not yet implemented".to_string()),
-        submit_result: None,
+    // Convert entries to bot format
+    let rows: Vec<TimesheetRow> = request.entries.into_iter().map(|entry| TimesheetRow {
+        date: entry.date,
+        time_in: entry.time_in,
+        time_out: entry.time_out,
+        project: entry.project,
+        tool: entry.tool,
+        charge_code: entry.charge_code,
+        task_description: entry.task_description,
+    }).collect();
+    
+    // Create form config
+    let form_config = FormConfig {
+        base_url: request.base_url,
+        form_id: request.form_id,
+        submission_endpoint: String::new(), // TODO: Get from config
+        success_response_patterns: vec![], // TODO: Get from config
+    };
+    
+    // Run automation (headless = false for now for debugging)
+    match run_timesheet(rows, request.email, request.password, form_config, false).await {
+        Ok(result) => {
+            SubmitResponse {
+                error: if result.success { None } else { Some("Some entries failed to submit".to_string()) },
+                submit_result: Some(SubmissionResult {
+                    ok: result.success,
+                    submitted_ids: vec![], // TODO: Track IDs
+                    removed_ids: vec![],
+                    total_processed: result.total_rows,
+                    success_count: result.success_count,
+                    removed_count: 0,
+                    error: None,
+                }),
+            }
+        }
+        Err(e) => {
+            SubmitResponse {
+                error: Some(format!("Automation failed: {}", e)),
+                submit_result: None,
+            }
+        }
     }
 }
 
