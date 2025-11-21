@@ -1,0 +1,21 @@
+# Clippy configuration for Rust linting
+# See: https://doc.rust-lang.org/clippy/
+
+# Lint levels
+# warn: Issues that should be fixed but don't block compilation
+# deny: Issues that should be treated as errors
+# allow: Explicitly allowed lints
+
+# Set the minimum supported Rust version
+msrv = "1.70.0"
+
+# Cognitive complexity threshold
+cognitive-complexity-threshold = 25
+
+# Documentation
+# Enforce documentation for public crate items
+missing-docs-in-crate-items = false
+
+# Avoid breaking exported API with changes
+avoid-breaking-exported-api = false
+

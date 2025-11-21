@@ -1,282 +1,73 @@
-const js = require('@eslint/js');
-const typescript = require('@typescript-eslint/eslint-plugin');
-const typescriptParser = require('@typescript-eslint/parser');
-const react = require('eslint-plugin-react');
-const reactHooks = require('eslint-plugin-react-hooks');
-const reactRefresh = require('eslint-plugin-react-refresh');
+import js from '@eslint/js';
+import svelte from 'eslint-plugin-svelte';
+import prettier from 'eslint-config-prettier';
+import tseslint from '@typescript-eslint/eslint-plugin';
+import tsparser from '@typescript-eslint/parser';
+import svelteParser from 'svelte-eslint-parser';
+import globals from 'globals';
 
-module.exports = [
+export default [
+  js.configs.recommended,
+  ...svelte.configs['flat/recommended'],
+  prettier,
+  ...svelte.configs['flat/prettier'],
+  {
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      parser: tsparser,
+      parserOptions: {
+        extraFileExtensions: ['.svelte'],
+      },
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+      },
+    },
+    plugins: {
+      '@typescript-eslint': tseslint,
+    },
+    rules: {
+      // Best practices
+      'no-console': ['warn', { allow: ['warn', 'error'] }],
+      'no-debugger': 'warn',
+      'no-unused-vars': 'off',
+      '@typescript-eslint/no-unused-vars': ['error', { 
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_',
+      }],
+      
+      // Code quality
+      'prefer-const': 'error',
+      'no-var': 'error',
+      'eqeqeq': ['error', 'always', { null: 'ignore' }],
+      
+      // Svelte specific
+      'svelte/no-at-html-tags': 'warn',
+      'svelte/valid-compile': 'error',
+    },
+  },
+  {
+    files: ['**/*.svelte'],
+    languageOptions: {
+      parser: svelteParser,
+      parserOptions: {
+        parser: tsparser,
+      },
+    },
+  },
   {
     ignores: [
-      'build/**',
-      'dist/**',
-      '**/*.js',
-      '**/*.js.map',
-      '**/*.d.ts',
-      'node_modules/**',
-      'release/**',
-      '*.log',
-      '*.sqlite',
-      '*.db'
-    ]
+      'node_modules/',
+      'dist/',
+      'build/',
+      'backend/target/',
+      '*.config.js',
+      'vite.config.js',
+      'postcss.config.js',
+      'tailwind.config.js',
+      'svelte.config.js',
+    ],
   },
-  js.configs.recommended,
-  {
-    files: ['**/*.{ts,tsx}'],
-    languageOptions: {
-      parser: typescriptParser,
-      parserOptions: {
-        ecmaVersion: 'latest',
-        sourceType: 'module',
-        ecmaFeatures: {
-          jsx: true
-        }
-      },
-      globals: {
-        // Node.js globals
-        process: 'readonly',
-        require: 'readonly',
-        exports: 'readonly',
-        module: 'readonly',
-        __dirname: 'readonly',
-        __filename: 'readonly',
-        Buffer: 'readonly',
-        setTimeout: 'readonly',
-        setInterval: 'readonly',
-        clearTimeout: 'readonly',
-        clearInterval: 'readonly',
-        setImmediate: 'readonly',
-        console: 'readonly',
-        global: 'readonly',
-        AbortController: 'readonly',
-        AbortSignal: 'readonly',
-        NodeJS: 'readonly',
-        // Electron globals
-        Electron: 'readonly'
-      }
-    },
-    plugins: {
-      '@typescript-eslint': typescript,
-      'react': react,
-      'react-hooks': reactHooks,
-      'react-refresh': reactRefresh
-    },
-    rules: {
-      ...typescript.configs.recommended.rules,
-      ...react.configs.recommended.rules,
-      ...reactHooks.configs.recommended.rules,
-      '@typescript-eslint/no-explicit-any': 'warn',
-      '@typescript-eslint/no-require-imports': 'off',
-      '@typescript-eslint/no-unused-vars': ['error', { 
-        argsIgnorePattern: '^_',
-        varsIgnorePattern: '^_'
-      }],
-      '@typescript-eslint/ban-ts-comment': ['error', {
-        'ts-expect-error': 'allow-with-description',
-        'ts-ignore': false,
-        'ts-nocheck': false,
-        'ts-check': false
-      }],
-      'no-case-declarations': 'error',
-      'react/react-in-jsx-scope': 'off',
-      'react-refresh/only-export-components': [
-        'warn',
-        { allowConstantExport: true },
-      ],
-    },
-    settings: {
-      react: {
-        version: 'detect'
-      }
-    }
-  },
-  {
-    files: ['app/backend/src/services/bot/**/*.ts'],
-    languageOptions: {
-      parser: typescriptParser,
-      parserOptions: {
-        ecmaVersion: 'latest',
-        sourceType: 'module'
-      },
-      globals: {
-        // Node.js globals
-        process: 'readonly',
-        require: 'readonly',
-        exports: 'readonly',
-        module: 'readonly',
-        __dirname: 'readonly',
-        __filename: 'readonly',
-        Buffer: 'readonly',
-        setTimeout: 'readonly',
-        setInterval: 'readonly',
-        clearTimeout: 'readonly',
-        clearInterval: 'readonly',
-        console: 'readonly',
-        // Browser globals (for Playwright)
-        window: 'readonly',
-        document: 'readonly',
-        navigator: 'readonly',
-        Notification: 'readonly',
-        PermissionStatus: 'readonly'
-      }
-    },
-    plugins: {
-      '@typescript-eslint': typescript
-    },
-    rules: {
-      ...typescript.configs.recommended.rules,
-      '@typescript-eslint/no-explicit-any': 'warn',
-      '@typescript-eslint/no-require-imports': 'off',
-      '@typescript-eslint/no-unused-vars': ['error', { 
-        argsIgnorePattern: '^_',
-        varsIgnorePattern: '^_'
-      }]
-    }
-  },
-  {
-    files: ['app/frontend/src/**/*.{ts,tsx}'],
-    languageOptions: {
-      parser: typescriptParser,
-      parserOptions: {
-        ecmaVersion: 'latest',
-        sourceType: 'module',
-        ecmaFeatures: {
-          jsx: true
-        }
-      },
-      globals: {
-        // Browser globals
-        window: 'readonly',
-        document: 'readonly',
-        navigator: 'readonly',
-        console: 'readonly',
-        setTimeout: 'readonly',
-        setInterval: 'readonly',
-        clearTimeout: 'readonly',
-        clearInterval: 'readonly',
-        localStorage: 'readonly',
-        requestAnimationFrame: 'readonly',
-        cancelAnimationFrame: 'readonly',
-        requestIdleCallback: 'readonly',
-        HTMLInputElement: 'readonly',
-        HTMLDivElement: 'readonly',
-        HTMLElement: 'readonly',
-        CustomEvent: 'readonly',
-        Event: 'readonly',
-        Blob: 'readonly',
-        URL: 'readonly',
-        Notification: 'readonly',
-        PermissionStatus: 'readonly'
-      }
-    },
-    plugins: {
-      '@typescript-eslint': typescript,
-      'react': react,
-      'react-hooks': reactHooks,
-      'react-refresh': reactRefresh
-    },
-    rules: {
-      ...typescript.configs.recommended.rules,
-      ...react.configs.recommended.rules,
-      ...reactHooks.configs.recommended.rules,
-      '@typescript-eslint/no-explicit-any': 'warn',
-      'react/react-in-jsx-scope': 'off',
-      'react-refresh/only-export-components': [
-        'warn',
-        { allowConstantExport: true },
-      ],
-    },
-    settings: {
-      react: {
-        version: 'detect'
-      }
-    }
-  },
-  {
-    files: ['**/*.spec.ts', '**/*.spec.tsx', '**/*.test.ts', '**/*.test.tsx', '__tests__/**/*.ts', '__tests__/**/*.tsx'],
-    languageOptions: {
-      parser: typescriptParser,
-      parserOptions: {
-        ecmaVersion: 'latest',
-        sourceType: 'module',
-        ecmaFeatures: {
-          jsx: true
-        }
-      },
-      globals: {
-        // Node.js globals
-        process: 'readonly',
-        require: 'readonly',
-        exports: 'readonly',
-        module: 'readonly',
-        __dirname: 'readonly',
-        __filename: 'readonly',
-        Buffer: 'readonly',
-        setTimeout: 'readonly',
-        setInterval: 'readonly',
-        clearTimeout: 'readonly',
-        clearInterval: 'readonly',
-        setImmediate: 'readonly',
-        console: 'readonly',
-        global: 'readonly',
-        // Test globals (Vitest)
-        describe: 'readonly',
-        it: 'readonly',
-        test: 'readonly',
-        expect: 'readonly',
-        beforeEach: 'readonly',
-        afterEach: 'readonly',
-        beforeAll: 'readonly',
-        afterAll: 'readonly',
-        vi: 'readonly',
-        vitest: 'readonly',
-        // Browser globals for tests
-        window: 'readonly',
-        document: 'readonly',
-        navigator: 'readonly',
-        localStorage: 'readonly',
-        requestAnimationFrame: 'readonly',
-        cancelAnimationFrame: 'readonly',
-        HTMLInputElement: 'readonly',
-        HTMLDivElement: 'readonly',
-        CustomEvent: 'readonly',
-        Event: 'readonly'
-      }
-    },
-    plugins: {
-      '@typescript-eslint': typescript,
-      'react': react,
-      'react-hooks': reactHooks
-    },
-    rules: {
-      ...typescript.configs.recommended.rules,
-      ...react.configs.recommended.rules,
-      ...reactHooks.configs.recommended.rules,
-      '@typescript-eslint/no-explicit-any': 'warn',
-      '@typescript-eslint/no-require-imports': 'off',
-      '@typescript-eslint/no-unused-vars': ['error', { 
-        argsIgnorePattern: '^_',
-        varsIgnorePattern: '^_'
-      }],
-      'react/react-in-jsx-scope': 'off'
-    },
-    settings: {
-      react: {
-        version: 'detect'
-      }
-    }
-  },
-  {
-    files: ['**/*.js'],
-    languageOptions: {
-      ecmaVersion: 'latest',
-      sourceType: 'module'
-    },
-    rules: {
-      'no-unused-vars': ['error', { 
-        argsIgnorePattern: '^_',
-        varsIgnorePattern: '^_'
-      }]
-    }
-  }
 ];
+

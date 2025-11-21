@@ -1,0 +1,40 @@
+# Dependencies
+node_modules
+**/node_modules
+
+# Build output
+dist
+**/dist
+build
+backend/target
+
+# Compiled files
+*.min.js
+
+# Environment files
+.env
+.env.*
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode
+.idea
+
+# Cache
+.cache
+
+# Test results
+coverage
+test-results
+
+# Config files that don't need formatting
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
