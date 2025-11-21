@@ -27,7 +27,7 @@ pub struct ExportResponse {
 }
 
 #[tauri::command]
-pub async fn timesheet_submit(token: String) -> SubmitResponse {
+pub async fn timesheet_submit(_token: String) -> SubmitResponse {
     // TODO: Implement timesheet submission
     // 1. Validate session
     // 2. Get credentials
@@ -41,19 +41,132 @@ pub async fn timesheet_submit(token: String) -> SubmitResponse {
     }
 }
 
+/// Format minutes since midnight to HH:MM
+fn format_time(minutes: i64) -> String {
+    let hours = minutes / 60;
+    let mins = minutes % 60;
+    format!("{:02}:{:02}", hours, mins)
+}
+
 #[tauri::command]
 pub async fn timesheet_export_csv() -> ExportResponse {
-    // TODO: Implement CSV export
-    // 1. Get submitted entries from database
-    // 2. Format as CSV
-    // 3. Return CSV data
+    let db_guard = match crate::database::get_connection() {
+        Ok(g) => g,
+        Err(e) => return ExportResponse {
+            success: false,
+            csv_data: None,
+            entry_count: None,
+            filename: None,
+            error: Some(format!("Failed to access database: {}", e)),
+        },
+    };
+    
+    let conn = match db_guard.as_ref() {
+        Some(c) => c,
+        None => return ExportResponse {
+            success: false,
+            csv_data: None,
+            entry_count: None,
+            filename: None,
+            error: Some("Database not initialized".to_string()),
+        },
+    };
+    
+    // Get submitted entries
+    let mut stmt = match conn.prepare(
+        "SELECT date, time_in, time_out, hours, project, tool, detail_charge_code, task_description, status, submitted_at
+         FROM timesheet
+         WHERE status = 'Complete'
+         ORDER BY date DESC, time_in DESC"
+    ) {
+        Ok(s) => s,
+        Err(e) => return ExportResponse {
+            success: false,
+            csv_data: None,
+            entry_count: None,
+            filename: None,
+            error: Some(format!("Failed to prepare query: {}", e)),
+        },
+    };
+    
+    let entries_iter = stmt.query_map([], |row| {
+        Ok((
+            row.get::<_, String>(0)?,   // date
+            row.get::<_, i64>(1)?,       // time_in
+            row.get::<_, i64>(2)?,       // time_out
+            row.get::<_, f64>(3)?,       // hours
+            row.get::<_, String>(4)?,    // project
+            row.get::<_, Option<String>>(5)?,  // tool
+            row.get::<_, Option<String>>(6)?,  // detail_charge_code
+            row.get::<_, String>(7)?,    // task_description
+            row.get::<_, String>(8)?,    // status
+            row.get::<_, String>(9)?,    // submitted_at
+        ))
+    });
+    
+    let entries: Vec<_> = match entries_iter {
+        Ok(iter) => iter.filter_map(|r| r.ok()).collect(),
+        Err(e) => return ExportResponse {
+            success: false,
+            csv_data: None,
+            entry_count: None,
+            filename: None,
+            error: Some(format!("Failed to fetch entries: {}", e)),
+        },
+    };
+    
+    if entries.is_empty() {
+        return ExportResponse {
+            success: false,
+            csv_data: None,
+            entry_count: None,
+            filename: None,
+            error: Some("No submitted timesheet entries found to export".to_string()),
+        };
+    }
+    
+    // Build CSV
+    let mut csv_rows = vec![
+        "Date,Start Time,End Time,Hours,Project,Tool,Charge Code,Task Description,Status,Submitted At".to_string()
+    ];
+    
+    for (date, time_in, time_out, hours, project, tool, charge_code, task_description, status, submitted_at) in entries.iter() {
+        let row = format!(
+            "{},{},{},{},{},{},{},{},{},{}",
+            date,
+            format_time(*time_in),
+            format_time(*time_out),
+            hours,
+            escape_csv_field(project),
+            escape_csv_field(&tool.as_deref().unwrap_or("")),
+            escape_csv_field(&charge_code.as_deref().unwrap_or("")),
+            escape_csv_field(task_description),
+            status,
+            submitted_at
+        );
+        csv_rows.push(row);
+    }
+    
+    let csv_content = csv_rows.join("\n");
+    let entry_count = entries.len();
+    
+    // Generate filename with current date
+    let filename = format!("timesheet_export_{}.csv", chrono::Local::now().format("%Y-%m-%d"));
     
     ExportResponse {
-        success: false,
-        csv_data: None,
-        entry_count: None,
-        filename: None,
-        error: Some("CSV export not yet implemented".to_string()),
+        success: true,
+        csv_data: Some(csv_content),
+        entry_count: Some(entry_count),
+        filename: Some(filename),
+        error: None,
     }
 }
 
+/// Escape CSV field (wrap in quotes and escape internal quotes)
+fn escape_csv_field(field: &str) -> String {
+    if field.contains(',') || field.contains('"') || field.contains('\n') {
+        format!("\"{}\"", field.replace('"', "\"\""))
+    } else {
+        format!("\"{}\"", field)
+    }
+}

@@ -1,7 +1,6 @@
 use rusqlite::{Connection, Result};
-use std::path::PathBuf;
 use std::sync::Mutex;
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 
 // Global database connection
 static DB: Mutex<Option<Connection>> = Mutex::new(None);

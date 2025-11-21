@@ -4,8 +4,6 @@ mod auth;
 mod commands;
 mod bot;
 
-use tauri::Manager;
-
 // Example command
 #[tauri::command]
 fn greet(name: &str) -> String {
