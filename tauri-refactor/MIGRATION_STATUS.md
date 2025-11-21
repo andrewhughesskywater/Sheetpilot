@@ -71,17 +71,22 @@ This document tracks the progress of migrating SheetPilot from Electron to Tauri
 - ✅ Implement Tauri API calls
   - ✅ `invoke()` for all database commands
   - ✅ `invoke()` for authentication commands
-- ✅ Port React components to Svelte (Basic versions)
+- ✅ Port React components to Svelte
   - ✅ Login component with Flowbite Modal
   - ✅ Navigation with Navbar
-  - ✅ TimesheetGrid (basic table version - **Handsontable integration pending**)
+  - ✅ **TimesheetGrid with Handsontable** - Excel-like spreadsheet experience
+    - Right-click context menu (add/remove rows)
+    - Bulk save and delete operations
+    - Keyboard navigation and selection
+    - Auto-spare rows for continuous entry
   - ⏳ Settings (not started)
   - ⏳ DatabaseViewer (not started)
   - ⏳ UpdateDialog (not started)
 - ✅ **App runs successfully in development mode!**
 - ✅ **End-to-end testing working** (login, CRUD operations, logout)
+- ✅ **Handsontable integrated** with non-commercial license
 
-**Frontend Bundle Size:** 122KB (38KB gzipped) ✅
+**Frontend Bundle Size:** 122KB (38KB gzipped) + Handsontable ✅
 
 ## Not Started ⏳
 

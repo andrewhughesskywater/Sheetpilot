@@ -1,11 +1,14 @@
 <script>
   import { onMount } from 'svelte';
-  import { Button, Alert, Navbar, NavBrand, NavLi, NavUl, NavHamburger } from 'flowbite-svelte';
+  import { Button, Alert, Navbar, NavBrand, NavLi, NavUl, NavHamburger, Tabs, TabItem } from 'flowbite-svelte';
   import Login from './lib/components/Login.svelte';
   import TimesheetGridHandsontable from './lib/components/TimesheetGridHandsontable.svelte';
+  import DatabaseViewer from './lib/components/DatabaseViewer.svelte';
+  import Settings from './lib/components/Settings.svelte';
   import { sessionStore, isLoggedIn, isAdmin, currentUser } from './lib/stores/session';
   
   let showLogin = false;
+  let activeTab = 'timesheet';
   
   onMount(async () => {
     console.log('App mounted - initializing session...');
@@ -72,7 +75,22 @@
         </Alert>
       {/if}
       
-      <TimesheetGridHandsontable />
+      <Tabs style="underline">
+        <TabItem open={activeTab === 'timesheet'} on:click={() => activeTab = 'timesheet'}>
+          <span slot="title">Timesheet</span>
+          <TimesheetGridHandsontable />
+        </TabItem>
+        
+        <TabItem open={activeTab === 'archive'} on:click={() => activeTab = 'archive'}>
+          <span slot="title">Archive</span>
+          <DatabaseViewer />
+        </TabItem>
+        
+        <TabItem open={activeTab === 'settings'} on:click={() => activeTab = 'settings'}>
+          <span slot="title">Settings</span>
+          <Settings />
+        </TabItem>
+      </Tabs>
     {:else}
       <div class="flex items-center justify-center h-96">
         <div class="text-center">
