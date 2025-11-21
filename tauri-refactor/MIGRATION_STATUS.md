@@ -36,16 +36,22 @@ This document tracks the progress of migrating SheetPilot from Electron to Tauri
 - ✅ Configured build system
 - ✅ Frontend builds successfully (195KB bundle)
 
+## Completed ✅ (continued)
+
+### Phase 2: Backend - Database Commands
+- ✅ **Database Commands** - Fully implemented:
+  - ✅ `save_timesheet_draft` - Create/update entries with validation
+  - ✅ `load_timesheet_draft` - Load pending entries from database
+  - ✅ `delete_timesheet_draft` - Delete draft entries with safety checks
+  - ✅ `get_all_archive_data` - Retrieve completed entries and credentials
+  - ✅ Time parsing/formatting utilities (HH:MM ↔ minutes)
+  - ✅ Comprehensive validation (15-min increments, time ranges, required fields)
+  - ✅ Proper error handling and response types
+  - ✅ Backend compiles successfully
+
 ## In Progress 🚧
 
-### Phase 2: Backend Migration
-
-- 🚧 **Database Commands** - Need to implement:
-  - Complete `save_timesheet_draft` logic
-  - Complete `load_timesheet_draft` logic
-  - Complete `delete_timesheet_draft` logic
-  - Complete `get_all_archive_data` logic
-  
+### Phase 2: Backend - Submission Service
 - 🚧 **Submission Service** - Need to implement:
   - Browser automation with chromiumoxide
   - Port bot orchestration from TypeScript
