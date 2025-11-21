@@ -182,6 +182,22 @@
     setTimeout(() => saveMessage = '', 3000);
     await handleRefresh();
   }
+  
+  async function handleSubmit() {
+    if (!confirm('Submit timesheet to portal? This will launch browser automation.')) {
+      return;
+    }
+    
+    saveMessage = 'Starting submission... (This is a stub - Phase 4 in progress)';
+    
+    // TODO: Implement actual submission
+    // This will call the timesheet_submit Tauri command
+    // For now, just show a message
+    setTimeout(() => {
+      saveMessage = '';
+      alert('Submission not yet implemented. Phase 4 bot automation is in progress.');
+    }, 2000);
+  }
 </script>
 
 <div class="timesheet-container p-4">
@@ -198,6 +214,9 @@
       </Button>
       <Button on:click={handleDeleteSelected} size="sm" color="red">
         Delete Selected
+      </Button>
+      <Button on:click={handleSubmit} size="sm" color="green" disabled={timesheetData.length === 0}>
+        Submit to Portal
       </Button>
     </div>
   </div>
