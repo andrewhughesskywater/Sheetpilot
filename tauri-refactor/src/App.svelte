@@ -1,4 +1,4 @@
-<script lang="ts">
+<script>
   import { onMount } from 'svelte';
   import { Button, Alert, Navbar, NavBrand, NavLi, NavUl, NavHamburger } from 'flowbite-svelte';
   import Login from './lib/components/Login.svelte';
@@ -8,6 +8,7 @@
   let showLogin = false;
   
   onMount(async () => {
+    console.log('App mounted - initializing session...');
     await sessionStore.initialize();
   });
   
