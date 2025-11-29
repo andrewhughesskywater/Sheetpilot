@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Timesheet Form - Mock Website</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      background: #f5f5f5;
+    }
+    .form-container {
+      background: white;
+      padding: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 {
+      margin-top: 0;
+      color: #333;
+    }
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+      color: #555;
+      font-weight: 500;
+    }
+    input[type="text"],
+    input[type="number"],
+    textarea {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+    input[type="text"]:focus,
+    input[type="number"]:focus,
+    textarea:focus {
+      outline: none;
+      border-color: #0066cc;
+      box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+    }
+    textarea {
+      min-height: 120px;
+      resize: vertical;
+      font-family: inherit;
+    }
+    button[type="submit"] {
+      background: #0066cc;
+      color: white;
+      border: none;
+      padding: 0.75rem 2rem;
+      border-radius: 4px;
+      font-size: 1rem;
+      cursor: pointer;
+      margin-top: 1rem;
+    }
+    button[type="submit"]:hover {
+      background: #0052a3;
+    }
+    button[type="submit"]:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .success-message {
+      display: none;
+      background: #1e3a8a;
+      color: white;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-top: 1.5rem;
+      position: relative;
+    }
+    .success-message.show {
+      display: block;
+    }
+    .success-message .check-icon {
+      color: #22c55e;
+      margin-right: 0.5rem;
+      font-weight: bold;
+    }
+    .error-message {
+      color: #d32f2f;
+      font-size: 0.875rem;
+      margin-top: 0.25rem;
+      display: none;
+    }
+    .error-message.show {
+      display: block;
+    }
+    .field-error {
+      border-color: #d32f2f !important;
+    }
+    [aria-invalid="true"] {
+      border-color: #d32f2f !important;
+    }
+  </style>
+</head>
+<body>
+  <div class="form-container">
+    <h1>Timesheet Entry</h1>
+    <form id="timesheetForm">
+      <!-- Project field -->
+      <div class="form-group">
+        <label for="project">Project</label>
+        <input 
+          type="text" 
+          id="project" 
+          name="project"
+          aria-label="Project"
+          autocomplete="off"
+          placeholder="Type project code"
+        >
+        <div class="error-message" id="project-error"></div>
+      </div>
+
+      <!-- Date field -->
+      <div class="form-group">
+        <label for="date">Date</label>
+        <input 
+          type="text" 
+          id="date" 
+          name="date"
+          placeholder="mm/dd/yyyy"
+          autocomplete="off"
+          pattern="\d{2}/\d{2}/\d{4}"
+        >
+        <div class="error-message" id="date-error"></div>
+      </div>
+
+      <!-- Hours field -->
+      <div class="form-group">
+        <label for="hours">Hours</label>
+        <input 
+          type="number" 
+          id="hours" 
+          name="hours"
+          aria-label="Hours"
+          min="0"
+          max="24"
+          step="0.25"
+          autocomplete="off"
+        >
+        <div class="error-message" id="hours-error"></div>
+      </div>
+
+      <!-- Tool field (optional) -->
+      <div class="form-group">
+        <label for="tool">Tool</label>
+        <input 
+          type="text" 
+          id="tool" 
+          name="tool"
+          aria-label="Tool"
+          autocomplete="off"
+          placeholder="Tool name (optional)"
+        >
+        <div class="error-message" id="tool-error"></div>
+      </div>
+
+      <!-- Task Description field -->
+      <div class="form-group">
+        <label for="taskDescription">Task Description</label>
+        <textarea 
+          id="taskDescription" 
+          name="taskDescription"
+          aria-label="Task Description"
+          role="textbox"
+          placeholder="Enter task description"
+        ></textarea>
+        <div class="error-message" id="taskDescription-error"></div>
+      </div>
+
+      <!-- Detail Charge Code field (optional) -->
+      <div class="form-group">
+        <label for="detailCode">Detail Charge Code</label>
+        <input 
+          type="text" 
+          id="detailCode" 
+          name="detailCode"
+          aria-label="Detail Charge Code"
+          autocomplete="off"
+          placeholder="Detail charge code (optional)"
+        >
+        <div class="error-message" id="detailCode-error"></div>
+      </div>
+
+      <!-- Submit button -->
+      <button 
+        type="submit" 
+        id="submitBtn"
+        data-client-id="form_submit_btn"
+      >
+        Submit
+      </button>
+
+      <!-- Success message -->
+      <div id="successMessage" class="success-message">
+        <span class="check-icon">✓</span>
+        <span>Success! We've captured your submission.</span>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    const form = document.getElementById('timesheetForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const successMessage = document.getElementById('successMessage');
+    const formId = '0197cbae7daf72bdb96b3395b500d414'; // Default form ID
+
+    // Get form ID from environment or use default
+    const urlParams = new URLSearchParams(window.location.search);
+    const customFormId = urlParams.get('formId') || formId;
+
+    // Form submission handler
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      // Clear previous errors
+      document.querySelectorAll('.error-message').forEach(el => {
+        el.classList.remove('show');
+        el.textContent = '';
+      });
+      document.querySelectorAll('.field-error, [aria-invalid="true"]').forEach(el => {
+        el.classList.remove('field-error');
+        el.removeAttribute('aria-invalid');
+      });
+
+      // Collect form data
+      const formData = {
+        project: document.getElementById('project').value,
+        date: document.getElementById('date').value,
+        hours: document.getElementById('hours').value,
+        tool: document.getElementById('tool').value,
+        taskDescription: document.getElementById('taskDescription').value,
+        detailCode: document.getElementById('detailCode').value,
+      };
+
+      // Basic validation
+      let hasErrors = false;
+
+      if (!formData.project || formData.project.trim() === '') {
+        showError('project', 'Project is required');
+        hasErrors = true;
+      }
+
+      if (!formData.date || !/^\d{2}\/\d{2}\/\d{4}$/.test(formData.date)) {
+        showError('date', 'Date must be in mm/dd/yyyy format');
+        hasErrors = true;
+      }
+
+      const hours = parseFloat(formData.hours);
+      if (!formData.hours || isNaN(hours) || hours < 0 || hours > 24) {
+        showError('hours', 'Hours must be between 0 and 24');
+        hasErrors = true;
+      }
+
+      if (!formData.taskDescription || formData.taskDescription.trim() === '') {
+        showError('taskDescription', 'Task description is required');
+        hasErrors = true;
+      }
+
+      if (hasErrors) {
+        return;
+      }
+
+      // Disable submit button
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Submitting...';
+
+      try {
+        // Submit to the Smartsheet-like API endpoint
+        const response = await fetch(`/api/submit/${customFormId}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(formData)
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          
+          // Show success message
+          successMessage.classList.add('show');
+          
+          // Reset form after successful submission
+          setTimeout(() => {
+            form.reset();
+            successMessage.classList.remove('show');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Submit';
+          }, 3000);
+          
+          console.log('Form submitted successfully:', result);
+        } else {
+          const error = await response.json();
+          throw new Error(error.message || 'Submission failed');
+        }
+      } catch (error) {
+        console.error('Submission error:', error);
+        
+        // Show generic error
+        showError('submitBtn', 'Submission failed. Please try again.');
+        
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit';
+      }
+    });
+
+    function showError(fieldId, message) {
+      const field = document.getElementById(fieldId);
+      const errorEl = document.getElementById(`${fieldId}-error`);
+      
+      if (field) {
+        field.classList.add('field-error');
+        field.setAttribute('aria-invalid', 'true');
+      }
+      
+      if (errorEl) {
+        errorEl.textContent = message;
+        errorEl.classList.add('show');
+      }
+    }
+
+    // Add dropdown simulation for project field (if needed)
+    const projectField = document.getElementById('project');
+    if (projectField) {
+      projectField.addEventListener('input', (e) => {
+        // Simulate dropdown behavior - clear any errors when typing
+        projectField.classList.remove('field-error');
+        projectField.removeAttribute('aria-invalid');
+        document.getElementById('project-error').classList.remove('show');
+      });
+    }
+
+    // Simulate dropdown options container (for bot compatibility)
+    // The bot looks for dropdown options with role="option"
+    const dropdownContainer = document.createElement('div');
+    dropdownContainer.id = 'dropdown-options';
+    dropdownContainer.style.display = 'none';
+    dropdownContainer.setAttribute('role', 'listbox');
+    document.body.appendChild(dropdownContainer);
+  </script>
+</body>
+</html>

@@ -8,7 +8,7 @@
       "active": "sqlite"
     },
     "submission": {
-      "active": "playwright",
+      "active": "electron",
       "alternatives": ["mock"]
     },
     "ui": {

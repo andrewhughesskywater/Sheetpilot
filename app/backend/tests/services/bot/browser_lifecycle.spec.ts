@@ -5,12 +5,27 @@
  * and cleaned up to prevent resource leaks and initialization errors.
  */
 
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { BotOrchestrator } from '../../../src/services/bot/src/bot_orchestation';
 import * as Cfg from '../../../src/services/bot/src/automation_config';
 import { createFormConfig } from '../../../src/services/bot/src/automation_config';
 
-const dummyFormConfig = createFormConfig('https://test.forms.smartsheet.com/test', 'test-form-id');
+// Mock LoginManager to prevent timeouts
+vi.mock('../../../src/services/bot/src/authentication_flow', () => {
+  return {
+    LoginManager: class {
+      async run_login_steps(email: string) {
+        // Fail for bad credentials to support error handling tests
+        if (email === 'bad@email.com') {
+          throw new Error('Authentication failed');
+        }
+      }
+      async validate_login_state() { return true; }
+    }
+  };
+});
+
+const dummyFormConfig = createFormConfig('https://app.smartsheet.com/b/form/q1-2025-placeholder', 'q1-2025-placeholder');
 
 describe('Browser Lifecycle Management', () => {
   let bot: BotOrchestrator;

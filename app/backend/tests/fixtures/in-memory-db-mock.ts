@@ -58,7 +58,10 @@ class InMemoryDatabase {
       
       // Create snapshots of all tables before transaction
       for (const [tableName, tableData] of this.tables.entries()) {
-        tableSnapshots.set(tableName, [...tableData]);
+        // Deep copy rows to ensure modifications to row objects don't affect snapshot
+        // We use spread to shallow copy the row object, which is sufficient since
+        // database values are primitives (or treated as immutable replacements)
+        tableSnapshots.set(tableName, tableData.map(row => ({ ...row })));
       }
       
       try {
@@ -553,61 +556,62 @@ class InMemoryDatabase {
     if (!tableName || !this.tables.has(tableName)) return { changes: 0 };
 
     const table = this.tables.get(tableName)!;
-    let changes = 0;
-
-    // Parse SET clause
+    
+    // Extract SET clause
     const setMatch = sql.match(/SET\s+(.+?)(?:\s+WHERE|$)/i);
     if (!setMatch) return { changes: 0 };
+    const setClause = setMatch[1];
     
-    // Parse WHERE clause
+    // Extract WHERE clause
     const whereMatch = sql.match(/WHERE\s+(.+?)(?:\s+ORDER|$)/i);
+    const whereClause = whereMatch ? whereMatch[1] : '';
     
-    table.forEach(row => {
-      if (!whereMatch || !whereMatch[1] || this.matchesWhere(row, whereMatch[1], args)) {
-        // Apply SET updates  
-        if (sql.toUpperCase().includes('SET STATUS = NULL')) {
-          // Explicit SET status = NULL
-          row['status'] = null;
-          changes++;
-        } else if (sql.includes('status =') && !sql.includes('submitted_at')) {
-          // Simple status update with a value (e.g., SET status = 'in_progress')
-          const statusMatch = sql.match(/status\s*=\s*\?|status\s*=\s*'([^']+)'/i);
-          if (statusMatch) {
-            row['status'] = statusMatch[1] || args[0] || null;
-            changes++;
-          }
-        } else if (sql.includes('status =') && sql.includes('submitted_at')) {
-          const statusIndex = sql.match(/status\s*=\s*'(\w+)'|status\s*=\s*\?/i);
-          if (statusIndex) {
-            row['status'] = args[0] || 'Complete';
-            row['submitted_at'] = new Date().toISOString();
-            changes++;
-          }
+    // Determine parameter mapping
+    // Count placeholders in SET clause to find offset for WHERE clause parameters
+    const setParamCount = (setClause.match(/\?/g) || []).length;
+    const whereArgs = args.slice(setParamCount);
+    
+    // Parse SET updates and prepare values
+    const updates: Array<{ col: string, val: unknown }> = [];
+    let setParamIndex = 0;
+    
+    // Split by comma, but handle careful parsing to avoid splitting inside functions if any (simple split for now)
+    const setParts = setClause.split(',').map(s => s.trim());
+    
+    setParts.forEach(part => {
+      const [colRaw, valRaw] = part.split('=').map(s => s.trim());
+      if (colRaw && valRaw) {
+        const col = colRaw.toLowerCase();
+        let val: unknown;
+        
+        if (valRaw === '?') {
+          val = args[setParamIndex++];
+        } else if (valRaw.toUpperCase() === 'NULL') {
+          val = null;
+        } else if (valRaw.toLowerCase().includes('datetime') || valRaw.includes('CURRENT_TIMESTAMP')) {
+          val = new Date().toISOString();
         } else {
-          // Generic update
-          const setParts = setMatch[1]?.split(',').map(s => s.trim()) || [];
-          setParts.forEach(setPart => {
-            const parts = setPart.split('=').map(s => s.trim());
-            const col = parts[0];
-            const value = parts[1];
-            if (col && value) {
-              const colName = col.toLowerCase();
-              const valueStr = value.replace(/'/g, '').replace(/\?/, String(args[0] || ''));
-              if (valueStr === 'datetime(\'now\')' || valueStr.includes('CURRENT_TIMESTAMP')) {
-                row[colName] = new Date().toISOString();
-              } else if (valueStr.startsWith('?')) {
-                row[colName] = args[0];
-              } else {
-                row[colName] = valueStr;
-              }
-              changes++;
-            }
-          });
+          // String literal or number
+          val = valRaw.replace(/^['"]|['"]$/g, '');
         }
+        updates.push({ col, val });
       }
     });
 
-    return { changes };
+    // Filter rows to update
+    const rowsToUpdate = table.filter(row => {
+      if (!whereClause) return true;
+      return this.matchesWhere(row, whereClause, whereArgs);
+    });
+    
+    // Apply updates
+    rowsToUpdate.forEach(row => {
+      updates.forEach(update => {
+        row[update.col] = update.val;
+      });
+    });
+
+    return { changes: rowsToUpdate.length };
   }
 
   private handleDelete(sql: string, args: unknown[]): { changes: number } {

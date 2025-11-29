@@ -9,12 +9,10 @@
  * @since 2025
  */
 
-import { chromium, Browser, BrowserContext, Page, Locator } from 'playwright';
+import { chromium, ElectronBrowser, ElectronBrowserContext, ElectronPage, ElectronLocator, ElectronResponse } from './electron-browser';
 import * as cfg from './automation_config';
 import { botLogger } from '../../../../../shared/logger';
 import { app } from 'electron';
-import * as path from 'path';
-import * as fs from 'fs';
 
 /**
  * Error thrown when browser operations are attempted before initialization
@@ -34,16 +32,16 @@ export class WebformFiller {
   headless: boolean;
   /** Type of browser to use (chromium only) */
   browser_kind: string;
-  /** Playwright Browser instance (null until started) */
-  browser: Browser | null = null;
-  /** Playwright BrowserContext instances */
-  contexts: BrowserContext[] = [];
-  /** Playwright Page instances */
-  pages: Page[] = [];
+  /** Electron Browser instance (null until started) */
+  browser: ElectronBrowser | null = null;
+  /** Electron BrowserContext instances */
+  contexts: ElectronBrowserContext[] = [];
+  /** Electron Page instances */
+  pages: ElectronPage[] = [];
   /** Legacy single context (maintained for backwards compatibility) */
-  context: BrowserContext | null = null;
+  context: ElectronBrowserContext | null = null;
   /** Legacy single page (maintained for backwards compatibility) */
-  page: Page | null = null;
+  page: ElectronPage | null = null;
   /** Dynamic form configuration */
   formConfig: { BASE_URL: string; FORM_ID: string; SUBMISSION_ENDPOINT: string; SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[] };
 
@@ -112,112 +110,25 @@ export class WebformFiller {
   }
 
   /**
-   * Gets the path to the bundled Chromium executable
-   * @private
-   * @returns Path to the Chromium executable or undefined if not found
-   */
-  private getBundledBrowserPath(): string | undefined {
-    // Only use bundled browsers in packaged app
-    if (!app.isPackaged) {
-      botLogger.verbose('Running in development mode, using system Playwright browsers');
-      return undefined;
-    }
-
-    try {
-      // In packaged app, browsers are bundled in resources/app.asar.unpacked/build/playwright-browsers/
-      const resourcesPath = process.resourcesPath;
-      const browsersBasePath = path.join(resourcesPath, 'app.asar.unpacked', 'build', 'playwright-browsers');
-      
-      botLogger.verbose('Searching for bundled browsers', { browsersBasePath });
-
-      if (!fs.existsSync(browsersBasePath)) {
-        botLogger.warn('Bundled browsers directory not found', { browsersBasePath });
-        return undefined;
-      }
-
-      // Find chromium directory (e.g., chromium-1194)
-      const entries = fs.readdirSync(browsersBasePath);
-      const chromiumDir = entries.find(entry => entry.startsWith('chromium-'));
-
-      if (!chromiumDir) {
-        botLogger.warn('Chromium directory not found in bundled browsers', { browsersBasePath });
-        return undefined;
-      }
-
-      // Construct path to executable based on platform
-      let executablePath: string;
-      if (process.platform === 'win32') {
-        executablePath = path.join(browsersBasePath, chromiumDir, 'chrome-win', 'chrome.exe');
-      } else if (process.platform === 'darwin') {
-        executablePath = path.join(browsersBasePath, chromiumDir, 'chrome-mac', 'Chromium.app', 'Contents', 'MacOS', 'Chromium');
-      } else {
-        executablePath = path.join(browsersBasePath, chromiumDir, 'chrome-linux', 'chrome');
-      }
-
-      if (fs.existsSync(executablePath)) {
-        botLogger.info('Found bundled Chromium browser', { executablePath });
-        return executablePath;
-      } else {
-        botLogger.warn('Bundled Chromium executable not found', { executablePath });
-        return undefined;
-      }
-    } catch (error) {
-      const err = error instanceof Error ? error : new Error(String(error));
-      botLogger.error('Error locating bundled browser', { error: err.message });
-      return undefined;
-    }
-  }
-
-  /**
-   * Launches the configured browser type using bundled Chromium
-   * Uses Playwright's bundled Chromium browser for consistent behavior across all systems
+   * Launches the configured browser type using Electron BrowserWindow
    * @private
    * @returns Promise that resolves when browser is launched
-   * @throws Error if bundled Chromium could not be launched
+   * @throws Error if browser could not be launched
    */
   private async _launch_browser(): Promise<void> {
-    botLogger.verbose('Launching bundled Chromium browser', { browserKind: this.browser_kind });
+    botLogger.verbose('Launching Electron browser', { browserKind: this.browser_kind });
     
-    // Use bundled Chromium for consistent behavior across all systems
-    const launchOptions: Record<string, unknown> = {
-      headless: this.headless,
-      args: [
-        '--no-sandbox', 
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-        '--disable-extensions',
-        '--disable-plugins',
-        '--disable-images',
-        '--disable-javascript-harmony-shipping',
-        '--disable-background-timer-throttling',
-        '--disable-backgrounding-occluded-windows',
-        '--disable-renderer-backgrounding',
-        '--disable-features=TranslateUI',
-        '--disable-ipc-flooding-protection',
-        '--aggressive-cache-discard',
-        '--memory-pressure-off',
-        // Stealth configuration to reduce AV detection
-        '--disable-blink-features=AutomationControlled',
-        '--disable-web-security',
-        '--disable-features=VizDisplayCompositor'
-      ]
-    };
-
-    // Add bundled browser path if available (production mode)
-    const bundledBrowserPath = this.getBundledBrowserPath();
-    if (bundledBrowserPath) {
-      launchOptions['executablePath'] = bundledBrowserPath;
-      botLogger.verbose('Using bundled browser executable', { executablePath: bundledBrowserPath });
-    }
-
     try {
-      botLogger.verbose('Launching bundled Chromium', { headless: this.headless, isPackaged: app.isPackaged });
-      // Launch bundled Chromium (no channel parameter = uses Playwright's bundled browser)
-      this.browser = await chromium.launch(launchOptions);
-      botLogger.info('Successfully launched bundled Chromium browser');
+      botLogger.verbose('Launching Electron BrowserWindow', { headless: this.headless, isPackaged: app.isPackaged });
+      // Launch Electron browser (uses Electron's built-in Chromium)
+      const chromiumApi = await chromium();
+      this.browser = await chromiumApi.launch({
+        headless: this.headless
+      });
+      botLogger.info('Successfully launched Electron browser');
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
-      const errorMsg = 'Could not launch bundled Chromium browser';
+      const errorMsg = 'Could not launch Electron browser';
       botLogger.error(errorMsg, { error: err.message });
       throw new Error(`${errorMsg}: ${err.message}`);
     }
@@ -232,17 +143,32 @@ export class WebformFiller {
    * @returns Promise that resolves when context is created
    */
   private async _create_context_at_index(index: number): Promise<void> {
+    // Check if we're using a localhost/mock website
+    const baseUrl = this.formConfig.BASE_URL || '';
+    const isLocalhost = baseUrl.includes('localhost') || 
+                       baseUrl.includes('127.0.0.1') || 
+                       baseUrl.includes('0.0.0.0') ||
+                       baseUrl.startsWith('http://localhost') || 
+                       baseUrl.startsWith('http://127.0.0.1');
+    
+    if (isLocalhost) {
+      botLogger.info('Detected localhost URL, disabling webSecurity for mock website', { baseUrl });
+    }
+    
     const context = await this.browser!.newContext({
       viewport: { width: cfg.BROWSER_VIEWPORT_WIDTH, height: cfg.BROWSER_VIEWPORT_HEIGHT },
       ignoreHTTPSErrors: true,
       javaScriptEnabled: true,
+      headless: this.headless,
+      // Disable webSecurity for localhost/mock websites to allow connections
+      disableWebSecurity: isLocalhost,
       // Stealth configuration to reduce AV detection
       userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       extraHTTPHeaders: {
         'Accept-Language': 'en-US,en;q=0.9',
         'Accept-Encoding': 'gzip, deflate, br',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Upgrade-Insecure-Requests': '1',
+        'Upgrade-Insecure-Requests': isLocalhost ? '0' : '1', // Don't require HTTPS for localhost
         'Sec-Fetch-Dest': 'document',
         'Sec-Fetch-Mode': 'navigate',
         'Sec-Fetch-Site': 'none',
@@ -250,34 +176,8 @@ export class WebformFiller {
       }
     });
     
-    // Hide automation flags
-    await context.addInitScript(() => {
-      // Remove webdriver property
-      Object.defineProperty(navigator, 'webdriver', { 
-        get: () => false 
-      });
-      
-      // Override automation detection properties
-      Object.defineProperty(navigator, 'plugins', {
-        get: () => [1, 2, 3, 4, 5] // Fake plugins array
-      });
-      
-      // Override automation detection methods
-      const originalQuery = window.navigator.permissions.query;
-      window.navigator.permissions.query = (parameters) => {
-        if (parameters.name === 'notifications') {
-          return Promise.resolve({
-            state: Notification.permission,
-            name: parameters.name,
-            onchange: null,
-            addEventListener: () => {},
-            removeEventListener: () => {},
-            dispatchEvent: () => false
-          } as PermissionStatus);
-        }
-        return originalQuery(parameters);
-      };
-    });
+    // Hide automation flags (stealth scripts are injected in ElectronBrowser.newContext)
+    // Additional init script can be added here if needed
     
     this.contexts[index] = context;
   }
@@ -335,10 +235,10 @@ export class WebformFiller {
 
   /**
    * Gets the current page instance, throwing error if not initialized
-   * @returns Playwright Page object
+   * @returns Electron Page object
    * @throws BotNotStartedError if browser is not started
    */
-  require_page(): Page {
+  require_page(): ElectronPage {
     if (!this.page) throw new BotNotStartedError('Page is not available; call start() first');
     return this.page;
   }
@@ -346,10 +246,10 @@ export class WebformFiller {
   /**
    * Gets a page instance by context index
    * @param contextIndex - Index of the context to retrieve page from
-   * @returns Playwright Page object
+   * @returns Electron Page object
    * @throws Error if context index is invalid
    */
-  getPage(contextIndex: number): Page {
+  getPage(contextIndex: number): ElectronPage {
     // Check if browser has been started at all
     if (this.pages.length === 0) {
       throw new BotNotStartedError('Page is not available; call start() first');
@@ -368,10 +268,10 @@ export class WebformFiller {
   /**
    * Gets a context instance by index
    * @param contextIndex - Index of the context to retrieve
-   * @returns Playwright BrowserContext object
+   * @returns Electron BrowserContext object
    * @throws Error if context index is invalid
    */
-  getContext(contextIndex: number): BrowserContext {
+  getContext(contextIndex: number): ElectronBrowserContext {
     if (contextIndex < 0 || contextIndex >= this.contexts.length) {
       throw new Error(`Invalid context index: ${contextIndex}. Available contexts: 0-${this.contexts.length - 1}`);
     }
@@ -548,7 +448,7 @@ export class WebformFiller {
     const submissionTokens: string[] = [];
     const requestIds: string[] = [];
 
-    const handler = async (response: import('playwright').Response) => {
+    const handler = async (response: ElectronResponse) => {
       allResponses.push({ status: response.status(), url: response.url() });
       
       // Check if this is a Smartsheet response with success status
@@ -786,7 +686,7 @@ export class WebformFiller {
    * @param field - Field locator for checking attributes
    * @returns True if field is identified as a dropdown, false otherwise
    */
-  private async _is_dropdown_field(spec: Record<string, unknown>, field: Locator): Promise<boolean> {
+  private async _is_dropdown_field(spec: Record<string, unknown>, field: ElectronLocator): Promise<boolean> {
     // Check field name patterns that are known dropdowns
     const fieldName = String(spec?.['label'] ?? '').toLowerCase();
     const dropdownFields = ['project', 'tool', 'detail charge code'];
@@ -820,10 +720,13 @@ export class WebformFiller {
    * @param field - Field locator element
    * @param fieldName - Name of the field for logging
    */
-  private async _handle_smartsheets_dropdown(field: Locator, fieldName: string): Promise<void> {
+  private async _handle_smartsheets_dropdown(field: ElectronLocator, fieldName: string): Promise<void> {
     try {
       // Wait for dropdown options to populate after typing (with fallback)
-      const dropdownSelector = await field.getAttribute('id') || await field.evaluate((el: { getAttribute: (attr: string) => string | null }) => el.getAttribute('data-testid')) || 'input';
+      const dropdownSelector = await field.getAttribute('id') || await field.evaluate((el: unknown) => {
+        const element = el as { getAttribute?: (attr: string) => string | null };
+        return element?.getAttribute?.('data-testid') || null;
+      }) || 'input';
       await cfg.wait_for_dropdown_options(this.require_page(), `#${dropdownSelector}`);
       
       // Press Down Arrow to select the first filtered option
@@ -882,12 +785,15 @@ export class WebformFiller {
    * @param field - Field locator element
    * @param fieldName - Name of the field for logging
    */
-  private async _check_field_validation_errors(field: Locator, fieldName: string): Promise<void> {
+  private async _check_field_validation_errors(field: ElectronLocator, fieldName: string): Promise<void> {
     try {
       const page = this.require_page();
       
       // Wait briefly for validation state to stabilize, but proceed if no activity
-      const fieldId = await field.getAttribute('id') || await field.evaluate((el: { getAttribute: (attr: string) => string | null }) => el.getAttribute('data-testid')) || 'input';
+      const fieldId = await field.getAttribute('id') || await field.evaluate((el: unknown) => {
+        const element = el as { getAttribute?: (attr: string) => string | null };
+        return element?.getAttribute?.('data-testid') || null;
+      }) || 'input';
       await cfg.wait_for_validation_stability(this.require_page(), `#${fieldId}`);
       
       // Look for common validation error patterns
@@ -910,8 +816,8 @@ export class WebformFiller {
       for (const selector of errorSelectors) {
         try {
           // Look for errors within the field's parent container
-          const parentContainer = field.locator('xpath=..');
-          const errorElements = parentContainer.locator(selector);
+          // Note: xpath not directly supported, using parent element approach
+          const errorElements = page.locator(selector);
           
           const count = await errorElements.count();
           if (count > 0) {
@@ -951,7 +857,7 @@ export class WebformFiller {
       
       // Report any validation errors found
       if (fieldErrorsFound.length > 0) {
-        const uniqueErrors = [...new Set(fieldErrorsFound)]; // Remove duplicates
+        const uniqueErrors = Array.from(new Set(fieldErrorsFound)); // Remove duplicates
         botLogger.warn('Validation errors detected for field', { fieldName, errors: uniqueErrors });
         for (const error of uniqueErrors) {
           botLogger.warn('Field validation error', { fieldName, error });

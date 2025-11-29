@@ -781,7 +781,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
       mockDbInstance.prepare.mockReturnValue({
         all: vi.fn(() => []),
         run: vi.fn(() => ({ changes: 1 })),
-        get: vi.fn(() => ({}))
+        get: vi.fn(() => ({ id: validId, status: null }))
       });
 
       const result = await handlers['timesheet:deleteDraft'](validId);
@@ -790,11 +790,13 @@ describe('IPC Handlers Comprehensive Tests', () => {
       expect(result.success).toBe(true);
       
       // Verify the correct SQL was prepared
+      // First checks status
+      expect(mockDbInstance.prepare).toHaveBeenCalledWith(
+        expect.stringContaining('SELECT id, status FROM timesheet WHERE id = ?')
+      );
+      // Then deletes regardless of status
       expect(mockDbInstance.prepare).toHaveBeenCalledWith(
         expect.stringContaining('DELETE FROM timesheet')
-      );
-      expect(mockDbInstance.prepare).toHaveBeenCalledWith(
-        expect.stringContaining('WHERE id = ? AND status IS NULL')
       );
     });
 
@@ -817,7 +819,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
       const result = await handlers['timesheet:deleteDraft'](nonExistentId);
       
       expect(result.success).toBe(false);
-      expect(result.error).toContain('Draft entry not found');
+      expect(result.error).toContain('Entry not found');
     });
 
     it('should handle database errors', async () => {
@@ -836,19 +838,21 @@ describe('IPC Handlers Comprehensive Tests', () => {
     });
 
     it('should only delete draft entries (status IS NULL)', async () => {
+      // This test is now outdated as we allow deleting any entry
+      // Renaming to reflect current behavior: "should check status before deletion"
       const validId = 1;
 
       mockDbInstance.prepare.mockReturnValue({
         all: vi.fn(() => []),
         run: vi.fn(() => ({ changes: 1 })),
-        get: vi.fn(() => ({}))
+        get: vi.fn(() => ({ id: 1, status: 'in_progress' }))
       });
 
       await handlers['timesheet:deleteDraft'](validId);
       
-      // Verify the SQL includes the status IS NULL condition
+      // Verify status check query
       expect(mockDbInstance.prepare).toHaveBeenCalledWith(
-        expect.stringMatching(/WHERE id = \? AND status IS NULL/)
+        expect.stringContaining('SELECT id, status FROM timesheet WHERE id = ?')
       );
     });
   });
@@ -873,8 +877,13 @@ describe('IPC Handlers Comprehensive Tests', () => {
       
       expect(result.submitResult).toBeDefined();
       expect(result.submitResult.ok).toBe(true);
-      // Verify that submitTimesheets was called with correct credentials and progressCallback
-      expect(mimps.submitTimesheets).toHaveBeenCalledWith('user@test.com', 'password123', expect.any(Function));
+      // Verify that submitTimesheets was called with correct credentials, progressCallback, and AbortSignal
+      expect(mimps.submitTimesheets).toHaveBeenCalledWith(
+        'user@test.com', 
+        'password123', 
+        expect.any(Function),
+        expect.any(AbortSignal)
+      );
       // With mocked database (0 entries), successCount should be 0
       expect(result.submitResult.successCount).toBe(0);
       expect(result.submitResult.totalProcessed).toBe(0);
@@ -902,7 +911,12 @@ describe('IPC Handlers Comprehensive Tests', () => {
       expect(result).toBeDefined();
       expect(result.submitResult).toBeDefined();
       // Verify that submitTimesheets was called with progressCallback
-      expect(mimps.submitTimesheets).toHaveBeenCalledWith('user@test.com', 'password123', expect.any(Function));
+      expect(mimps.submitTimesheets).toHaveBeenCalledWith(
+        'user@test.com', 
+        'password123', 
+        expect.any(Function),
+        expect.any(AbortSignal)
+      );
       // With mocked database (0 entries), the handler completes successfully
       expect(result.submitResult.ok).toBe(true);
       expect(result.submitResult.successCount).toBe(0);

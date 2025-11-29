@@ -9,7 +9,7 @@
  * @since 2025
  */
 
-import { Page } from 'playwright';
+import { ElectronPage } from './electron-browser';
 import * as C from './automation_config';
 import { WebformFiller } from './webform_flow';
 import { authLogger } from '../../../../../shared/logger';
@@ -170,11 +170,11 @@ export class LoginManager {
   /**
    * Navigates to the base URL for authentication
    * @private
-   * @param page - Playwright Page instance to navigate
+   * @param page - Electron Page instance to navigate
    * @param timeout_ms - Optional timeout in milliseconds
    * @returns Promise that resolves when navigation is complete
    */
-  private async _navigate_to_base(page: Page, timeout_ms?: number): Promise<void> {
+  private async _navigate_to_base(page: ElectronPage, timeout_ms?: number): Promise<void> {
     const timeout = timeout_ms ?? this._wait_s * 1000;
     authLogger.verbose('Navigating to base URL', { 
       baseUrl: this.formConfig.BASE_URL,

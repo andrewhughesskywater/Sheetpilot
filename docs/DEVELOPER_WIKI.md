@@ -61,7 +61,7 @@ src/
 │   ├── plugins/                    # Service layer plugins
 │   │   ├── memory-data-service.ts
 │   │   ├── mock-submission-service.ts
-│   │   ├── playwright-bot-service.ts
+│   │   ├── electron-bot-service.ts
 │   │   ├── sqlite-credential-service.ts
 │   │   └── sqlite-data-service.ts
 │   ├── database.ts                 # Database layer
@@ -133,7 +133,7 @@ plugin-config.json                  # Plugin configuration
 | **Grid** | Handsontable 16.1.1 | Spreadsheet UI |
 | **Main Process** | Electron | Desktop app framework |
 | **Database** | SQLite (better-sqlite3) | Local data storage |
-| **Automation** | Playwright | Browser automation |
+| **Automation** | Electron BrowserWindow | Browser automation (native Chromium) |
 | **Build** | electron-builder | Application packaging |
 | **Updates** | electron-updater | Auto-update system |
 
@@ -196,7 +196,7 @@ All services implement clean interface contracts:
 
 **Submission Services:**
 
-- `playwright-bot-service` - Production browser automation
+- `electron-bot-service` - Production browser automation (Electron BrowserWindow)
 - `mock-submission-service` - Mock submission for testing
 
 ### UI Layer Plugins
@@ -241,7 +241,7 @@ Extracted business logic is UI-independent and reusable:
       "active": "sqlite" 
     },
     "submission": { 
-      "active": "playwright", 
+      "active": "electron", 
       "alternatives": ["mock"] 
     },
     "ui": { 
@@ -288,7 +288,7 @@ Edit `plugin-config.json`:
 {
   "plugins": {
     "submission": {
-      "active": "mock"  // Changed from "playwright"
+      "active": "mock"  // Changed from "electron"
     }
   }
 }
@@ -1506,7 +1506,7 @@ npm run rebuild
 ```text
 ✅ better-sqlite3 found at root level
 ✅ electron-log hoisted to root (workspace optimization)
-✅ playwright found in bot service node_modules
+✅ Electron browser automation (no external dependencies needed)
 ✅ Main entry point (main.js) exists
 ```
 
@@ -1515,7 +1515,7 @@ Everything is correct. Continue with build.
 #### Warning (Yellow ⚠️)
 
 ```text
-⚠️ WARNING: playwright found in backend but should be in bot service node_modules
+⚠️ WARNING: Check that Electron BrowserWindow is available (should be built-in)
 ⚠️ WARNING: Build directory does not exist yet. Run `npm run build:main` first.
 ```
 
@@ -1738,7 +1738,7 @@ Copy-Item "build\latest.yml" $networkPath
 2. Verify SQLite path accessible
 3. Check schema initialization in logs
 
-#### Playwright automation fails
+#### Electron browser automation fails
 
 **Symptom**: "Page is not available; call start() first"  
 **Fix**: Ensure `start()` called before `run_automation()`
@@ -1802,7 +1802,7 @@ If exclusions are not feasible, submit report to Sophos:
    - **Developer**: SheetPilot Team
    - **Purpose**: Business timesheet management and automation
    - **Detection**: "Lockdown" behavioral prevention
-   - **Justification**: Legitimate Electron-based business application using Playwright for SmartSheet integration
+   - **Justification**: Legitimate Electron-based business application using Electron BrowserWindow for SmartSheet integration
 
 **Technical Details:**
 
@@ -2066,7 +2066,7 @@ This project includes comprehensive XML documentation of the application archite
 **Files involved**:
 
 - `backend/src/services/timesheet-importer.ts` - Submission orchestrator
-- `backend/src/services/plugins/playwright-bot-service.ts` - Bot service
+- `backend/src/services/plugins/electron-bot-service.ts` - Bot service
 - `backend/src/services/bot/src/bot_orchestation.ts` - Browser coordinator
 - `backend/src/services/bot/src/authentication_flow.ts` - Web portal login
 - `backend/src/services/bot/src/webform_flow.ts` - Form filling logic
@@ -2074,7 +2074,7 @@ This project includes comprehensive XML documentation of the application archite
 **Key concepts**:
 
 - Entries grouped by quarter (different forms per quarter)
-- Playwright runs in headless mode
+- Electron BrowserWindow runs in headless mode (hidden window)
 - Entries marked as 'in_progress' during submission
 - Failed entries revert to NULL status (pending)
 - Successful entries marked as 'Complete' with timestamp
@@ -2093,7 +2093,7 @@ This project includes comprehensive XML documentation of the application archite
                        │ Type-safe communication
 ┌──────────────────────▼───────────────────────────────────────┐
 │                     BACKEND (Main Process)                    │
-│  Node.js • Electron • SQLite • Playwright • Plugin System   │
+│  Node.js • Electron • SQLite • BrowserWindow • Plugin System   │
 │                                                              │
 │  Files: backend/src/{main.ts,services,repositories,bot}     │
 │  Role: Business logic, database, file I/O, automation       │

@@ -1,6 +1,6 @@
 {
   "name": "sheetpilot",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "private": true,
   "description": "Business timesheet management and reporting tool",
   "author": "Andrew Hughes",
@@ -11,15 +11,14 @@
     "app/shared"
   ],
   "scripts": {
-    "postinstall": "npx playwright install chromium && npm run rebuild",
+    "postinstall": "npm run rebuild",
     "rebuild": "npx @electron/rebuild -f -w better-sqlite3",
     "electron:compiled": "npm run rebuild && cross-env NODE_PATH=app/backend/node_modules:node_modules electron build/dist/backend/src/main.js",
     "electron:dev": "cross-env NODE_PATH=app/backend/node_modules:node_modules electron build/dist/backend/src/main.js",
     "electron:watch": "nodemon",
     "sync-version": "node scripts/sync-version.js",
     "generate-icon": "node scripts/generate-icon.js",
-    "build:main": "npm run sync-version && node scripts/build-prod.js",
-    "build:main:fast": "tsc -p tsconfig.build-main.json",
+    "build:main": "npm run sync-version && node scripts/build-backend-bundle.js",
     "build:main:dev": "node scripts/build-dev.js",
     "build:main:watch": "node scripts/build-dev.js --watch",
     "vite": "npm run -w @sheetpilot/frontend dev",
@@ -29,9 +28,8 @@
     "build:renderer": "npm run -w @sheetpilot/frontend build",
     "build:renderer:analyze": "npm run -w @sheetpilot/frontend build:analyze",
     "build:bot": "cd app/backend/src/services/bot && npm run build",
-    "bundle:browsers": "node scripts/bundle-playwright-browsers.js",
-    "build": "npm run build:main && npm run build:renderer && npm run build:bot && npm run bundle:browsers && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder",
-    "build:dir": "npm run build:main && npm run build:renderer && npm run build:bot && npm run bundle:browsers && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --dir",
+    "build": "npm run build:bot && npm run build:main && npm run build:renderer && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder",
+    "build:dir": "npm run build:bot && npm run build:main && npm run build:renderer && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --dir",
     "type-check": "npm run type-check:root && npm run type-check:backend && npm run type-check:frontend",
     "type-check:root": "tsc --noEmit --project tsconfig.typecheck.json",
     "type-check:backend": "npm run -w @sheetpilot/backend typecheck",
@@ -54,14 +52,13 @@
     "validate:bundle": "node scripts/validate-bundle.js",
     "validate:deps": "electron-builder install-app-deps",
     "validate:quick": "npm run type-check && npm run validate:compile && npm run validate:bundle",
-    "validate:full": "npm run validate:quick && npm run validate:deps && npm run build:dir && node scripts/ci-dir.js",
+    "validate:full": "npm run validate:quick && npm run validate:deps && npm run build:dir",
     "build:debug": "cross-env DEBUG=electron-builder npm run build"
   },
   "dependencies": {
     "better-sqlite3": "^12.4.1",
     "electron-log": "^5.4.3",
     "electron-updater": "^6.6.2",
-    "playwright": "^1.56.1",
     "tslib": "^2.8.1"
   },
   "devDependencies": {
@@ -87,8 +84,12 @@
     "vitest": "^3.2.4",
     "wait-on": "^9.0.1"
   },
-  "build": {
+    "build": {
     "appId": "com.sheetpilot.app",
+    "afterPack": "scripts/after-pack.js",
+    "electronLanguages": [
+      "en-US"
+    ],
     "publish": {
       "provider": "github",
       "owner": "andrewhughesskywater",
@@ -100,34 +101,31 @@
     },
     "files": [
       "build/dist/backend/**/*",
-      "build/dist/shared/**/*",
-      "build/playwright-browsers/**/*",
-      "app/backend/node_modules/**/*",
-      "!app/backend/node_modules/*/{test,tests,__tests__}/**",
-      "!app/backend/node_modules/*/{*.md,*.txt,LICENSE*,CHANGELOG*,README*,HISTORY*}",
-      "!app/backend/node_modules/**/*.{map,ts}",
-      "!app/backend/node_modules/.bin/**",
-      "!app/backend/node_modules/*/{example,examples,docs,doc}/**",
-      "node_modules/tslib/**/*",
-      "node_modules/playwright/**/*",
+      "!**/*.map",
       "app/frontend/dist/**/*",
       "package.json",
       "plugin-config.json",
-      "scripts/fix-shortcut-icon.ps1"
+      "scripts/fix-shortcut-icon.ps1",
+      {
+        "from": "node_modules",
+        "to": "node_modules",
+        "filter": [
+          "better-sqlite3/package.json",
+          "better-sqlite3/lib/**/*",
+          "better-sqlite3/build/Release/*.node"
+        ]
+      }
     ],
     "asar": true,
     "asarUnpack": [
-      "**/node_modules/better-sqlite3/**/*",
-      "**/node_modules/playwright/**/*",
-      "**/build/playwright-browsers/**/*"
+      "**/node_modules/better-sqlite3/**/*"
     ],
     "compression": "maximum",
     "extraMetadata": {
       "main": "build/dist/backend/src/main.js"
     },
     "win": {
-      "icon": "build/icon.ico",
-      "signAndEditExecutable": false
+      "icon": "build/icon.ico"
     },
     "nsis": {
       "installerIcon": "build/icon.ico",

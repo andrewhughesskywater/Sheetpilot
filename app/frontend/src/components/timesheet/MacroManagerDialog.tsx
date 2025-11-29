@@ -1,26 +1,35 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
   Button,
-  TextField,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
   Box,
-  Typography,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails
+  Typography
 } from '@mui/material';
-import { ExpandMore as ExpandMoreIcon } from '@mui/icons-material';
+import { HotTable } from '@handsontable/react-wrapper';
+import type { HotTableRef } from '@handsontable/react-wrapper';
+import { registerAllModules } from 'handsontable/registry';
+import { registerEditor } from 'handsontable/editors';
+import 'handsontable/styles/handsontable.css';
+import 'handsontable/styles/ht-theme-horizon.css';
+import './TimesheetGrid.css'; // Reuse TimesheetGrid styles
+
 import type { MacroRow } from '../../utils/macroStorage';
 import { saveMacros, loadMacros } from '../../utils/macroStorage';
 import { PROJECTS, CHARGE_CODES, getToolsForProject, doesToolNeedChargeCode, doesProjectNeedTools } from '../../config/business-config';
 import { formatTimeInput } from './timesheet.schema';
+import { SpellcheckEditor } from './SpellcheckEditor';
+
+// Register Handsontable modules
+registerAllModules();
+registerEditor('spellcheckText', SpellcheckEditor);
+
+// Define a type that matches Handsontable's internal CellChange tuple structure
+// [row, prop, oldValue, newValue]
+// prop can be string, number, or function (though we only use string/number)
+type HandsontableChange = [number, string | number | unknown, unknown, unknown];
 
 interface MacroManagerDialogProps {
   open: boolean;
@@ -30,193 +39,248 @@ interface MacroManagerDialogProps {
 
 const MacroManagerDialog = ({ open, onClose, onSave }: MacroManagerDialogProps) => {
   const [macroData, setMacroData] = useState<MacroRow[]>([]);
-  const [expandedMacro, setExpandedMacro] = useState<number | false>(0);
+  const hotTableRef = useRef<HotTableRef>(null);
+  const isInternalChangeRef = useRef(false);
 
   // Load macros when dialog opens
   useEffect(() => {
     if (open) {
       const loaded = loadMacros();
       // Use setTimeout to defer setState to avoid sync setState in effect
-      setTimeout(() => setMacroData(loaded), 0);
+      setTimeout(() => {
+        setMacroData(loaded);
+        // Refresh the table after data load to ensure correct rendering
+        if (hotTableRef.current?.hotInstance) {
+          hotTableRef.current.hotInstance.render();
+        }
+      }, 0);
     }
   }, [open]);
 
-  const handleMacroChange = (index: number, field: keyof MacroRow, value: string | null) => {
-    const next = [...macroData];
-    
-    // Format time inputs
-    if ((field === 'timeIn' || field === 'timeOut') && value) {
-      value = formatTimeInput(value);
-    }
-    
-    // Cascade project → tool → chargeCode
-    if (field === 'project') {
-      const needsTools = value && doesProjectNeedTools(value);
-      next[index] = {
-        ...next[index],
-        project: value || '',
-        tool: needsTools ? next[index].tool : null,
-        chargeCode: needsTools ? next[index].chargeCode : null
-      };
-    } else if (field === 'tool') {
-      const needsCharge = value && doesToolNeedChargeCode(value);
-      next[index] = {
-        ...next[index],
-        tool: value,
-        chargeCode: needsCharge ? next[index].chargeCode : null
-      };
-    } else {
-      next[index] = { ...next[index], [field]: value || '' };
-    }
-    
-    setMacroData(next);
-  };
-
   const handleSave = () => {
-    saveMacros(macroData);
-    onSave(macroData);
+    // Get the latest data from Handsontable to ensure we have all edits
+    let currentData = macroData;
+    if (hotTableRef.current?.hotInstance) {
+      currentData = hotTableRef.current.hotInstance.getSourceData() as MacroRow[];
+    }
+    
+    saveMacros(currentData);
+    onSave(currentData);
     onClose();
   };
 
-  const handleAccordionChange = (macroIndex: number) => (_event: React.SyntheticEvent, isExpanded: boolean) => {
-    setExpandedMacro(isExpanded ? macroIndex : false);
-  };
+  // Cell-level configuration (cascades over column config)
+  const cellsFunction = useCallback((row: number, col: number) => {
+    // Add bounds checking
+    if (row < 0 || row >= macroData.length) {
+      return {};
+    }
+    
+    const rowData = macroData[row];
+    if (!rowData) {
+      return {};
+    }
+
+    // Column indices based on columnDefinitions below:
+    // 0: Name, 1: Start, 2: End, 3: Project, 4: Tool, 5: Charge Code, 6: Task Desc
+    
+    // Tool column (4) - dynamic dropdown based on selected project
+    if (col === 4) {
+      const project = rowData.project;
+      if (!project || !doesProjectNeedTools(project)) {
+        return { 
+          className: 'htDimmed htCenter', 
+          placeholder: project ? 'N/A' : '',
+          readOnly: true,
+          source: []
+        };
+      }
+      return { 
+        source: getToolsForProject(project), 
+        placeholder: 'Pick a Tool',
+        readOnly: false,
+        className: 'htCenter'
+      };
+    }
+    
+    // Charge code column (5) - conditional based on selected tool
+    if (col === 5) {
+      const tool = rowData.tool;
+      if (!tool || !doesToolNeedChargeCode(tool)) {
+        return { 
+          className: 'htDimmed htCenter', 
+          placeholder: tool ? 'N/A' : '',
+          readOnly: true
+        };
+      }
+      return { 
+        placeholder: 'Pick a Charge Code',
+        readOnly: false,
+        className: 'htCenter'
+      };
+    }
+    
+    return {};
+  }, [macroData]);
+
+  const handleAfterChange = useCallback((changes: HandsontableChange[] | null, source: string) => {
+    if (!changes || source === 'loadData' || isInternalChangeRef.current) return;
+    
+    const hotInstance = hotTableRef.current?.hotInstance;
+    if (!hotInstance) return;
+    
+    const next = [...macroData];
+    let hasChanges = false;
+    
+    changes.forEach(([row, prop, oldVal, newVal]) => {
+      if (oldVal === newVal) return;
+      
+      const rowIndex = row as number;
+      if (!next[rowIndex]) return;
+      
+      // Cast prop to keyof MacroRow - we know our columns use string keys
+      const field = prop as keyof MacroRow;
+      
+      // Handle Cascading Logic
+      if (field === 'project') {
+        const project = String(newVal ?? '');
+        if (!doesProjectNeedTools(project)) {
+          next[rowIndex] = { 
+            ...next[rowIndex], 
+            project, 
+            tool: null, 
+            chargeCode: null 
+          };
+        } else {
+          // If project changed but still needs tools, keep tool if valid or reset? 
+          // TimesheetGrid logic resets if invalid, but let's keep it simple: reset if project changes
+          if (oldVal !== newVal) {
+             // Check if existing tool is valid for new project? 
+             // Usually better to clear to avoid invalid combinations
+             next[rowIndex] = { 
+               ...next[rowIndex], 
+               project, 
+               tool: null, 
+               chargeCode: null 
+             };
+          } else {
+             next[rowIndex] = { ...next[rowIndex], project };
+          }
+        }
+        hasChanges = true;
+      } 
+      else if (field === 'tool') {
+        const tool = String(newVal ?? '');
+        if (!doesToolNeedChargeCode(tool)) {
+          next[rowIndex] = { ...next[rowIndex], tool, chargeCode: null };
+        } else {
+          next[rowIndex] = { ...next[rowIndex], tool };
+        }
+        hasChanges = true;
+      }
+      else if ((field === 'timeIn' || field === 'timeOut') && newVal) {
+        // Format time
+        const formatted = formatTimeInput(String(newVal));
+        if (formatted !== newVal) {
+          next[rowIndex] = { ...next[rowIndex], [field]: formatted };
+          // We need to update the cell directly if we want to show formatted value immediately
+          // But since we update state, the render cycle should handle it via updateData
+          hasChanges = true;
+        } else {
+           next[rowIndex] = { ...next[rowIndex], [field]: newVal };
+           hasChanges = true;
+        }
+      }
+      else {
+        // Standard update
+        next[rowIndex] = { ...next[rowIndex], [field]: newVal };
+        hasChanges = true;
+      }
+    });
+
+    if (hasChanges) {
+      // Update state
+      setMacroData(next);
+      
+      // Reflect changes back to grid (especially for cascading clears and formatting)
+      // prevent recursion loop
+      isInternalChangeRef.current = true;
+      hotInstance.loadData(next);
+      isInternalChangeRef.current = false;
+    }
+  }, [macroData]);
+
+  // Column definitions
+  const columnDefinitions = useMemo(() => [
+    { data: 'name', title: 'Macro Name', type: 'text', placeholder: 'Name your macro', className: 'htLeft' },
+    { data: 'timeIn', title: 'Start', type: 'text', placeholder: '0800', className: 'htCenter', width: 60 },
+    { data: 'timeOut', title: 'End', type: 'text', placeholder: '1700', className: 'htCenter', width: 60 },
+    { data: 'project', 
+      title: 'Project', 
+      type: 'dropdown', 
+      source: [...PROJECTS], 
+      strict: true, 
+      allowInvalid: false, 
+      placeholder: 'Pick a project', 
+      className: 'htCenter',
+      trimDropdown: false
+    },
+    { data: 'tool', title: 'Tool', type: 'dropdown', source: [], strict: true, allowInvalid: false, placeholder: '', className: 'htCenter' },
+    { data: 'chargeCode', title: 'Charge Code', type: 'dropdown', source: [...CHARGE_CODES], strict: true, allowInvalid: false, placeholder: '', className: 'htCenter' },
+    { data: 'taskDescription', title: 'Task Description', editor: 'spellcheckText', placeholder: 'Description', className: 'htLeft', maxLength: 120 }
+  ], []);
 
   return (
     <Dialog
       open={open}
       onClose={onClose}
-      maxWidth="md"
+      maxWidth="xl"
       fullWidth
+      PaperProps={{
+        sx: { height: '80vh', maxHeight: 800 }
+      }}
     >
       <DialogTitle>
         Edit Macros
       </DialogTitle>
-      <DialogContent>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Configure up to 5 macros for quick timesheet entry. Use keyboard shortcuts Ctrl+1 through Ctrl+5 to apply them.
-        </Typography>
+      <DialogContent sx={{ p: 0, display: 'flex', flexDirection: 'column' }}>
+        <Box sx={{ p: 2, pb: 1 }}>
+          <Typography variant="body2" color="text.secondary">
+            Configure up to 5 macros for quick timesheet entry. Use keyboard shortcuts Ctrl+1 through Ctrl+5 to apply them.
+          </Typography>
+        </Box>
         
-        {macroData.map((macro, index) => (
-          <Accordion
-            key={index}
-            expanded={expandedMacro === index}
-            onChange={handleAccordionChange(index)}
-            sx={{ mb: 1 }}
-          >
-            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography>
-                Macro {index + 1} (Ctrl+{index + 1}): {macro.name || '(Not configured)'}
-              </Typography>
-            </AccordionSummary>
-            <AccordionDetails>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <TextField
-                  label="Macro Name"
-                  value={macro.name || ''}
-                  onChange={(e) => handleMacroChange(index, 'name', e.target.value)}
-                  fullWidth
-                  size="small"
-                />
-                
-                <Box sx={{ display: 'flex', gap: 2 }}>
-                  <TextField
-                    label="Start Time"
-                    value={macro.timeIn || ''}
-                    onChange={(e) => handleMacroChange(index, 'timeIn', e.target.value)}
-                    placeholder="0000 to 2400"
-                    size="small"
-                    sx={{ flex: 1 }}
-                  />
-                  <TextField
-                    label="End Time"
-                    value={macro.timeOut || ''}
-                    onChange={(e) => handleMacroChange(index, 'timeOut', e.target.value)}
-                    placeholder="0000 to 2400"
-                    size="small"
-                    sx={{ flex: 1 }}
-                  />
-                </Box>
-                
-                <FormControl fullWidth size="small">
-                  <InputLabel>Project</InputLabel>
-                  <Select
-                    value={macro.project || ''}
-                    label="Project"
-                    onChange={(e) => handleMacroChange(index, 'project', e.target.value)}
-                  >
-                    <MenuItem value="">
-                      <em>None</em>
-                    </MenuItem>
-                    {PROJECTS.map((project) => (
-                      <MenuItem key={project} value={project}>
-                        {project}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-                
-                {macro.project && doesProjectNeedTools(macro.project) && (
-                  <FormControl fullWidth size="small">
-                    <InputLabel>Tool</InputLabel>
-                    <Select
-                      value={macro.tool || ''}
-                      label="Tool"
-                      onChange={(e) => handleMacroChange(index, 'tool', e.target.value)}
-                    >
-                      <MenuItem value="">
-                        <em>None</em>
-                      </MenuItem>
-                      {getToolsForProject(macro.project).map((tool) => (
-                        <MenuItem key={tool} value={tool}>
-                          {tool}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                )}
-                
-                {macro.tool && doesToolNeedChargeCode(macro.tool) && (
-                  <FormControl fullWidth size="small">
-                    <InputLabel>Charge Code</InputLabel>
-                    <Select
-                      value={macro.chargeCode || ''}
-                      label="Charge Code"
-                      onChange={(e) => handleMacroChange(index, 'chargeCode', e.target.value)}
-                    >
-                      <MenuItem value="">
-                        <em>None</em>
-                      </MenuItem>
-                      {CHARGE_CODES.map((code) => (
-                        <MenuItem key={code} value={code}>
-                          {code}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                )}
-                
-                <TextField
-                  label="Task Description"
-                  value={macro.taskDescription || ''}
-                  onChange={(e) => handleMacroChange(index, 'taskDescription', e.target.value)}
-                  fullWidth
-                  size="small"
-                  multiline
-                  rows={2}
-                  inputProps={{ maxLength: 120 }}
-                />
-              </Box>
-            </AccordionDetails>
-          </Accordion>
-        ))}
+        <Box sx={{ flexGrow: 1, width: '100%', overflow: 'hidden', p: 1 }}>
+           <HotTable
+            ref={hotTableRef}
+            data={macroData}
+            columns={columnDefinitions}
+            cells={cellsFunction}
+            afterChange={handleAfterChange}
+            themeName="ht-theme-horizon"
+            width="100%"
+            height="100%"
+            rowHeaders={true}
+            colHeaders={true}
+            manualColumnResize={true}
+            stretchH="all"
+            licenseKey="non-commercial-and-evaluation"
+            minRows={5}
+            maxRows={5}
+            contextMenu={['undo', 'redo', 'copy', 'cut']}
+            enterMoves={{ row: 0, col: 1 }} // Move right on enter
+            tabMoves={{ row: 0, col: 1 }}
+            autoWrapRow={true}
+            autoWrapCol={true}
+          />
+        </Box>
       </DialogContent>
-      <DialogActions>
+      <DialogActions sx={{ p: 2 }}>
         <Button onClick={onClose} color="inherit">
           Cancel
         </Button>
         <Button onClick={handleSave} variant="contained" color="primary">
-          Save
+          Save Macros
         </Button>
       </DialogActions>
     </Dialog>

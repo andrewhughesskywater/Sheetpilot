@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stay Signed In - Mock Azure AD</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      background: #f5f5f5;
+    }
+    .aad-container {
+      background: white;
+      padding: 2rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+    }
+    h1 {
+      margin-top: 0;
+      color: #333;
+    }
+    p {
+      color: #666;
+      margin-bottom: 1.5rem;
+    }
+    .button-group {
+      display: flex;
+      gap: 1rem;
+    }
+    button {
+      flex: 1;
+      padding: 0.75rem;
+      border-radius: 4px;
+      font-size: 1rem;
+      cursor: pointer;
+      border: 1px solid #ddd;
+    }
+    button.primary {
+      background: #0078d4;
+      color: white;
+      border-color: #0078d4;
+    }
+    button.primary:hover {
+      background: #005a9e;
+    }
+    button.secondary {
+      background: white;
+      color: #333;
+    }
+    button.secondary:hover {
+      background: #f5f5f5;
+    }
+  </style>
+</head>
+<body>
+  <div class="aad-container">
+    <h1>Stay signed in?</h1>
+    <p>Do you want to stay signed in to your account?</p>
+    <form id="staySignedInForm">
+      <div class="button-group">
+        <button type="submit" class="secondary" id="idBtn_Back" name="action" value="no">
+          No
+        </button>
+        <button type="submit" class="primary" id="idBtn_Accept" name="action" value="yes">
+          Yes
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    document.getElementById('staySignedInForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const action = e.submitter?.value || 'no';
+      
+      try {
+        const response = await fetch('/aad/stay-signed-in', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: `action=${action}`
+        });
+        
+        if (response.redirected) {
+          window.location.href = response.url;
+        } else {
+          window.location.href = '/form';
+        }
+      } catch (error) {
+        console.error('Stay signed in error:', error);
+        window.location.href = '/form';
+      }
+    });
+
+    // Auto-click "No" after a brief delay if bot hasn't clicked
+    setTimeout(() => {
+      const noButton = document.getElementById('idBtn_Back');
+      if (noButton && document.activeElement !== noButton) {
+        // Just ensure it's visible - bot will click it
+      }
+    }, 100);
+  </script>
+</body>
+</html>

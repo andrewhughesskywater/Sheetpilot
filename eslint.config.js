@@ -112,7 +112,7 @@ module.exports = [
         clearTimeout: 'readonly',
         clearInterval: 'readonly',
         console: 'readonly',
-        // Browser globals (for Playwright)
+        // Browser globals (for Electron BrowserWindow)
         window: 'readonly',
         document: 'readonly',
         navigator: 'readonly',

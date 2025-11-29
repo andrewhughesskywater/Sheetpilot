@@ -14,7 +14,8 @@ import {
   getDb,
   getDbPath,
   getPendingTimesheetEntries,
-  validateSession 
+  validateSession,
+  resetInProgressTimesheetEntries
 } from '../services/database';
 import { getCredentials } from '../services/database';
 import { submitTimesheets } from '../services/timesheet-importer';
@@ -69,7 +70,7 @@ export function setMainWindow(window: BrowserWindow | null): void {
 export function registerTimesheetHandlers(): void {
   
   // Handler for timesheet submission (submit pending data from database)
-  ipcMain.handle('timesheet:submit', async (_event, token: string) => {
+  ipcMain.handle('timesheet:submit', async (_event, token: string, useMockWebsite?: boolean) => {
     ipcLogger.verbose('Timesheet submit IPC handler called');
     const timer = ipcLogger.startTimer('timesheet-submit');
     
@@ -200,7 +201,8 @@ export function registerTimesheetHandlers(): void {
           credentials.email, 
           credentials.password, 
           progressCallback,
-          currentSubmissionAbortController?.signal
+          currentSubmissionAbortController?.signal,
+          useMockWebsite
         );
         ipcLogger.info('submitTimesheets completed', { 
           ok: submitResult.ok,
@@ -358,6 +360,7 @@ export function registerTimesheetHandlers(): void {
       
       const db = getDb();
       let result;
+      let savedId: number;
       
       // If row has an id, UPDATE the existing row
       if (validatedRow.id !== undefined && validatedRow.id !== null) {
@@ -388,6 +391,7 @@ export function registerTimesheetHandlers(): void {
           validatedRow.taskDescription,
           validatedRow.id
         );
+        savedId = validatedRow.id;
       } else {
         // If no id, INSERT a new row (with deduplication)
         ipcLogger.debug('Inserting new timesheet entry');
@@ -411,16 +415,70 @@ export function registerTimesheetHandlers(): void {
           validatedRow.chargeCode || null,
         validatedRow.taskDescription
       );
+      
+      // Get the ID of the saved row
+      // For INSERT, use lastInsertRowid; for ON CONFLICT DO UPDATE, query the row
+      if (result.changes > 0 && (result as { lastInsertRowid?: number }).lastInsertRowid) {
+        // New insert - use lastInsertRowid
+        savedId = (result as { lastInsertRowid: number }).lastInsertRowid;
+      } else {
+        // ON CONFLICT DO UPDATE case or no changes - query to get the existing ID
+        const getSaved = db.prepare(`
+          SELECT id FROM timesheet 
+          WHERE date = ? AND time_in = ? AND project = ? AND task_description = ? AND status IS NULL
+          LIMIT 1
+        `);
+        const savedRow = getSaved.get(
+          validatedRow.date,
+          timeInMinutes,
+          validatedRow.project,
+          validatedRow.taskDescription
+        ) as { id: number } | undefined;
+        savedId = savedRow?.id ?? 0;
+      }
     }
     
+    // Fetch the complete saved entry to return to frontend
+    const getEntry = db.prepare(`SELECT * FROM timesheet WHERE id = ?`);
+    const savedEntry = getEntry.get(savedId) as {
+      id: number;
+      date: string;
+      time_in: number;
+      time_out: number;
+      project: string;
+      tool?: string | null;
+      detail_charge_code?: string | null;
+      task_description: string;
+    } | undefined;
+    
     ipcLogger.info('Draft timesheet entry saved', {
-        id: validatedRow.id,
+        id: savedId,
         changes: result.changes,
         date: validatedRow.date,
         project: validatedRow.project 
       });
       timer.done({ changes: result.changes });
-      return { success: true, changes: result.changes };
+      
+      if (savedEntry) {
+        // Return the saved entry in grid format
+        return { 
+          success: true, 
+          changes: result.changes,
+          id: savedId,
+          entry: {
+            id: savedEntry.id,
+            date: savedEntry.date,
+            timeIn: formatMinutesToTime(savedEntry.time_in),
+            timeOut: formatMinutesToTime(savedEntry.time_out),
+            project: savedEntry.project,
+            tool: savedEntry.tool || null,
+            chargeCode: savedEntry.detail_charge_code || null,
+            taskDescription: savedEntry.task_description
+          }
+        };
+      }
+      
+      return { success: true, changes: result.changes, id: savedId };
     } catch (err: unknown) {
       ipcLogger.error('Could not save draft timesheet entry', err);
       const errorMessage = err instanceof Error ? err.message : String(err);
@@ -488,6 +546,13 @@ export function registerTimesheetHandlers(): void {
   ipcMain.handle('timesheet:loadDraft', async () => {
     const timer = ipcLogger.startTimer('load-draft');
     try {
+      // Reset any "in_progress" entries to NULL on page reload
+      // This handles cases where the app crashed or was closed during submission
+      const resetCount = resetInProgressTimesheetEntries();
+      if (resetCount > 0) {
+        ipcLogger.info('Reset in-progress entries to NULL on page reload', { count: resetCount });
+      }
+      
       ipcLogger.verbose('Loading draft timesheet entries');
       
       const db = getDb();
@@ -531,6 +596,63 @@ export function registerTimesheetHandlers(): void {
       const errorMessage = err instanceof Error ? err.message : String(err);
       timer.done({ outcome: 'error', error: errorMessage });
       return { success: false, error: errorMessage, entries: [] };
+    }
+  });
+
+  // Handler for loading a single draft timesheet entry by ID
+  ipcMain.handle('timesheet:loadDraftById', async (_event, id: number) => {
+    const timer = ipcLogger.startTimer('load-draft-by-id');
+    try {
+      if (!id || typeof id !== 'number') {
+        timer.done({ outcome: 'error', error: 'invalid-id' });
+        return { success: false, error: 'Invalid ID provided' };
+      }
+
+      ipcLogger.verbose('Loading draft timesheet entry by ID', { id });
+      
+      const db = getDb();
+      const getEntry = db.prepare(`
+        SELECT * FROM timesheet 
+        WHERE id = ? AND status IS NULL
+      `);
+      
+      const entry = getEntry.get(id) as {
+        id: number;
+        date: string;
+        time_in: number;
+        time_out: number;
+        project: string;
+        tool?: string | null;
+        detail_charge_code?: string | null;
+        task_description: string;
+      } | undefined;
+      
+      if (!entry) {
+        ipcLogger.warn('Draft timesheet entry not found', { id });
+        timer.done({ outcome: 'not-found' });
+        return { success: false, error: 'Entry not found or already submitted' };
+      }
+      
+      // Convert database format to grid format
+      const gridEntry = {
+        id: entry.id,
+        date: entry.date,
+        timeIn: formatMinutesToTime(entry.time_in),
+        timeOut: formatMinutesToTime(entry.time_out),
+        project: entry.project,
+        tool: entry.tool || null,
+        chargeCode: entry.detail_charge_code || null,
+        taskDescription: entry.task_description
+      };
+      
+      ipcLogger.verbose('Draft timesheet entry loaded by ID', { id });
+      timer.done({ found: true });
+      return { success: true, entry: gridEntry };
+    } catch (err: unknown) {
+      ipcLogger.error('Could not load draft timesheet entry by ID', err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      timer.done({ outcome: 'error', error: errorMessage });
+      return { success: false, error: errorMessage };
     }
   });
 
@@ -580,6 +702,23 @@ export function registerTimesheetHandlers(): void {
     } catch (err: unknown) {
       ipcLogger.error('[DEV] Could not simulate success', err);
       const errorMessage = err instanceof Error ? err.message : String(err);
+      return { success: false, error: errorMessage };
+    }
+  });
+
+  // Handler for resetting in-progress entries
+  ipcMain.handle('timesheet:resetInProgress', async () => {
+    const timer = ipcLogger.startTimer('reset-in-progress');
+    try {
+      ipcLogger.info('Resetting in-progress entries to NULL status');
+      const resetCount = resetInProgressTimesheetEntries();
+      ipcLogger.info('Reset in-progress entries completed', { count: resetCount });
+      timer.done({ count: resetCount });
+      return { success: true, count: resetCount };
+    } catch (err: unknown) {
+      ipcLogger.error('Could not reset in-progress entries', err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      timer.done({ outcome: 'error', error: errorMessage });
       return { success: false, error: errorMessage };
     }
   });

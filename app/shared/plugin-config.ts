@@ -19,7 +19,7 @@ const DEFAULT_CONFIG: PluginRegistryConfig = {
   plugins: {
     data: { active: 'sqlite', alternatives: ['memory'] },
     credentials: { active: 'sqlite' },
-    submission: { active: 'playwright', alternatives: ['mock'] },
+    submission: { active: 'electron', alternatives: ['mock'] },
     ui: { 
       active: 'handsontable',
       alternatives: ['simple-table']

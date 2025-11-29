@@ -7,16 +7,27 @@ import {
   getDbPath
 } from './services/database';
 import { APP_VERSION } from '../../shared/constants';
+
+// Logger interface matching the Logger class from shared/logger
+interface LoggerInterface {
+  error: (message: string, data?: unknown) => void;
+  warn: (message: string, data?: unknown) => void;
+  info: (message: string, data?: unknown) => void;
+  verbose: (message: string, data?: unknown) => void;
+  debug: (message: string, data?: unknown) => void;
+  silly: (message: string, data?: unknown) => void;
+  audit: (action: string, message: string, data?: unknown) => void;
+  security: (eventType: string, message: string, data?: unknown) => void;
+  startTimer: (operation: string) => { done: (metadata?: unknown) => void };
+}
+
 // Defer logger import until after preflight; provide lightweight shims for early use
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let appLogger: any;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let dbLogger: any;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let initializeLogging: any;
+let appLogger: LoggerInterface;
+let dbLogger: LoggerInterface;
+let initializeLogging: () => void;
 
 // Minimal console-based logger used before real logger loads
-function createShimLogger(component: string) {
+function createShimLogger(component: string): LoggerInterface {
   const prefix = `[${component}]`;
   return {
     error: (message: string, data?: unknown) => console.error(prefix, message, data ?? ''),
@@ -24,6 +35,7 @@ function createShimLogger(component: string) {
     info: (message: string, data?: unknown) => console.log(prefix, message, data ?? ''),
     verbose: (message: string, data?: unknown) => console.log(prefix, message, data ?? ''),
     debug: (message: string, data?: unknown) => console.debug(prefix, message, data ?? ''),
+    silly: (message: string, data?: unknown) => console.debug(prefix, message, data ?? ''),
     audit: (_a: string, message: string, data?: unknown) => console.log(prefix, message, data ?? ''),
     security: (_e: string, message: string, data?: unknown) => console.warn(prefix, message, data ?? ''),
     startTimer: (_op: string) => ({ done: (_m?: unknown) => void 0 })
@@ -33,7 +45,7 @@ function createShimLogger(component: string) {
 appLogger = createShimLogger('Application');
 dbLogger = createShimLogger('Database');
 
-// Playwright uses bundled Chromium for consistent behavior across all systems
+// Electron BrowserWindow uses Electron's built-in Chromium for consistent behavior across all systems
 const IS_SMOKE = process.env['SMOKE_PACKAGED'] === '1';
 const PACKAGED_LIKE = app.isPackaged || IS_SMOKE;
 
@@ -86,13 +98,25 @@ preflightResolve();
 // Now import the real logger after preflight passes
 // In test mode, use placeholder loggers that will be mocked
 if (process.env['VITEST'] === 'true') {
-  const mockLogger = () => ({ info: () => {}, warn: () => {}, error: () => {}, debug: () => {}, verbose: () => {}, silly: () => {}, audit: () => {}, security: () => {}, startTimer: () => ({ done: () => {} }) });
-  ({ initializeLogging, appLogger, dbLogger } = {
-    initializeLogging: () => {},
+  const mockLogger = (): LoggerInterface => ({
+    info: () => {},
+    warn: () => {},
+    error: () => {},
+    debug: () => {},
+    verbose: () => {},
+    silly: () => {},
+    audit: () => {},
+    security: () => {},
+    startTimer: () => ({ done: () => {} })
+  });
+  const mockLoggerModule = {
+    initializeLogging: (): void => {},
     appLogger: mockLogger(),
     dbLogger: mockLogger()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } as any);
+  };
+  initializeLogging = mockLoggerModule.initializeLogging;
+  appLogger = mockLoggerModule.appLogger;
+  dbLogger = mockLoggerModule.dbLogger;
 } else {
   ({ initializeLogging, appLogger, dbLogger } = require('../../shared/logger'));
 }
@@ -1365,12 +1389,31 @@ app.whenReady().then(() => {
     registerAllIPCHandlers(null); // Pass null for now, will set mainWindow reference after window creation
     appLogger.info('All IPC handlers registered successfully');
   } catch (err) {
-    appLogger.error('Could not register IPC handlers', { 
-      error: err instanceof Error ? err.message : String(err), 
-      stack: err instanceof Error ? err.stack : undefined,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      requireStack: (err as any).requireStack
-    });
+    // Type guard for Error with requireStack property
+    interface ErrorWithRequireStack extends Error {
+      requireStack?: string;
+    }
+    
+    const errorData: {
+      error: string;
+      stack?: string | undefined;
+      requireStack?: string | undefined;
+    } = {
+      error: err instanceof Error ? err.message : String(err)
+    };
+    
+    if (err instanceof Error && err.stack !== undefined) {
+      errorData.stack = err.stack;
+    }
+    
+    if (err instanceof Error && 'requireStack' in err) {
+      const requireStack = (err as ErrorWithRequireStack).requireStack;
+      if (requireStack !== undefined) {
+        errorData.requireStack = requireStack;
+      }
+    }
+    
+    appLogger.error('Could not register IPC handlers', errorData);
   }
   
   // Create main application window (starts loading renderer immediately)

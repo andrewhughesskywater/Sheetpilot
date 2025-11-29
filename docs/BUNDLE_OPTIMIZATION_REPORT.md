@@ -78,11 +78,11 @@ The following packages appear in node_modules but are NOT directly imported:
 
 These are dependencies of other packages and cannot be easily removed.
 
-## Playwright Browser Bundling
+## Browser Automation
 
-**Decision:** Keep bundled (~100MB)
+**Decision:** Use Electron's native BrowserWindow (no additional bundling needed)
 
-**Reason:** Playwright requires specific browser builds and cannot use system-installed browsers. Attempting to download on first run adds complexity and negatively impacts user experience.
+**Reason:** Electron includes Chromium, so no separate browser bundling is required. This eliminates ~100MB from the installer size and simplifies deployment.
 
 ## Expected Results
 
@@ -98,7 +98,7 @@ These are dependencies of other packages and cannot be easily removed.
 
 ### Bundle Composition
 - **Electron runtime:** ~200 MB (unavoidable)
-- **Playwright Chromium:** ~100 MB (required, cannot optimize)
+- **Browser automation:** 0 MB (uses Electron's built-in Chromium)
 - **Application code:** ~10-12 MB (optimized)
 - **Other resources:** ~10-15 MB
 
@@ -144,5 +144,5 @@ The implemented optimizations provide meaningful size reductions:
 - 40-45% application code reduction with minification + compression (~8-10 MB saved)
 - Total estimated savings: ~13-15 MB
 
-The majority of the installer size (300+ MB) comes from Electron and Playwright Chromium, which are unavoidable for the application's functionality. The application code itself has been optimized to be as small as practical while maintaining functionality and code quality.
+The majority of the installer size (~200 MB) comes from Electron runtime, which is unavoidable for the application's functionality. Browser automation uses Electron's built-in Chromium, eliminating the need for separate browser bundling. The application code itself has been optimized to be as small as practical while maintaining functionality and code quality.
 

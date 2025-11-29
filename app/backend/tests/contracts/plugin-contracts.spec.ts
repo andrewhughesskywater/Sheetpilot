@@ -15,70 +15,70 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Types validated via runtime assertion helper; explicit type imports not needed here
 import { assertPluginInterface } from '../helpers/assertion-helpers';
 
-// Mock the plugin implementations
+// Mock the plugin implementations using classes to ensure they are constructable
 vi.mock('../../src/services/plugins/sqlite-data-service', () => ({
-  SQLiteDataService: vi.fn().mockImplementation(() => ({
-    saveDraft: vi.fn(),
-    loadDraft: vi.fn(),
-    deleteDraft: vi.fn(),
-    getArchiveData: vi.fn(),
-    getAllTimesheetEntries: vi.fn(),
-    name: 'SQLiteDataService',
-    version: '1.0.0',
-    initialize: vi.fn(),
-    cleanup: vi.fn()
-  }))
+  SQLiteDataService: class {
+    saveDraft = vi.fn();
+    loadDraft = vi.fn();
+    deleteDraft = vi.fn();
+    getArchiveData = vi.fn();
+    getAllTimesheetEntries = vi.fn();
+    name = 'SQLiteDataService';
+    version = '1.0.0';
+    initialize = vi.fn();
+    cleanup = vi.fn();
+  }
 }));
 
 vi.mock('../../src/services/plugins/memory-data-service', () => ({
-  MemoryDataService: vi.fn().mockImplementation(() => ({
-    saveDraft: vi.fn(),
-    loadDraft: vi.fn(),
-    deleteDraft: vi.fn(),
-    getArchiveData: vi.fn(),
-    getAllTimesheetEntries: vi.fn(),
-    name: 'MemoryDataService',
-    version: '1.0.0',
-    initialize: vi.fn(),
-    cleanup: vi.fn()
-  }))
+  MemoryDataService: class {
+    saveDraft = vi.fn();
+    loadDraft = vi.fn();
+    deleteDraft = vi.fn();
+    getArchiveData = vi.fn();
+    getAllTimesheetEntries = vi.fn();
+    name = 'MemoryDataService';
+    version = '1.0.0';
+    initialize = vi.fn();
+    cleanup = vi.fn();
+  }
 }));
 
-vi.mock('../../src/services/plugins/playwright-bot-service', () => ({
-  PlaywrightBotService: vi.fn().mockImplementation(() => ({
-    submit: vi.fn(),
-    validateEntry: vi.fn(),
-    isAvailable: vi.fn(),
-    name: 'PlaywrightBotService',
-    version: '1.0.0',
-    initialize: vi.fn(),
-    cleanup: vi.fn()
-  }))
+vi.mock('../../src/services/plugins/electron-bot-service', () => ({
+  ElectronBotService: class {
+    submit = vi.fn();
+    validateEntry = vi.fn();
+    isAvailable = vi.fn();
+    name = 'ElectronBotService';
+    version = '1.0.0';
+    initialize = vi.fn();
+    cleanup = vi.fn();
+  }
 }));
 
 vi.mock('../../src/services/plugins/mock-submission-service', () => ({
-  MockSubmissionService: vi.fn().mockImplementation(() => ({
-    submit: vi.fn(),
-    validateEntry: vi.fn(),
-    isAvailable: vi.fn(),
-    name: 'MockSubmissionService',
-    version: '1.0.0',
-    initialize: vi.fn(),
-    cleanup: vi.fn()
-  }))
+  MockSubmissionService: class {
+    submit = vi.fn();
+    validateEntry = vi.fn();
+    isAvailable = vi.fn();
+    name = 'MockSubmissionService';
+    version = '1.0.0';
+    initialize = vi.fn();
+    cleanup = vi.fn();
+  }
 }));
 
 vi.mock('../../src/services/plugins/sqlite-credential-service', () => ({
-  SQLiteCredentialService: vi.fn().mockImplementation(() => ({
-    store: vi.fn(),
-    get: vi.fn(),
-    list: vi.fn(),
-    delete: vi.fn(),
-    name: 'SQLiteCredentialService',
-    version: '1.0.0',
-    initialize: vi.fn(),
-    cleanup: vi.fn()
-  }))
+  SQLiteCredentialService: class {
+    store = vi.fn();
+    get = vi.fn();
+    list = vi.fn();
+    delete = vi.fn();
+    name = 'SQLiteCredentialService';
+    version = '1.0.0';
+    initialize = vi.fn();
+    cleanup = vi.fn();
+  }
 }));
 
 describe('Plugin Contract Validation', () => {
@@ -254,10 +254,10 @@ describe('Plugin Contract Validation', () => {
   });
 
   describe('ISubmissionService Contract', () => {
-    it('should validate PlaywrightBotService implements ISubmissionService', async () => {
-      const { PlaywrightBotService } = await import('../../src/services/plugins/playwright-bot-service');
+    it('should validate ElectronBotService implements ISubmissionService', async () => {
+      const { ElectronBotService } = await import('../../src/services/plugins/electron-bot-service');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const service: any = new PlaywrightBotService();
+      const service: any = new ElectronBotService();
       
       assertPluginInterface(service, 'ISubmissionService');
       
@@ -281,9 +281,9 @@ describe('Plugin Contract Validation', () => {
     });
 
     it('should validate submit method signature', async () => {
-      const { PlaywrightBotService } = await import('../../src/services/plugins/playwright-bot-service');
+      const { ElectronBotService } = await import('../../src/services/plugins/electron-bot-service');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const service: any = new PlaywrightBotService();
+      const service: any = new ElectronBotService();
       
       const mockEntries = [
         {
@@ -328,9 +328,9 @@ describe('Plugin Contract Validation', () => {
     });
 
     it('should validate validateEntry method signature', async () => {
-      const { PlaywrightBotService } = await import('../../src/services/plugins/playwright-bot-service');
+      const { ElectronBotService } = await import('../../src/services/plugins/electron-bot-service');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const service: any = new PlaywrightBotService();
+      const service: any = new ElectronBotService();
       
       const mockEntry = {
         date: '01/15/2025',
@@ -359,8 +359,8 @@ describe('Plugin Contract Validation', () => {
     });
 
     it('should validate isAvailable method signature', async () => {
-      const { PlaywrightBotService } = await import('../../src/services/plugins/playwright-bot-service');
-      const service = new PlaywrightBotService();
+      const { ElectronBotService } = await import('../../src/services/plugins/electron-bot-service');
+      const service = new ElectronBotService();
       
       (service.isAvailable as unknown as import('vitest').Mock).mockResolvedValue(true);
       
@@ -481,13 +481,13 @@ describe('Plugin Contract Validation', () => {
       const [
         { SQLiteDataService },
         { MemoryDataService },
-        { PlaywrightBotService },
+        { ElectronBotService },
         { MockSubmissionService },
         { SQLiteCredentialService }
       ] = await Promise.all([
         import('../../src/services/plugins/sqlite-data-service'),
         import('../../src/services/plugins/memory-data-service'),
-        import('../../src/services/plugins/playwright-bot-service'),
+        import('../../src/services/plugins/electron-bot-service'),
         import('../../src/services/plugins/mock-submission-service'),
         import('../../src/services/plugins/sqlite-credential-service')
       ]);
@@ -495,7 +495,7 @@ describe('Plugin Contract Validation', () => {
       const plugins = [
         SQLiteDataService,
         MemoryDataService,
-        PlaywrightBotService,
+        ElectronBotService,
         MockSubmissionService,
         SQLiteCredentialService
       ];
@@ -573,9 +573,9 @@ describe('Plugin Contract Validation', () => {
     });
 
     it('should validate error messages are user-friendly', async () => {
-      const { PlaywrightBotService } = await import('../../src/services/plugins/playwright-bot-service');
+      const { ElectronBotService } = await import('../../src/services/plugins/electron-bot-service');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const service: any = new PlaywrightBotService();
+      const service: any = new ElectronBotService();
       
       (service.submit as unknown as import('vitest').Mock).mockResolvedValue({
         ok: false,

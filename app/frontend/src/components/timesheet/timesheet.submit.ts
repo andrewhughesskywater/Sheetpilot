@@ -11,17 +11,18 @@ export interface SubmitResponse {
   submitResult?: SubmitResult;
 }
 
-export async function submitTimesheet(
+async function submitTimesheet(
   token: string,
-  onRefresh?: () => Promise<void>
+  onRefresh?: () => Promise<void>,
+  useMockWebsite?: boolean
 ): Promise<SubmitResponse> {
   if (!window.timesheet?.submit) {
     window.logger?.warn('Submit not available');
     return { error: 'Timesheet API not available' };
   }
   
-  window.logger?.info('Starting timesheet submission');
-  const res = await window.timesheet.submit(token);
+  window.logger?.info('Starting timesheet submission', { useMockWebsite: useMockWebsite || false });
+  const res = await window.timesheet.submit(token, useMockWebsite);
   
   if (res.error) {
     window.logger?.error('Timesheet submission failed', { error: res.error });
@@ -56,3 +57,4 @@ export async function submitTimesheet(
   return res;
 }
 
+export { submitTimesheet };

@@ -7,12 +7,22 @@
  * NOTE: These tests use mocked authentication to avoid hitting real production URLs.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { runTimesheet } from '../../../src/services/bot/src/index';
 import { createFormConfig } from '../../../src/services/bot/src/automation_config';
 
+// Mock LoginManager to fail authentication immediately to prevent timeouts
+vi.mock('../../../src/services/bot/src/authentication_flow', () => {
+  return {
+    LoginManager: class {
+      async run_login_steps() { throw new Error('Authentication failed (mock)'); }
+      async validate_login_state() { return false; }
+    }
+  };
+});
+
 describe('runTimesheet wrapper function', () => {
-  const testFormConfig = createFormConfig('https://test.forms.smartsheet.com/test', 'test-form-id');
+  const testFormConfig = createFormConfig('https://app.smartsheet.com/b/form/q1-2025-placeholder', 'q1-2025-placeholder');
 
   it('should handle empty rows array gracefully', async () => {
     const result = await runTimesheet([], 'test@example.com', 'password123', testFormConfig);

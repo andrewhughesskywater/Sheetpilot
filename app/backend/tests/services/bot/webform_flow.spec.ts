@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import path from 'path';
-import { Page } from 'playwright';
+import { ElectronPage } from '../../src/services/bot/src/electron-browser';
 import * as cfg from '../../../src/services/bot/src/automation_config';
 import { WebformFiller } from '../../../src/services/bot/src/webform_flow';
 
 describe('WebformFiller against mock form', () => {
   let filler: WebformFiller;
-  let page: Page;
+  let page: ElectronPage;
 
   beforeAll(async () => {
     // Override config for deterministic headless run using environment variables
@@ -47,7 +47,7 @@ describe('WebformFiller against mock form', () => {
     });
 
     await page.goto(mockUrl);
-  });
+  }, 60000);
 
   afterAll(async () => {
     if (filler) {

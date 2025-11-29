@@ -79,7 +79,7 @@
           // Show success banner to simulate real Smartsheet behavior
           successBanner.style.display = 'block';
         } catch (e) {
-          // Ignore network errors here; Playwright will route and fulfill this request in tests
+          // Ignore network errors here; Electron BrowserWindow will handle this request in tests
           // Still show success banner since route.fulfill() will handle the response
           successBanner.style.display = 'block';
         }

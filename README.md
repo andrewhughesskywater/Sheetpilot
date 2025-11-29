@@ -10,7 +10,7 @@ Sheetpilot is a time-tracking application that combines a modern Electron UI wit
 
 - **Timesheet Grid Interface**: Intuitive grid-based interface for entering time entries with dynamic height and proper scrolling
 - **Database Storage**: SQLite-based storage for timesheet data
-- **Automated Submission**: Playwright-powered bot for automated timesheet submission
+- **Automated Submission**: Electron BrowserWindow-powered bot for automated timesheet submission
 - **Database Viewer**: Built-in viewer for managing stored timesheet data
 - **Auto-Updates**: Built-in auto-update functionality for seamless application updates
 - **Modern UI**: React-based frontend with responsive design
@@ -27,7 +27,7 @@ For detailed information about recent fixes, see [TIMESHEET_FIXES_DOCUMENTATION.
 
 - **Frontend**: React + TypeScript + Vite
 - **Backend**: Electron + Node.js + TypeScript
-- **Automation**: Playwright
+- **Automation**: Electron BrowserWindow (native Chromium)
 - **Database**: SQLite
 - **Testing**: Vitest
 

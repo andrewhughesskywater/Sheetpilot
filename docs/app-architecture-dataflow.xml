@@ -382,18 +382,18 @@
 
   <!-- ==================== SUBMISSION FLOWS ==================== -->
   <flow-category name="timesheet-submission" description="Automated timesheet submission via browser automation">
-    <summary>Main submission flow coordinates browser automation via Playwright. Entries grouped by quarter, marked as 'in_progress' during submission to prevent conflicts. Successful entries marked 'Complete' with timestamp, failed entries revert to pending. Global isSubmissionInProgress flag prevents concurrent submissions. PlaywrightBotService handles authentication and form filling.</summary>
-    <keywords>submission, automation, Playwright, bot, webform, authentication flow, quarter routing, StatusButton, timesheet-importer, concurrency protection</keywords>
+    <summary>Main submission flow coordinates browser automation via Electron BrowserWindow. Entries grouped by quarter, marked as 'in_progress' during submission to prevent conflicts. Successful entries marked 'Complete' with timestamp, failed entries revert to pending. Global isSubmissionInProgress flag prevents concurrent submissions. ElectronBotService handles authentication and form filling.</summary>
+    <keywords>submission, automation, Electron BrowserWindow, bot, webform, authentication flow, quarter routing, StatusButton, timesheet-importer, concurrency protection</keywords>
     
     <flow name="submit-timesheets">
       <description>Submit all pending timesheet entries to web form via browser automation</description>
       <trigger>User clicks Submit button in StatusButton component</trigger>
-      <keywords>submit, browser automation, Playwright, bot orchestration, authentication flow, webform flow, quarter config, credentials, progress callback</keywords>
+      <keywords>submit, browser automation, Electron BrowserWindow, bot orchestration, authentication flow, webform flow, quarter config, credentials, progress callback</keywords>
       <related-files>
         <file>frontend/components/StatusButton.tsx</file>
         <file>backend/src/main.ts</file>
         <file>backend/src/services/timesheet-importer.ts</file>
-        <file>backend/src/services/plugins/playwright-bot-service.ts</file>
+        <file>backend/src/services/plugins/electron-bot-service.ts</file>
         <file>backend/src/services/bot/src/bot_orchestation.ts</file>
         <file>backend/src/services/bot/src/authentication_flow.ts</file>
         <file>backend/src/services/bot/src/webform_flow.ts</file>
@@ -446,9 +446,9 @@
         </step>
         <step order="10" component="backend/src/services/timesheet-importer.ts">
           <action>Resolve submission service from plugin registry</action>
-          <logic>getSubmissionService() → PlaywrightBotService (or MockSubmissionService)</logic>
+          <logic>getSubmissionService() → ElectronBotService (or MockSubmissionService)</logic>
         </step>
-        <step order="11" component="backend/src/services/plugins/playwright-bot-service.ts">
+        <step order="11" component="backend/src/services/plugins/electron-bot-service.ts">
           <action>Plugin's submit() method called with entries and credentials</action>
         </step>
         <step order="12" component="backend/src/services/bot/src/bot_orchestation.ts">
@@ -456,7 +456,7 @@
           <logic>Determine which quarter each entry belongs to using quarter_config</logic>
         </step>
         <step order="13" component="backend/src/services/bot/src/bot_orchestation.ts">
-          <action>Launch Playwright browser instance</action>
+          <action>Launch Electron BrowserWindow instance</action>
           <config>Headless mode, bundled Chromium</config>
         </step>
         <step order="14" component="backend/src/services/bot/src/authentication_flow.ts">
@@ -671,7 +671,7 @@
         <file>shared/plugin-config.ts</file>
         <file>backend/src/services/plugins/sqlite-data-service.ts</file>
         <file>backend/src/services/plugins/sqlite-credential-service.ts</file>
-        <file>backend/src/services/plugins/playwright-bot-service.ts</file>
+        <file>backend/src/services/plugins/electron-bot-service.ts</file>
         <file>backend/src/services/plugins/mock-submission-service.ts</file>
       </related-files>
       <related-flows>
@@ -692,7 +692,7 @@
               "plugins": {
                 "data": { "active": "sqlite" },
                 "credentials": { "active": "sqlite" },
-                "submission": { "active": "playwright" }
+                "submission": { "active": "electron" }
               }
             }
           </data>
@@ -713,7 +713,7 @@
         <step order="6" component="backend/src/middleware/bootstrap-plugins.ts">
           <action>Register submission service plugins</action>
           <logic>
-            registry.registerPlugin('submission', 'playwright', new PlaywrightBotService())
+            registry.registerPlugin('submission', 'electron', new ElectronBotService())
             registry.registerPlugin('submission', 'mock', new MockSubmissionService())
           </logic>
         </step>
@@ -747,11 +747,11 @@
         </step>
         <step order="3" component="shared/plugin-registry.ts">
           <action>Look up active plugin name for 'submission' namespace</action>
-          <logic>activePlugins.get('submission') → 'playwright'</logic>
+          <logic>activePlugins.get('submission') → 'electron'</logic>
         </step>
         <step order="4" component="shared/plugin-registry.ts">
           <action>Retrieve plugin implementation by namespace and name</action>
-          <logic>plugins.get('submission').get('playwright') → PlaywrightBotService instance</logic>
+          <logic>plugins.get('submission').get('electron') → ElectronBotService instance</logic>
         </step>
         <step order="5" component="backend/src/services/timesheet-importer.ts">
           <action>Use returned plugin to perform operation</action>
@@ -777,7 +777,7 @@
         <step order="1" component="plugin-config.json">
           <action>Update active plugin in configuration file</action>
           <change>
-            Before: "submission": { "active": "playwright" }
+            Before: "submission": { "active": "electron" }
             After: "submission": { "active": "mock" }
           </change>
         </step>

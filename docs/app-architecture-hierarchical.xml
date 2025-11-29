@@ -9,7 +9,7 @@
 
   <!-- ==================== BACKEND LAYER ==================== -->
   <layer name="backend" type="electron-main" description="Electron main process - handles system operations, database, IPC, and business logic">
-    <keywords>backend, Electron main process, Node.js, IPC handlers, database, services, business logic, automation, SQLite, Playwright, bot</keywords>
+    <keywords>backend, Electron main process, Node.js, IPC handlers, database, services, business logic, automation, SQLite, BrowserWindow, bot</keywords>
     
     <!-- Entry Points -->
     <module name="entry-points" description="Application initialization and bootstrap">
@@ -158,7 +158,7 @@
 
     <!-- Services -->
     <module name="services" description="Business logic and external integrations">
-      <keywords>services, business logic, database, timesheet-importer, plugins, bot automation, Playwright</keywords>
+      <keywords>services, business logic, database, timesheet-importer, plugins, bot automation, Electron BrowserWindow</keywords>
       <file path="app/backend/src/services/database.ts">
         <purpose>Central database management module providing SQLite connection, schema management, and all database operations</purpose>
         <search-keywords>database, SQLite, better-sqlite3, singleton connection, schema, ensureSchema, storeCredentials, getCredentials, createSession, validateSession, CRUD operations</search-keywords>
@@ -234,7 +234,7 @@
       </file>
 
       <module name="plugins" description="Plugin implementations for data, credentials, and submission services">
-        <keywords>plugins, IDataService, ICredentialService, ISubmissionService, SQLite, Playwright, mock service</keywords>
+        <keywords>plugins, IDataService, ICredentialService, ISubmissionService, SQLite, Electron BrowserWindow, mock service</keywords>
         <file path="app/backend/src/services/plugins/sqlite-data-service.ts">
           <purpose>SQLite implementation of IDataService contract for timesheet data persistence</purpose>
           <implements>IDataService from shared/contracts</implements>
@@ -250,12 +250,12 @@
           <implements>ICredentialService from shared/contracts</implements>
         </file>
 
-        <file path="app/backend/src/services/plugins/playwright-bot-service.ts">
-          <purpose>Playwright-based browser automation implementation of ISubmissionService</purpose>
+        <file path="app/backend/src/services/plugins/electron-bot-service.ts">
+          <purpose>Electron BrowserWindow-based browser automation implementation of ISubmissionService</purpose>
           <implements>ISubmissionService from shared/contracts</implements>
-          <search-keywords>PlaywrightBotService, browser automation, Playwright, headless browser, bot service, submission plugin, ISubmissionService</search-keywords>
+          <search-keywords>ElectronBotService, browser automation, Electron BrowserWindow, headless browser, bot service, submission plugin, ISubmissionService</search-keywords>
           <responsibilities>
-            <item>Launch headless browser via Playwright</item>
+            <item>Launch headless browser via Electron BrowserWindow</item>
             <item>Navigate to timesheet web forms</item>
             <item>Authenticate with provided credentials</item>
             <item>Fill and submit timesheet data</item>
@@ -271,7 +271,7 @@
       </module>
 
       <module name="bot" description="Browser automation bot implementation">
-        <keywords>bot, browser automation, Playwright, webform, authentication, quarter routing</keywords>
+        <keywords>bot, browser automation, Electron BrowserWindow, webform, authentication, quarter routing</keywords>
         <file path="app/backend/src/services/bot/src/bot_orchestation.ts">
           <purpose>Orchestrates the entire browser automation workflow for timesheet submission</purpose>
           <search-keywords>bot orchestration, workflow coordinator, browser launch, quarter grouping, authentication flow, webform flow, progress reporting</search-keywords>
@@ -371,7 +371,7 @@
           <item>Load plugin configuration from plugin-config.json</item>
           <item>Register data service plugins (sqlite, memory)</item>
           <item>Register credential service plugins (sqlite)</item>
-          <item>Register submission service plugins (playwright, mock)</item>
+          <item>Register submission service plugins (electron, mock)</item>
           <item>Configure active plugins per namespace</item>
         </responsibilities>
         <key-exports>

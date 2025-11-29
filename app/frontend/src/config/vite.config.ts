@@ -64,7 +64,16 @@ export default defineConfig(({ mode }) => ({
     },
     chunkSizeWarningLimit: 800, // Increase to accommodate larger react-vendor chunk
     target: 'esnext', // Use modern ES features
-    minify: 'esbuild', // Enable fast minification for production builds
+    minify: 'terser', // Use terser for better minification
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true,
+      },
+      format: {
+        comments: false,
+      },
+    },
   },
   // Development server configuration
   server: {

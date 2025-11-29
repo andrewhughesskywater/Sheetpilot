@@ -15,7 +15,8 @@ import {
     markTimesheetEntriesAsInProgress,
     markTimesheetEntriesAsSubmitted,
     removeFailedTimesheetEntries,
-    getTimesheetEntriesByIds
+    getTimesheetEntriesByIds,
+    resetInProgressTimesheetEntries
 } from './database';
 import { botLogger } from '../../../shared/logger';
 import { getSubmissionService } from '../middleware/bootstrap-plugins';
@@ -104,7 +105,7 @@ function toTimesheetEntry(dbRow: DbRow): TimesheetEntry {
  * const result = await submitTimesheets('user@company.com', 'password123');
  * console.log(`Submitted ${result.successCount} entries, ${result.errorCount} errors`);
  */
-export async function submitTimesheets(email: string, password: string, progressCallback?: (percent: number, message: string) => void, abortSignal?: AbortSignal): Promise<SubmissionResult> {
+export async function submitTimesheets(email: string, password: string, progressCallback?: (percent: number, message: string) => void, abortSignal?: AbortSignal, useMockWebsite?: boolean): Promise<SubmissionResult> {
     const timer = botLogger.startTimer('submit-timesheets');
     botLogger.info('Starting automated timesheet submission', { email });
     
@@ -157,6 +158,13 @@ export async function submitTimesheets(email: string, password: string, progress
             hasService: !!submissionService,
             serviceName: submissionService?.metadata?.name
         });
+        // Reset entries back to NULL since we couldn't submit them
+        const remainingInProgressCount = resetInProgressTimesheetEntries();
+        if (remainingInProgressCount > 0) {
+            botLogger.info('Reset in-progress entries to NULL after service unavailable', { 
+                count: remainingInProgressCount 
+            });
+        }
         timer.done({ outcome: 'error', reason: 'service-unavailable' });
         return {
             ok: false,
@@ -178,6 +186,13 @@ export async function submitTimesheets(email: string, password: string, progress
         // Check if already aborted before starting
         if (abortSignal?.aborted) {
             botLogger.info('Submission aborted before starting');
+            // Reset entries back to NULL since we didn't start submission
+            const remainingInProgressCount = resetInProgressTimesheetEntries();
+            if (remainingInProgressCount > 0) {
+                botLogger.info('Reset in-progress entries to NULL after abort before start', { 
+                    count: remainingInProgressCount 
+                });
+            }
             timer.done({ outcome: 'aborted' });
             return {
                 ok: false,
@@ -191,7 +206,7 @@ export async function submitTimesheets(email: string, password: string, progress
         }
         
         const credentials: Credentials = { email, password };
-        const result = await submissionService.submit(entries, credentials, progressCallback, abortSignal);
+        const result = await submissionService.submit(entries, credentials, progressCallback, abortSignal, useMockWebsite);
         
         botLogger.info('Submission completed via plugin system', { 
             ok: result.ok,
@@ -260,6 +275,15 @@ export async function submitTimesheets(email: string, password: string, progress
             }
         }
         
+        // After bot finishes, reset any remaining "in_progress" entries to NULL
+        // This handles cases where no rows were successfully submitted
+        const remainingInProgressCount = resetInProgressTimesheetEntries();
+        if (remainingInProgressCount > 0) {
+            botLogger.info('Reset remaining in-progress entries to NULL after bot completion', { 
+                count: remainingInProgressCount 
+            });
+        }
+        
         timer.done({ outcome: result.ok ? 'success' : 'partial', result });
         return result;
     } catch (error) {
@@ -268,6 +292,13 @@ export async function submitTimesheets(email: string, password: string, progress
             const errorMsg = error.message.toLowerCase();
             if (error.name === 'AbortError' || errorMsg.includes('cancelled') || errorMsg.includes('aborted') || errorMsg.includes('browser has been closed')) {
                 botLogger.info('Submission was cancelled by user');
+                // Reset any remaining in-progress entries when cancelled
+                const remainingInProgressCount = resetInProgressTimesheetEntries();
+                if (remainingInProgressCount > 0) {
+                    botLogger.info('Reset remaining in-progress entries to NULL after cancellation', { 
+                        count: remainingInProgressCount 
+                    });
+                }
                 timer.done({ outcome: 'cancelled' });
                 return {
                     ok: false,
@@ -285,6 +316,14 @@ export async function submitTimesheets(email: string, password: string, progress
             error: error instanceof Error ? error.message : String(error),
             stack: error instanceof Error ? error.stack : undefined
         });
+        
+        // Reset any remaining in-progress entries when error occurs
+        const remainingInProgressCount = resetInProgressTimesheetEntries();
+        if (remainingInProgressCount > 0) {
+            botLogger.info('Reset remaining in-progress entries to NULL after error', { 
+                count: remainingInProgressCount 
+            });
+        }
         
         timer.done({ outcome: 'error', reason: 'service-error' });
         return {

@@ -416,25 +416,22 @@ describe('Dropdown Cascading Logic Unit Tests', () => {
     });
 
     it('should not have circular dependencies in tool-project relationships', () => {
-      // Verify that tools are not also projects (with exception for "Training")
-      // Note: "Training" exists as both a project and a tool in SWFL-EQUIP by design
+      // Verify that tools are not also projects (no circular dependencies)
       const allTools = Object.values(toolsByProject).flat();
-      const toolsExceptTraining = allTools.filter(tool => tool !== 'Training');
-      toolsExceptTraining.forEach(tool => {
+      allTools.forEach(tool => {
         expect(projects).not.toContain(tool);
       });
     });
 
     it('should handle hypothetical circular cascade scenario', () => {
       // Test scenario where project A → tool B → (hypothetically) project A
-      // Exception: "Training" exists as both a project and a tool by design
-      // We verify that for most tools, they are not valid project names
+      // We verify that tools are not valid project names (no circular dependencies)
       const allTools = Object.values(toolsByProject).flat();
       const uniqueTools = [...new Set(allTools)];
       const toolsThatAreProjects = uniqueTools.filter(tool => projects.includes(tool));
       
-      // Only "Training" should appear in both lists
-      expect(toolsThatAreProjects).toEqual(['Training']);
+      // No tools should also be projects (no circular dependencies)
+      expect(toolsThatAreProjects).toEqual([]);
     });
   });
 

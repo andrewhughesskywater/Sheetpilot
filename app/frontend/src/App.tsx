@@ -167,6 +167,41 @@ function AppContent() {
   useEffect(() => {
     initializeTheme();
   }, []);
+
+  // Fix accessibility warning: blur background focus when dialogs set aria-hidden on root
+  useEffect(() => {
+    const rootElement = document.getElementById('root');
+    if (!rootElement) return;
+
+    const handleAriaHiddenChange = () => {
+      const isHidden = rootElement.getAttribute('aria-hidden') === 'true';
+      if (isHidden) {
+        // Use setTimeout to ensure this runs after MUI's focus management
+        setTimeout(() => {
+          const activeElement = document.activeElement;
+          // Only blur if the focused element is a descendant of root (background content)
+          // Dialog content is rendered in a portal outside root, so it won't be affected
+          if (activeElement && rootElement.contains(activeElement) && activeElement !== document.body) {
+            (activeElement as HTMLElement).blur();
+          }
+        }, 0);
+      }
+    };
+
+    const observer = new MutationObserver(handleAriaHiddenChange);
+
+    observer.observe(rootElement, {
+      attributes: true,
+      attributeFilter: ['aria-hidden']
+    });
+
+    // Also check immediately in case aria-hidden is already set
+    handleAriaHiddenChange();
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
   
   // Listen for update events
   useEffect(() => {
@@ -218,11 +253,7 @@ function AppContent() {
           // Start transition
           setIsTransitioning(true);
           
-          // Save to database when leaving Timesheet tab
-          if (activeTab === 0 && newTab !== 0) {
-            window.logger?.info('[App] Leaving Timesheet tab, triggering batch save');
-            await timesheetGridRef.current?.batchSaveToDatabase();
-          }
+          // Note: No batch save needed - rows are saved in real-time as user edits
           
           // Wait for exit animation
           await new Promise(resolve => setTimeout(resolve, 200));

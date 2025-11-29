@@ -1,6 +1,104 @@
 import type { TimesheetRow } from './timesheet.schema';
 
 /**
+ * Save a single row to the database and return the saved entry
+ */
+export async function saveRowToDatabase(
+  row: TimesheetRow
+): Promise<{ success: boolean; entry?: TimesheetRow; error?: string }> {
+  if (!window.timesheet?.saveDraft) {
+    window.logger?.warn('Save row skipped - timesheet API not available');
+    return { success: false, error: 'Timesheet API not available' };
+  }
+  
+  try {
+    // Validate row has required fields before saving
+    if (!row.date || !row.timeIn || !row.timeOut || !row.project || !row.taskDescription) {
+      window.logger?.debug('Skipping save - row incomplete', { 
+        hasDate: !!row.date,
+        hasTimeIn: !!row.timeIn,
+        hasTimeOut: !!row.timeOut,
+        hasProject: !!row.project,
+        hasTaskDescription: !!row.taskDescription
+      });
+      return { success: false, error: 'Row is incomplete' };
+    }
+    
+    const result = await window.timesheet.saveDraft({
+      id: row.id,
+      date: row.date,
+      timeIn: row.timeIn,
+      timeOut: row.timeOut,
+      project: row.project,
+      tool: row.tool ?? null,
+      chargeCode: row.chargeCode ?? null,
+      taskDescription: row.taskDescription
+    });
+    
+    if (result.success && result.entry) {
+      window.logger?.verbose('Row saved to database successfully', { 
+        id: result.entry.id,
+        date: result.entry.date 
+      });
+      return { success: true, entry: result.entry };
+    } else {
+      window.logger?.warn('Could not save row to database', { 
+        error: result.error,
+        date: row.date,
+        project: row.project
+      });
+      return { success: false, error: result.error || 'Unknown error' };
+    }
+  } catch (error) {
+    window.logger?.error('Encountered error saving row to database', { 
+      date: row.date,
+      project: row.project,
+      error: error instanceof Error ? error.message : String(error) 
+    });
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : String(error) 
+    };
+  }
+}
+
+/**
+ * Load a single row from the database by ID
+ */
+export async function loadRowFromDatabase(
+  id: number
+): Promise<{ success: boolean; entry?: TimesheetRow; error?: string }> {
+  if (!window.timesheet?.loadDraftById) {
+    window.logger?.warn('Load row skipped - timesheet API not available');
+    return { success: false, error: 'Timesheet API not available' };
+  }
+  
+  try {
+    const result = await window.timesheet.loadDraftById(id);
+    
+    if (result.success && result.entry) {
+      window.logger?.verbose('Row loaded from database successfully', { id });
+      return { success: true, entry: result.entry };
+    } else {
+      window.logger?.warn('Could not load row from database', { 
+        id,
+        error: result.error 
+      });
+      return { success: false, error: result.error || 'Entry not found' };
+    }
+  } catch (error) {
+    window.logger?.error('Encountered error loading row from database', { 
+      id,
+      error: error instanceof Error ? error.message : String(error) 
+    });
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : String(error) 
+    };
+  }
+}
+
+/**
  * Save a local backup of timesheet data to localStorage
  */
 export function saveLocalBackup(data: TimesheetRow[]): void {

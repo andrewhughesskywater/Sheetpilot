@@ -13,7 +13,7 @@
  * This should match the version in package.json
  * Updated: 2025-11-04
  */
-export const APP_VERSION = '1.5.0';
+export const APP_VERSION = '1.5.1';
 
 /**
  * Application name

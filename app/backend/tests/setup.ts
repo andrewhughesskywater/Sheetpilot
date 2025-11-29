@@ -58,7 +58,7 @@ vi.mock('better-sqlite3', async () => {
   };
 });
 
-// Mock Playwright to prevent browser automation in tests
+// Mock Electron browser automation to prevent actual browser windows in tests
 // Creates consistent mock objects that support proper lifecycle management
 
 // Helper to create a mock locator
@@ -67,26 +67,49 @@ function createMockLocator() {
     fill: vi.fn(() => Promise.resolve()),
     click: vi.fn(() => Promise.resolve()),
     type: vi.fn(() => Promise.resolve()),
+    press: vi.fn(() => Promise.resolve()),
     waitFor: vi.fn(() => Promise.resolve()),
     isVisible: vi.fn(() => Promise.resolve(true)),
+    isEnabled: vi.fn(() => Promise.resolve(true)),
+    count: vi.fn(() => Promise.resolve(1)),
+    getAttribute: vi.fn(() => Promise.resolve(null)),
+    textContent: vi.fn(() => Promise.resolve(null)),
+    evaluate: vi.fn(() => Promise.resolve({})),
+    boundingBox: vi.fn(() => Promise.resolve(null)),
     first: vi.fn(function() { return this; }),
-    nth: vi.fn(function() { return this; })
+    nth: vi.fn(function() { return this; }),
+    locator: vi.fn(function() { return this; })
   };
 }
 
 // Helper to create a mock page
 function createMockPage() {
+  let currentUrl = 'http://localhost';
   const mockPage = {
-    goto: vi.fn(() => Promise.resolve({ url: () => 'http://localhost' })),
-    fill: vi.fn(() => Promise.resolve()),
-    click: vi.fn(() => Promise.resolve()),
-    waitForSelector: vi.fn(() => Promise.resolve(createMockLocator())),
+    goto: vi.fn((url) => {
+      currentUrl = url;
+      return Promise.resolve();
+    }),
+    url: vi.fn(() => currentUrl),
+    route: vi.fn(() => Promise.resolve()), // Add route for interception
     locator: vi.fn(() => createMockLocator()),
-    url: vi.fn(() => 'http://localhost'),
-    evaluate: vi.fn(() => Promise.resolve({})),
+    executeJavaScript: vi.fn(() => Promise.resolve({})),
+    waitForLoadState: vi.fn(() => Promise.resolve()),
+    waitForSelector: vi.fn(() => Promise.resolve()),
+    waitForTimeout: vi.fn(() => Promise.resolve()),
     on: vi.fn(),
     off: vi.fn(),
-    close: vi.fn(() => Promise.resolve())
+    getWebContents: vi.fn(() => ({
+      loadURL: vi.fn(),
+      getURL: vi.fn(() => 'http://localhost'),
+      executeJavaScript: vi.fn(() => Promise.resolve({})),
+      session: {
+        webRequest: {
+          onCompleted: vi.fn(),
+          onBeforeSendHeaders: vi.fn()
+        }
+      }
+    }))
   };
   return mockPage;
 }
@@ -96,10 +119,12 @@ function createMockContext(page: ReturnType<typeof createMockPage>) {
   return {
     newPage: vi.fn(() => Promise.resolve(page)),
     close: vi.fn(() => Promise.resolve()),
-    pages: vi.fn(() => [page]),
     addInitScript: vi.fn(() => Promise.resolve()),
-    route: vi.fn(() => Promise.resolve()),
-    unroute: vi.fn(() => Promise.resolve())
+    getBrowserWindow: vi.fn(() => ({
+      webContents: page.getWebContents(),
+      close: vi.fn(),
+      isDestroyed: vi.fn(() => false)
+    }))
   };
 }
 
@@ -110,18 +135,21 @@ function createMockBrowser() {
   
   return {
     newContext: vi.fn(() => Promise.resolve(mockContext)),
-    newPage: vi.fn(() => Promise.resolve(mockPage)),
-    contexts: vi.fn(() => [mockContext]),
     close: vi.fn(() => Promise.resolve()),
-    isConnected: vi.fn(() => true),
-    version: vi.fn(() => '1.0.0')
+    getContexts: vi.fn(() => [mockContext])
   };
 }
 
-vi.mock('playwright', () => ({
-  chromium: {
+vi.mock('../src/services/bot/src/electron-browser', () => ({
+  ElectronBrowser: {
     launch: vi.fn(() => Promise.resolve(createMockBrowser()))
-  }
+  },
+  chromium: vi.fn(() => ({
+    launch: vi.fn(() => Promise.resolve(createMockBrowser()))
+  })),
+  ElectronBrowserContext: vi.fn(),
+  ElectronPage: vi.fn(),
+  ElectronLocator: vi.fn()
 }));
 
 // Mock Electron to provide app.isPackaged and other required APIs
@@ -168,6 +196,10 @@ afterEach(async () => {
   } catch {
     // Ignore if reset fails
   }
+  
+  // Restore all mocks to prevent pollution between test files
+  vi.restoreAllMocks();
+  
   // Browser mocks are created fresh for each test instance
 });
 

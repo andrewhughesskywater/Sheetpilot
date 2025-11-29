@@ -646,7 +646,7 @@ SheetPilot includes numerous keyboard shortcuts for efficient data entry.
 
 ### Antivirus Compatibility
 
-SheetPilot uses browser automation (Playwright) which some antivirus software may flag as suspicious behavior.
+SheetPilot uses browser automation (Electron BrowserWindow) which some antivirus software may flag as suspicious behavior.
 
 #### Known Issues
 
@@ -910,7 +910,7 @@ For specific security questions or concerns, contact your IT security team.
 **Version:** 1.3.6  
 **Platform:** Electron Desktop Application  
 **Database:** SQLite (Local Storage)  
-**Integration:** SmartSheet (via Playwright Browser Automation)  
+**Integration:** SmartSheet (via Electron BrowserWindow Automation)  
 **Creator:** Andrew Hughes  
 **Purpose:** Automate timesheet data entry into SmartSheet web forms
 
@@ -921,7 +921,7 @@ For specific security questions or concerns, contact your IT security team.
 - Frontend: React + TypeScript + Vite
 - Backend: Electron + Node.js
 - Database: SQLite (better-sqlite3)
-- Automation: Playwright
+- Automation: Electron BrowserWindow (native Chromium)
 - Grid: Handsontable 16.1.1
 - Design: Material Design 3
 - Updates: electron-updater

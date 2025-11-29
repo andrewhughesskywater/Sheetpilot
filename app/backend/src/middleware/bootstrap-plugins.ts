@@ -14,7 +14,7 @@ import { loadPluginConfig } from '../../../shared/plugin-config';
 import { SQLiteDataService } from '../services/plugins/sqlite-data-service';
 import { MemoryDataService } from '../services/plugins/memory-data-service';
 import { SQLiteCredentialService } from '../services/plugins/sqlite-credential-service';
-import { PlaywrightBotService } from '../services/plugins/playwright-bot-service';
+import { ElectronBotService } from '../services/plugins/electron-bot-service';
 import { MockSubmissionService } from '../services/plugins/mock-submission-service';
 import { appLogger } from '../../../shared/logger';
 import * as path from 'path';
@@ -38,7 +38,7 @@ export function registerDefaultPlugins(): void {
   registry.registerPlugin('credentials', 'sqlite', new SQLiteCredentialService());
   
   // Register submission services
-  registry.registerPlugin('submission', 'playwright', new PlaywrightBotService());
+  registry.registerPlugin('submission', 'electron', new ElectronBotService());
   registry.registerPlugin('submission', 'mock', new MockSubmissionService());
   
   appLogger.info('Default plugins registered successfully');

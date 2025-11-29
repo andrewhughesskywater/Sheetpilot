@@ -124,7 +124,8 @@ vi.mock('../src/services/database', () => {
     getCredentials: vi.fn(() => null),
     listCredentials: vi.fn(() => []),
     deleteCredentials: vi.fn(),
-    openDb: vi.fn(() => mockDb)
+    openDb: vi.fn(() => mockDb),
+    getPendingTimesheetEntries: vi.fn(() => []) // Added missing export
   };
 });
 
@@ -160,7 +161,7 @@ vi.mock('../../shared/logger', () => {
 });
 
 // Import main.ts AFTER mocks so its side-effects (handler registration) use our stubs
-import { registerIPCHandlers } from '../src/main';
+import { registerAllIPCHandlers } from '../src/ipc/index';
 
 // Re-get typed references to mocked modules for assertions
 import * as db from '../src/services/database';
@@ -183,7 +184,7 @@ describe('Electron IPC Handlers (main.ts)', () => {
 
   beforeAll(() => {
     // Manually call registerIPCHandlers to set up handlers for testing
-    registerIPCHandlers();
+    registerAllIPCHandlers(null);
   });
 
   it('timesheet:submit returns error if credentials missing', async () => {
@@ -198,9 +199,21 @@ describe('Electron IPC Handlers (main.ts)', () => {
     
     const res = await handlers['timesheet:submit']('valid-token');
     
+    // DEBUG: Print response if error
+    if (res && typeof res === 'object' && 'error' in res) {
+      console.log('DEBUG: Handler error:', (res as { error: string }).error);
+    }
+
     // Verify the handler was called and returned proper structure
     expect(res).toBeDefined();
-    expect(mimps.submitTimesheets).toHaveBeenCalledWith('user@test', 'pw');
+    
+    // Expect 4 arguments: email, password, progressCallback, abortSignal
+    expect(mimps.submitTimesheets).toHaveBeenCalledWith(
+      'user@test', 
+      'pw',
+      expect.any(Function),
+      expect.anything() // AbortSignal
+    );
     expect(res.submitResult).toBeDefined();
     expect(res.submitResult?.ok).toBe(true);
   });
