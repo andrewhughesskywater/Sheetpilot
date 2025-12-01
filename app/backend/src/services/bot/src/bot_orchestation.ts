@@ -129,7 +129,7 @@ export class BotOrchestrator {
 
   /**
    * Gets the current browser page instance
-   * @returns Electron Page object
+   * @returns Playwright Page object
    * @throws BotNotStartedError if browser is not started
    */
   require_page() { return this.webform_filler.require_page(); }
@@ -137,7 +137,7 @@ export class BotOrchestrator {
   /**
    * Waits for an element to become visible and returns its locator
    * @param sel - CSS selector for the element to wait for
-   * @returns Promise resolving to Electron Locator object
+   * @returns Promise resolving to Playwright Locator object
    * @throws Error if element doesn't become visible within timeout
    */
   async wait_visible(sel: string) {

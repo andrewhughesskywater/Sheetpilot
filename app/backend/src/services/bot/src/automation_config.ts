@@ -104,8 +104,7 @@ export function getBrowserHeadless(): boolean {
  */
 export const BROWSER_HEADLESS: boolean = getBrowserHeadless();
 /** Specific browser channel to use (e.g., 'chrome' for Chrome instead of Chromium) */
-// Use Microsoft Edge by default on Windows, or Chrome if available
-export const BROWSER_CHANNEL: string = process.env['BROWSER_CHANNEL'] ?? "msedge";
+export const BROWSER_CHANNEL: string = process.env['BROWSER_CHANNEL'] ?? "chromium";
 
 // ============================================================================
 // TIMEOUT CONFIGURATION
@@ -336,11 +335,11 @@ export const LOGIN_STEPS: LoginStep[] = [
   { name: "Continue", action: "click", locator: "#formControl", expects_navigation: true, optional: true },
   { name: "Wait for SSO Choice", action: "wait", element_selector: "a.clsJspButtonWide", wait_condition: "visible", optional: true },
   { name: "Login with company account", action: "click", locator: "a.clsJspButtonWide", expects_navigation: true, optional: true },
-  { name: "Wait for AAD Email", action: "wait", element_selector: "#i0116", wait_condition: "visible", optional: true },
-  { name: "AAD Email", action: "input", locator: "#i0116", value_key: "email", sensitive: true, optional: true },
+  { name: "Wait for AAD Email", action: "wait", element_selector: "#i0116", wait_condition: "visible" },
+  { name: "AAD Email", action: "input", locator: "#i0116", value_key: "email", sensitive: true },
   { name: "AAD Next", action: "click", locator: "#idSIButton9", expects_navigation: true, optional: true },
-  { name: "Wait for Password", action: "wait", element_selector: "#passwordInput", wait_condition: "visible", optional: true },
-  { name: "Password Input", action: "input", locator: "#passwordInput", value_key: "password", sensitive: true, optional: true },
+  { name: "Wait for Password", action: "wait", element_selector: "#passwordInput", wait_condition: "visible" },
+  { name: "Password Input", action: "input", locator: "#passwordInput", value_key: "password", sensitive: true },
   { name: "Password Submit", action: "click", locator: "#submitButton", expects_navigation: true, optional: true },
   { name: "Stay Signed In Prompt", action: "wait", element_selector: "#idBtn_Back", wait_condition: "visible", optional: true },
   { name: "Stay Signed In — No", action: "click", locator: "#idBtn_Back", expects_navigation: true, optional: true },
@@ -467,7 +466,7 @@ export async function sleep(ms: number): Promise<void> {
   /**
    * Waits for an element to reach the specified state using dynamic wait
    * 
-   * @param page - Electron Page instance
+   * @param page - Playwright Page instance
    * @param selector - CSS selector for the element
    * @param state - Desired state of the element (visible, hidden, attached)
    * @param base_timeout - Initial timeout in seconds
@@ -476,7 +475,7 @@ export async function sleep(ms: number): Promise<void> {
    * @returns Promise resolving to true if element reaches state, false if timeout
    */
   export async function dynamic_wait_for_element(
-    page: import('./electron-browser').ElectronPage,
+    page: import('playwright').Page,
     selector: string,
     state: 'visible' | 'hidden' | 'attached' = 'visible',
     base_timeout = DYNAMIC_WAIT_BASE_TIMEOUT,
@@ -502,14 +501,14 @@ export async function sleep(ms: number): Promise<void> {
   /**
    * Waits for a page to finish loading using dynamic wait
    * 
-   * @param page - Electron Page instance
+   * @param page - Playwright Page instance
    * @param base_timeout - Initial timeout in seconds
    * @param max_timeout - Maximum total timeout in seconds
    * @param _operation_name - Name of operation for logging (unused)
    * @returns Promise resolving to true if page loads, false if timeout
    */
   export async function dynamic_wait_for_page_load(
-    page: import('./electron-browser').ElectronPage,
+    page: import('playwright').Page,
     base_timeout = DYNAMIC_WAIT_BASE_TIMEOUT,
     max_timeout = DYNAMIC_WAIT_MAX_TIMEOUT,
     _operation_name = 'page load',
@@ -527,14 +526,14 @@ export async function sleep(ms: number): Promise<void> {
   /**
    * Waits for network activity to become idle using dynamic wait
    * 
-   * @param page - Electron Page instance
+   * @param page - Playwright Page instance
    * @param base_timeout - Initial timeout in seconds
    * @param max_timeout - Maximum total timeout in seconds
    * @param _operation_name - Name of operation for logging (unused)
    * @returns Promise resolving to true if network becomes idle, false if timeout
    */
   export async function dynamic_wait_for_network_idle(
-    page: import('./electron-browser').ElectronPage,
+    page: import('playwright').Page,
     base_timeout = DYNAMIC_WAIT_BASE_TIMEOUT,
     max_timeout = DYNAMIC_WAIT_MAX_TIMEOUT,
     _operation_name = 'network idle',
@@ -542,7 +541,7 @@ export async function sleep(ms: number): Promise<void> {
     return dynamic_wait(async () => {
       try {
         // Heuristic approach: wait for network to become idle
-        // Note: Electron BrowserWindow uses network idle detection
+        // Note: Playwright lacks a direct performance API in Node.js
         // This is a minimal implementation that can be replaced with
         // page.waitForLoadState('networkidle') if more robust behavior is needed
         await page.waitForLoadState('networkidle', { timeout: base_timeout * 1000 }).catch(() => {});
@@ -554,7 +553,7 @@ export async function sleep(ms: number): Promise<void> {
   /**
    * Wait for DOM element to appear and become stable, with fallback to proceed if no activity
    * 
-   * @param page - Electron Page instance
+   * @param page - Playwright Page instance
    * @param selector - CSS selector to wait for
    * @param state - Element state to wait for ('visible', 'hidden', 'attached', 'detached')
    * @param base_timeout - Initial timeout in seconds
@@ -563,7 +562,7 @@ export async function sleep(ms: number): Promise<void> {
    * @returns Promise resolving to true if element becomes stable or if no activity detected
    */
   export async function wait_for_dom_stability(
-    page: import('./electron-browser').ElectronPage,
+    page: import('playwright').Page,
     selector: string,
     state: 'visible' | 'hidden' | 'attached' | 'detached' = 'visible',
     base_timeout = DYNAMIC_WAIT_BASE_TIMEOUT,
@@ -575,30 +574,26 @@ export async function sleep(ms: number): Promise<void> {
         const element = page.locator(selector);
         
         // Quick check if element exists and is in desired state
-        const isInState = await element.evaluate((el: unknown) => {
+        const isInState = await element.evaluate((el: unknown, targetState: string) => {
           if (!el) return false;
           const domElement = el as { offsetWidth: number; offsetHeight: number; parentNode: unknown | null }; // DOM element in browser context
           
-          // Use Electron's element state checking via executeJavaScript
-          // Note: state is checked via isVisible() method instead
-          return domElement.offsetWidth > 0 && domElement.offsetHeight > 0;
-        }).catch(() => false);
+          // Use Playwright's built-in element state checking instead of DOM APIs
+          switch (targetState) {
+            case 'visible': 
+              return domElement.offsetWidth > 0 && domElement.offsetHeight > 0;
+            case 'hidden': 
+              return domElement.offsetWidth === 0 || domElement.offsetHeight === 0;
+            case 'attached': 
+              return domElement.parentNode !== null;
+            case 'detached': 
+              return domElement.parentNode === null;
+            default: 
+              return domElement.offsetWidth > 0 && domElement.offsetHeight > 0;
+          }
+        }, state).catch(() => false);
         
-        // Check state-specific conditions
-        let stateMatches = false;
-        if (state === 'visible') {
-          stateMatches = isInState === true;
-        } else if (state === 'hidden') {
-          stateMatches = isInState === false;
-        } else if (state === 'attached') {
-          stateMatches = isInState !== false; // If element exists, it's attached
-        } else if (state === 'detached') {
-          stateMatches = isInState === false;
-        } else {
-          stateMatches = isInState === true;
-        }
-        
-        if (stateMatches) {
+        if (isInState) {
           // Element is already in desired state, check for stability
           const initialRect = await element.boundingBox().catch(() => null);
           if (initialRect) {
@@ -631,14 +626,14 @@ export async function sleep(ms: number): Promise<void> {
   /**
    * Wait for dropdown options to populate, with fallback to proceed if no options found
    * 
-   * @param page - Electron Page instance
+   * @param page - Playwright Page instance
    * @param dropdownSelector - CSS selector for the dropdown
    * @param base_timeout - Initial timeout in seconds
    * @param max_timeout - Maximum total timeout in seconds
    * @returns Promise resolving to true if options appear or if no activity detected
    */
   export async function wait_for_dropdown_options(
-    page: import('./electron-browser').ElectronPage,
+    page: import('playwright').Page,
     dropdownSelector: string,
     base_timeout = DYNAMIC_WAIT_BASE_TIMEOUT,
     max_timeout = DYNAMIC_WAIT_MAX_TIMEOUT
@@ -688,14 +683,14 @@ export async function sleep(ms: number): Promise<void> {
   /**
    * Wait for form validation state to stabilize, with fallback to proceed if no validation activity
    * 
-   * @param page - Electron Page instance
+   * @param page - Playwright Page instance
    * @param fieldSelector - CSS selector for the field to check
    * @param base_timeout - Initial timeout in seconds
    * @param max_timeout - Maximum total timeout in seconds
    * @returns Promise resolving to true if validation stabilizes or if no activity detected
    */
   export async function wait_for_validation_stability(
-    page: import('./electron-browser').ElectronPage,
+    page: import('playwright').Page,
     fieldSelector: string,
     base_timeout = DYNAMIC_WAIT_BASE_TIMEOUT,
     max_timeout = DYNAMIC_WAIT_MAX_TIMEOUT
@@ -760,13 +755,13 @@ export async function sleep(ms: number): Promise<void> {
   /**
    * Wait for network activity to complete after form submission
    * 
-   * @param page - Electron Page instance
+   * @param page - Playwright Page instance
    * @param base_timeout - Initial timeout in seconds
    * @param max_timeout - Maximum total timeout in seconds
    * @returns Promise resolving to true if network becomes idle, false if timeout
    */
   export async function wait_for_submission_network_idle(
-    page: import('./electron-browser').ElectronPage,
+    page: import('playwright').Page,
     base_timeout = DYNAMIC_WAIT_BASE_TIMEOUT,
     max_timeout = DYNAMIC_WAIT_MAX_TIMEOUT
   ): Promise<boolean> {
@@ -807,7 +802,7 @@ export async function sleep(ms: number): Promise<void> {
    * Smart wait that proceeds if no DOM activity is detected
    * This prevents the bot from hanging when DOM doesn't respond as expected
    * 
-   * @param page - Electron Page instance
+   * @param page - Playwright Page instance
    * @param condition_func - Function that returns true when condition is met
    * @param max_wait_time - Maximum time to wait in seconds
    * @param check_interval - How often to check for activity in milliseconds
@@ -815,7 +810,7 @@ export async function sleep(ms: number): Promise<void> {
    * @returns Promise resolving to true if condition met or if no activity detected
    */
   export async function smart_wait_or_proceed(
-    page: import('./electron-browser').ElectronPage,
+    page: import('playwright').Page,
     condition_func: () => boolean | Promise<boolean>,
     max_wait_time = 1.0,
     check_interval = 100,

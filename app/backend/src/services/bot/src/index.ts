@@ -121,7 +121,7 @@ export async function runTimesheet(
           errors: [[0, 'Automation was cancelled']]
         };
       }
-      // Check for Electron browser closure errors
+      // Check for Playwright browser closure errors
       if (errorMsg.includes('browser has been closed') || errorMsg.includes('target closed')) {
         botLogger.info('Browser was closed during automation');
         return {
