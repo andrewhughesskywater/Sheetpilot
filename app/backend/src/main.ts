@@ -126,6 +126,20 @@ if (process.env['VITEST'] === 'true') {
 // This allows users to enter historical data from any quarter
 // Helper functions parseTimeToMinutes and formatMinutesToTime have been moved to IPC handlers
 
+// Configure Electron for optimal rendering performance
+// These must be set before app.whenReady()
+app.commandLine.appendSwitch('enable-gpu-rasterization');
+app.commandLine.appendSwitch('enable-zero-copy');
+app.commandLine.appendSwitch('enable-features', 'VaapiVideoDecoder');
+app.commandLine.appendSwitch('ignore-gpu-blacklist');
+app.commandLine.appendSwitch('enable-accelerated-2d-canvas');
+app.commandLine.appendSwitch('enable-accelerated-video-decode');
+app.commandLine.appendSwitch('enable-native-gpu-memory-buffers');
+// Disable background throttling for automation browser windows
+app.commandLine.appendSwitch('disable-background-timer-throttling');
+app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
+app.commandLine.appendSwitch('disable-renderer-backgrounding');
+
 let mainWindow: BrowserWindow | null = null;
 
 // Note: splashWindow has been removed - splash functionality moved to renderer

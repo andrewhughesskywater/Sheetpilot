@@ -46,16 +46,35 @@ const MacroManagerDialog = ({ open, onClose, onSave }: MacroManagerDialogProps) 
   useEffect(() => {
     if (open) {
       const loaded = loadMacros();
-      // Use setTimeout to defer setState to avoid sync setState in effect
-      setTimeout(() => {
-        setMacroData(loaded);
-        // Refresh the table after data load to ensure correct rendering
-        if (hotTableRef.current?.hotInstance) {
-          hotTableRef.current.hotInstance.render();
-        }
-      }, 0);
+      // Ensure we always have 5 rows
+      const filledMacros = Array(5).fill(null).map((_, idx) => loaded[idx] || {
+        name: '',
+        timeIn: '',
+        timeOut: '',
+        project: '',
+        tool: null,
+        chargeCode: null,
+        taskDescription: ''
+      });
+      setMacroData(filledMacros);
     }
   }, [open]);
+
+  // Initialize table after dialog is fully opened and data is loaded
+  useEffect(() => {
+    if (!open || macroData.length === 0) return;
+    
+    const timer = setTimeout(() => {
+      const hotInstance = hotTableRef.current?.hotInstance;
+      if (hotInstance) {
+        // Load data and force a render
+        hotInstance.loadData(macroData);
+        hotInstance.render();
+      }
+    }, 200);
+    
+    return () => clearTimeout(timer);
+  }, [open, macroData]);
 
   const handleSave = () => {
     // Get the latest data from Handsontable to ensure we have all edits
@@ -250,16 +269,24 @@ const MacroManagerDialog = ({ open, onClose, onSave }: MacroManagerDialogProps) 
           </Typography>
         </Box>
         
-        <Box sx={{ flexGrow: 1, width: '100%', overflow: 'hidden', p: 1 }}>
-           <HotTable
+        <Box sx={{ flexGrow: 1, width: '100%', minHeight: 400, p: 1 }}>
+          <HotTable
             ref={hotTableRef}
-            data={macroData}
+            data={macroData.length > 0 ? macroData : Array(5).fill(null).map(() => ({
+              name: '',
+              timeIn: '',
+              timeOut: '',
+              project: '',
+              tool: null,
+              chargeCode: null,
+              taskDescription: ''
+            }))}
             columns={columnDefinitions}
             cells={cellsFunction}
             afterChange={handleAfterChange}
             themeName="ht-theme-horizon"
             width="100%"
-            height="100%"
+            height={400}
             rowHeaders={true}
             colHeaders={true}
             manualColumnResize={true}
@@ -268,7 +295,7 @@ const MacroManagerDialog = ({ open, onClose, onSave }: MacroManagerDialogProps) 
             minRows={5}
             maxRows={5}
             contextMenu={['undo', 'redo', 'copy', 'cut']}
-            enterMoves={{ row: 0, col: 1 }} // Move right on enter
+            enterMoves={{ row: 0, col: 1 }}
             tabMoves={{ row: 0, col: 1 }}
             autoWrapRow={true}
             autoWrapCol={true}

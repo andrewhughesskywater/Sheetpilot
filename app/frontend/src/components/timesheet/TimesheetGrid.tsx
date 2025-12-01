@@ -59,7 +59,7 @@ interface DateEditor {
 import { formatTimeInput, normalizeRowData, isValidDate, isValidTime, hasTimeOverlapWithPreviousEntries } from './timesheet.schema';
 import { PROJECTS, CHARGE_CODES, getToolsForProject, doesToolNeedChargeCode, doesProjectNeedTools } from '../../config/business-config';
 import { submitTimesheet } from './timesheet.submit';
-import { saveLocalBackup, batchSaveToDatabase as batchSaveToDatabaseUtil, deleteDraftRows, saveRowToDatabase, loadRowFromDatabase } from './timesheet.persistence';
+import { saveLocalBackup, batchSaveToDatabase as batchSaveToDatabaseUtil, deleteDraftRows, saveRowToDatabase } from './timesheet.persistence';
 import { SpellcheckEditor } from './SpellcheckEditor';
 import { detectWeekdayPattern, getSmartPlaceholder, incrementDate, formatDateForDisplay } from '../../utils/smartDate';
 
@@ -175,6 +175,32 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
     }
   }, [timesheetDraftData]);
 
+  // Restore scrollbar when Macro dialog closes
+  // Material-UI Dialog modifies body overflow which can affect Handsontable's scrollbar
+  useEffect(() => {
+    if (!showMacroDialog) {
+      // Dialog just closed - force Handsontable to recalculate layout
+      const hotInstance = hotTableRef.current?.hotInstance;
+      if (hotInstance) {
+        // Use a small delay to ensure dialog has fully closed and DOM has updated
+        const timer = setTimeout(() => {
+          // Ensure body overflow is restored (Material-UI should do this, but ensure it)
+          if (document.body.style.overflow === 'hidden') {
+            document.body.style.overflow = '';
+          }
+          
+          // Trigger a resize event to force Handsontable to recalculate dimensions
+          window.dispatchEvent(new Event('resize'));
+          
+          // Also explicitly render to ensure scrollbar is restored
+          hotInstance.render();
+        }, 100);
+        
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [showMacroDialog]);
+
   // Simplified - removed complex DOM manipulation that was interfering with CSS
 
 
@@ -230,37 +256,42 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
   }, [timesheetDraftData]);
 
 
-  // Function to save a row to database and reload it
+  // Function to save a row to database and update state
   const saveAndReloadRow = useCallback(async (row: TimesheetRow, rowIdx: number) => {
     try {
       const saveResult = await saveRowToDatabase(row);
       
       if (saveResult.success && saveResult.entry) {
-        // Reload the saved row from database to get authoritative state
-        if (saveResult.entry.id) {
-          const loadResult = await loadRowFromDatabase(saveResult.entry.id);
+        const savedEntry = saveResult.entry;
+        
+        // Update the specific row in the grid with database data (mainly for ID)
+        const hotInstance = hotTableRef.current?.hotInstance;
+        if (hotInstance) {
+          const currentData = hotInstance.getSourceData() as TimesheetRow[];
           
-          if (loadResult.success && loadResult.entry) {
-            // Update the specific row in the grid with database data
-            const hotInstance = hotTableRef.current?.hotInstance;
-            if (hotInstance) {
-              const currentData = hotInstance.getSourceData() as TimesheetRow[];
-              const updatedData = [...currentData];
-              updatedData[rowIdx] = loadResult.entry;
-              
-              // Update grid data preserving UI state
-              hotInstance.updateData(updatedData);
-              
-              // Update React state
-              setTimesheetDraftData(updatedData);
-              onChange?.(updatedData);
-              saveLocalBackup(updatedData);
-              
-              window.logger?.verbose('Row saved and reloaded from database', { 
-                id: loadResult.entry.id,
-                rowIdx 
-              });
-            }
+          // Check if we actually need to update the state (e.g. ID changed or server formatted something)
+          // This prevents unnecessary re-renders if the data is identical
+          const currentRow = currentData[rowIdx];
+          const needsUpdate = !currentRow.id || currentRow.id !== savedEntry.id ||
+                             currentRow.timeIn !== savedEntry.timeIn ||
+                             currentRow.timeOut !== savedEntry.timeOut;
+
+          if (needsUpdate) {
+             const updatedData = [...currentData];
+             updatedData[rowIdx] = savedEntry;
+             
+             // Update React state - this will trigger the useEffect to update Handsontable
+             setTimesheetDraftData(updatedData);
+             onChange?.(updatedData);
+             saveLocalBackup(updatedData);
+             
+             window.logger?.verbose('Row saved and state updated', { 
+               id: savedEntry.id,
+               rowIdx 
+             });
+          } else {
+             // Even if no visual update needed, ensure local backup is current
+             saveLocalBackup(currentData);
           }
         }
       } else {

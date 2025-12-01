@@ -9,7 +9,7 @@
  * @since 2025
  */
 
-import { BrowserWindow, WebContents } from 'electron';
+import { BrowserWindow, WebContents, app } from 'electron';
 import { botLogger } from '../../../../../shared/logger';
 import * as cfg from './automation_config';
 
@@ -97,7 +97,7 @@ export class ElectronLocator {
     await this.page.executeJavaScript(`
       (() => {
         const el = document.querySelector('${this.selector.replace(/'/g, "\\'")}');
-        if (!el) throw new Error('Element not found: ${this.selector}');
+        if (!el) throw new Error('Element not found: ${this.selector.replace(/'/g, "\\'")}');
         el.value = ${JSON.stringify(value)};
         el.dispatchEvent(new Event('input', { bubbles: true }));
         el.dispatchEvent(new Event('change', { bubbles: true }));
@@ -112,7 +112,7 @@ export class ElectronLocator {
     await this.page.executeJavaScript(`
       (() => {
         const el = document.querySelector('${this.selector.replace(/'/g, "\\'")}');
-        if (!el) throw new Error('Element not found: ${this.selector}');
+        if (!el) throw new Error('Element not found: ${this.selector.replace(/'/g, "\\'")}');
         el.focus();
         el.value = '';
         ${text.split('').map(char => {
@@ -135,7 +135,7 @@ export class ElectronLocator {
     await this.page.executeJavaScript(`
       (() => {
         const el = document.querySelector('${this.selector.replace(/'/g, "\\'")}');
-        if (!el) throw new Error('Element not found: ${this.selector}');
+        if (!el) throw new Error('Element not found: ${this.selector.replace(/'/g, "\\'")}');
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         el.focus();
         el.click();
@@ -150,7 +150,7 @@ export class ElectronLocator {
     await this.page.executeJavaScript(`
       (() => {
         const el = document.querySelector('${this.selector.replace(/'/g, "\\'")}');
-        if (!el) throw new Error('Element not found: ${this.selector}');
+        if (!el) throw new Error('Element not found: ${this.selector.replace(/'/g, "\\'")}');
         el.focus();
         const keyEvent = new KeyboardEvent('keydown', { key: ${JSON.stringify(key)}, bubbles: true, cancelable: true });
         el.dispatchEvent(keyEvent);
@@ -196,7 +196,7 @@ export class ElectronLocator {
     return await this.page.executeJavaScript<T>(`
       (() => {
         const el = document.querySelector('${this.selector.replace(/'/g, "\\'")}');
-        if (!el) throw new Error('Element not found: ${this.selector}');
+        if (!el) throw new Error('Element not found: ${this.selector.replace(/'/g, "\\'")}');
         return (${fnString})(el);
       })()
     `);
@@ -514,6 +514,36 @@ export class ElectronBrowserContext {
   getBrowserWindow(): BrowserWindow {
     return this.browserWindow;
   }
+
+  /**
+   * Clear all browser data (cookies, cache, storage) to ensure fresh login state
+   */
+  async clearBrowserData(): Promise<void> {
+    if (this.browserWindow.isDestroyed()) {
+      return;
+    }
+    
+    const session = this.browserWindow.webContents.session;
+    
+    try {
+      // Clear all cookies, storage, and cache
+      await session.clearStorageData({
+        storages: ['cookies', 'localstorage', 'indexdb', 'filesystem', 'cachestorage', 'serviceworkers'],
+        quotas: ['temporary']
+      });
+      
+      // Also clear cache separately
+      await session.clearCache();
+      
+      botLogger.verbose('Cleared browser data', { 
+        cookies: true, 
+        storage: true, 
+        cache: true 
+      });
+    } catch (error) {
+      botLogger.warn('Could not clear browser data', { error: String(error) });
+    }
+  }
 }
 
 /**
@@ -551,22 +581,69 @@ export class ElectronBrowser {
     headless?: boolean;
     disableWebSecurity?: boolean;
   }): Promise<ElectronBrowserContext> {
-    // Disable webSecurity if explicitly requested (for localhost/mock websites)
-    // or if ignoreHTTPSErrors is true (allows insecure connections)
-    const shouldDisableWebSecurity = options?.disableWebSecurity || options?.ignoreHTTPSErrors || false;
+    // Only disable webSecurity if explicitly requested (for localhost/mock websites)
+    // ignoreHTTPSErrors should only affect certificate validation, not webSecurity
+    const shouldDisableWebSecurity = options?.disableWebSecurity || false;
     
     const browserWindow = new BrowserWindow({
       width: options?.viewport?.width || cfg.BROWSER_VIEWPORT_WIDTH,
       height: options?.viewport?.height || cfg.BROWSER_VIEWPORT_HEIGHT,
       show: !options?.headless, // Show window if not headless
+      backgroundColor: '#ffffff', // Set background color to avoid black flash
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
-        sandbox: false,
-        webSecurity: !shouldDisableWebSecurity, // Disable webSecurity for localhost/mock websites
-        allowRunningInsecureContent: shouldDisableWebSecurity, // Allow HTTP content when HTTPS expected
+        sandbox: false, // Disable sandbox for compatibility
+        webSecurity: !shouldDisableWebSecurity, // Only disable for localhost/mock websites
+        allowRunningInsecureContent: shouldDisableWebSecurity, // Only allow insecure content when webSecurity is disabled
+        // Performance optimizations
+        backgroundThrottling: false, // Disable background throttling for automation
+        offscreen: false, // Ensure normal rendering pipeline
+        enableWebSQL: false, // Disable deprecated WebSQL for better performance
       }
     });
+
+    // Ensure the window is initialized with a valid page
+    // Load about:blank asynchronously without waiting - navigation will happen immediately anyway
+    browserWindow.loadURL('about:blank').catch(() => {
+      // Ignore errors - about:blank load failures are non-critical
+      // Navigation to actual URL will happen immediately after context creation
+    });
+
+    // Forward console messages to bot logger
+    browserWindow.webContents.on('console-message', (_event, level, message, line, sourceId) => {
+      const meta = { line, sourceId };
+      // Map Electron console levels to logger levels
+      // 0: verbose, 1: info, 2: warning, 3: error
+      if (level === 0) botLogger.debug(`[Browser Console] ${message}`, meta);
+      else if (level === 1) botLogger.info(`[Browser Console] ${message}`, meta);
+      else if (level === 2) botLogger.warn(`[Browser Console] ${message}`, meta);
+      else if (level === 3) botLogger.error(`[Browser Console] ${message}`, meta);
+    });
+
+    // Handle ignoreHTTPSErrors
+    if (options?.ignoreHTTPSErrors) {
+      const certHandler = (
+        event: Electron.Event, 
+        webContents: Electron.WebContents, 
+        _url: string, 
+        _error: string, 
+        _certificate: Electron.Certificate, 
+        callback: (isTrusted: boolean) => void
+      ) => {
+        if (webContents.id === browserWindow.webContents.id) {
+          event.preventDefault();
+          callback(true);
+        }
+      };
+      
+      app.on('certificate-error', certHandler);
+      
+      // Clean up listener when window is closed
+      browserWindow.on('closed', () => {
+        app.removeListener('certificate-error', certHandler);
+      });
+    }
 
     // Set user agent if provided
     if (options?.userAgent) {
@@ -583,37 +660,43 @@ export class ElectronBrowser {
       }
     }
 
-    // Inject stealth scripts
-    browserWindow.webContents.on('did-finish-load', () => {
-      browserWindow.webContents.executeJavaScript(`
-        (() => {
-          // Remove webdriver property
-          Object.defineProperty(navigator, 'webdriver', { 
-            get: () => false 
-          });
-          
-          // Override automation detection properties
-          Object.defineProperty(navigator, 'plugins', {
-            get: () => [1, 2, 3, 4, 5]
-          });
-          
-          // Override automation detection methods
-          const originalQuery = window.navigator.permissions.query;
-          window.navigator.permissions.query = (parameters) => {
-            if (parameters.name === 'notifications') {
-              return Promise.resolve({
-                state: Notification.permission,
-                name: parameters.name,
-                onchange: null,
-                addEventListener: () => {},
-                removeEventListener: () => {},
-                dispatchEvent: () => false
-              });
-            }
-            return originalQuery(parameters);
-          };
-        })()
-      `);
+    // Inject stealth scripts asynchronously to avoid blocking rendering
+    // Use 'dom-ready' instead of 'did-finish-load' for earlier injection
+    browserWindow.webContents.on('dom-ready', () => {
+      // Execute asynchronously to not block page rendering
+      setImmediate(() => {
+        browserWindow.webContents.executeJavaScript(`
+          (() => {
+            // Remove webdriver property
+            Object.defineProperty(navigator, 'webdriver', { 
+              get: () => false 
+            });
+            
+            // Override automation detection properties
+            Object.defineProperty(navigator, 'plugins', {
+              get: () => [1, 2, 3, 4, 5]
+            });
+            
+            // Override automation detection methods
+            const originalQuery = window.navigator.permissions.query;
+            window.navigator.permissions.query = (parameters) => {
+              if (parameters.name === 'notifications') {
+                return Promise.resolve({
+                  state: Notification.permission,
+                  name: parameters.name,
+                  onchange: null,
+                  addEventListener: () => {},
+                  removeEventListener: () => {},
+                  dispatchEvent: () => false
+                });
+              }
+              return originalQuery(parameters);
+            };
+          })()
+        `).catch(() => {
+          // Silently fail if script injection fails (page may have navigated)
+        });
+      });
     });
 
     this.browserWindows.push(browserWindow);

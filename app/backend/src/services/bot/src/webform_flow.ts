@@ -101,9 +101,8 @@ export class WebformFiller {
     this.page = this.pages[0] ?? null;
     this.context = this.contexts[0] ?? null;
     
-    if (this.page) {
-      await cfg.dynamic_wait_for_page_load(this.page);
-    }
+    // Skip waiting for initial page load as it can hang on empty windows
+    // We will navigate immediately in the next step anyway
     
     botLogger.info('Browser started successfully', { contextCount: this.contexts.length });
     timer.done();
@@ -157,7 +156,8 @@ export class WebformFiller {
     
     const context = await this.browser!.newContext({
       viewport: { width: cfg.BROWSER_VIEWPORT_WIDTH, height: cfg.BROWSER_VIEWPORT_HEIGHT },
-      ignoreHTTPSErrors: true,
+      // Only ignore HTTPS errors for localhost/mock websites
+      ignoreHTTPSErrors: isLocalhost,
       javaScriptEnabled: true,
       headless: this.headless,
       // Disable webSecurity for localhost/mock websites to allow connections

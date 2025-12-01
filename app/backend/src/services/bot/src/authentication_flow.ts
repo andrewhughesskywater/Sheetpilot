@@ -80,8 +80,38 @@ export class LoginManager {
         navigation_attempt += 1;
         authLogger.verbose('Navigation attempt', { attempt: navigation_attempt, maxRetries: max_navigation_retries, contextIndex });
         const page = contextIndex !== undefined ? this.browser_manager.getPage(contextIndex) : this.browser_manager.require_page();
-        // Wait for page to be ready before navigation attempt
-        await C.wait_for_dom_stability(page, 'body', 'visible', C.DYNAMIC_WAIT_BASE_TIMEOUT * 0.5, C.DYNAMIC_WAIT_BASE_TIMEOUT * 1.0, 'navigation retry delay');
+        
+        // Clear browser data before navigation to ensure fresh login state (only on first attempt)
+        if (navigation_attempt === 1) {
+          try {
+            const context = contextIndex !== undefined 
+              ? this.browser_manager.getContext(contextIndex) 
+              : this.browser_manager.getContext(0); // Use first context if index not specified
+            await context.clearBrowserData();
+            authLogger.info('Cleared browser data before login', { contextIndex: contextIndex ?? 0 });
+          } catch (clearError) {
+            authLogger.warn('Could not clear browser data', { error: String(clearError), contextIndex });
+            // Continue anyway - clearing is best effort
+          }
+        }
+        
+        // Skip DOM stability wait on first navigation (about:blank loads instantly)
+        // Only wait on retries when we're already on a real page
+        let isAboutBlank = false;
+        try {
+          const currentUrl = page.url();
+          isAboutBlank = currentUrl === 'about:blank' || currentUrl.startsWith('about:');
+        } catch {
+          // If URL check fails, assume we're on a blank page and skip wait
+          isAboutBlank = true;
+        }
+        
+        if (!isAboutBlank && navigation_attempt > 1) {
+          // Wait for page to be ready before navigation attempt (only on retries)
+          await C.wait_for_dom_stability(page, 'body', 'visible', C.DYNAMIC_WAIT_BASE_TIMEOUT * 0.5, C.DYNAMIC_WAIT_BASE_TIMEOUT * 1.0, 'navigation retry delay');
+        } else {
+          authLogger.verbose('Skipping DOM stability wait for initial navigation', { navigationAttempt: navigation_attempt });
+        }
         await this._navigate_to_base(page);
         authLogger.verbose('Successfully navigated to base URL', { contextIndex });
         break;

@@ -63,42 +63,6 @@ export async function saveRowToDatabase(
 }
 
 /**
- * Load a single row from the database by ID
- */
-export async function loadRowFromDatabase(
-  id: number
-): Promise<{ success: boolean; entry?: TimesheetRow; error?: string }> {
-  if (!window.timesheet?.loadDraftById) {
-    window.logger?.warn('Load row skipped - timesheet API not available');
-    return { success: false, error: 'Timesheet API not available' };
-  }
-  
-  try {
-    const result = await window.timesheet.loadDraftById(id);
-    
-    if (result.success && result.entry) {
-      window.logger?.verbose('Row loaded from database successfully', { id });
-      return { success: true, entry: result.entry };
-    } else {
-      window.logger?.warn('Could not load row from database', { 
-        id,
-        error: result.error 
-      });
-      return { success: false, error: result.error || 'Entry not found' };
-    }
-  } catch (error) {
-    window.logger?.error('Encountered error loading row from database', { 
-      id,
-      error: error instanceof Error ? error.message : String(error) 
-    });
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : String(error) 
-    };
-  }
-}
-
-/**
  * Save a local backup of timesheet data to localStorage
  */
 export function saveLocalBackup(data: TimesheetRow[]): void {
