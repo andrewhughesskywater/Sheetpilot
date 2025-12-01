@@ -561,6 +561,7 @@ class InMemoryDatabase {
     const setMatch = sql.match(/SET\s+(.+?)(?:\s+WHERE|$)/i);
     if (!setMatch) return { changes: 0 };
     const setClause = setMatch[1];
+    if (!setClause) return { changes: 0 };
     
     // Extract WHERE clause
     const whereMatch = sql.match(/WHERE\s+(.+?)(?:\s+ORDER|$)/i);

@@ -659,7 +659,7 @@ export function registerTimesheetHandlers(): void {
   // DEV ONLY: Handler for simulating successful submission (marks all pending entries as complete)
   ipcMain.handle('timesheet:devSimulateSuccess', async () => {
     // Only allow in development mode
-    if (process.env.NODE_ENV === 'production') {
+    if (process.env['NODE_ENV'] === 'production') {
       ipcLogger.warn('Dev simulate success called in production - blocking');
       return { success: false, error: 'Not available in production' };
     }

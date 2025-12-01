@@ -24,8 +24,16 @@ export async function saveRowToDatabase(
       return { success: false, error: 'Row is incomplete' };
     }
     
-    const result = await window.timesheet.saveDraft({
-      id: row.id,
+    const draftData: {
+      id?: number;
+      date: string;
+      timeIn: string;
+      timeOut: string;
+      project: string;
+      tool?: string | null;
+      chargeCode?: string | null;
+      taskDescription: string;
+    } = {
       date: row.date,
       timeIn: row.timeIn,
       timeOut: row.timeOut,
@@ -33,7 +41,13 @@ export async function saveRowToDatabase(
       tool: row.tool ?? null,
       chargeCode: row.chargeCode ?? null,
       taskDescription: row.taskDescription
-    });
+    };
+    
+    if (row.id !== undefined) {
+      draftData.id = row.id;
+    }
+    
+    const result = await window.timesheet.saveDraft(draftData);
     
     if (result.success && result.entry) {
       window.logger?.verbose('Row saved to database successfully', { 
@@ -111,8 +125,16 @@ export async function batchSaveToDatabase(
     
     for (const row of completeRows) {
       try {
-        const result = await window.timesheet.saveDraft({
-          id: row.id,  // CRITICAL: Include ID to update existing entry instead of creating new one
+        const draftData: {
+          id?: number;
+          date: string;
+          timeIn: string;
+          timeOut: string;
+          project: string;
+          tool?: string | null;
+          chargeCode?: string | null;
+          taskDescription: string;
+        } = {
           date: row.date!,
           timeIn: row.timeIn!,
           timeOut: row.timeOut!,
@@ -120,7 +142,14 @@ export async function batchSaveToDatabase(
           tool: row.tool ?? null,
           chargeCode: row.chargeCode ?? null,
           taskDescription: row.taskDescription!
-        });
+        };
+        
+        // CRITICAL: Include ID to update existing entry instead of creating new one
+        if (row.id !== undefined) {
+          draftData.id = row.id;
+        }
+        
+        const result = await window.timesheet.saveDraft(draftData);
         
         if (result.success) {
           savedCount++;

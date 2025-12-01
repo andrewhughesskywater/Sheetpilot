@@ -24,13 +24,13 @@ export function runOnce(initFn: () => void, debugLabel: string): void {
   if (!window.__appInitialized) {
     window.__appInitialized = true;
     
-    if (process.env.NODE_ENV === 'development') {
+    if (import.meta.env.DEV) {
       console.debug(`[app] init:1 ts:${globalThis.performance.now().toFixed(2)}ms label:${debugLabel}`);
     }
     
     initFn();
   } else {
-    if (process.env.NODE_ENV === 'development') {
+    if (import.meta.env.DEV) {
       console.debug(`[app] init:skipped ts:${globalThis.performance.now().toFixed(2)}ms label:${debugLabel} (already initialized)`);
     }
   }

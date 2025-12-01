@@ -144,7 +144,14 @@ vi.mock('../src/services/database', () => {
     deleteCredentials: vi.fn(),
     openDb: vi.fn(() => mockDbInstance),
     getPendingTimesheetEntries: vi.fn(() => []),
-    getSubmittedTimesheetEntriesForExport: vi.fn(() => [])
+    getSubmittedTimesheetEntriesForExport: vi.fn(() => []),
+    resetInProgressTimesheetEntries: vi.fn(() => {
+      // Simulate the actual implementation which uses db.prepare()
+      const db = mockDbInstance;
+      const resetStatus = db.prepare(`UPDATE timesheet SET status = NULL WHERE status = 'in_progress'`);
+      const result = resetStatus.run();
+      return result.changes;
+    })
   };
 });
 
@@ -202,6 +209,7 @@ const mdb = db as unknown as {
   deleteCredentials: VMock;
   getPendingTimesheetEntries: VMock;
   getSubmittedTimesheetEntriesForExport: VMock;
+  resetInProgressTimesheetEntries: VMock;
 };
 
 const mimps = imp as unknown as {
@@ -237,6 +245,14 @@ describe('IPC Handlers Comprehensive Tests', () => {
     // Re-setup openDb and getDb mocks to return mockDbInstance
     mdb.openDb.mockImplementation(() => mockDbInstance);
     mdb.getDb.mockImplementation(() => mockDbInstance);
+    
+    // Re-setup resetInProgressTimesheetEntries mock to use the mocked database
+    mdb.resetInProgressTimesheetEntries.mockImplementation(() => {
+      const db = mockDbInstance;
+      const resetStatus = db.prepare(`UPDATE timesheet SET status = NULL WHERE status = 'in_progress'`);
+      const result = resetStatus.run();
+      return result.changes;
+    });
     
     // Re-setup submitTimesheets mock with default implementation (0 entries)
     // This is needed because clearAllMocks() clears the spy
@@ -729,10 +745,29 @@ describe('IPC Handlers Comprehensive Tests', () => {
         }
       ];
       
-      mockDbInstance.prepare.mockReturnValue({
-        all: vi.fn(() => mockEntries),
-        run: vi.fn(() => ({ changes: 1 })),
-        get: vi.fn(() => ({}))
+      // resetInProgressTimesheetEntries uses db.prepare internally, so we need to handle multiple prepare calls
+      let prepareCallCount = 0;
+      mockDbInstance.prepare.mockImplementation((sql: string) => {
+        prepareCallCount++;
+        if (prepareCallCount === 1) {
+          // First call is for resetInProgressTimesheetEntries (UPDATE query)
+          expect(sql).toContain('UPDATE timesheet');
+          expect(sql).toContain('SET status = NULL');
+          return {
+            all: vi.fn(() => []),
+            run: vi.fn(() => ({ changes: 0 })),
+            get: vi.fn(() => ({}))
+          };
+        } else {
+          // Second call is for the SELECT query
+          expect(sql).toContain('SELECT * FROM timesheet');
+          expect(sql).toContain('WHERE status IS NULL');
+          return {
+            all: vi.fn(() => mockEntries),
+            run: vi.fn(() => ({ changes: 1 })),
+            get: vi.fn(() => ({}))
+          };
+        }
       });
 
       const result = await handlers['timesheet:loadDraft']();
@@ -745,10 +780,27 @@ describe('IPC Handlers Comprehensive Tests', () => {
     });
 
     it('should handle empty draft data', async () => {
-      mockDbInstance.prepare.mockReturnValue({
-        all: vi.fn(() => []),
-        run: vi.fn(() => ({ changes: 1 })),
-        get: vi.fn(() => ({}))
+      // resetInProgressTimesheetEntries uses db.prepare internally, so we need to handle multiple prepare calls
+      let prepareCallCount = 0;
+      mockDbInstance.prepare.mockImplementation((sql: string) => {
+        prepareCallCount++;
+        if (prepareCallCount === 1) {
+          // First call is for resetInProgressTimesheetEntries (UPDATE query)
+          expect(sql).toContain('UPDATE timesheet');
+          return {
+            all: vi.fn(() => []),
+            run: vi.fn(() => ({ changes: 0 })),
+            get: vi.fn(() => ({}))
+          };
+        } else {
+          // Second call is for the SELECT query (returns empty array)
+          expect(sql).toContain('SELECT * FROM timesheet');
+          return {
+            all: vi.fn(() => []),
+            run: vi.fn(() => ({ changes: 1 })),
+            get: vi.fn(() => ({}))
+          };
+        }
       });
 
       const result = await handlers['timesheet:loadDraft']();
@@ -758,13 +810,29 @@ describe('IPC Handlers Comprehensive Tests', () => {
     });
 
     it('should handle load errors', async () => {
-      // Make the all() method throw instead of prepare
-      mockDbInstance.prepare.mockReturnValue({
-        all: vi.fn(() => {
-          throw new Error('Database error');
-        }),
-        run: vi.fn(() => ({ changes: 1 })),
-        get: vi.fn(() => ({}))
+      // resetInProgressTimesheetEntries uses db.prepare internally, so we need to handle multiple prepare calls
+      let prepareCallCount = 0;
+      mockDbInstance.prepare.mockImplementation((sql: string) => {
+        prepareCallCount++;
+        if (prepareCallCount === 1) {
+          // First call is for resetInProgressTimesheetEntries (UPDATE query) - should succeed
+          expect(sql).toContain('UPDATE timesheet');
+          return {
+            all: vi.fn(() => []),
+            run: vi.fn(() => ({ changes: 0 })),
+            get: vi.fn(() => ({}))
+          };
+        } else {
+          // Second call is for the SELECT query - should throw error
+          expect(sql).toContain('SELECT * FROM timesheet');
+          return {
+            all: vi.fn(() => {
+              throw new Error('Database error');
+            }),
+            run: vi.fn(() => ({ changes: 1 })),
+            get: vi.fn(() => ({}))
+          };
+        }
       });
 
       const result = await handlers['timesheet:loadDraft']();
@@ -877,12 +945,13 @@ describe('IPC Handlers Comprehensive Tests', () => {
       
       expect(result.submitResult).toBeDefined();
       expect(result.submitResult.ok).toBe(true);
-      // Verify that submitTimesheets was called with correct credentials, progressCallback, and AbortSignal
+      // Verify that submitTimesheets was called with correct credentials, progressCallback, AbortSignal, and useMockWebsite
       expect(mimps.submitTimesheets).toHaveBeenCalledWith(
         'user@test.com', 
         'password123', 
         expect.any(Function),
-        expect.any(AbortSignal)
+        expect.any(AbortSignal),
+        undefined // useMockWebsite is optional and defaults to undefined
       );
       // With mocked database (0 entries), successCount should be 0
       expect(result.submitResult.successCount).toBe(0);
@@ -910,12 +979,13 @@ describe('IPC Handlers Comprehensive Tests', () => {
       
       expect(result).toBeDefined();
       expect(result.submitResult).toBeDefined();
-      // Verify that submitTimesheets was called with progressCallback
+      // Verify that submitTimesheets was called with progressCallback, AbortSignal, and useMockWebsite
       expect(mimps.submitTimesheets).toHaveBeenCalledWith(
         'user@test.com', 
         'password123', 
         expect.any(Function),
-        expect.any(AbortSignal)
+        expect.any(AbortSignal),
+        undefined // useMockWebsite is optional and defaults to undefined
       );
       // With mocked database (0 entries), the handler completes successfully
       expect(result.submitResult.ok).toBe(true);

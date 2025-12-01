@@ -125,8 +125,8 @@ export class ElectronBotService implements ISubmissionService {
         // If useMockWebsite is true, override URLs to point to mock website
         let formConfig;
         if (useMockWebsite) {
-          const mockBaseUrl = process.env.MOCK_WEBSITE_URL || 'http://localhost:3000';
-          const mockFormId = process.env.MOCK_FORM_ID || '0197cbae7daf72bdb96b3395b500d414';
+          const mockBaseUrl = process.env['MOCK_WEBSITE_URL'] || 'http://localhost:3000';
+          const mockFormId = process.env['MOCK_FORM_ID'] || '0197cbae7daf72bdb96b3395b500d414';
           botLogger.info('Using mock website for submission', { mockBaseUrl, mockFormId });
           
           // Create custom form config for mock website with localhost URL patterns

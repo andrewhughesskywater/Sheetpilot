@@ -1,11 +1,13 @@
 import { createRoot } from 'react-dom/client'
 import { ThemeProvider, createTheme } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
+import { useState, useEffect } from 'react'
 import './styles/index.css'
 import App, { Splash } from './App'
 import { initializeLoggerFallback } from './utils/logger-fallback'
 import { initializeAPIFallback } from './utils/api-fallback'
 import { runOnce } from './utils/safe-init'
+import { initializeTheme, getCurrentEffectiveTheme, subscribeToThemeChanges } from './utils/theme-manager'
 
 // Initialize logger and API fallbacks for development mode (idempotent with guard)
 runOnce(() => {
@@ -57,32 +59,56 @@ window.addEventListener('DOMContentLoaded', () => {
   });
 });
 
+// Initialize theme system before rendering
+initializeTheme();
+
 // MUI theme is primarily overridden by M3 CSS tokens in m3-mui-overrides.css
-// This minimal theme just ensures MUI doesn't break
-const theme = createTheme({
-  typography: {
-    h3: {
-      fontWeight: 600,
+// This theme ensures MUI respects dark mode and doesn't break
+function createMuiTheme(mode: 'light' | 'dark') {
+  return createTheme({
+    palette: {
+      mode,
     },
-  },
-  components: {
-    MuiButton: {
-      styleOverrides: {
-        root: {
-          textTransform: 'none',
+    typography: {
+      h3: {
+        fontWeight: 600,
+      },
+    },
+    components: {
+      MuiButton: {
+        styleOverrides: {
+          root: {
+            textTransform: 'none',
+          },
         },
       },
     },
-  },
-})
+  });
+}
 
-const mountSplash = window.location.hash.includes('splash');
+// Component wrapper to manage dynamic MUI theme
+function ThemedApp() {
+  const [muiTheme, setMuiTheme] = useState(() => createMuiTheme(getCurrentEffectiveTheme()));
+
+  useEffect(() => {
+    // Update theme when it changes
+    const unsubscribe = subscribeToThemeChanges(({ effectiveTheme }) => {
+      setMuiTheme(createMuiTheme(effectiveTheme));
+    });
+
+    return unsubscribe;
+  }, []);
+
+  const mountSplash = window.location.hash.includes('splash');
+
+  return (
+    <ThemeProvider theme={muiTheme}>
+      <CssBaseline />
+      {mountSplash ? <Splash /> : <App />}
+    </ThemeProvider>
+  );
+}
 
 // StrictMode disabled for Handsontable compatibility
 // Handsontable's editor state doesn't survive StrictMode's double-mount in dev
-createRoot(document.getElementById('root')!).render(
-  <ThemeProvider theme={theme}>
-    <CssBaseline />
-    {mountSplash ? <Splash /> : <App />}
-  </ThemeProvider>,
-)
+createRoot(document.getElementById('root')!).render(<ThemedApp />)

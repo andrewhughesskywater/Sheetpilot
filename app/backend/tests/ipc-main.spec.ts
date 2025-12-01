@@ -207,12 +207,13 @@ describe('Electron IPC Handlers (main.ts)', () => {
     // Verify the handler was called and returned proper structure
     expect(res).toBeDefined();
     
-    // Expect 4 arguments: email, password, progressCallback, abortSignal
+    // Expect 5 arguments: email, password, progressCallback, abortSignal, useMockWebsite
     expect(mimps.submitTimesheets).toHaveBeenCalledWith(
       'user@test', 
       'pw',
       expect.any(Function),
-      expect.anything() // AbortSignal
+      expect.anything(), // AbortSignal
+      undefined // useMockWebsite is optional and defaults to undefined
     );
     expect(res.submitResult).toBeDefined();
     expect(res.submitResult?.ok).toBe(true);

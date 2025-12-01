@@ -63,7 +63,7 @@ vi.mock('better-sqlite3', async () => {
 
 // Helper to create a mock locator
 function createMockLocator() {
-  return {
+  const mockLocator = {
     fill: vi.fn(() => Promise.resolve()),
     click: vi.fn(() => Promise.resolve()),
     type: vi.fn(() => Promise.resolve()),
@@ -76,10 +76,11 @@ function createMockLocator() {
     textContent: vi.fn(() => Promise.resolve(null)),
     evaluate: vi.fn(() => Promise.resolve({})),
     boundingBox: vi.fn(() => Promise.resolve(null)),
-    first: vi.fn(function() { return this; }),
-    nth: vi.fn(function() { return this; }),
-    locator: vi.fn(function() { return this; })
+    first: vi.fn(function(this: typeof mockLocator) { return this; }),
+    nth: vi.fn(function(this: typeof mockLocator) { return this; }),
+    locator: vi.fn(function(this: typeof mockLocator) { return this; })
   };
+  return mockLocator;
 }
 
 // Helper to create a mock page

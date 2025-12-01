@@ -8,7 +8,7 @@ export class SpellcheckEditor extends TextEditor {
   /**
    * Override createElements to add spellcheck attribute to the textarea
    */
-  createElements() {
+  override createElements() {
     super.createElements();
     
     // Enable spellcheck on the textarea element

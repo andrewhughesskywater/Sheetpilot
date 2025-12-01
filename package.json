@@ -11,7 +11,7 @@
     "app/shared"
   ],
   "scripts": {
-    "postinstall": "npm run rebuild",
+    "postinstall": "npm run rebuild && npm run -w @sheetpilot/backend postinstall",
     "rebuild": "npx @electron/rebuild -f -w better-sqlite3",
     "electron:compiled": "npm run rebuild && cross-env NODE_PATH=app/backend/node_modules:node_modules electron build/dist/backend/src/main.js",
     "electron:dev": "cross-env NODE_PATH=app/backend/node_modules:node_modules electron build/dist/backend/src/main.js",
@@ -112,13 +112,17 @@
         "filter": [
           "better-sqlite3/package.json",
           "better-sqlite3/lib/**/*",
-          "better-sqlite3/build/Release/*.node"
+          "better-sqlite3/build/Release/*.node",
+          "playwright/**/*",
+          "@playwright/**/*"
         ]
       }
     ],
     "asar": true,
     "asarUnpack": [
-      "**/node_modules/better-sqlite3/**/*"
+      "**/node_modules/better-sqlite3/**/*",
+      "**/node_modules/playwright/**/*",
+      "**/node_modules/@playwright/**/*"
     ],
     "compression": "maximum",
     "extraMetadata": {

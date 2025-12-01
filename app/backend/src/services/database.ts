@@ -752,12 +752,39 @@ export function markTimesheetEntriesAsSubmitted(ids: number[]) {
         // Check current status of entries before updating
         const placeholdersCheck = ids.map(() => '?').join(',');
         const checkStmt = db.prepare(`SELECT id, status FROM timesheet WHERE id IN (${placeholdersCheck})`);
-        const currentStatuses = checkStmt.all(...ids);
+        const currentStatuses = checkStmt.all(...ids) as Array<{ id: number; status: string | null }>;
         dbLogger.info('Current entry statuses before marking as submitted', { 
             count: ids.length, 
             ids,
             statuses: currentStatuses
         });
+        
+        // Validate that all IDs exist
+        if (currentStatuses.length !== ids.length) {
+            const foundIds = currentStatuses.map(s => s.id);
+            const missingIds = ids.filter(id => !foundIds.includes(id));
+            const errorMsg = `Database update mismatch: expected ${ids.length} entries, found ${currentStatuses.length}. Missing IDs: ${missingIds.join(', ')}`;
+            dbLogger.error(errorMsg, { 
+                expectedCount: ids.length,
+                foundCount: currentStatuses.length,
+                missingIds,
+                ids 
+            });
+            throw new Error(errorMsg);
+        }
+        
+        // Validate that all entries are in a valid state for submission (NULL or 'in_progress')
+        const invalidStatuses = currentStatuses.filter(s => s.status !== null && s.status !== 'in_progress');
+        if (invalidStatuses.length > 0) {
+            const invalidIds = invalidStatuses.map(s => s.id);
+            const errorMsg = `Database update mismatch: ${invalidStatuses.length} entries have invalid status. Invalid IDs: ${invalidIds.join(', ')}`;
+            dbLogger.error(errorMsg, { 
+                invalidIds,
+                invalidStatuses: invalidStatuses.map(s => ({ id: s.id, status: s.status })),
+                ids 
+            });
+            throw new Error(errorMsg);
+        }
         
         dbLogger.info('Marking timesheet entries as submitted', { count: ids.length, ids });
         const placeholders = ids.map(() => '?').join(',');

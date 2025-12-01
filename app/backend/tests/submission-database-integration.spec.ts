@@ -22,6 +22,7 @@ import {
     insertTimesheetEntry,
     getPendingTimesheetEntries,
     markTimesheetEntriesAsSubmitted,
+    markTimesheetEntriesAsInProgress,
     closeConnection
 } from '../src/services/database';
 
@@ -109,11 +110,8 @@ describe('Submission-Database Integration Tests', () => {
             const entryIds = pendingEntries.map((e: DbRow) => e.id as number);
 
             // Mark as in_progress (simulating submission start)
-            const db = openDb();
-            entryIds.forEach((id: number) => {
-                db.prepare('UPDATE timesheet SET status = ? WHERE id = ?').run('in_progress', id);
-            });
-            db.close();
+            // Use markTimesheetEntriesAsInProgress to properly mark entries
+            markTimesheetEntriesAsInProgress(entryIds);
 
             // Simulate bot succeeds for 2 entries, fails for 1
             const successIds = entryIds.slice(0, 2);

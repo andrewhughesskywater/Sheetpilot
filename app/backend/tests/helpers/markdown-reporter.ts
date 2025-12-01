@@ -79,14 +79,26 @@ export class MarkdownReporter implements Reporter {
       // Process tasks in the file
       const processTask = (task: Task, suiteName?: string) => {
         if (task.type === 'test') {
-          const testResult = {
+          const testResult: {
+            name: string;
+            status: 'passed' | 'failed' | 'skipped';
+            duration?: number;
+            error?: string;
+          } = {
             name: task.name,
             status: task.mode === 'skip' ? 'skipped' as const : 
                    task.result?.state === 'pass' ? 'passed' as const :
                    task.result?.state === 'fail' ? 'failed' as const : 'failed' as const,
-            duration: task.result?.duration,
-            error: task.result?.errors?.[0]?.message || task.result?.errors?.[0]?.stack
           };
+          
+          if (task.result?.duration !== undefined) {
+            testResult.duration = task.result.duration;
+          }
+          
+          const errorMessage = task.result?.errors?.[0]?.message || task.result?.errors?.[0]?.stack;
+          if (errorMessage !== undefined) {
+            testResult.error = errorMessage;
+          }
 
           if (suiteName) {
             let suite = fileResult.suites.find(s => s.name === suiteName);
@@ -238,22 +250,28 @@ export class MarkdownReporter implements Reporter {
       fileResult.tests
         .filter(t => t.status === 'failed')
         .forEach(test => {
-          failed.push({
+          const failedEntry: { file: string; name: string; error?: string } = {
             file: fileResult.file,
             name: test.name,
-            error: test.error
-          });
+          };
+          if (test.error !== undefined) {
+            failedEntry.error = test.error;
+          }
+          failed.push(failedEntry);
         });
 
       fileResult.suites.forEach((suite) => {
         suite.tests
           .filter(t => t.status === 'failed')
           .forEach(test => {
-            failed.push({
+            const failedEntry: { file: string; name: string; error?: string } = {
               file: fileResult.file,
               name: `${suite.name} > ${test.name}`,
-              error: test.error
-            });
+            };
+            if (test.error !== undefined) {
+              failedEntry.error = test.error;
+            }
+            failed.push(failedEntry);
           });
       });
     });
