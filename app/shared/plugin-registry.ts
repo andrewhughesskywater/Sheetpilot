@@ -68,8 +68,10 @@ export class PluginRegistry {
    * @param namespace Plugin namespace (e.g., 'data', 'ui', 'credentials')
    * @param name Plugin name within the namespace
    * @param implementation Plugin implementation
+   * @returns Promise that resolves when plugin is registered and initialized
+   * @throws Error if plugin initialization fails
    */
-  public registerPlugin<T>(namespace: string, name: string, implementation: T): void {
+  public async registerPlugin<T>(namespace: string, name: string, implementation: T): Promise<void> {
     if (!this.plugins.has(namespace)) {
       this.plugins.set(namespace, new Map());
     }
@@ -86,9 +88,14 @@ export class PluginRegistry {
     if (implementation && typeof implementation === 'object' && 'initialize' in implementation) {
       const plugin = implementation as unknown as IPlugin;
       if (plugin.initialize) {
-        Promise.resolve(plugin.initialize()).catch(err => {
-          console.error(`Error initializing plugin ${namespace}:${name}:`, err);
-        });
+        try {
+          await Promise.resolve(plugin.initialize());
+        } catch (err) {
+          // Remove plugin from registry if initialization fails
+          namespacePlugins.delete(name);
+          const errorMessage = err instanceof Error ? err.message : String(err);
+          throw new Error(`Could not initialize plugin ${namespace}:${name}: ${errorMessage}`);
+        }
       }
     }
   }
@@ -219,6 +226,7 @@ export class PluginRegistry {
    * Unregister a plugin
    * @param namespace Plugin namespace
    * @param name Plugin name
+   * @throws Error if plugin disposal fails
    */
   public async unregisterPlugin(namespace: string, name: string): Promise<void> {
     const namespacePlugins = this.plugins.get(namespace);
@@ -238,7 +246,8 @@ export class PluginRegistry {
         try {
           await Promise.resolve(pluginWithDispose.dispose());
         } catch (err) {
-          console.error(`Error disposing plugin ${namespace}:${name}:`, err);
+          const errorMessage = err instanceof Error ? err.message : String(err);
+          throw new Error(`Could not dispose plugin ${namespace}:${name}: ${errorMessage}`);
         }
       }
     }

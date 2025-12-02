@@ -19,7 +19,11 @@ import type {
   DbTimesheetEntry
 } from '../../../../shared/contracts/IDataService';
 import type { PluginMetadata } from '../../../../shared/plugin-types';
-import { getDb } from '../database';
+import { getDb } from '../../repositories';
+import {
+  parseTimeToMinutes,
+  formatMinutesToTime
+} from '../../../../shared/utils/format-conversions';
 
 /**
  * SQLite implementation of the data service
@@ -32,30 +36,6 @@ export class SQLiteDataService implements IDataService {
     description: 'SQLite-based data persistence service'
   };
 
-  /**
-   * Convert time string (HH:mm) to minutes since midnight
-   */
-  private parseTimeToMinutes(timeStr: string): number {
-    const parts = timeStr.split(':');
-    if (parts.length !== 2 || !parts[0] || !parts[1]) {
-      throw new Error(`Invalid time format: ${timeStr}. Expected HH:mm`);
-    }
-    const hours = parseInt(parts[0], 10);
-    const minutes = parseInt(parts[1], 10);
-    if (isNaN(hours) || isNaN(minutes)) {
-      throw new Error(`Invalid time format: ${timeStr}. Expected HH:mm`);
-    }
-    return hours * 60 + minutes;
-  }
-
-  /**
-   * Convert minutes since midnight to time string (HH:mm)
-   */
-  private formatMinutesToTime(minutes: number): string {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
-  }
 
   /**
    * Save a draft timesheet entry
@@ -74,8 +54,8 @@ export class SQLiteDataService implements IDataService {
       }
       
       // Convert time strings to minutes
-      const timeInMinutes = this.parseTimeToMinutes(entry.timeIn);
-      const timeOutMinutes = this.parseTimeToMinutes(entry.timeOut);
+      const timeInMinutes = parseTimeToMinutes(entry.timeIn);
+      const timeOutMinutes = parseTimeToMinutes(entry.timeOut);
       
       // Validate times
       if (timeInMinutes % 15 !== 0 || timeOutMinutes % 15 !== 0) {
@@ -89,55 +69,61 @@ export class SQLiteDataService implements IDataService {
       const db = getDb();
       let result;
       
-      // If entry has an id, UPDATE; otherwise INSERT
-      if (entry.id !== undefined && entry.id !== null) {
-        const update = db.prepare(`
-          UPDATE timesheet
-          SET date = ?,
-              time_in = ?,
-              time_out = ?,
-              project = ?,
-              tool = ?,
-              detail_charge_code = ?,
-              task_description = ?,
+      // Wrap save operation in transaction for atomicity
+      const saveTransaction = db.transaction(() => {
+        // If entry has an id, UPDATE; otherwise INSERT
+        if (entry.id !== undefined && entry.id !== null) {
+          const update = db.prepare(`
+            UPDATE timesheet
+            SET date = ?,
+                time_in = ?,
+                time_out = ?,
+                project = ?,
+                tool = ?,
+                detail_charge_code = ?,
+                task_description = ?,
+                status = NULL
+            WHERE id = ?
+          `);
+          
+          result = update.run(
+            entry.date,
+            timeInMinutes,
+            timeOutMinutes,
+            entry.project,
+            entry.tool || null,
+            entry.chargeCode || null,
+            entry.taskDescription,
+            entry.id
+          );
+        } else {
+          // Insert with deduplication
+          const insert = db.prepare(`
+            INSERT INTO timesheet
+            (date, time_in, time_out, project, tool, detail_charge_code, task_description, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, NULL)
+            ON CONFLICT(date, time_in, project, task_description) DO UPDATE SET
+              time_out = excluded.time_out,
+              tool = excluded.tool,
+              detail_charge_code = excluded.detail_charge_code,
               status = NULL
-          WHERE id = ?
-        `);
+          `);
+          
+          result = insert.run(
+            entry.date,
+            timeInMinutes,
+            timeOutMinutes,
+            entry.project,
+            entry.tool || null,
+            entry.chargeCode || null,
+            entry.taskDescription
+          );
+        }
         
-        result = update.run(
-          entry.date,
-          timeInMinutes,
-          timeOutMinutes,
-          entry.project,
-          entry.tool || null,
-          entry.chargeCode || null,
-          entry.taskDescription,
-          entry.id
-        );
-      } else {
-        // Insert with deduplication
-        const insert = db.prepare(`
-          INSERT INTO timesheet
-          (date, time_in, time_out, project, tool, detail_charge_code, task_description, status)
-          VALUES (?, ?, ?, ?, ?, ?, ?, NULL)
-          ON CONFLICT(date, time_in, project, task_description) DO UPDATE SET
-            time_out = excluded.time_out,
-            tool = excluded.tool,
-            detail_charge_code = excluded.detail_charge_code,
-            status = NULL
-        `);
-        
-        result = insert.run(
-          entry.date,
-          timeInMinutes,
-          timeOutMinutes,
-          entry.project,
-          entry.tool || null,
-          entry.chargeCode || null,
-          entry.taskDescription
-        );
-      }
+        return result;
+      });
       
+      result = saveTransaction();
       return { success: true, changes: result.changes };
       // Note: Do NOT close db connection here - singleton pattern manages lifecycle
     } catch (error) {
@@ -176,8 +162,8 @@ export class SQLiteDataService implements IDataService {
       const gridData: TimesheetEntry[] = entries.map((entry) => ({
         id: entry.id,
         date: entry.date,
-        timeIn: this.formatMinutesToTime(entry.time_in),
-        timeOut: this.formatMinutesToTime(entry.time_out),
+        timeIn: formatMinutesToTime(entry.time_in),
+        timeOut: formatMinutesToTime(entry.time_out),
         project: entry.project,
         tool: entry.tool || null,
         chargeCode: entry.detail_charge_code || null,

@@ -13,6 +13,7 @@ import {
   CircularProgress
 } from '@mui/material';
 import './LoginDialog.css';
+import { autoCompleteEmailDomain } from '../../utils/emailAutoComplete';
 
 interface LoginDialogProps {
   open: boolean;
@@ -88,19 +89,9 @@ function LoginDialog({ open, onLoginSuccess }: LoginDialogProps) {
 
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    setEmail(value);
+    const completedValue = autoCompleteEmailDomain(value);
+    setEmail(completedValue);
     setError('');
-    
-    // Auto-complete domain for @skywatertechnology.com
-    if (value.includes('@') && !value.includes('@skywatertechnology.com')) {
-      const atIndex = value.lastIndexOf('@');
-      const domainPart = value.substring(atIndex + 1);
-      
-      if (domainPart === '' || domainPart === 'skywatertechnology.com'.substring(0, domainPart.length)) {
-        const completedEmail = value.substring(0, atIndex + 1) + 'skywatertechnology.com';
-        setEmail(completedEmail);
-      }
-    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {

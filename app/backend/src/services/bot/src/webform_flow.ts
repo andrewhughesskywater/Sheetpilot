@@ -426,7 +426,10 @@ export class WebformFiller {
           }
         }
         return false;
-      } catch {
+      } catch (error) {
+        botLogger.debug('Error checking form inputs ready', { 
+          error: error instanceof Error ? error.message : String(error) 
+        });
         return false;
       }
     }, cfg.DYNAMIC_WAIT_BASE_TIMEOUT, cfg.DYNAMIC_WAIT_MAX_TIMEOUT, cfg.DYNAMIC_WAIT_MULTIPLIER, 'form inputs ready');
@@ -462,11 +465,6 @@ export class WebformFiller {
       value: String(value),
       contextIndex
     });
-    
-    if (!locatorSel) {
-      botLogger.error('No locator specified for field', { fieldName });
-      throw new Error(`No locator specified for field '${fieldName}'`);
-    }
 
     try {
     const page = contextIndex !== undefined ? this.getPage(contextIndex) : this.require_page();
@@ -492,7 +490,10 @@ export class WebformFiller {
           placeholder: fieldPlaceholder 
         });
       } catch (attrError) {
-        botLogger.debug('Could not retrieve field attributes', { fieldName, error: attrError });
+        botLogger.debug('Could not retrieve field attributes', { 
+          fieldName, 
+          error: attrError instanceof Error ? attrError.message : String(attrError) 
+        });
       }
       
       // Clear and fill the field
@@ -527,28 +528,23 @@ export class WebformFiller {
   }
 
   /**
-   * Submits the form and validates the submission response
-   * 
-   * Sets up response monitoring, finds and clicks the submit button,
-   * and validates the submission based on response patterns and content.
-   * Includes comprehensive response validation similar to the Python version.
-   * 
-   * @param contextIndex - Optional context index
-   * @returns Promise resolving to true if submission was successful, false otherwise
+   * Creates a response handler for monitoring form submission responses
+   * @private
+   * @param successResponses - Array to collect successful responses
+   * @param allResponses - Array to collect all responses
+   * @param submissionIds - Array to collect submission IDs
+   * @param submissionTokens - Array to collect submission tokens
+   * @param requestIds - Array to collect request IDs
+   * @returns Response handler function
    */
-  async submit_form(contextIndex?: number): Promise<boolean> {
-    const timer = botLogger.startTimer('submit-form');
-    botLogger.info('Starting form submission', { contextIndex });
-    const page = contextIndex !== undefined ? this.getPage(contextIndex) : this.require_page();
-    
-    // Set up response monitoring with content validation
-    const successResponses: Array<{status: number; url: string; body?: string}> = [];
-    const allResponses: Array<{status: number; url: string}> = [];
-    const submissionIds: string[] = [];
-    const submissionTokens: string[] = [];
-    const requestIds: string[] = [];
-
-    const handler = async (response: import('playwright').Response) => {
+  private _createSubmissionResponseHandler(
+    successResponses: Array<{status: number; url: string; body?: string}>,
+    allResponses: Array<{status: number; url: string}>,
+    submissionIds: string[],
+    submissionTokens: string[],
+    requestIds: string[]
+  ): (response: import('playwright').Response) => Promise<void> {
+    return async (response: import('playwright').Response) => {
       allResponses.push({ status: response.status(), url: response.url() });
       
       // Check if this is a Smartsheet response with success status
@@ -638,35 +634,158 @@ export class WebformFiller {
         });
       }
     };
+  }
+
+  /**
+   * Finds the submit button on the form
+   * @private
+   * @param page - Playwright Page instance
+   * @returns Promise resolving to the submit button locator, or null if not found
+   */
+  private async _findSubmitButton(page: import('playwright').Page): Promise<import('playwright').Locator | null> {
+    for (const selector of cfg.SUBMIT_BUTTON_FALLBACK_LOCATORS) {
+      try {
+        const submitButton = page.locator(selector);
+        // Use dynamic wait for submit button visibility
+        const ok = await cfg.dynamic_wait_for_element(
+          page, 
+          selector, 
+          'visible', 
+          cfg.DYNAMIC_WAIT_BASE_TIMEOUT, 
+          cfg.GLOBAL_TIMEOUT, 
+          `submit button visibility (${selector})`
+        );
+        if (ok) {
+          const isEnabled = await submitButton.isEnabled();
+          if (isEnabled) {
+            return submitButton;
+          }
+        }
+      } catch {
+        continue;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Checks for DOM-based success indicators
+   * @private
+   * @param page - Playwright Page instance
+   * @returns Promise resolving to true if success indicator found, false otherwise
+   */
+  private async _checkDomSuccessIndicators(page: import('playwright').Page): Promise<boolean> {
+    const successSelectors = [
+      '.submission-success',
+      '.form-success',
+      '[data-submission-status="success"]',
+      '.confirmation-message',
+      '.success-message',
+      '.alert-success'
+    ];
+    
+    for (const selector of successSelectors) {
+      try {
+        const element = page.locator(selector);
+        if (await element.isVisible().catch(() => false)) {
+          botLogger.info('DOM success indicator found', { selector });
+          return true;
+        }
+      } catch {
+        continue;
+      }
+    }
+    
+    return false;
+  }
+
+  /**
+   * Validates submission success and logs details
+   * @private
+   * @param successResponses - Array of successful HTTP responses
+   * @param domSuccessFound - Whether DOM success indicator was found
+   * @param submissionIds - Array of submission IDs found
+   * @param submissionTokens - Array of submission tokens found
+   * @param requestIds - Array of request IDs found
+   * @returns True if submission was successful
+   */
+  private _validateSubmissionSuccess(
+    successResponses: Array<{status: number; url: string; body?: string}>,
+    domSuccessFound: boolean,
+    submissionIds: string[],
+    submissionTokens: string[],
+    requestIds: string[]
+  ): boolean {
+    if (successResponses.length > 0 || domSuccessFound) {
+      const successDetails: string[] = [];
+      
+      if (domSuccessFound && successResponses.length === 0) {
+        successDetails.push('DOM success indicator detected');
+        botLogger.info('Form submission validated via DOM indicator');
+      } else {
+        if (submissionIds.length > 0) {
+          successDetails.push(`submission IDs: ${submissionIds.join(', ')}`);
+        }
+        if (submissionTokens.length > 0) {
+          successDetails.push(`tokens: ${submissionTokens.join(', ')}`);
+        }
+        if (requestIds.length > 0) {
+          successDetails.push(`request IDs: ${requestIds.join(', ')}`);
+        }
+        
+        if (successDetails.length > 0) {
+          botLogger.info('Form submission validated via HTTP response', { 
+            responseCount: successResponses.length, 
+            details: successDetails.join(', ')
+          });
+        } else {
+          botLogger.info('Form submission validated via HTTP response', { 
+            responseCount: successResponses.length,
+            statusRange: `${cfg.SUBMIT_SUCCESS_MIN_STATUS}-${cfg.SUBMIT_SUCCESS_MAX_STATUS}`
+          });
+        }
+      }
+      
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Submits the form and validates the submission response
+   * 
+   * Sets up response monitoring, finds and clicks the submit button,
+   * and validates the submission based on response patterns and content.
+   * Includes comprehensive response validation similar to the Python version.
+   * 
+   * @param contextIndex - Optional context index
+   * @returns Promise resolving to true if submission was successful, false otherwise
+   */
+  async submit_form(contextIndex?: number): Promise<boolean> {
+    const timer = botLogger.startTimer('submit-form');
+    botLogger.info('Starting form submission', { contextIndex });
+    const page = contextIndex !== undefined ? this.getPage(contextIndex) : this.require_page();
+    
+    // Set up response monitoring with content validation
+    const successResponses: Array<{status: number; url: string; body?: string}> = [];
+    const allResponses: Array<{status: number; url: string}> = [];
+    const submissionIds: string[] = [];
+    const submissionTokens: string[] = [];
+    const requestIds: string[] = [];
+
+    const handler = this._createSubmissionResponseHandler(
+      successResponses,
+      allResponses,
+      submissionIds,
+      submissionTokens,
+      requestIds
+    );
 
     page.on('response', handler);
     
     try {
       // Find submit button
-      let submitButton = null;
-      for (const selector of cfg.SUBMIT_BUTTON_FALLBACK_LOCATORS) {
-        try {
-          submitButton = page.locator(selector);
-          // Use dynamic wait for submit button visibility
-          const ok = await cfg.dynamic_wait_for_element(
-            page, 
-            selector, 
-            'visible', 
-            cfg.DYNAMIC_WAIT_BASE_TIMEOUT, 
-            cfg.GLOBAL_TIMEOUT, 
-            `submit button visibility (${selector})`
-          );
-          if (ok) {
-            const isEnabled = await submitButton.isEnabled();
-            if (isEnabled) {
-              break;
-            }
-          }
-        } catch {
-          continue;
-        }
-      }
-      
+      const submitButton = await this._findSubmitButton(page);
       if (!submitButton) {
         throw new Error('No submit button found');
       }
@@ -692,65 +811,23 @@ export class WebformFiller {
           }
           
           // Check for DOM success indicators
-          const successSelectors = [
-            '.submission-success',
-            '.form-success',
-            '[data-submission-status="success"]',
-            '.confirmation-message',
-            '.success-message',
-            '.alert-success'
-          ];
-          
-          for (const selector of successSelectors) {
-            try {
-              const element = page.locator(selector);
-              if (await element.isVisible().catch(() => false)) {
-                botLogger.info('DOM success indicator found', { selector });
-                domSuccessFound = true;
-                return true;
-              }
-            } catch {
-              continue;
-            }
-          }
-          
-          return false;
-        }, cfg.DYNAMIC_WAIT_BASE_TIMEOUT * 0.5, verifyTimeout, cfg.DYNAMIC_WAIT_MULTIPLIER, 'form submission verification');
+          domSuccessFound = await this._checkDomSuccessIndicators(page);
+          return domSuccessFound;
+        }, cfg.DYNAMIC_WAIT_BASE_TIMEOUT * cfg.HALF_TIMEOUT_MULTIPLIER, verifyTimeout, cfg.DYNAMIC_WAIT_MULTIPLIER, 'form submission verification');
       } catch (waitError) {
         botLogger.warn('Form submission verification wait timed out', { error: String(waitError) });
       }
       
-      // Check for successful submissions (HTTP response OR DOM indicator)
-      if (successResponses.length > 0 || domSuccessFound) {
-        const successDetails: string[] = [];
-        
-        if (domSuccessFound && successResponses.length === 0) {
-          successDetails.push('DOM success indicator detected');
-          botLogger.info('Form submission validated via DOM indicator');
-        } else {
-          if (submissionIds.length > 0) {
-            successDetails.push(`submission IDs: ${submissionIds.join(', ')}`);
-          }
-          if (submissionTokens.length > 0) {
-            successDetails.push(`tokens: ${submissionTokens.join(', ')}`);
-          }
-          if (requestIds.length > 0) {
-            successDetails.push(`request IDs: ${requestIds.join(', ')}`);
-          }
-          
-          if (successDetails.length > 0) {
-            botLogger.info('Form submission validated via HTTP response', { 
-              responseCount: successResponses.length, 
-              details: successDetails.join(', ')
-            });
-          } else {
-            botLogger.info('Form submission validated via HTTP response', { 
-              responseCount: successResponses.length,
-              statusRange: `${cfg.SUBMIT_SUCCESS_MIN_STATUS}-${cfg.SUBMIT_SUCCESS_MAX_STATUS}`
-            });
-          }
-        }
-        
+      // Validate submission success
+      const isSuccess = this._validateSubmissionSuccess(
+        successResponses,
+        domSuccessFound,
+        submissionIds,
+        submissionTokens,
+        requestIds
+      );
+      
+      if (isSuccess) {
         timer.done({ success: true, method: domSuccessFound ? 'dom' : 'http' });
         return true;
       } else {
@@ -772,9 +849,12 @@ export class WebformFiller {
       return false;
     } finally {
       try {
-      page.off('response', handler);
-      } catch {
-        // Ignore cleanup errors
+        page.off('response', handler);
+      } catch (cleanupError) {
+        botLogger.debug('Error removing response handler during cleanup', { 
+          error: cleanupError instanceof Error ? cleanupError.message : String(cleanupError) 
+        });
+        // Ignore cleanup errors - they're non-critical
       }
     }
   }
@@ -841,8 +921,8 @@ export class WebformFiller {
             return false;
           }
         },
-        0.3, // Max 300ms wait
-        50,  // Check every 50ms
+        cfg.SHORT_WAIT_TIMEOUT, // Max 300ms wait (in seconds)
+        cfg.BRIEF_POLL_INTERVAL_MS,  // Check every 50ms (in milliseconds)
         `selection highlight for ${fieldName}`
       );
       
@@ -862,18 +942,70 @@ export class WebformFiller {
             return true; // Assume closed if we can't check
           }
         },
-        0.3, // Max 300ms wait
-        50,  // Check every 50ms
+        cfg.SHORT_WAIT_TIMEOUT, // Max 300ms wait (in seconds)
+        cfg.BRIEF_POLL_INTERVAL_MS,  // Check every 50ms (in milliseconds)
         `dropdown close for ${fieldName}`
       );
       
       botLogger.debug('Successfully handled SmartSheets dropdown', { fieldName });
       
     } catch (error) {
-      botLogger.warn('Could not handle SmartSheets dropdown', { fieldName, error: String(error) });
+      botLogger.warn('Could not handle SmartSheets dropdown', { 
+        fieldName, 
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
       // Don't raise the exception - let the form filling continue
       // The field might still work even if dropdown navigation fails
     }
+  }
+
+  /**
+   * Gets validation error selectors to check
+   * @private
+   * @returns Array of CSS selectors for validation errors
+   */
+  private _getValidationErrorSelectors(): string[] {
+    return [
+      '[data-testid*="error"]',      // Test ID based errors
+      '[class*="error"]',            // CSS class based errors
+      '[class*="invalid"]',          // Invalid state indicators
+      '[aria-invalid="true"]',       // ARIA invalid indicators
+      '.error-message',              // Generic error message class
+      '.validation-error',           // Validation error class
+      '.field-error',                // Field error class
+      '[role="alert"]',              // ARIA alert role
+      '[aria-live="polite"]',        // ARIA live region
+      '[aria-live="assertive"]',     // ARIA assertive live region
+    ];
+  }
+
+  /**
+   * Collects error text from elements matching a selector within a container
+   * @private
+   * @param container - Locator for the container to search
+   * @param selector - CSS selector for error elements
+   * @returns Promise resolving to Set of unique error messages
+   */
+  private async _collectErrorsFromContainer(container: Locator, selector: string): Promise<Set<string>> {
+    const errors = new Set<string>();
+    try {
+      const errorElements = container.locator(selector);
+      const count = await errorElements.count();
+      
+      for (let i = 0; i < count; i++) {
+        const errorElement = errorElements.nth(i);
+        if (await errorElement.isVisible().catch(() => false)) {
+          const errorText = await errorElement.textContent().catch(() => null);
+          if (errorText && errorText.trim()) {
+            errors.add(errorText.trim());
+          }
+        }
+      }
+    } catch {
+      // Ignore errors when collecting - continue with other selectors
+    }
+    return errors;
   }
 
   /**
@@ -888,70 +1020,48 @@ export class WebformFiller {
       
       // Wait briefly for validation state to stabilize, but proceed if no activity
       const fieldId = await field.getAttribute('id') || await field.evaluate((el: { getAttribute: (attr: string) => string | null }) => el.getAttribute('data-testid')) || 'input';
-      await cfg.wait_for_validation_stability(this.require_page(), `#${fieldId}`);
+      await cfg.wait_for_validation_stability(page, `#${fieldId}`);
       
       // Look for common validation error patterns
-      const errorSelectors = [
-        '[data-testid*="error"]',      // Test ID based errors
-        '[class*="error"]',            // CSS class based errors
-        '[class*="invalid"]',          // Invalid state indicators
-        '[aria-invalid="true"]',       // ARIA invalid indicators
-        '.error-message',              // Generic error message class
-        '.validation-error',           // Validation error class
-        '.field-error',                // Field error class
-        '[role="alert"]',              // ARIA alert role
-        '[aria-live="polite"]',        // ARIA live region
-        '[aria-live="assertive"]',     // ARIA assertive live region
-      ];
+      const errorSelectors = this._getValidationErrorSelectors();
+      
+      // Use Set to automatically handle deduplication
+      const fieldErrorsFound = new Set<string>();
       
       // Check for errors near the field element
-      const fieldErrorsFound: string[] = [];
+      const parentContainer = field.locator('xpath=..');
       
       for (const selector of errorSelectors) {
+        // Check parent container for errors
+        const parentErrors = await this._collectErrorsFromContainer(parentContainer, selector);
+        parentErrors.forEach(error => fieldErrorsFound.add(error));
+        
+        // Check page for field-related errors
         try {
-          // Look for errors within the field's parent container
-          const parentContainer = field.locator('xpath=..');
-          const errorElements = parentContainer.locator(selector);
-          
-          const count = await errorElements.count();
-          if (count > 0) {
-            for (let i = 0; i < count; i++) {
-              const errorElement = errorElements.nth(i);
-              if (await errorElement.isVisible()) {
-                const errorText = await errorElement.textContent();
-                if (errorText && errorText.trim()) {
-                  fieldErrorsFound.push(errorText.trim());
-                }
-              }
-            }
-          }
-          
-          // Also check for errors in the general page area
           const pageErrorElements = page.locator(selector);
           const pageErrorCount = await pageErrorElements.count();
-          if (pageErrorCount > 0) {
-            for (let i = 0; i < pageErrorCount; i++) {
-              const errorElement = pageErrorElements.nth(i);
-              if (await errorElement.isVisible()) {
-                const errorText = await errorElement.textContent();
-                if (errorText && errorText.trim()) {
-                  // Check if this error is related to our field
-                  if (this._is_error_related_to_field(errorText, fieldName)) {
-                    fieldErrorsFound.push(errorText.trim());
-                  }
+          
+          for (let i = 0; i < pageErrorCount; i++) {
+            const errorElement = pageErrorElements.nth(i);
+            if (await errorElement.isVisible().catch(() => false)) {
+              const errorText = await errorElement.textContent().catch(() => null);
+              if (errorText && errorText.trim()) {
+                // Check if this error is related to our field
+                if (this._is_error_related_to_field(errorText.trim(), fieldName)) {
+                  fieldErrorsFound.add(errorText.trim());
                 }
               }
             }
           }
         } catch (selectorError) {
-          botLogger.debug('Error checking selector', { selector, error: String(selectorError) });
+          botLogger.debug('Error checking page selector', { selector, error: String(selectorError) });
           continue;
         }
       }
       
       // Report any validation errors found
-      if (fieldErrorsFound.length > 0) {
-        const uniqueErrors = [...new Set(fieldErrorsFound)]; // Remove duplicates
+      if (fieldErrorsFound.size > 0) {
+        const uniqueErrors = Array.from(fieldErrorsFound);
         botLogger.warn('Validation errors detected for field', { fieldName, errors: uniqueErrors });
         for (const error of uniqueErrors) {
           botLogger.warn('Field validation error', { fieldName, error });
@@ -968,7 +1078,11 @@ export class WebformFiller {
         // Re-raise validation errors
         throw error;
       }
-      botLogger.debug('Could not check validation errors for field', { fieldName, error: String(error) });
+      botLogger.debug('Could not check validation errors for field', { 
+        fieldName, 
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
       // Don't raise the exception - continue with form filling
       // The field might still work even if error checking fails
     }

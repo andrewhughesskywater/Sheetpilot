@@ -15,6 +15,7 @@ import { LoginManager } from './authentication_flow';
 import { botLogger } from '../../../../../shared/logger';
 import { getQuarterForDate } from './quarter_config';
 import { appSettings } from '../../../../../shared/constants';
+import { checkAborted, setupAbortHandler } from './utils/abort-utils';
 
 /**
  * Result object returned after automation execution
@@ -178,8 +179,11 @@ export class BotOrchestrator {
       return false;
     }
     
-    // Skip if field is empty string or 'nan'/'none' string
-    const stringValue = String(fieldValue).toLowerCase();
+    // Cache string conversion and lowercase to avoid repeated conversions
+    const stringValue = typeof fieldValue === 'string' 
+      ? fieldValue.toLowerCase() 
+      : String(fieldValue).toLowerCase();
+    
     if (stringValue === 'nan' || stringValue === 'none' || stringValue === '') {
       return false;
     }
@@ -200,6 +204,199 @@ export class BotOrchestrator {
   }
 
   /**
+   * Calculates progress percentage for row processing
+   * @private
+   * @param currentRow - Current row index (0-based)
+   * @param totalRows - Total number of rows
+   * @returns Progress percentage (0-100)
+   */
+  private _calculateProgress(currentRow: number, totalRows: number): number {
+    return 20 + Math.floor(60 * (currentRow + 1) / totalRows);
+  }
+
+  /**
+   * Validates that the entry date matches the quarter of the configured form
+   * @private
+   * @param dateValue - Date value to validate (mm/dd/yyyy format)
+   * @param rowIndex - Row index for error reporting
+   * @returns Error message if validation fails, null if validation passes
+   */
+  private _validateQuarterMatch(dateValue: unknown, rowIndex: number): string | null {
+    if (!dateValue) return null;
+
+    try {
+      const dateStr = String(dateValue).trim();
+      
+      // Support multiple date formats: mm/dd/yyyy, m/d/yyyy, mm-dd-yyyy, etc.
+      const dateMatch = dateStr.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+      if (!dateMatch) {
+        return `Invalid date format: ${dateStr}. Expected mm/dd/yyyy`;
+      }
+      
+      const [, monthStr, dayStr, yearStr] = dateMatch;
+      if (!monthStr || !dayStr || !yearStr) {
+        return `Invalid date format: ${dateStr}. Expected mm/dd/yyyy`;
+      }
+      
+      const month = parseInt(monthStr, 10);
+      const day = parseInt(dayStr, 10);
+      const year = parseInt(yearStr, 10);
+      
+      // Validate date ranges
+      if (isNaN(month) || isNaN(day) || isNaN(year) || 
+          month < 1 || month > 12 || 
+          day < 1 || day > 31 || 
+          year < 1900 || year > 2100) {
+        return `Invalid date values: ${dateStr}`;
+      }
+      
+      const isoDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const quarterDef = getQuarterForDate(isoDate);
+      
+      if (quarterDef && quarterDef.formId !== this.formConfig.FORM_ID) {
+        return `Date ${dateStr} belongs to ${quarterDef.name} but form configured for different quarter`;
+      }
+      
+      return null;
+    } catch (dateError) {
+      botLogger.error('Error parsing date', { 
+        rowIndex, 
+        date: dateValue,
+        error: dateError instanceof Error ? dateError.message : String(dateError)
+      });
+      return `Could not parse date: ${dateValue}`;
+    }
+  }
+
+
+  /**
+   * Processes a single row through the automation workflow
+   * @private
+   * @param row - Row data to process
+   * @param rowIndex - Index of the row
+   * @param totalRows - Total number of rows for progress calculation
+   * @param status_col - Status column name
+   * @param complete_val - Complete status value
+   * @param abortSignal - Optional abort signal
+   * @returns Tuple of [success: boolean, errorMessage: string | null]
+   */
+  private async _processRow(
+    row: Record<string, unknown>,
+    rowIndex: number,
+    totalRows: number,
+    status_col: string,
+    complete_val: unknown,
+    abortSignal?: AbortSignal
+  ): Promise<[boolean, string | null]> {
+    // Check if aborted before processing each row
+    checkAborted(abortSignal, `Automation (row ${rowIndex + 1}/${totalRows})`);
+    
+    // Skip completed rows
+    if (status_col in row && String(row[status_col] ?? '').trim() === complete_val) {
+      const progress = this._calculateProgress(rowIndex, totalRows);
+      botLogger.verbose('Skipping completed row', { rowIndex: rowIndex + 1, totalRows, progress });
+      this.progress_callback?.(progress, `Skipping completed row ${rowIndex + 1}`);
+      return [false, null]; // Not an error, just skipped
+    }
+
+    const progress = this._calculateProgress(rowIndex, totalRows);
+    botLogger.verbose('Processing row', { rowIndex: rowIndex + 1, totalRows, progress });
+
+    // Build fields from row
+    const fields = this._build_fields_from_row(row);
+    
+    // Validate required fields
+    if (!this._validate_required_fields(fields, rowIndex)) {
+      botLogger.warn('Row skipped', { rowIndex, reason: 'Missing required fields' });
+      return [false, 'Missing required fields'];
+    }
+
+    // Validate quarter match
+    if (fields['date']) {
+      const quarterError = this._validateQuarterMatch(fields['date'], rowIndex);
+      if (quarterError) {
+        botLogger.error('Quarter validation failed', { rowIndex, error: quarterError });
+        return [false, quarterError];
+      }
+    }
+
+    // Ensure page stability using webform_filler
+    await this.webform_filler.wait_for_form_ready();
+
+    // Fill fields
+    botLogger.verbose('Filling form fields', { rowIndex });
+    await this._fill_fields(fields);
+
+    // Submit form if configured
+    if (Cfg.SUBMIT_FORM_AFTER_FILLING) {
+      botLogger.verbose('Waiting for form to stabilize before submission', { rowIndex });
+      // Wait for form to be stable (no ongoing animations or changes)
+      await Cfg.wait_for_dom_stability(
+        this.webform_filler.require_page(),
+        'form',
+        'visible',
+        Cfg.SUBMIT_DELAY_AFTER_FILLING,
+        Cfg.SUBMIT_DELAY_AFTER_FILLING * 2,
+        'form stabilization before submission'
+      );
+      
+      // Submit with retry
+      const submissionSuccess = await this._submitWithRetryWithFields(rowIndex, fields);
+      if (!submissionSuccess) {
+        return [false, `Form submission failed after ${this.cfg.SUBMIT_RETRY_ATTEMPTS} attempts`];
+      }
+    }
+
+    botLogger.info('Row completed successfully', { rowIndex });
+    this.progress_callback?.(this._calculateProgress(rowIndex, totalRows), `Completed row ${rowIndex + 1}`);
+    return [true, null];
+  }
+
+  /**
+   * Submits form with retry logic and re-fills fields on retry
+   * @private
+   * @param rowIndex - Row index for logging
+   * @param fields - Fields to fill if retry is needed
+   * @returns Promise resolving to true if submission succeeded, false otherwise
+   */
+  private async _submitWithRetryWithFields(rowIndex: number, fields: Record<string, unknown>): Promise<boolean> {
+    const maxRetries = this.cfg.SUBMIT_RETRY_ATTEMPTS;
+    let submissionSuccess = false;
+    
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      botLogger.info('Submitting form', { rowIndex, attempt: attempt + 1, maxRetries });
+      const success = await this.webform_filler.submit_form();
+      
+      if (success) {
+        botLogger.info('Row submitted successfully', { rowIndex, httpStatus: 200 });
+        submissionSuccess = true;
+        break;
+      } else {
+        botLogger.warn('Submission attempt unsuccessful', { rowIndex, attempt: attempt + 1, reason: 'No HTTP 200 response' });
+        if (attempt < maxRetries - 1) {
+          const retryDelay = Cfg.SUBMIT_RETRY_DELAY;
+          botLogger.verbose('Waiting for page to stabilize before retry', { rowIndex, retryDelay });
+          // Wait for page to be stable before retry
+          await Cfg.wait_for_dom_stability(
+            this.webform_filler.require_page(),
+            'body',
+            'visible',
+            retryDelay,
+            retryDelay * 2,
+            'page stabilization before retry'
+          );
+          
+          // Re-fill the form before retry
+          botLogger.verbose('Re-filling form fields for retry attempt', { rowIndex });
+          await this._fill_fields(fields);
+        }
+      }
+    }
+    
+    return submissionSuccess;
+  }
+
+  /**
    * Internal method that executes the core automation logic
    * @private
    * @param df - Array of data rows to process
@@ -214,24 +411,11 @@ export class BotOrchestrator {
     const total_rows = df.length;
 
     // Set up abort listener to immediately stop browser when cancelled
-    const abortHandler = () => {
-      botLogger.info('Abort signal received, closing browser immediately');
-      // Close browser asynchronously but don't wait for it
-      this.close().catch(err => {
-        botLogger.error('Could not close browser during abort', { error: err instanceof Error ? err.message : String(err) });
-      });
-    };
-    
-    if (abortSignal) {
-      abortSignal.addEventListener('abort', abortHandler);
-    }
+    const cleanupAbortHandler = setupAbortHandler(abortSignal, () => this.close(), 'browser');
     
     try {
       // Check if aborted before starting
-      if (abortSignal?.aborted) {
-        botLogger.info('Automation aborted before starting');
-        throw new Error('Automation was cancelled');
-      }
+      checkAborted(abortSignal, 'Automation');
       
       botLogger.info('Starting automation workflow', { 
         totalRows: total_rows, 
@@ -244,10 +428,7 @@ export class BotOrchestrator {
       await this.login_manager.run_login_steps(email, password, 0);
       
       // Check if aborted after login
-      if (abortSignal?.aborted) {
-        botLogger.info('Automation aborted after login');
-        throw new Error('Automation was cancelled');
-      }
+      checkAborted(abortSignal, 'Automation');
       
       botLogger.info('Login complete', { progress: 20 });
       this.progress_callback?.(20, 'Login complete');
@@ -262,125 +443,29 @@ export class BotOrchestrator {
 
       // Process rows sequentially
       for (let i = 0; i < df.length; i++) {
-          // Check if aborted before processing each row
-          if (abortSignal?.aborted) {
-            botLogger.info('Automation aborted during row processing', { currentRow: i+1, totalRows: total_rows });
-            throw new Error('Automation was cancelled');
-          }
-          
-          const idx = i; // Using array index as row identifier
-          const row = df[i];
-          if (!row) continue;
+        const idx = i; // Using array index as row identifier
+        const row = df[i];
+        if (!row) continue;
+        
         try {
-          // Skip completed rows
-          if (status_col in row && String(row[status_col as string] ?? '').trim() === complete_val) {
-            const progress = 20 + Math.floor(60 * (i+1) / total_rows);
-            botLogger.verbose('Skipping completed row', { rowIndex: i+1, totalRows: total_rows, progress });
-            this.progress_callback?.(progress, `Skipping completed row ${i+1}`);
-            continue;
-          }
-
-          const progress = 20 + Math.floor(60 * (i+1) / total_rows);
-          botLogger.verbose('Processing row', { rowIndex: i+1, totalRows: total_rows, progress });
-
-          // Build fields from row
-          const fields = this._build_fields_from_row(row);
+          const [success, errorMessage] = await this._processRow(
+            row,
+            idx,
+            total_rows,
+            status_col,
+            complete_val,
+            abortSignal
+          );
           
-          // Validate required fields
-          if (!this._validate_required_fields(fields, idx)) {
-            botLogger.warn('Row skipped', { rowIndex: idx, reason: 'Missing required fields' });
-            failed_rows.push([idx, 'Missing required fields']);
+          if (!success) {
+            if (errorMessage) {
+              failed_rows.push([idx, errorMessage]);
+            }
+            // If errorMessage is null, the row was skipped (e.g., completed), which is not an error
             continue;
-          }
-
-          // Validate that entry date matches the quarter of the configured form
-          if (fields['date']) {
-            // Convert date from mm/dd/yyyy to yyyy-mm-dd for quarter validation
-            const dateStr = String(fields['date']);
-            const [month, day, year] = dateStr.split('/');
-            // Pad month and day to ensure proper formatting
-            if (month && day && year) {
-              const isoDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-              const quarterDef = getQuarterForDate(isoDate);
-              
-              if (quarterDef && quarterDef.formId !== this.formConfig.FORM_ID) {
-                botLogger.error('Quarter mismatch detected', { 
-                  rowIndex: idx, 
-                  entryDate: fields['date'],
-                  entryQuarter: quarterDef.id,
-                  configuredFormId: this.formConfig.FORM_ID,
-                  expectedFormId: quarterDef.formId
-                });
-                failed_rows.push([idx, `Date ${fields['date']} belongs to ${quarterDef.name} but form configured for different quarter`]);
-                continue;
-              }
-            }
-          }
-
-          // Ensure page stability using webform_filler
-          await this.webform_filler.wait_for_form_ready();
-
-          // Fill fields
-          botLogger.verbose('Filling form fields', { rowIndex: idx });
-          await this._fill_fields(fields);
-
-          if (Cfg.SUBMIT_FORM_AFTER_FILLING) {
-            botLogger.verbose('Waiting for form to stabilize before submission', { rowIndex: idx });
-            // Wait for form to be stable (no ongoing animations or changes)
-            await Cfg.wait_for_dom_stability(
-              this.webform_filler.require_page(),
-              'form',
-              'visible',
-              Cfg.SUBMIT_DELAY_AFTER_FILLING,
-              Cfg.SUBMIT_DELAY_AFTER_FILLING * 2,
-              'form stabilization before submission'
-            );
-            
-            // Retry form submission with HTTP 200 validation
-            const maxRetries = this.cfg.SUBMIT_RETRY_ATTEMPTS;
-            let submissionSuccess = false;
-            
-            for (let attempt = 0; attempt < maxRetries; attempt++) {
-              botLogger.info('Submitting form', { rowIndex: idx, attempt: attempt + 1, maxRetries });
-              const success = await this.webform_filler.submit_form();
-              
-              if (success) {
-                botLogger.info('Row submitted successfully', { rowIndex: idx, httpStatus: 200 });
-                submissionSuccess = true;
-                break;
-              } else {
-                botLogger.warn('Submission attempt unsuccessful', { rowIndex: idx, attempt: attempt + 1, reason: 'No HTTP 200 response' });
-                if (attempt < maxRetries - 1) {
-                  const retryDelay = Cfg.SUBMIT_RETRY_DELAY;
-                  botLogger.verbose('Waiting for page to stabilize before retry', { rowIndex: idx, retryDelay });
-                  // Wait for page to be stable before retry
-                  await Cfg.wait_for_dom_stability(
-                    this.webform_filler.require_page(),
-                    'body',
-                    'visible',
-                    retryDelay,
-                    retryDelay * 2,
-                    'page stabilization before retry'
-                  );
-                  
-                  // Re-fill the form before retry
-                  botLogger.verbose('Re-filling form fields for retry attempt', { rowIndex: idx });
-                  await this._fill_fields(fields);
-                }
-              }
-            }
-            
-            if (!submissionSuccess) {
-              botLogger.error('Row processing failed after retries', { rowIndex: idx, maxRetries, reason: 'No HTTP 200 response' });
-              failed_rows.push([idx, `Form submission failed after ${maxRetries} attempts`]);
-              continue;
-            }
           }
 
           submitted.push(idx);
-          botLogger.info('Row completed successfully', { rowIndex: idx });
-          
-          this.progress_callback?.(20 + Math.floor(60 * (i+1) / total_rows), `Completed row ${i+1}`);
         } catch (e: unknown) {
           const errorMsg = String((e as Error)?.message ?? e);
           botLogger.error('Row processing encountered error', { rowIndex: idx, error: errorMsg });
@@ -427,8 +512,8 @@ export class BotOrchestrator {
       };
     } finally {
       // Clean up abort listener
-      if (abortSignal) {
-        abortSignal.removeEventListener('abort', abortHandler);
+      if (cleanupAbortHandler) {
+        cleanupAbortHandler();
       }
     }
   }

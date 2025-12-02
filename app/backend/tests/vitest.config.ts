@@ -13,7 +13,12 @@ export default defineConfig({
     root: path.resolve(__dirname, '../../..'),
     include: [
       'app/backend/tests/unit/**/*.spec.ts',
-      'app/backend/tests/contracts/**/*.spec.ts'
+      'app/backend/tests/contracts/**/*.spec.ts',
+      'app/backend/tests/ipc/**/*.spec.ts',
+      'app/backend/tests/middleware/**/*.spec.ts',
+      'app/backend/tests/services/**/*.spec.ts',
+      'app/backend/tests/logic/**/*.spec.ts',
+      'app/backend/tests/preload.spec.ts'
     ],
     passWithNoTests: false,
     globals: true,
@@ -36,7 +41,28 @@ export default defineConfig({
         outputFile: 'unit-test-results.md',
         outputDir: path.resolve(__dirname, '../../..', 'test-results')
       })
-    ]
+    ],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html', 'json-summary'],
+      include: [
+        'app/backend/src/**/*.ts'
+      ],
+      exclude: [
+        'app/backend/src/**/*.spec.ts',
+        'app/backend/src/**/*.test.ts',
+        'app/backend/tests/**/*',
+        'app/backend/src/**/*.d.ts',
+        'app/backend/src/main.ts', // Main entry point - tested via integration
+        'app/backend/src/preload.ts' // Preload script - tested separately
+      ],
+      thresholds: {
+        statements: 100,
+        branches: 100,
+        functions: 100,
+        lines: 100
+      }
+    }
   },
   define: {
     'import.meta.env': JSON.stringify({

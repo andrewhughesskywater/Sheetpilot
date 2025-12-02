@@ -32,7 +32,7 @@ interface FieldDefinition {
 }
 
 /** Login step interface */
-interface LoginStep {
+export interface LoginStep {
   name: string;
   action: string;
   locator?: string;
@@ -162,6 +162,21 @@ export const ENABLE_ADAPTIVE_WAITS: boolean = (process.env['ENABLE_ADAPTIVE_WAIT
 export const ADAPTIVE_WAIT_MIN_MULTIPLIER: number = Number(process.env['ADAPTIVE_WAIT_MIN'] ?? "0.3");
 /** Maximum wait time multiplier for slow operations */
 export const ADAPTIVE_WAIT_MAX_MULTIPLIER: number = Number(process.env['ADAPTIVE_WAIT_MAX'] ?? "2.0");
+
+// ============================================================================
+// SHORT WAIT CONSTANTS
+// ============================================================================
+
+/** Short wait timeout for brief UI interactions (e.g., dropdown selection) in seconds */
+export const SHORT_WAIT_TIMEOUT: number = Number(process.env['SHORT_WAIT_TIMEOUT'] ?? "0.3");
+/** Brief polling interval for rapid checks in milliseconds */
+export const BRIEF_POLL_INTERVAL_MS: number = Number(process.env['BRIEF_POLL_INTERVAL_MS'] ?? "50");
+/** Short delay timeout for UI interactions in milliseconds */
+export const SHORT_DELAY_MS: number = Number(process.env['SHORT_DELAY_MS'] ?? "100");
+/** Medium delay timeout for UI interactions in milliseconds */
+export const MEDIUM_DELAY_MS: number = Number(process.env['MEDIUM_DELAY_MS'] ?? "200");
+/** Half-timeout multiplier for faster operations */
+export const HALF_TIMEOUT_MULTIPLIER: number = Number(process.env['HALF_TIMEOUT_MULTIPLIER'] ?? "0.5");
 
 // ============================================================================
 // FORM SUBMISSION CONFIGURATION
@@ -544,9 +559,18 @@ export async function sleep(ms: number): Promise<void> {
         // Note: Playwright lacks a direct performance API in Node.js
         // This is a minimal implementation that can be replaced with
         // page.waitForLoadState('networkidle') if more robust behavior is needed
-        await page.waitForLoadState('networkidle', { timeout: base_timeout * 1000 }).catch(() => {});
+        await page.waitForLoadState('networkidle', { timeout: base_timeout * 1000 }).catch((error) => {
+          botLogger.debug('Network idle wait failed', { 
+            error: error instanceof Error ? error.message : String(error) 
+          });
+        });
         return true;
-      } catch { return false; }
+      } catch (error) {
+        botLogger.debug('Error waiting for network idle', { 
+          error: error instanceof Error ? error.message : String(error) 
+        });
+        return false;
+      }
     }, base_timeout, max_timeout);
   }
 
@@ -574,31 +598,51 @@ export async function sleep(ms: number): Promise<void> {
         const element = page.locator(selector);
         
         // Quick check if element exists and is in desired state
-        const isInState = await element.evaluate((el: unknown, targetState: string) => {
+        // Capture state in closure since evaluate doesn't accept parameters for this use case
+        const targetState = state;
+        const isInState = await element.evaluate((el: HTMLElement | SVGElement) => {
           if (!el) return false;
-          const domElement = el as { offsetWidth: number; offsetHeight: number; parentNode: unknown | null }; // DOM element in browser context
           
-          // Use Playwright's built-in element state checking instead of DOM APIs
-          switch (targetState) {
+          // Use type guard to check if element is HTMLElement
+          const htmlEl = el as HTMLElement & { offsetWidth?: number; offsetHeight?: number };
+          
+          // Use DOM APIs to check element state
+          // Note: targetState is captured from closure
+          const stateToCheck = (targetState as string);
+          switch (stateToCheck) {
             case 'visible': 
-              return domElement.offsetWidth > 0 && domElement.offsetHeight > 0;
+              // For HTMLElement, check offsetWidth/offsetHeight
+              // For SVGElement, we'll use a fallback - check if it's in the DOM and has dimensions
+              if (htmlEl.offsetWidth !== undefined && htmlEl.offsetHeight !== undefined) {
+                return htmlEl.offsetWidth > 0 && htmlEl.offsetHeight > 0;
+              }
+              // Fallback for SVG or other element types: check if element is in document
+              return el.ownerDocument !== null && el.parentNode !== null;
             case 'hidden': 
-              return domElement.offsetWidth === 0 || domElement.offsetHeight === 0;
+              if (htmlEl.offsetWidth !== undefined && htmlEl.offsetHeight !== undefined) {
+                return htmlEl.offsetWidth === 0 || htmlEl.offsetHeight === 0;
+              }
+              // Fallback: assume not hidden if in document
+              return el.ownerDocument === null || el.parentNode === null;
             case 'attached': 
-              return domElement.parentNode !== null;
+              return el.parentNode !== null;
             case 'detached': 
-              return domElement.parentNode === null;
+              return el.parentNode === null;
             default: 
-              return domElement.offsetWidth > 0 && domElement.offsetHeight > 0;
+              // Default to visible check
+              if (htmlEl.offsetWidth !== undefined && htmlEl.offsetHeight !== undefined) {
+                return htmlEl.offsetWidth > 0 && htmlEl.offsetHeight > 0;
+              }
+              return el.ownerDocument !== null && el.parentNode !== null;
           }
-        }, state).catch(() => false);
+        }).catch(() => false);
         
         if (isInState) {
           // Element is already in desired state, check for stability
           const initialRect = await element.boundingBox().catch(() => null);
           if (initialRect) {
             // Wait a short moment and check if element is still in same position
-            await page.waitForTimeout(50);
+            await page.waitForTimeout(BRIEF_POLL_INTERVAL_MS);
             const finalRect = await element.boundingBox().catch(() => null);
             
             // Consider stable if position hasn't changed significantly
@@ -617,7 +661,7 @@ export async function sleep(ms: number): Promise<void> {
       } catch {
         // If we can't find the element or it's not in the expected state,
         // proceed anyway after a short delay to avoid hanging
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(MEDIUM_DELAY_MS);
         return true;
       }
     }, Math.min(base_timeout, 1.0), Math.min(max_timeout, 2.0), DYNAMIC_WAIT_MULTIPLIER, operation_name);
@@ -670,14 +714,14 @@ export async function sleep(ms: number): Promise<void> {
         
         // If no options found, proceed anyway after a short delay
         // This handles cases where dropdowns don't show options or use different patterns
-        await page.waitForTimeout(100);
+        await page.waitForTimeout(SHORT_DELAY_MS);
         return true;
       } catch {
         // If there's any error, proceed anyway to avoid hanging
-        await page.waitForTimeout(100);
+        await page.waitForTimeout(SHORT_DELAY_MS);
         return true;
       }
-    }, Math.min(base_timeout, 0.5), Math.min(max_timeout, 1.0), DYNAMIC_WAIT_MULTIPLIER, 'dropdown options population');
+    }, Math.min(base_timeout, HALF_TIMEOUT_MULTIPLIER), Math.min(max_timeout, 1.0), DYNAMIC_WAIT_MULTIPLIER, 'dropdown options population');
   }
 
   /**
@@ -723,7 +767,7 @@ export async function sleep(ms: number): Promise<void> {
         }
         
         // Wait a moment to see if validation state changes
-        await page.waitForTimeout(100);
+        await page.waitForTimeout(SHORT_DELAY_MS);
         
         // Check again to ensure validation is stable
         let stillHasError = false;
@@ -746,10 +790,10 @@ export async function sleep(ms: number): Promise<void> {
         return validationStable || !hasValidationError;
       } catch {
         // If we can't check validation, proceed anyway to avoid hanging
-        await page.waitForTimeout(100);
+        await page.waitForTimeout(SHORT_DELAY_MS);
         return true;
       }
-    }, Math.min(base_timeout, 0.3), Math.min(max_timeout, 0.6), DYNAMIC_WAIT_MULTIPLIER, 'validation stability');
+    }, Math.min(base_timeout, SHORT_WAIT_TIMEOUT), Math.min(max_timeout, SHORT_WAIT_TIMEOUT * 2), DYNAMIC_WAIT_MULTIPLIER, 'validation stability');
   }
 
   /**
@@ -855,7 +899,7 @@ export async function sleep(ms: number): Promise<void> {
           
           // If no activity detected for multiple consecutive checks, proceed
           if (consecutiveNoActivity >= maxConsecutiveNoActivity) {
-            await page.waitForTimeout(50); // Brief pause before proceeding
+            await page.waitForTimeout(BRIEF_POLL_INTERVAL_MS); // Brief pause before proceeding
             return true; // Proceed anyway
           }
         }
@@ -863,7 +907,7 @@ export async function sleep(ms: number): Promise<void> {
         await page.waitForTimeout(check_interval);
       } catch {
         // If there's any error, proceed anyway to avoid hanging
-        await page.waitForTimeout(50);
+        await page.waitForTimeout(BRIEF_POLL_INTERVAL_MS);
         return true;
       }
     }

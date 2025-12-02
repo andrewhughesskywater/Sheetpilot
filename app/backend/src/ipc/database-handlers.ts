@@ -10,7 +10,8 @@
 
 import { ipcMain } from 'electron';
 import { ipcLogger } from '../../../shared/logger';
-import { getDb, validateSession } from '../services/database';
+import { getDb } from '../repositories';
+import { validateSession } from '../repositories';
 
 /**
  * Register all database viewer-related IPC handlers

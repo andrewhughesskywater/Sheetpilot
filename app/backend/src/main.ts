@@ -5,7 +5,7 @@ import {
   setDbPath,
   ensureSchema,
   getDbPath
-} from './services/database';
+} from './repositories';
 import { APP_VERSION } from '../../shared/constants';
 
 // Logger interface matching the Logger class from shared/logger

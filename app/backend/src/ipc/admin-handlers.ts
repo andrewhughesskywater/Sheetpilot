@@ -14,7 +14,7 @@ import {
   validateSession,
   clearAllCredentials,
   rebuildDatabase
-} from '../services/database';
+} from '../repositories';
 import { validateInput } from '../validation/validate-ipc-input';
 import { adminTokenSchema } from '../validation/ipc-schemas';
 

@@ -72,6 +72,22 @@ export const CHARGE_CODES = [
 ] as const;
 
 /**
+ * Type helpers for type-safe array membership checks
+ */
+type ProjectWithoutTools = typeof PROJECTS_WITHOUT_TOOLS[number];
+type ToolWithoutCharges = typeof TOOLS_WITHOUT_CHARGES[number];
+type Project = typeof PROJECTS[number];
+type ChargeCode = typeof CHARGE_CODES[number];
+
+/**
+ * Create Sets for O(1) lookup performance
+ */
+const PROJECTS_WITHOUT_TOOLS_SET = new Set<string>(PROJECTS_WITHOUT_TOOLS);
+const TOOLS_WITHOUT_CHARGES_SET = new Set<string>(TOOLS_WITHOUT_CHARGES);
+const PROJECTS_SET = new Set<string>(PROJECTS);
+const CHARGE_CODES_SET = new Set<string>(CHARGE_CODES);
+
+/**
  * Tools available per project
  * Defines the cascading dropdown relationship: Project → Tools
  */
@@ -141,13 +157,13 @@ export const TOOLS_BY_PROJECT: Record<string, readonly string[]> = {
 /**
  * Gets the list of tools available for a given project
  * @param project - The project name
- * @returns Array of tool names, or empty array if project doesn't require tools
+ * @returns Readonly array of tool names, or empty array if project doesn't require tools
  */
-export function getToolsForProject(project: string): string[] {
+export function getToolsForProject(project: string): readonly string[] {
   if (!project || isProjectWithoutTools(project)) {
     return [];
   }
-  return [...(TOOLS_BY_PROJECT[project] || [])];
+  return TOOLS_BY_PROJECT[project] || [];
 }
 
 /**
@@ -164,8 +180,8 @@ export function doesProjectNeedTools(project: string): boolean {
  * @param project - The project name
  * @returns True if the project does not require tools
  */
-export function isProjectWithoutTools(project: string): boolean {
-  return PROJECTS_WITHOUT_TOOLS.includes(project as typeof PROJECTS_WITHOUT_TOOLS[number]);
+export function isProjectWithoutTools(project: string): project is ProjectWithoutTools {
+  return typeof project === 'string' && PROJECTS_WITHOUT_TOOLS_SET.has(project);
 }
 
 /**
@@ -182,8 +198,8 @@ export function doesToolNeedChargeCode(tool: string): boolean {
  * @param tool - The tool name
  * @returns True if the tool does not require charge codes
  */
-export function isToolWithoutChargeCode(tool: string): boolean {
-  return TOOLS_WITHOUT_CHARGES.includes(tool as typeof TOOLS_WITHOUT_CHARGES[number]);
+export function isToolWithoutChargeCode(tool: string): tool is ToolWithoutCharges {
+  return typeof tool === 'string' && TOOLS_WITHOUT_CHARGES_SET.has(tool);
 }
 
 /**
@@ -207,8 +223,8 @@ export function getAllChargeCodes(): readonly string[] {
  * @param project - The project name to validate
  * @returns True if the project is valid
  */
-export function isValidProject(project: string): boolean {
-  return PROJECTS.includes(project as typeof PROJECTS[number]);
+export function isValidProject(project: string): project is Project {
+  return typeof project === 'string' && PROJECTS_SET.has(project);
 }
 
 /**
@@ -230,8 +246,8 @@ export function isValidToolForProject(tool: string, project: string): boolean {
  * @param chargeCode - The charge code to validate
  * @returns True if the charge code is valid
  */
-export function isValidChargeCode(chargeCode: string): boolean {
-  return CHARGE_CODES.includes(chargeCode as typeof CHARGE_CODES[number]);
+export function isValidChargeCode(chargeCode: string): chargeCode is ChargeCode {
+  return typeof chargeCode === 'string' && CHARGE_CODES_SET.has(chargeCode);
 }
 
 /**

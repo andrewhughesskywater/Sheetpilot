@@ -115,7 +115,7 @@ const MacroManagerDialog = ({ open, onClose, onSave }: MacroManagerDialogProps) 
         };
       }
       return { 
-        source: getToolsForProject(project), 
+        source: [...getToolsForProject(project)], 
         placeholder: 'Pick a Tool',
         readOnly: false,
         className: 'htCenter'

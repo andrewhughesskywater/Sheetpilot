@@ -15,7 +15,7 @@ import {
   getCredentials, 
   listCredentials, 
   deleteCredentials 
-} from '../services/database';
+} from '../repositories';
 import { 
   CredentialsNotFoundError,
   CredentialsStorageError,

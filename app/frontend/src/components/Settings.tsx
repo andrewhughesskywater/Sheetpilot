@@ -26,6 +26,7 @@ import { useSession } from '../contexts/SessionContext';
 import { APP_VERSION } from '../../../shared/constants';
 import logoImage from '../assets/images/logo.svg';
 import './Settings.css';
+import { autoCompleteEmailDomain } from '../utils/emailAutoComplete';
 
 function Settings() {
   const { token, isAdmin, logout: sessionLogout } = useSession();
@@ -69,8 +70,9 @@ function Settings() {
         }
       }
     } catch (err) {
-      console.error('Could not load credentials', err);
-      window.logger?.error('Could not load credentials', { error: err });
+      window.logger?.error('Could not load credentials', { 
+        error: err instanceof Error ? err.message : String(err) 
+      });
       // Don't set error state here as it's not critical
     }
   };
@@ -82,15 +84,17 @@ function Settings() {
     try {
       const response = await window.logs?.getLogPath?.();
       if (!response) {
-        console.warn('Logs API not available');
+        window.logger?.warn('Logs API not available');
       } else if (response.success) {
         setLogPath(response.logPath || '');
         setLogFiles(response.logFiles || []);
       } else {
-        console.error('Failed to load log files:', response.error);
+        window.logger?.error('Failed to load log files', { error: response.error });
       }
     } catch (err) {
-      console.error('Error loading log files:', err);
+      window.logger?.error('Error loading log files', { 
+        error: err instanceof Error ? err.message : String(err) 
+      });
     } finally {
       setIsLoading(false);
     }
@@ -105,8 +109,9 @@ function Settings() {
         }
       }
     } catch (err) {
-      console.error('Could not load settings', err);
-      window.logger?.error('Could not load settings', { error: err });
+      window.logger?.error('Could not load settings', { 
+        error: err instanceof Error ? err.message : String(err) 
+      });
     }
   };
 
@@ -249,36 +254,110 @@ function Settings() {
   const exportLogs = async () => {
     // Use the latest log file if available
     if (!logFiles || logFiles.length === 0) {
-      setError('No log files available');
+      const errorMsg = 'No log files available';
+      setError(errorMsg);
+      window.logger?.warn('Export logs attempted with no log files available');
+      return;
+    }
+    
+    if (!logPath) {
+      const errorMsg = 'Log path not available';
+      setError(errorMsg);
+      window.logger?.warn('Export logs attempted with no log path');
       return;
     }
     
     const latestLogFile = logFiles[logFiles.length - 1];
+    if (!latestLogFile) {
+      const errorMsg = 'Could not determine latest log file';
+      setError(errorMsg);
+      window.logger?.warn('Export logs attempted but latest log file could not be determined');
+      return;
+    }
+    
     setIsExporting(true);
     setError('');
     
+    let downloadUrl: string | null = null;
+    
     try {
       const fullLogPath = logPath.endsWith('\\') ? (logPath + latestLogFile) : (logPath + '\\' + latestLogFile);
-      const response = await window.logs?.exportLogs?.(fullLogPath, 'txt');
+      
+      if (!window.logs?.exportLogs) {
+        const errorMsg = 'Logs API not available';
+        setError(errorMsg);
+        window.logger?.error('Export logs failed - API not available');
+        return;
+      }
+      
+      const response = await window.logs.exportLogs(fullLogPath, 'txt');
+      
       if (!response) {
-        setError('Logs API not available');
-      } else if (response.success && response.content && response.filename) {
-        // Create and download file
+        const errorMsg = 'Logs API returned no response';
+        setError(errorMsg);
+        window.logger?.error('Export logs failed - no response from API');
+        return;
+      }
+      
+      if (!response.success) {
+        const errorMsg = response.error || 'Failed to export logs';
+        setError(errorMsg);
+        window.logger?.error('Export logs failed', { error: errorMsg });
+        return;
+      }
+      
+      if (!response.content) {
+        const errorMsg = 'Log file content is empty';
+        setError(errorMsg);
+        window.logger?.error('Export logs failed - empty content');
+        return;
+      }
+      
+      if (!response.filename) {
+        const errorMsg = 'Log filename not provided';
+        setError(errorMsg);
+        window.logger?.error('Export logs failed - no filename');
+        return;
+      }
+      
+      // Create and download file
+      try {
         const blob = new Blob([response.content], { type: response.mimeType || 'text/plain' });
-        const url = URL.createObjectURL(blob);
+        downloadUrl = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url;
+        a.href = downloadUrl;
         a.download = response.filename;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      } else {
-        setError(response.error || 'Failed to export logs');
+        
+        window.logger?.info('Logs exported successfully', { filename: response.filename });
+      } catch (blobError) {
+        const errorMsg = `Failed to create download: ${blobError instanceof Error ? blobError.message : String(blobError)}`;
+        setError(errorMsg);
+        window.logger?.error('Export logs failed - blob creation error', { 
+          error: blobError instanceof Error ? blobError.message : String(blobError) 
+        });
+        return;
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+      setError(errorMsg);
+      window.logger?.error('Export logs error', { 
+        error: errorMsg,
+        stack: err instanceof Error ? err.stack : undefined
+      });
     } finally {
+      // Clean up blob URL if it was created
+      if (downloadUrl) {
+        try {
+          URL.revokeObjectURL(downloadUrl);
+        } catch (revokeError) {
+          window.logger?.warn('Could not revoke blob URL', { 
+            error: revokeError instanceof Error ? revokeError.message : String(revokeError) 
+          });
+        }
+      }
       setIsExporting(false);
     }
   };
@@ -587,16 +666,8 @@ function Settings() {
               value={updateEmail}
               onChange={(e) => {
                 const value = e.target.value;
-                setUpdateEmail(value);
-                
-                // Auto-complete domain
-                if (value.includes('@') && !value.includes('@skywatertechnology.com')) {
-                  const atIndex = value.lastIndexOf('@');
-                  const domainPart = value.substring(atIndex + 1);
-                  if (domainPart === '' || domainPart === 'skywatertechnology.com'.substring(0, domainPart.length)) {
-                    setUpdateEmail(value.substring(0, atIndex + 1) + 'skywatertechnology.com');
-                  }
-                }
+                const completedValue = autoCompleteEmailDomain(value);
+                setUpdateEmail(completedValue);
               }}
               placeholder="your.email@skywatertechnology.com"
               margin="normal"

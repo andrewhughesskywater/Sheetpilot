@@ -24,6 +24,7 @@ import {
     DatabaseConnectionError,
     DatabaseSchemaError
 } from '../../../shared/errors';
+import { ensureSchemaInternal } from '../repositories/connection-manager';
 
 /**
  * Database file path configuration
@@ -242,88 +243,11 @@ export function openDb(): BetterSqlite3.Database {
 /**
  * Inserts a new timesheet entry with deduplication
  * 
- * Uses the unique constraint on (date, time_in, project, task_description) to prevent
- * duplicate entries. If a duplicate is found, the insertion is silently ignored.
+ * Re-exported from timesheet-repository for backwards compatibility.
  * 
- * @param {Object} entry - Timesheet entry object
- * @param {string} entry.date - Work date in YYYY-MM-DD format
- * @param {number} entry.timeIn - Start time in minutes since midnight
- * @param {number} entry.timeOut - End time in minutes since midnight
- * @param {string} entry.project - Project name
- * @param {string} [entry.tool] - Tool used (optional)
- * @param {string} [entry.detailChargeCode] - Charge code (optional)
- * @param {string} entry.taskDescription - Task description
- * @returns {Object} Result object with success status and duplicate info
- * 
- * @example
- * const result = insertTimesheetEntry({
- *   date: '2025-01-15',
- *   timeIn: 540,  // 9:00 AM
- *   timeOut: 600, // 10:00 AM
- *   project: 'MyProject',
- *   tool: 'VS Code',
- *   taskDescription: 'Code review'
- * });
- * 
- * if (result.success) {
- *   console.log('Entry inserted successfully');
- * } else if (result.isDuplicate) {
- *   console.log('Duplicate entry ignored');
- * }
+ * @deprecated Import from '../repositories/timesheet-repository' or '../repositories' instead
  */
-export function insertTimesheetEntry(entry: {
-    date: string;
-    timeIn: number;
-    timeOut: number;
-    project: string;
-    tool?: string | null;
-    detailChargeCode?: string | null;
-    taskDescription: string;
-}) {
-    const timer = dbLogger.startTimer('insert-timesheet-entry');
-    const db = getDb();
-    
-    dbLogger.verbose('Inserting timesheet entry', { 
-        date: entry.date,
-        project: entry.project,
-        timeIn: entry.timeIn,
-        timeOut: entry.timeOut
-    });
-    
-    const insert = db.prepare(`
-        INSERT INTO timesheet
-          (date, time_in, time_out, project, tool, detail_charge_code, task_description)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(date, time_in, project, task_description) DO NOTHING
-    `);
-    
-    const result = insert.run(
-        entry.date,
-        entry.timeIn,
-        entry.timeOut,
-        entry.project,
-        entry.tool || null,
-        entry.detailChargeCode || null,
-        entry.taskDescription
-    );
-    
-    // Check if the insertion was successful or if it was a duplicate
-    if (result.changes > 0) {
-        dbLogger.info('Timesheet entry inserted', { 
-            date: entry.date,
-            project: entry.project 
-        });
-        timer.done({ isDuplicate: false, changes: result.changes });
-        return { success: true, isDuplicate: false, changes: result.changes };
-    } else {
-        dbLogger.verbose('Duplicate timesheet entry skipped', { 
-            date: entry.date,
-            project: entry.project 
-        });
-        timer.done({ isDuplicate: true });
-        return { success: false, isDuplicate: true, changes: 0 };
-    }
-}
+export { insertTimesheetEntry } from '../repositories/timesheet-repository';
 
 /**
  * Checks if a timesheet entry would be a duplicate
@@ -494,79 +418,6 @@ export function insertTimesheetEntries(entries: Array<{
     }
 }
 
-/**
- * Internal schema creation (takes an open database connection)
- * @private
- */
-function ensureSchemaInternal(db: BetterSqlite3.Database) {
-    
-    // Create timesheet table with comprehensive schema and constraints
-    db.exec(`
-        CREATE TABLE IF NOT EXISTS timesheet(
-            -- Primary key with auto-increment
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            
-            -- Computed column: hours worked (automatically calculated from time difference)
-            hours REAL
-                GENERATED ALWAYS AS ((time_out - time_in) / 60.0) 
-                STORED,
-            
-            -- Core timesheet data fields
-            date TEXT NOT NULL,                    -- Work date in YYYY-MM-DD format
-            time_in INTEGER NOT NULL,              -- Start time in minutes since midnight
-            time_out INTEGER NOT NULL,             -- End time in minutes since midnight
-            project TEXT NOT NULL,                 -- Project name (required)
-            tool TEXT,                             -- Tool used (optional)
-            detail_charge_code TEXT,               -- Charge code (optional)
-            task_description TEXT NOT NULL,        -- Task description (required)
-            
-            -- Submission tracking fields
-            status TEXT DEFAULT NULL,              -- Submission status: NULL (pending), 'in_progress' (submitting), 'Complete' (submitted)
-            submitted_at DATETIME DEFAULT NULL,    -- Timestamp when successfully submitted
-            
-            -- Data validation constraints
-            CHECK(time_in between 0 and 1439),     -- Valid time range: 00:00 to 23:59
-            CHECK(time_out between 1 and 1400),    -- Valid time range: 00:15 to 23:45
-            CHECK(time_out > time_in),             -- End time must be after start time
-            CHECK(time_in % 15 = 0),               -- Start time must be 15-minute increment
-            CHECK(time_out % 15 = 0)               -- End time must be 15-minute increment
-        );
-        
-        -- Performance indexes for common queries
-        CREATE INDEX IF NOT EXISTS idx_timesheet_date ON timesheet(date);
-        CREATE INDEX IF NOT EXISTS idx_timesheet_project ON timesheet(project);
-        CREATE INDEX IF NOT EXISTS idx_timesheet_status ON timesheet(status);
-        CREATE UNIQUE INDEX IF NOT EXISTS uq_timesheet_nk
-            ON timesheet(date, time_in, project, task_description);
-        
-        -- Credentials table for storing user authentication
-        CREATE TABLE IF NOT EXISTS credentials(
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            service TEXT NOT NULL,                    -- Service name (e.g., 'smartsheet')
-            email TEXT NOT NULL,                     -- User email
-            password TEXT NOT NULL,                  -- Encrypted password
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(service)                          -- Only one set of credentials per service
-        );
-        
-        -- Index for credentials lookups
-        CREATE INDEX IF NOT EXISTS idx_credentials_service ON credentials(service);
-        
-        -- Sessions table for managing user login sessions
-        CREATE TABLE IF NOT EXISTS sessions(
-            session_token TEXT PRIMARY KEY,
-            email TEXT NOT NULL,
-            expires_at DATETIME,
-            is_admin BOOLEAN DEFAULT 0,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        );
-        
-        -- Indexes for session lookups
-        CREATE INDEX IF NOT EXISTS idx_sessions_email ON sessions(email);
-        CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
-    `);
-}
 
 /**
  * Ensures the database schema is created and up-to-date

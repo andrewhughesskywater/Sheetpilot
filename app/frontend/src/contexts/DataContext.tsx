@@ -89,20 +89,6 @@ export function DataProvider({ children }: DataProviderProps) {
   const [isArchiveDataLoading, setIsArchiveDataLoading] = useState(true);
   const [archiveDataError, setArchiveDataError] = useState<string | null>(null);
 
-  // Restore from localStorage backup if database fails
-  const restoreFromLocalBackup = (): TimesheetRow[] | null => {
-    try {
-      const backup = localStorage.getItem('sheetpilot_timesheet_backup');
-      if (backup) {
-        const parsed = JSON.parse(backup);
-        window.logger?.debug('[DataContext] Found localStorage backup from:', parsed.timestamp);
-        return parsed.data || null;
-      }
-    } catch (error) {
-      console.error('[DataContext] Could not restore from localStorage backup:', error);
-    }
-    return null;
-  };
 
   // Utility function to yield control back to the browser
   const yieldToMain = () => {
@@ -143,33 +129,18 @@ export function DataProvider({ children }: DataProviderProps) {
           : [{}];
         setTimesheetDraftData(rowsWithBlank);
       } else {
-        // Handle old format or error - try to restore from localStorage backup
+        // Handle old format or error
         const errorMsg = response?.error || 'Could not load timesheet draft';
-        console.warn('[DataContext] Database load failed, attempting localStorage restore...');
-        
-        const backupData = restoreFromLocalBackup();
-        if (backupData && backupData.length > 0) {
-          window.logger?.info('[DataContext] Restored from localStorage backup', { rowCount: backupData.length });
-          setTimesheetDraftError(`${errorMsg} (restored from backup)`);
-          setTimesheetDraftData([...backupData, {}]);
-        } else {
-          setTimesheetDraftError(errorMsg);
-          setTimesheetDraftData([{}]);
-        }
+        setTimesheetDraftError(errorMsg);
+        setTimesheetDraftData([{}]);
       }
     } catch (error) {
-      console.error('[DataContext] Error loading timesheet draft data:', error);
+      window.logger?.error('Error loading timesheet draft data', { 
+        error: error instanceof Error ? error.message : String(error) 
+      });
       
-      // Try to restore from localStorage backup on error
-      const backupData = restoreFromLocalBackup();
-      if (backupData && backupData.length > 0) {
-        window.logger?.info('[DataContext] Restored from localStorage backup after error', { rowCount: backupData.length });
-        setTimesheetDraftError(`${error instanceof Error ? error.message : 'Could not load timesheet draft'} (restored from backup)`);
-        setTimesheetDraftData([...backupData, {}]);
-      } else {
-        setTimesheetDraftError(error instanceof Error ? error.message : 'Could not load timesheet draft');
-        setTimesheetDraftData([{}]); // Fallback to empty row
-      }
+      setTimesheetDraftError(error instanceof Error ? error.message : 'Could not load timesheet draft');
+      setTimesheetDraftData([{}]); // Fallback to empty row
     } finally {
       window.logger?.debug('[DataContext] Setting loading false for timesheet draft');
       setIsTimesheetDraftLoading(false);
@@ -212,16 +183,10 @@ export function DataProvider({ children }: DataProviderProps) {
         ? (archiveResponse.credentials ?? [])
         : [];
       
-      // Process large datasets in chunks to prevent blocking
+      // Yield control for large datasets to prevent blocking
       if (timesheetData.length > 100) {
-        window.logger?.info('[DataContext] Processing large dataset in chunks', { count: timesheetData.length });
-        
-        // Process in chunks of 50 items
-        const chunkSize = 50;
-        for (let i = 0; i < timesheetData.length; i += chunkSize) {
-          // Process chunk here if needed
-          await yieldToMain(); // Yield control between chunks
-        }
+        window.logger?.info('[DataContext] Processing large dataset', { count: timesheetData.length });
+        await yieldToMain(); // Yield control to prevent blocking
       }
       
       window.logger?.info('[DataContext] Loaded archive data', {
@@ -242,7 +207,9 @@ export function DataProvider({ children }: DataProviderProps) {
         setArchiveDataError(archiveResponse?.error || 'Could not load archive data');
       }
     } catch (error) {
-      console.error('[DataContext] Error loading archive data:', error);
+      window.logger?.error('Error loading archive data', { 
+        error: error instanceof Error ? error.message : String(error) 
+      });
       setArchiveDataError(error instanceof Error ? error.message : 'Could not load archive data');
       setArchiveData({ timesheet: [], credentials: [] }); // Fallback to empty data
     } finally {

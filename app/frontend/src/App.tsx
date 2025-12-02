@@ -128,12 +128,7 @@ function AppContent() {
   const [updateStatus, setUpdateStatus] = useState<'downloading' | 'installing'>('downloading');
   
   // Use data context
-  const { refreshTimesheetDraft, refreshArchiveData, isTimesheetDraftLoading, timesheetDraftData } = useData() as unknown as {
-    refreshTimesheetDraft: () => Promise<void>;
-    refreshArchiveData: () => Promise<void>;
-    isTimesheetDraftLoading: boolean;
-    timesheetDraftData: unknown[];
-  };
+  const { refreshTimesheetDraft, refreshArchiveData, isTimesheetDraftLoading, timesheetDraftData } = useData();
 
   // Load data when user navigates to tabs (on-demand loading)
   useEffect(() => {

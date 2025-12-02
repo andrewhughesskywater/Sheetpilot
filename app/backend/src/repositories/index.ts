@@ -27,6 +27,7 @@ export {
     getPendingTimesheetEntries,
     markTimesheetEntriesAsInProgress,
     resetTimesheetEntriesStatus,
+    resetInProgressTimesheetEntries,
     markTimesheetEntriesAsSubmitted,
     removeFailedTimesheetEntries,
     getTimesheetEntriesByIds,

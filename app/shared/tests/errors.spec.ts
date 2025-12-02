@@ -1,189 +1,201 @@
-/**
- * @fileoverview Error Classes Tests
- * 
- * Tests for custom error classes, error serialization, and error handling.
- * 
- * @author Andrew Hughes
- * @version 1.0.0
- * @since 2025
- */
-
 import { describe, it, expect } from 'vitest';
 import {
+  AppError,
+  ErrorCategory,
+  DatabaseError,
   DatabaseConnectionError,
   DatabaseSchemaError,
+  DatabaseQueryError,
+  CredentialsError,
   CredentialsNotFoundError,
-  InvalidCredentialsError,
-  InvalidDateError,
-  RequiredFieldError
+  CredentialsStorageError,
+  SubmissionError,
+  SubmissionCancelledError,
+  SubmissionTimeoutError,
+  ValidationError,
+  NetworkError,
+  IPCError,
+  ConfigurationError,
+  BusinessLogicError,
+  SystemError
 } from '../errors';
 
-describe('Error Classes', () => {
-  describe('DatabaseConnectionError', () => {
-    it('should create error with message', () => {
-      const error = new DatabaseConnectionError({ reason: 'Connection failed' });
-      
-      expect(error).toBeInstanceOf(Error);
-      expect(error.message).toBe('Could not connect to database');
-      expect(error.name).toBe('DatabaseConnectionError');
-    });
-
-    it('should preserve stack trace', () => {
-      const error = new DatabaseConnectionError({ reason: 'Test error' });
-      
-      expect(error.stack).toBeDefined();
-      expect(error.stack).toContain('DatabaseConnectionError');
-    });
-  });
-
-  describe('DatabaseSchemaError', () => {
-    it('should create error with message', () => {
-      const error = new DatabaseSchemaError({ reason: 'Schema invalid' });
-      
-      expect(error.message).toBe('Could not initialize database schema');
-      expect(error.name).toBe('DatabaseSchemaError');
-    });
-  });
-
-  describe('CredentialsNotFoundError', () => {
-    it('should create error with message', () => {
-      const error = new CredentialsNotFoundError('smartsheet', { userId: '123' });
-      
-      expect(error.message).toBe('Credentials not found for service: smartsheet');
-      expect(error.name).toBe('CredentialsNotFoundError');
-    });
-
-    it('should be catchable', () => {
-      try {
-        throw new CredentialsNotFoundError('smartsheet');
-      } catch (error) {
-        expect(error).toBeInstanceOf(CredentialsNotFoundError);
+describe('errors', () => {
+  describe('AppError', () => {
+    class TestError extends AppError {
+      constructor(message: string, code: string, context?: Record<string, unknown>) {
+        super(message, code, ErrorCategory.SYSTEM, context);
       }
+    }
+
+    it('should create error with all properties', () => {
+      const error = new TestError('Test message', 'TEST_CODE', { key: 'value' });
+      
+      expect(error.message).toBe('Test message');
+      expect(error.code).toBe('TEST_CODE');
+      expect(error.category).toBe(ErrorCategory.SYSTEM);
+      expect(error.context).toEqual({ key: 'value' });
+      expect(error.name).toBe('TestError');
+      expect(error.timestamp).toBeDefined();
+      expect(typeof error.timestamp).toBe('string');
+    });
+
+    it('should convert to JSON', () => {
+      const error = new TestError('Test message', 'TEST_CODE', { key: 'value' });
+      const json = error.toJSON();
+      
+      expect(json).toHaveProperty('name', 'TestError');
+      expect(json).toHaveProperty('code', 'TEST_CODE');
+      expect(json).toHaveProperty('message', 'Test message');
+      expect(json).toHaveProperty('category', ErrorCategory.SYSTEM);
+      expect(json).toHaveProperty('context', { key: 'value' });
+      expect(json).toHaveProperty('timestamp');
+      expect(json).toHaveProperty('stack');
+    });
+
+    it('should create user-friendly message', () => {
+      const error = new TestError('Test message', 'TEST_CODE');
+      expect(error.toUserMessage()).toBe('Test message');
     });
   });
 
-  describe('InvalidCredentialsError', () => {
-    it('should create error with message', () => {
-      const error = new InvalidCredentialsError({ reason: 'Invalid format' });
-      
-      expect(error.message).toBe('Invalid credentials provided');
-      expect(error.name).toBe('InvalidCredentialsError');
+  describe('ErrorCategory', () => {
+    it('should have all expected categories', () => {
+      expect(ErrorCategory.DATABASE).toBe('database');
+      expect(ErrorCategory.CREDENTIALS).toBe('credentials');
+      expect(ErrorCategory.SUBMISSION).toBe('submission');
+      expect(ErrorCategory.VALIDATION).toBe('validation');
+      expect(ErrorCategory.NETWORK).toBe('network');
+      expect(ErrorCategory.IPC).toBe('ipc');
+      expect(ErrorCategory.CONFIGURATION).toBe('configuration');
+      expect(ErrorCategory.BUSINESS_LOGIC).toBe('business_logic');
+      expect(ErrorCategory.SYSTEM).toBe('system');
     });
   });
 
-  describe('InvalidDateError', () => {
-    it('should create error with message', () => {
-      const error = new InvalidDateError('13/32/2023', { field: 'startDate' });
+  describe('DatabaseError', () => {
+    it('should create database error', () => {
+      const error = new DatabaseConnectionError('Connection failed', { dbPath: '/test.db' });
       
-      expect(error.message).toBe('Invalid date format: 13/32/2023. Expected MM/DD/YYYY');
-      expect(error.name).toBe('InvalidDateError');
+      expect(error).toBeInstanceOf(DatabaseError);
+      expect(error).toBeInstanceOf(AppError);
+      expect(error.category).toBe(ErrorCategory.DATABASE);
+      expect(error.code).toBe('DATABASE_CONNECTION_ERROR');
+      expect(error.context).toEqual({ dbPath: '/test.db' });
+    });
+
+    it('should create schema error', () => {
+      const error = new DatabaseSchemaError('Schema invalid', { table: 'test' });
+      
+      expect(error).toBeInstanceOf(DatabaseError);
+      expect(error.category).toBe(ErrorCategory.DATABASE);
+      expect(error.code).toBe('DATABASE_SCHEMA_ERROR');
+    });
+
+    it('should create query error', () => {
+      const error = new DatabaseQueryError('Query failed', { sql: 'SELECT * FROM test' });
+      
+      expect(error).toBeInstanceOf(DatabaseError);
+      expect(error.category).toBe(ErrorCategory.DATABASE);
+      expect(error.code).toBe('DATABASE_QUERY_ERROR');
     });
   });
 
-  describe('RequiredFieldError', () => {
-    it('should create error with message', () => {
-      const error = new RequiredFieldError('email', { formId: 'login' });
+  describe('CredentialsError', () => {
+    it('should create credentials not found error', () => {
+      const error = new CredentialsNotFoundError('Service not found', { service: 'test' });
       
-      expect(error.message).toBe('Required field missing: email');
-      expect(error.name).toBe('RequiredFieldError');
+      expect(error).toBeInstanceOf(CredentialsError);
+      expect(error).toBeInstanceOf(AppError);
+      expect(error.category).toBe(ErrorCategory.CREDENTIALS);
+      expect(error.code).toBe('CREDENTIALS_NOT_FOUND');
+    });
+
+    it('should create credentials storage error', () => {
+      const error = new CredentialsStorageError('Storage failed', { service: 'test' });
+      
+      expect(error).toBeInstanceOf(CredentialsError);
+      expect(error.category).toBe(ErrorCategory.CREDENTIALS);
+      expect(error.code).toBe('CREDENTIALS_STORAGE_ERROR');
     });
   });
 
-  describe('Error Hierarchy', () => {
-    it('should all extend Error', () => {
-      const errors = [
-        new DatabaseConnectionError(),
-        new DatabaseSchemaError(),
-        new CredentialsNotFoundError('smartsheet'),
-        new InvalidCredentialsError(),
-        new InvalidDateError('invalid'),
-        new RequiredFieldError('field')
-      ];
+  describe('SubmissionError', () => {
+    it('should create submission cancelled error', () => {
+      const error = new SubmissionCancelledError('Cancelled by user');
       
-      errors.forEach(error => {
-        expect(error).toBeInstanceOf(Error);
-      });
+      expect(error).toBeInstanceOf(SubmissionError);
+      expect(error).toBeInstanceOf(AppError);
+      expect(error.category).toBe(ErrorCategory.SUBMISSION);
+      expect(error.code).toBe('SUBMISSION_CANCELLED');
     });
 
-    it('should be distinguishable by instanceof', () => {
-      const dbError = new DatabaseConnectionError();
-      const credError = new CredentialsNotFoundError('smartsheet');
+    it('should create submission timeout error', () => {
+      const error = new SubmissionTimeoutError('Timeout after 30s', { timeout: 30000 });
       
-      expect(dbError).toBeInstanceOf(DatabaseConnectionError);
-      expect(dbError).not.toBeInstanceOf(CredentialsNotFoundError);
-      expect(credError).toBeInstanceOf(CredentialsNotFoundError);
-      expect(credError).not.toBeInstanceOf(DatabaseConnectionError);
+      expect(error).toBeInstanceOf(SubmissionError);
+      expect(error.category).toBe(ErrorCategory.SUBMISSION);
+      expect(error.code).toBe('SUBMISSION_TIMEOUT');
     });
   });
 
-  describe('Error Serialization', () => {
-    it('should serialize to JSON', () => {
-      const error = new RequiredFieldError('testField');
+  describe('ValidationError', () => {
+    it('should create validation error', () => {
+      const error = new ValidationError('Invalid input', { field: 'email' });
       
-      const serialized = error.toJSON();
-      
-      const json = JSON.stringify(serialized);
-      const parsed = JSON.parse(json);
-      
-      expect(parsed.name).toBe('RequiredFieldError');
-      expect(parsed.message).toBe('Required field missing: testField');
-      expect(parsed.code).toBeDefined();
-    });
-
-    it('should preserve error information', () => {
-      const error = new DatabaseSchemaError({ reason: 'Schema mismatch' });
-      
-      expect(error.message).toBe('Could not initialize database schema');
-      expect(error.name).toBe('DatabaseSchemaError');
-      expect(error.stack).toBeDefined();
+      expect(error).toBeInstanceOf(AppError);
+      expect(error.category).toBe(ErrorCategory.VALIDATION);
+      expect(error.code).toBe('VALIDATION_ERROR');
     });
   });
 
-  describe('Error Context Preservation', () => {
-    it('should maintain error context through throw/catch', () => {
-      try {
-        throw new DatabaseConnectionError({ timeout: 5000 });
-      } catch (error) {
-        expect(error).toBeInstanceOf(DatabaseConnectionError);
-        expect((error as DatabaseConnectionError).message).toBe('Could not connect to database');
-        expect((error as DatabaseConnectionError).context.timeout).toBe(5000);
-      }
-    });
-
-    it('should preserve stack trace through throw/catch', () => {
-      let caughtStack: string | undefined;
+  describe('NetworkError', () => {
+    it('should create network error', () => {
+      const error = new NetworkError('Network failed', { url: 'https://example.com' });
       
-      try {
-        throw new RequiredFieldError('test');
-      } catch (error) {
-        caughtStack = (error as Error).stack;
-      }
-      
-      expect(caughtStack).toBeDefined();
-      expect(caughtStack).toContain('RequiredFieldError');
+      expect(error).toBeInstanceOf(AppError);
+      expect(error.category).toBe(ErrorCategory.NETWORK);
+      expect(error.code).toBe('NETWORK_ERROR');
     });
   });
 
-  describe('Error Messages', () => {
-    it('should use active voice in error messages', () => {
-      const errors = [
-        new DatabaseConnectionError(),
-        new InvalidCredentialsError(),
-        new CredentialsNotFoundError('smartsheet')
-      ];
+  describe('IPCError', () => {
+    it('should create IPC error', () => {
+      const error = new IPCError('IPC failed', { channel: 'test:channel' });
       
-      errors.forEach(error => {
-        expect(error.message).not.toContain('was');
-        expect(error.message).not.toContain('were');
-      });
+      expect(error).toBeInstanceOf(AppError);
+      expect(error.category).toBe(ErrorCategory.IPC);
+      expect(error.code).toBe('IPC_ERROR');
     });
+  });
 
-    it('should be descriptive', () => {
-      const error = new InvalidDateError('13/32/2023');
+  describe('ConfigurationError', () => {
+    it('should create configuration error', () => {
+      const error = new ConfigurationError('Config invalid', { key: 'test' });
       
-      expect(error.message.length).toBeGreaterThan(10);
-      expect(error.message).toContain('MM/DD/YYYY');
+      expect(error).toBeInstanceOf(AppError);
+      expect(error.category).toBe(ErrorCategory.CONFIGURATION);
+      expect(error.code).toBe('CONFIGURATION_ERROR');
+    });
+  });
+
+  describe('BusinessLogicError', () => {
+    it('should create business logic error', () => {
+      const error = new BusinessLogicError('Business rule violated', { rule: 'test' });
+      
+      expect(error).toBeInstanceOf(AppError);
+      expect(error.category).toBe(ErrorCategory.BUSINESS_LOGIC);
+      expect(error.code).toBe('BUSINESS_LOGIC_ERROR');
+    });
+  });
+
+  describe('SystemError', () => {
+    it('should create system error', () => {
+      const error = new SystemError('System failure', { component: 'test' });
+      
+      expect(error).toBeInstanceOf(AppError);
+      expect(error.category).toBe(ErrorCategory.SYSTEM);
+      expect(error.code).toBe('SYSTEM_ERROR');
     });
   });
 });
-

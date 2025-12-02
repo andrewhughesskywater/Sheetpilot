@@ -102,6 +102,42 @@ function mergeWithDefaults(userConfig: Partial<PluginRegistryConfig>): PluginReg
 }
 
 /**
+ * Mapping of feature flag names to plugin namespaces
+ * This provides explicit, maintainable mapping instead of fragile string matching
+ * @private
+ */
+const FEATURE_FLAG_TO_NAMESPACE_MAP: Record<string, string> = {
+  experimentalGrid: 'ui',
+  mockSubmission: 'submission',
+  // Add more explicit mappings as needed
+};
+
+/**
+ * Check if a feature flag applies to a given namespace
+ * Uses explicit mapping first, then falls back to name-based matching if needed
+ * @private
+ */
+function doesFeatureFlagApplyToNamespace(flagName: string, namespace: string): boolean {
+  // First check explicit mapping
+  const mappedNamespace = FEATURE_FLAG_TO_NAMESPACE_MAP[flagName];
+  if (mappedNamespace) {
+    return mappedNamespace === namespace;
+  }
+  
+  // Fallback to name-based matching (more permissive but less precise)
+  // Only use if flag name contains namespace as a substring
+  const flagNameLower = flagName.toLowerCase();
+  const namespaceLower = namespace.toLowerCase();
+  
+  // Require namespace to be a complete word match, not just substring
+  // This prevents false matches like "ui" matching "submission" in "submission"
+  return flagNameLower === namespaceLower || 
+         flagNameLower.startsWith(`${namespaceLower}_`) ||
+         flagNameLower.endsWith(`_${namespaceLower}`) ||
+         flagNameLower.includes(`_${namespaceLower}_`);
+}
+
+/**
  * Resolve which plugin variant to use based on feature flags
  * @param namespace Plugin namespace
  * @param config Plugin registry configuration
@@ -119,7 +155,7 @@ export function resolvePluginVariant(namespace: string, config: PluginRegistryCo
   // Check feature flags that might override the active plugin
   if (config.featureFlags) {
     for (const [flagName, flag] of Object.entries(config.featureFlags)) {
-      if (flag.enabled && flag.variant && flagName.toLowerCase().includes(namespace.toLowerCase())) {
+      if (flag.enabled && flag.variant && doesFeatureFlagApplyToNamespace(flagName, namespace)) {
         // Feature flag is enabled and specifies a variant
         if (shouldEnableForUser(flag)) {
           console.log(`Feature flag ${flagName} enabled, using variant: ${flag.variant}`);
@@ -142,31 +178,41 @@ function shouldEnableForUser(flag: FeatureFlag): boolean {
     return false;
   }
   
-  // Check deny list first
+  const userId = getCurrentUserId();
+  
+  // Check deny list first (highest priority)
   if (flag.denyList && flag.denyList.length > 0) {
-    const userId = getCurrentUserId();
     if (userId && flag.denyList.includes(userId)) {
       return false;
     }
   }
   
-  // Check allow list
+  // Check allow list (second priority)
   if (flag.allowList && flag.allowList.length > 0) {
-    const userId = getCurrentUserId();
     if (userId && flag.allowList.includes(userId)) {
       return true;
     }
     // If allow list exists but user not in it, don't enable unless rollout says so
+    // Continue to rollout check below
   }
   
-  // Check rollout percentage
+  // Check rollout percentage (third priority)
   if (flag.rolloutPercentage !== undefined) {
+    // Handle edge cases explicitly
+    if (flag.rolloutPercentage <= 0) {
+      return false; // 0% rollout = no one gets it
+    }
+    if (flag.rolloutPercentage >= 100) {
+      return true; // 100% rollout = everyone gets it
+    }
+    
+    // For values between 0 and 100, use hash-based selection
     const userHash = getUserHash();
     const threshold = flag.rolloutPercentage / 100;
     return userHash < threshold;
   }
   
-  // Default: enabled
+  // Default: enabled (if no allow/deny lists and no rollout specified)
   return true;
 }
 

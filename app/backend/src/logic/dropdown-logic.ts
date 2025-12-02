@@ -59,7 +59,7 @@ export function getToolOptions(project?: string): string[] {
   if (!project) return [];
   // Handle whitespace-only strings
   if (typeof project === 'string' && project.trim() === '') return [];
-  return getToolsForProjectShared(project);
+  return [...getToolsForProjectShared(project)];
 }
 
 /**

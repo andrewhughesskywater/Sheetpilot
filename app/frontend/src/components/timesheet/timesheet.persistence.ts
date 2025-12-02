@@ -76,23 +76,6 @@ export async function saveRowToDatabase(
   }
 }
 
-/**
- * Save a local backup of timesheet data to localStorage
- */
-export function saveLocalBackup(data: TimesheetRow[]): void {
-  try {
-    const dataToBackup = data.filter(row => 
-      row.date || row.timeIn || row.timeOut || row.project || row.taskDescription
-    );
-    localStorage.setItem('sheetpilot_timesheet_backup', JSON.stringify({
-      data: dataToBackup,
-      timestamp: new Date().toISOString()
-    }));
-    window.logger?.debug('Local backup saved', { rows: dataToBackup.length });
-  } catch (error) {
-    console.error('[timesheet.persistence] Could not save local backup:', error);
-  }
-}
 
 /**
  * Batch save all complete rows to database and sync orphaned rows

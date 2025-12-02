@@ -21,6 +21,7 @@
 import log from 'electron-log';
 import * as path from 'path';
 import * as os from 'os';
+import * as crypto from 'crypto';
 import { app } from 'electron';
 import { APP_VERSION } from './constants';
 
@@ -47,7 +48,6 @@ const REDACT_PII = process.env['SHEETPILOT_LOG_USERNAME'] !== 'true' && process.
 function getLogUsername(): string {
     if (REDACT_PII) {
         // Use first 3 chars + hash for correlation while protecting PII
-        const crypto = require('crypto');
         const hash = crypto.createHash('sha256').update(CURRENT_USER).digest('hex').substring(0, 8);
         return `${CURRENT_USER.substring(0, 3)}***${hash}`;
     }
@@ -65,49 +65,47 @@ const ENVIRONMENT = process.env['NODE_ENV'] || 'production';
 
 
 /**
- * Configure electron-log with industry-standard settings
- * Writes to both local (15MB limit) and network drives
- * Always uses verbose logging for internal tool debugging
+ * Extract message and context from log data
+ * @private
  */
-export function configureLogger() {
+function extractMessageAndContext(data: unknown[]): { message: string; context?: Record<string, unknown>; component?: string } {
+    let message = '';
+    let context: Record<string, unknown> | undefined;
+    let component: string | undefined;
     
-    // Set log levels for different transports
-    // Reduce console noise in development while maintaining file logging
-    log.transports.file.level = 'verbose';
-    log.transports.console.level = process.env['NODE_ENV'] === 'development' ? (process.env['DEBUG_BROWSER'] === 'true' ? 'verbose' : 'info') : 'debug';
-    
-    // Configure LOCAL file transport with 15MB rotation limit
-    const localLogPath = app ? app.getPath('userData') : process.cwd();
-    const sanitizedUsername = CURRENT_USER.replace(/[^a-zA-Z0-9-_.]/g, '_');
-    const logFileName = `sheetpilot_${sanitizedUsername}_${SESSION_ID}.log`;
-    
-    log.transports.file.resolvePathFn = () => path.join(localLogPath, logFileName);
-    log.transports.file.maxSize = 15 * 1024 * 1024; // 15MB per file
-    // Note: maxFiles is not available in electron-log FileTransport, rotation happens automatically
-    
-    // Logs are now written locally only for better security and reliability
-    appLogger.info('Local logging enabled', { localLogPath });
-    
-    // Machine-parsable JSON format for log aggregation
-    // Enables automated monitoring, alerting, and compliance reporting
-    log.transports.file.format = (msg: { level: string; data: unknown[] }) => {
-        // Extract message and context from data
-        let message = '';
-        let context: Record<string, unknown> | undefined;
-        
-        if (msg.data.length === 1 && typeof msg.data[0] === 'object' && msg.data[0] !== null) {
-            // Single object: extract message and remaining properties as context
-            const obj = msg.data[0] as Record<string, unknown>;
-            message = String(obj['message'] || '');
-            const { message: _, ...rest } = obj;
-            context = Object.keys(rest).length > 0 ? rest : undefined;
-        } else if (msg.data.length > 0) {
-            // Multiple arguments: first is message, rest is context
-            message = String(msg.data[0]);
-            if (msg.data.length > 1 && typeof msg.data[1] === 'object' && msg.data[1] !== null) {
-                context = msg.data[1] as Record<string, unknown>;
-            }
+    if (data.length === 1 && typeof data[0] === 'object' && data[0] !== null) {
+        // Single object: extract message and remaining properties as context
+        const obj = data[0] as Record<string, unknown>;
+        message = String(obj['message'] || '');
+        component = String(obj['component'] || 'Application');
+        const { message: _, component: __, ...rest } = obj;
+        context = Object.keys(rest).length > 0 ? rest : undefined;
+    } else if (data.length > 0) {
+        // Multiple arguments: first is message, rest is context
+        message = String(data[0]);
+        if (data.length > 1 && typeof data[1] === 'object' && data[1] !== null) {
+            context = data[1] as Record<string, unknown>;
         }
+    }
+    
+    // Build result object conditionally to satisfy exactOptionalPropertyTypes
+    const result: { message: string; context?: Record<string, unknown>; component?: string } = { message };
+    if (context !== undefined) {
+        result.context = context;
+    }
+    if (component !== undefined) {
+        result.component = component;
+    }
+    return result;
+}
+
+/**
+ * Create file format function for structured JSON logging
+ * @private
+ */
+function createFileFormat(): (msg: { level: string; data: unknown[] }) => string[] {
+    return (msg: { level: string; data: unknown[] }) => {
+        const { message, context } = extractMessageAndContext(msg.data);
         
         const logEntry: Record<string, unknown> = {
             // ISO 8601 timestamp for precise time tracking
@@ -146,12 +144,16 @@ export function configureLogger() {
         
         return [JSON.stringify(logEntry)];
     };
-    
-    // Human-readable console format for development
-    // Use JSON format only if LOG_FORMAT=json environment variable is set
+}
+
+/**
+ * Create console format function for human-readable or JSON logging
+ * @private
+ */
+function createConsoleFormat(): (msg: { level: string; data: unknown[] }) => string[] {
     const useJsonConsole = process.env['LOG_FORMAT'] === 'json';
     
-    log.transports.console.format = (msg: { level: string; data: unknown[] }) => {
+    return (msg: { level: string; data: unknown[] }) => {
         if (useJsonConsole) {
             // JSON format for machine parsing
             const consoleEntry = {
@@ -167,26 +169,11 @@ export function configureLogger() {
         const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
         const level = msg.level.toUpperCase().padEnd(7);
         
-        // Extract message and context
-        let message = '';
-        let context: Record<string, unknown> | undefined;
-        let component = 'Application';
-        
-        if (msg.data.length === 1 && typeof msg.data[0] === 'object' && msg.data[0] !== null) {
-            const obj = msg.data[0] as Record<string, unknown>;
-            message = String(obj['message'] || '');
-            component = String(obj['component'] || component);
-            const { message: _, component: __, ...rest } = obj;
-            context = Object.keys(rest).length > 0 ? rest : undefined;
-        } else if (msg.data.length > 0) {
-            message = String(msg.data[0]);
-            if (msg.data.length > 1 && typeof msg.data[1] === 'object' && msg.data[1] !== null) {
-                context = msg.data[1] as Record<string, unknown>;
-            }
-        }
+        const { message, context, component } = extractMessageAndContext(msg.data);
+        const displayComponent = component || 'Application';
         
         // Format: [TIMESTAMP] LEVEL [COMPONENT] message
-        let output = `[${timestamp}] ${level} [${component}] ${message}`;
+        let output = `[${timestamp}] ${level} [${displayComponent}] ${message}`;
         
         // Add context on same line if present
         if (context && Object.keys(context).length > 0) {
@@ -195,6 +182,59 @@ export function configureLogger() {
         
         return [output];
     };
+}
+
+/**
+ * Configure log levels for different transports
+ * @private
+ */
+function configureLogLevels(): void {
+    // Set log levels for different transports
+    // Reduce console noise in development while maintaining file logging
+    log.transports.file.level = 'verbose';
+    const isDevelopment = process.env['NODE_ENV'] === 'development';
+    const debugBrowser = process.env['DEBUG_BROWSER'] === 'true';
+    log.transports.console.level = isDevelopment ? (debugBrowser ? 'verbose' : 'info') : 'debug';
+}
+
+/**
+ * Stored log path for retrieval without calling resolvePathFn
+ * Set during configureFileTransport
+ */
+let storedLogPath: string | undefined;
+
+/**
+ * Configure file transport settings
+ * @private
+ */
+function configureFileTransport(): void {
+    // Configure LOCAL file transport with 15MB rotation limit
+    const localLogPath = app ? app.getPath('userData') : process.cwd();
+    const sanitizedUsername = CURRENT_USER.replace(/[^a-zA-Z0-9-_.]/g, '_');
+    const logFileName = `sheetpilot_${sanitizedUsername}_${SESSION_ID}.log`;
+    
+    storedLogPath = path.join(localLogPath, logFileName);
+    log.transports.file.resolvePathFn = () => storedLogPath!;
+    log.transports.file.maxSize = 15 * 1024 * 1024; // 15MB per file
+    // Note: maxFiles is not available in electron-log FileTransport, rotation happens automatically
+}
+
+/**
+ * Configure electron-log with industry-standard settings
+ * Writes to both local (15MB limit) and network drives
+ * Always uses verbose logging for internal tool debugging
+ */
+export function configureLogger() {
+    configureLogLevels();
+    configureFileTransport();
+    
+    // Machine-parsable JSON format for log aggregation
+    // Enables automated monitoring, alerting, and compliance reporting
+    log.transports.file.format = createFileFormat();
+    
+    // Human-readable console format for development
+    // Use JSON format only if LOG_FORMAT=json environment variable is set
+    log.transports.console.format = createConsoleFormat();
     
     // Error handling for log system failures
     // SOC2: Ensure system availability and error handling
@@ -256,6 +296,19 @@ export class Logger {
     }
     
     /**
+     * Log level method map for efficient lookup
+     * @private
+     */
+    private static readonly LOG_METHODS: Record<string, (entry: Record<string, unknown>) => void> = {
+        error: log.error.bind(log),
+        warn: log.warn.bind(log),
+        info: log.info.bind(log),
+        verbose: log.verbose.bind(log),
+        debug: log.debug.bind(log),
+        silly: log.silly.bind(log),
+    };
+    
+    /**
      * Formats a log message with context
      * @private
      */
@@ -269,28 +322,10 @@ export class Logger {
             entry['data'] = data;
         }
         
-        // Use appropriate log level
-        switch (level) {
-            case 'error':
-                log.error(entry);
-                break;
-            case 'warn':
-                log.warn(entry);
-                break;
-            case 'info':
-                log.info(entry);
-                break;
-            case 'verbose':
-                log.verbose(entry);
-                break;
-            case 'debug':
-                log.debug(entry);
-                break;
-            case 'silly':
-                log.silly(entry);
-                break;
-            default:
-                log.info(entry);
+        // Use appropriate log level with map lookup
+        const logMethod = Logger.LOG_METHODS[level] || Logger.LOG_METHODS.info;
+        if (logMethod) {
+            logMethod(entry);
         }
     }
     
@@ -457,17 +492,10 @@ export function initializeLogging(): void {
     configureLogger();
     
     // Get the actual log path being used
-    const actualLogPath = log.transports.file.resolvePathFn({
-        appData: app ? app.getPath('userData') : process.cwd(),
-        appName: 'SheetPilot',
-        appVersion: APP_VERSION,
-        home: process.env['HOME'] || process.env['USERPROFILE'] || '',
-        userData: app ? app.getPath('userData') : process.cwd(),
-        libraryDefaultDir: app ? app.getPath('userData') : process.cwd(),
-        libraryTemplate: app ? app.getPath('userData') : process.cwd(),
-        tempDir: process.env['TEMP'] || process.env['TMP'] || '/tmp'
-    });
+    // Use stored path to avoid type issues with resolvePathFn signature
+    const actualLogPath = storedLogPath || (app ? app.getPath('userData') : process.cwd());
     
+    // Now that logger is configured, we can safely log
     appLogger.info('Logging system initialized', {
         sessionId: SESSION_ID,
         username: getLogUsername(),

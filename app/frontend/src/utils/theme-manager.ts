@@ -54,7 +54,10 @@ export function setStoredTheme(mode: ThemeMode): void {
   try {
     localStorage.setItem(THEME_STORAGE_KEY, mode);
   } catch (error) {
-    console.error('[ThemeManager] Failed to store theme:', error);
+    const win = window as unknown as { logger?: { error: (msg: string, data?: unknown) => void } };
+    win.logger?.error('Failed to store theme', { 
+      error: error instanceof Error ? error.message : String(error) 
+    });
   }
 }
 
@@ -117,7 +120,10 @@ export function initializeTheme(): ThemeMode {
       }
     } catch (error) {
       // Silently fail if media query listener setup fails
-      console.warn('[ThemeManager] Could not set up theme change listener:', error);
+      const win = window as unknown as { logger?: { warn: (msg: string, data?: unknown) => void } };
+      win.logger?.warn('Could not set up theme change listener', { 
+        error: error instanceof Error ? error.message : String(error) 
+      });
     }
   }
   

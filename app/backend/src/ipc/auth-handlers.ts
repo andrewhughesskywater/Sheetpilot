@@ -16,7 +16,7 @@ import {
   validateSession, 
   clearSession, 
   clearUserSessions 
-} from '../services/database';
+} from '../repositories';
 import { validateInput } from '../validation/validate-ipc-input';
 import { 
   loginSchema,

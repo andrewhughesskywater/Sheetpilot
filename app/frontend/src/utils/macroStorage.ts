@@ -63,7 +63,9 @@ export function loadMacros(): MacroRow[] {
       }
     }
   } catch (error) {
-    console.error('[MacroStorage] Could not load macros', error);
+    window.logger?.error('Could not load macros', { 
+      error: error instanceof Error ? error.message : String(error) 
+    });
   }
 
   // Return empty macros if loading failed or not found
@@ -80,16 +82,20 @@ export function saveMacros(macros: MacroRow[]): void {
   }
 
   if (!Array.isArray(macros) || macros.length !== MACRO_COUNT) {
-    console.error('[MacroStorage] Invalid macros array - must have exactly 5 items');
+    window.logger?.error('Invalid macros array - must have exactly 5 items', { 
+      receivedLength: macros?.length 
+    });
     return;
   }
 
   try {
     const serialized = JSON.stringify(macros);
     localStorage.setItem(MACRO_STORAGE_KEY, serialized);
-    console.log('[MacroStorage] Macros saved successfully');
+    window.logger?.debug('Macros saved successfully', { count: macros.length });
   } catch (error) {
-    console.error('[MacroStorage] Could not save macros', error);
+    window.logger?.error('Could not save macros', { 
+      error: error instanceof Error ? error.message : String(error) 
+    });
   }
 }
 

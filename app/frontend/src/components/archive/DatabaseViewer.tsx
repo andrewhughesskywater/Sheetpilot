@@ -42,7 +42,7 @@ interface Credential {
 // }
 
 function Archive() {
-  console.log('[Archive] Component rendering');
+  window.logger?.debug('[Archive] Component rendering');
   const [activeTab] = useState<'timesheet' | 'credentials'>('timesheet');
   const [isExporting, setIsExporting] = useState(false);
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
@@ -55,7 +55,7 @@ function Archive() {
     let isMounted = true;
     
     const loadData = async () => {
-      console.log('[Archive] Component mounted, refreshing archive data');
+      window.logger?.debug('[Archive] Component mounted, refreshing archive data');
       if (isMounted) {
         await refreshArchiveData();
       }
@@ -68,7 +68,7 @@ function Archive() {
     };
   }, [refreshArchiveData]);
   
-  console.log('[Archive] State:', {
+  window.logger?.debug('[Archive] Component state', {
     isLoading: isArchiveDataLoading,
     error: archiveDataError,
     timesheetCount: archiveData.timesheet.length,
@@ -105,7 +105,9 @@ function Archive() {
       chargeCode: entry.detail_charge_code || '',
       taskDescription: entry.task_description
     }));
-    console.log('[Archive] Formatted timesheet data:', formatted);
+    window.logger?.verbose('[Archive] Formatted timesheet data', { 
+      entryCount: formatted.length 
+    });
     return formatted;
   };
 

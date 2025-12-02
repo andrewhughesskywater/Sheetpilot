@@ -208,3 +208,16 @@
   background-color: var(--md-sys-color-primary-container);
   color: var(--md-sys-color-on-primary-container);
 }
+
+/* Save Button Styles */
+.save-button {
+  font-family: var(--md-sys-typescale-label-large-font);
+  font-size: var(--md-sys-typescale-label-large-size);
+  font-weight: var(--md-sys-typescale-label-large-weight);
+  text-transform: none;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.save-button:disabled {
+  opacity: 1; /* Keep full opacity when disabled to show state clearly */
+}

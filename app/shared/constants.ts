@@ -9,6 +9,17 @@
  */
 
 /**
+ * Lazy logger import to avoid circular dependency with logger.ts
+ * @private
+ */
+function getLogger() {
+  // Use dynamic import to avoid circular dependency
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { appLogger } = require('./logger');
+  return appLogger;
+}
+
+/**
  * Application version
  * This should match the version in package.json
  * Updated: 2025-11-04
@@ -62,9 +73,21 @@ export function getBrowserHeadless(): boolean {
 export function setBrowserHeadless(value: boolean): void {
   const oldValue = appSettings.browserHeadless;
   appSettings.browserHeadless = value;
-  console.log('[Constants] Browser headless mode updated:', { 
-    oldValue, 
-    newValue: value,
-    appSettingsBrowserHeadless: appSettings.browserHeadless 
-  });
+  
+  // Use logger with lazy import to avoid circular dependency
+  try {
+    const logger = getLogger();
+    logger.info('Browser headless mode updated', { 
+      oldValue, 
+      newValue: value,
+      appSettingsBrowserHeadless: appSettings.browserHeadless 
+    });
+  } catch {
+    // Fallback to console if logger is not available (shouldn't happen in normal operation)
+    console.log('[Constants] Browser headless mode updated:', { 
+      oldValue, 
+      newValue: value,
+      appSettingsBrowserHeadless: appSettings.browserHeadless 
+    });
+  }
 }

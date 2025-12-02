@@ -9,4 +9,5 @@ export * from './contracts/ICredentialService';
 export * from './contracts/IDataService';
 export * from './contracts/ILoggingService';
 export * from './contracts/ISubmissionService';
+export * from './utils/format-conversions';
 

@@ -33,6 +33,7 @@ let DB_PATH = process.env['SHEETPILOT_DB']
  */
 let connectionInstance: BetterSqlite3.Database | null = null;
 let connectionLock: Promise<void> = Promise.resolve();
+let isInitializing = false;
 let schemaInitialized = false;
 
 /**
@@ -77,6 +78,7 @@ export function closeConnection(): void {
             dbLogger.error('Error closing database connection', error);
         } finally {
             connectionInstance = null;
+            isInitializing = false;
             schemaInitialized = false;
         }
     }
@@ -208,9 +210,13 @@ function getDbConnection(): BetterSqlite3.Database {
         return connectionInstance!;
     }
     
-    // If another thread is initializing, wait for it
-    if (connectionInstance === null) {
+    // Note: Since getDbConnection is synchronous, we can't await promises here
+    // If initialization is in progress, we'll proceed with the lock check below
+    
+    // If another thread is initializing, wait for it and check again
+    if (connectionInstance === null && !isInitializing) {
         // Lock initialization to prevent race conditions
+        isInitializing = true;
         let unlockFunction: (() => void) = () => {};
         const currentLock = connectionLock.then(() => {
             return new Promise<void>((resolve) => {
@@ -220,6 +226,13 @@ function getDbConnection(): BetterSqlite3.Database {
         connectionLock = currentLock;
         
         try {
+            // Double-check after acquiring lock - another thread might have initialized
+            if (isConnectionHealthy()) {
+                isInitializing = false;
+                unlockFunction();
+                return connectionInstance!;
+            }
+            
             // Ensure the database directory exists
             const dbDir = path.dirname(DB_PATH);
             fs.mkdirSync(dbDir, { recursive: true });
@@ -244,6 +257,8 @@ function getDbConnection(): BetterSqlite3.Database {
                     schemaInitialized = true;
                     dbLogger.info('Database schema initialized', { dbPath: DB_PATH });
                 } catch (error) {
+                    isInitializing = false;
+                    unlockFunction();
                     throw new DatabaseSchemaError({
                         dbPath: DB_PATH,
                         error: error instanceof Error ? error.message : String(error),
@@ -255,20 +270,35 @@ function getDbConnection(): BetterSqlite3.Database {
             }
             
             connectionInstance = db;
+            isInitializing = false;
             dbLogger.info('Persistent database connection established', { dbPath: DB_PATH });
         } catch (error) {
+            isInitializing = false;
             dbLogger.error('Could not establish database connection', error);
+            unlockFunction();
             throw new DatabaseConnectionError({
                 dbPath: DB_PATH,
                 error: error instanceof Error ? error.message : String(error),
                 stack: error instanceof Error ? error.stack : undefined
             });
         } finally {
+            // Ensure unlock is called and flag is reset even if something unexpected happens
+            if (isInitializing) {
+                isInitializing = false;
+            }
             unlockFunction();
         }
     }
     
-    return connectionInstance!;
+    // If we still don't have a connection after waiting, something went wrong
+    if (!connectionInstance) {
+        throw new DatabaseConnectionError({
+            dbPath: DB_PATH,
+            error: 'Could not establish database connection after initialization'
+        });
+    }
+    
+    return connectionInstance;
 }
 
 /**

@@ -11,6 +11,7 @@
 
 import { Page } from 'playwright';
 import * as C from './automation_config';
+import type { LoginStep } from './automation_config';
 import { WebformFiller } from './webform_flow';
 import { authLogger } from '../../../../../shared/logger';
 
@@ -51,6 +52,98 @@ export class LoginManager {
   }
 
   /**
+   * Handles a wait action in the login steps
+   * @private
+   * @param page - Playwright Page instance
+   * @param step - Login step configuration
+   * @param contextIndex - Optional context index for logging
+   */
+  private async _handleWaitAction(
+    page: import('playwright').Page,
+    step: LoginStep,
+    contextIndex?: number
+  ): Promise<void> {
+    const elementSelector = step['element_selector'] as string;
+    const waitCondition = (step['wait_condition'] as 'visible' | 'hidden' | 'attached' | 'detached') ?? 'visible';
+    const isOptional = step['optional'] as boolean | undefined;
+
+    await page.waitForSelector(elementSelector, { 
+      state: waitCondition, 
+      timeout: C.GLOBAL_TIMEOUT * 1000 
+    }).catch((err: Error) => {
+      if (!isOptional) {
+        authLogger.error('Required element not found', { 
+          selector: elementSelector,
+          error: err?.message,
+          contextIndex
+        });
+        throw err;
+      }
+      authLogger.verbose('Optional element not found, continuing', { selector: elementSelector, contextIndex });
+    });
+  }
+
+  /**
+   * Handles an input action in the login steps
+   * @private
+   * @param page - Playwright Page instance
+   * @param step - Login step configuration
+   * @param email - User email
+   * @param password - User password
+   * @param contextIndex - Optional context index for logging
+   */
+  private async _handleInputAction(
+    page: import('playwright').Page,
+    step: LoginStep,
+    email: string,
+    password: string,
+    contextIndex?: number
+  ): Promise<void> {
+    const locator = page.locator(step['locator'] as string);
+    const valueKey = step['value_key'] as string;
+    const isSensitive = step['sensitive'] as boolean | undefined;
+    
+    const val = valueKey === 'email' ? email : valueKey === 'password' ? password : String(valueKey);
+    
+    authLogger.debug('Filling input field', { 
+      locator: step['locator'],
+      valueKey,
+      sensitive: isSensitive,
+      contextIndex
+    });
+    
+    if (isSensitive) {
+      await locator.type(val);
+    } else {
+      await locator.fill(val);
+    }
+  }
+
+  /**
+   * Handles a click action in the login steps
+   * @private
+   * @param page - Playwright Page instance
+   * @param step - Login step configuration
+   * @param contextIndex - Optional context index for logging
+   */
+  private async _handleClickAction(
+    page: import('playwright').Page,
+    step: LoginStep,
+    contextIndex?: number
+  ): Promise<void> {
+    const locator = page.locator(step['locator'] as string);
+    const expectsNavigation = step['expects_navigation'] as boolean | undefined;
+    
+    authLogger.debug('Clicking element', { locator: step['locator'], contextIndex });
+    await locator.click();
+    
+    if (expectsNavigation) {
+      authLogger.verbose('Waiting for navigation after click', { contextIndex });
+      await C.dynamic_wait_for_page_load(page, undefined, C.GLOBAL_TIMEOUT);
+    }
+  }
+
+  /**
    * Executes the complete login process with provided credentials for a specific context
    * 
    * Performs navigation to login page, credential entry, and authentication
@@ -81,7 +174,7 @@ export class LoginManager {
         authLogger.verbose('Navigation attempt', { attempt: navigation_attempt, maxRetries: max_navigation_retries, contextIndex });
         const page = contextIndex !== undefined ? this.browser_manager.getPage(contextIndex) : this.browser_manager.require_page();
         // Wait for page to be ready before navigation attempt
-        await C.wait_for_dom_stability(page, 'body', 'visible', C.DYNAMIC_WAIT_BASE_TIMEOUT * 0.5, C.DYNAMIC_WAIT_BASE_TIMEOUT * 1.0, 'navigation retry delay');
+        await C.wait_for_dom_stability(page, 'body', 'visible', C.DYNAMIC_WAIT_BASE_TIMEOUT * C.HALF_TIMEOUT_MULTIPLIER, C.DYNAMIC_WAIT_BASE_TIMEOUT * 1.0, 'navigation retry delay');
         await this._navigate_to_base(page);
         authLogger.verbose('Successfully navigated to base URL', { contextIndex });
         break;
@@ -112,7 +205,7 @@ export class LoginManager {
     for (let i = 0; i < C.LOGIN_STEPS.length; i++) {
       const step = C.LOGIN_STEPS[i];
       if (!step) continue;
-      const action = step['action'];
+      const action = step['action'] as string;
       authLogger.debug('Executing login step', { 
         stepIndex: i,
         action,
@@ -120,40 +213,18 @@ export class LoginManager {
         contextIndex
       });
       
-      if (action === 'wait') {
-        await page.waitForSelector(step['element_selector']!, { state: (step['wait_condition'] as 'visible' | 'hidden' | 'attached' | 'detached') ?? 'visible', timeout: C.GLOBAL_TIMEOUT * 1000 }).catch((err: Error) => {
-          if (!step['optional']) {
-            authLogger.error('Required element not found', { 
-              selector: step['element_selector'],
-              error: err?.message,
-              contextIndex
-            });
-            throw err;
-          }
-          authLogger.verbose('Optional element not found, continuing', { selector: step['element_selector'], contextIndex });
-        });
-      } else if (action === 'input') {
-        const locator = page.locator(step['locator']!);
-        const value_key = step['value_key'] as string;
-        const val = value_key === 'email' ? email : value_key === 'password' ? password : String(value_key);
-        authLogger.debug('Filling input field', { 
-          locator: step['locator'],
-          valueKey: value_key,
-          sensitive: step['sensitive'],
-          contextIndex
-        });
-        if (step['sensitive']) {
-          await locator.type(val);
-        } else {
-          await locator.fill(val);
-        }
-      } else if (action === 'click') {
-        authLogger.debug('Clicking element', { locator: step['locator'], contextIndex });
-        await page.locator(step['locator']!).click();
-        if (step['expects_navigation']) {
-          authLogger.verbose('Waiting for navigation after click', { contextIndex });
-          await C.dynamic_wait_for_page_load(page, undefined, C.GLOBAL_TIMEOUT);
-        }
+      switch (action) {
+        case 'wait':
+          await this._handleWaitAction(page, step, contextIndex);
+          break;
+        case 'input':
+          await this._handleInputAction(page, step, email, password, contextIndex);
+          break;
+        case 'click':
+          await this._handleClickAction(page, step, contextIndex);
+          break;
+        default:
+          authLogger.warn('Unknown login action', { action, stepIndex: i });
       }
     }
     

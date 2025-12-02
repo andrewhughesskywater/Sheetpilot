@@ -249,3 +249,27 @@ export function getSubmittedTimesheetEntriesForExport() {
     return entries;
 }
 
+/**
+ * Resets all in-progress timesheet entries back to NULL status
+ * Used for recovery after failed submissions
+ */
+export function resetInProgressTimesheetEntries(): number {
+    const timer = dbLogger.startTimer('reset-in-progress-entries');
+    const db = getDb();
+    
+    dbLogger.info('Resetting all in-progress timesheet entries to NULL status');
+    const resetStatus = db.prepare(`
+        UPDATE timesheet 
+        SET status = NULL
+        WHERE status = 'in_progress'
+    `);
+    
+    const result = resetStatus.run();
+    dbLogger.audit('reset-in-progress-status', 'In-progress entries reset to NULL', { 
+        changes: result.changes 
+    });
+    
+    timer.done({ changes: result.changes });
+    return result.changes;
+}
+

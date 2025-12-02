@@ -26,7 +26,28 @@ export default defineConfig({
         outputFile: 'frontend-test-results.md',
         outputDir: path.resolve(__dirname, '../../..', 'test-results')
       })
-    ]
+    ],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html', 'json-summary'],
+      include: [
+        'app/frontend/src/**/*.{ts,tsx}'
+      ],
+      exclude: [
+        'app/frontend/src/**/*.spec.{ts,tsx}',
+        'app/frontend/src/**/*.test.{ts,tsx}',
+        'app/frontend/tests/**/*',
+        'app/frontend/src/**/*.d.ts',
+        'app/frontend/src/main.tsx', // Entry point - tested via integration
+        'app/frontend/src/App.tsx' // Main app - tested via integration
+      ],
+      thresholds: {
+        statements: 100,
+        branches: 100,
+        functions: 100,
+        lines: 100
+      }
+    }
   },
   resolve: {
     alias: {

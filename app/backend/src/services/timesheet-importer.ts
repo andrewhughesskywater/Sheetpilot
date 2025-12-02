@@ -17,12 +17,16 @@ import {
     removeFailedTimesheetEntries,
     getTimesheetEntriesByIds,
     resetInProgressTimesheetEntries
-} from './database';
+} from '../repositories';
 import { botLogger } from '../../../shared/logger';
 import { getSubmissionService } from '../middleware/bootstrap-plugins';
 import type { TimesheetEntry } from '../../../shared/contracts/IDataService';
 import type { Credentials } from '../../../shared/contracts/ICredentialService';
 import type { SubmissionResult, ISubmissionService } from '../../../shared/contracts/ISubmissionService';
+import {
+  formatMinutesToTime,
+  normalizeDateToISO
+} from '../../../shared/utils/format-conversions';
 // Dynamic import to avoid top-level async operations during module loading
 
 
@@ -57,27 +61,14 @@ export type { SubmissionResult } from '../../../shared/contracts/ISubmissionServ
  * Converts database row format to TimesheetEntry format
  */
 function toTimesheetEntry(dbRow: DbRow): TimesheetEntry {
-    // Convert time from minutes (0-1440) to HH:MM format
-    const formatTime = (minutes: number): string => {
-        const hours = Math.floor(minutes / 60);
-        const mins = minutes % 60;
-        return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
-    };
-    
     // Convert date from MM/DD/YYYY to YYYY-MM-DD format for quarter matching
-    let dateStr = dbRow.date;
-    if (dateStr && dateStr.includes('/')) {
-        const parts = dateStr.split('/');
-        if (parts.length === 3 && parts[0] && parts[1] && parts[2]) {
-            dateStr = `${parts[2]}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
-        }
-    }
+    const dateStr = normalizeDateToISO(dbRow.date);
     
     return {
         id: dbRow.id,
         date: dateStr,
-        timeIn: formatTime(dbRow.time_in),
-        timeOut: formatTime(dbRow.time_out),
+        timeIn: formatMinutesToTime(dbRow.time_in),
+        timeOut: formatMinutesToTime(dbRow.time_out),
         project: dbRow.project,
         tool: dbRow.tool ?? null,
         chargeCode: dbRow.detail_charge_code ?? null,

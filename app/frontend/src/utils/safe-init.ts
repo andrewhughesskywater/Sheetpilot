@@ -1,3 +1,5 @@
+/// <reference types="vite/client" />
+
 /**
  * Safe initialization guard to prevent duplicate module-level initialization
  * in development mode (HMR, StrictMode, etc.)

@@ -1,417 +1,283 @@
-/**
- * @fileoverview Macro Storage Utility Tests
- * 
- * Tests for macro save/load, validation, and localStorage management.
- * Critical for user productivity and data persistence.
- * 
- * @author Andrew Hughes
- * @version 1.0.0
- * @since 2025
- */
-
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { saveMacros, loadMacros, type MacroRow } from '../../../src/utils/macroStorage';
+import {
+  loadMacros,
+  saveMacros,
+  isMacroEmpty,
+  isMacroValid,
+  type MacroRow
+} from '../../src/utils/macroStorage';
 
-interface MockStorage {
-  getItem: (key: string) => string | null;
-  setItem: (key: string, value: string) => void;
-  removeItem: (key: string) => void;
-  clear: () => void;
-  length: number;
-  key: (index: number) => string | null;
-}
-
-describe('Macro Storage Utility', () => {
-  let mockLocalStorage: Record<string, string>;
+describe('macroStorage', () => {
+  let originalLocalStorage: Storage;
+  let mockLocalStorage: Storage;
 
   beforeEach(() => {
-    mockLocalStorage = {};
+    // Save original localStorage
+    originalLocalStorage = globalThis.localStorage;
     
-    global.localStorage = {
-      getItem: (key: string) => mockLocalStorage[key] || null,
-      setItem: (key: string, value: string) => {
-        mockLocalStorage[key] = value;
+    // Create mock localStorage
+    const storage: Record<string, string> = {};
+    mockLocalStorage = {
+      getItem: vi.fn((key: string) => storage[key] || null),
+      setItem: vi.fn((key: string, value: string) => {
+        storage[key] = value;
+      }),
+      removeItem: vi.fn((key: string) => {
+        delete storage[key];
+      }),
+      clear: vi.fn(() => {
+        Object.keys(storage).forEach(key => delete storage[key]);
+      }),
+      get length() {
+        return Object.keys(storage).length;
       },
-      removeItem: (key: string) => {
-        delete mockLocalStorage[key];
-      },
-      clear: () => {
-        mockLocalStorage = {};
-      },
-      length: 0,
-      key: () => null
-    } as MockStorage;
+      key: vi.fn((index: number) => Object.keys(storage)[index] || null)
+    } as Storage;
+    
+    (globalThis as { localStorage: Storage }).localStorage = mockLocalStorage;
+  });
+
+  afterEach(() => {
+    (globalThis as { localStorage: Storage }).localStorage = originalLocalStorage;
+  });
+
+  describe('loadMacros', () => {
+    it('should return empty macros when localStorage is empty', () => {
+      const macros = loadMacros();
+      
+      expect(macros).toHaveLength(5);
+      macros.forEach(macro => {
+        expect(macro).toEqual({
+          name: '',
+          timeIn: '',
+          timeOut: '',
+          project: '',
+          tool: null,
+          chargeCode: null,
+          taskDescription: ''
+        });
+      });
+    });
+
+    it('should load macros from localStorage', () => {
+      const storedMacros: MacroRow[] = [
+        {
+          name: 'Macro 1',
+          timeIn: '08:00',
+          timeOut: '17:00',
+          project: 'Project A',
+          tool: 'Tool 1',
+          chargeCode: 'CC1',
+          taskDescription: 'Task 1'
+        },
+        createEmptyMacro(),
+        createEmptyMacro(),
+        createEmptyMacro(),
+        createEmptyMacro()
+      ];
+      
+      mockLocalStorage.setItem('sheetpilot-macros', JSON.stringify(storedMacros));
+      
+      const macros = loadMacros();
+      expect(macros).toHaveLength(5);
+      expect(macros[0]).toEqual(storedMacros[0]);
+    });
+
+    it('should handle invalid JSON gracefully', () => {
+      mockLocalStorage.setItem('sheetpilot-macros', 'invalid json');
+      
+      const macros = loadMacros();
+      expect(macros).toHaveLength(5);
+      macros.forEach(macro => {
+        expect(macro.name).toBe('');
+      });
+    });
+
+    it('should handle wrong array length', () => {
+      const shortArray = [createEmptyMacro(), createEmptyMacro()];
+      mockLocalStorage.setItem('sheetpilot-macros', JSON.stringify(shortArray));
+      
+      const macros = loadMacros();
+      expect(macros).toHaveLength(5);
+    });
+
+    it('should return empty macros when window is undefined', () => {
+      const originalWindow = globalThis.window;
+      delete (globalThis as { window?: typeof window }).window;
+      
+      const macros = loadMacros();
+      expect(macros).toHaveLength(5);
+      
+      (globalThis as { window: typeof window }).window = originalWindow;
+    });
   });
 
   describe('saveMacros', () => {
     it('should save macros to localStorage', () => {
       const macros: MacroRow[] = [
         {
-          name: 'Daily Entry',
-          project: 'FL-Carver Techs',
-          tool: '#1 Rinse and 2D marker',
-          chargeCode: 'EPR1',
-          taskDescription: 'Daily maintenance'
-        }
-      ];
-      
-      saveMacros(macros);
-      
-      const stored = mockLocalStorage['sheetpilot_macros'];
-      expect(stored).toBeDefined();
-      
-      const parsed = JSON.parse(stored);
-      expect(parsed).toEqual(macros);
-    });
-
-    it('should save multiple macros', () => {
-      const macros: MacroRow[] = [
-        {
           name: 'Macro 1',
-          project: 'Test1',
-          taskDescription: 'Task1'
+          timeIn: '08:00',
+          timeOut: '17:00',
+          project: 'Project A',
+          tool: 'Tool 1',
+          chargeCode: 'CC1',
+          taskDescription: 'Task 1'
         },
-        {
-          name: 'Macro 2',
-          project: 'Test2',
-          taskDescription: 'Task2'
-        }
+        createEmptyMacro(),
+        createEmptyMacro(),
+        createEmptyMacro(),
+        createEmptyMacro()
       ];
       
       saveMacros(macros);
       
-      const stored = JSON.parse(mockLocalStorage['sheetpilot_macros']);
-      expect(stored).toHaveLength(2);
+      const stored = mockLocalStorage.getItem('sheetpilot-macros');
+      expect(stored).toBeTruthy();
+      const parsed = JSON.parse(stored!);
+      expect(parsed).toHaveLength(5);
+      expect(parsed[0]).toEqual(macros[0]);
     });
 
-    it('should save empty array', () => {
-      saveMacros([]);
-      
-      const stored = JSON.parse(mockLocalStorage['sheetpilot_macros']);
-      expect(stored).toEqual([]);
-    });
-
-    it('should overwrite existing macros', () => {
-      const macros1: MacroRow[] = [{ name: 'Old', project: 'Test', taskDescription: 'Task' }];
-      const macros2: MacroRow[] = [{ name: 'New', project: 'Test', taskDescription: 'Task' }];
-      
-      saveMacros(macros1);
-      saveMacros(macros2);
-      
-      const stored = JSON.parse(mockLocalStorage['sheetpilot_macros']);
-      expect(stored).toEqual(macros2);
-      expect(stored).not.toEqual(macros1);
-    });
-
-    it('should handle macros with null values', () => {
-      const macros: MacroRow[] = [
-        {
-          name: 'PTO Macro',
-          project: 'PTO/RTO',
-          tool: null,
-          chargeCode: null,
-          taskDescription: 'Time off'
-        }
-      ];
-      
-      saveMacros(macros);
-      
-      const stored = JSON.parse(mockLocalStorage['sheetpilot_macros']);
-      expect(stored[0].tool).toBeNull();
-      expect(stored[0].chargeCode).toBeNull();
-    });
-
-    it('should handle very long macro names', () => {
-      const macros: MacroRow[] = [
-        {
-          name: 'A'.repeat(500),
-          project: 'Test',
-          taskDescription: 'Task'
-        }
-      ];
-      
-      saveMacros(macros);
-      
-      const stored = JSON.parse(mockLocalStorage['sheetpilot_macros']);
-      expect(stored[0].name.length).toBe(500);
-    });
-
-    it('should handle special characters', () => {
-      const macros: MacroRow[] = [
-        {
-          name: 'Macro #1 - [Priority]',
-          project: 'FL/Carver-Techs',
-          taskDescription: 'Task with "quotes" and <brackets>'
-        }
-      ];
-      
-      saveMacros(macros);
-      
-      const stored = JSON.parse(mockLocalStorage['sheetpilot_macros']);
-      expect(stored[0].name).toContain('#');
-      expect(stored[0].taskDescription).toContain('"');
-    });
-
-    it('should handle unicode characters', () => {
-      const macros: MacroRow[] = [
-        {
-          name: 'Макрос 🚀',
-          project: 'Test',
-          taskDescription: 'Task with 中文'
-        }
-      ];
-      
-      saveMacros(macros);
-      
-      const stored = JSON.parse(mockLocalStorage['sheetpilot_macros']);
-      expect(stored[0].name).toContain('🚀');
-      expect(stored[0].taskDescription).toContain('中文');
-    });
-  });
-
-  describe('loadMacros', () => {
-    it('should load macros from localStorage', () => {
-      const macros: MacroRow[] = [
-        {
-          name: 'Test Macro',
-          project: 'Test',
-          taskDescription: 'Task'
-        }
-      ];
-      
-      mockLocalStorage['sheetpilot_macros'] = JSON.stringify(macros);
-      
-      const loaded = loadMacros();
-      expect(loaded).toEqual(macros);
-    });
-
-    it('should return empty array if no macros stored', () => {
-      const loaded = loadMacros();
-      expect(loaded).toEqual([]);
-    });
-
-    it('should handle corrupted JSON gracefully', () => {
-      mockLocalStorage['sheetpilot_macros'] = 'invalid json {{{';
-      
-      const loaded = loadMacros();
-      expect(loaded).toEqual([]);
-    });
-
-    it('should handle non-array data', () => {
-      mockLocalStorage['sheetpilot_macros'] = JSON.stringify({ not: 'an array' });
-      
-      const loaded = loadMacros();
-      expect(loaded).toEqual([]);
-    });
-
-    it('should load multiple macros', () => {
-      const macros: MacroRow[] = [
-        { name: 'Macro 1', project: 'Test1', taskDescription: 'Task1' },
-        { name: 'Macro 2', project: 'Test2', taskDescription: 'Task2' },
-        { name: 'Macro 3', project: 'Test3', taskDescription: 'Task3' }
-      ];
-      
-      mockLocalStorage['sheetpilot_macros'] = JSON.stringify(macros);
-      
-      const loaded = loadMacros();
-      expect(loaded).toHaveLength(3);
-    });
-  });
-
-  describe('Round-Trip Persistence', () => {
-    it('should preserve data through save and load', () => {
-      const macros: MacroRow[] = [
-        {
-          name: 'Test Macro',
-          project: 'FL-Carver Techs',
-          tool: '#1 Rinse and 2D marker',
-          chargeCode: 'EPR1',
-          taskDescription: 'Test task'
-        }
-      ];
-      
-      saveMacros(macros);
-      const loaded = loadMacros();
-      
-      expect(loaded).toEqual(macros);
-    });
-
-    it('should preserve null values', () => {
-      const macros: MacroRow[] = [
-        {
-          name: 'PTO',
-          project: 'PTO/RTO',
-          tool: null,
-          chargeCode: null,
-          taskDescription: 'Time off'
-        }
-      ];
-      
-      saveMacros(macros);
-      const loaded = loadMacros();
-      
-      expect(loaded[0].tool).toBeNull();
-      expect(loaded[0].chargeCode).toBeNull();
-    });
-
-    it('should preserve special characters', () => {
-      const macros: MacroRow[] = [
-        {
-          name: 'Special #1 [High]',
-          project: 'Test/Project',
-          taskDescription: 'Task with "quotes" and <brackets>'
-        }
-      ];
-      
-      saveMacros(macros);
-      const loaded = loadMacros();
-      
-      expect(loaded[0].name).toBe('Special #1 [High]');
-      expect(loaded[0].taskDescription).toContain('"');
-    });
-  });
-
-  describe('Storage Limits', () => {
-    it('should handle storage quota exceeded', () => {
-      const setItemSpy = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
-        throw new Error('QuotaExceededError');
+    it('should handle localStorage errors gracefully', () => {
+      const setItemSpy = vi.spyOn(mockLocalStorage, 'setItem').mockImplementation(() => {
+        throw new Error('localStorage failed');
       });
       
-      const largeMacros: MacroRow[] = Array(1000).fill({
-        name: 'Macro',
-        project: 'Test',
-        taskDescription: 'Long description '.repeat(100)
-      });
-      
-      expect(() => saveMacros(largeMacros)).not.toThrow();
+      const macros = Array(5).fill(null).map(() => createEmptyMacro());
+      expect(() => saveMacros(macros)).not.toThrow();
       
       setItemSpy.mockRestore();
     });
 
-    it('should handle very large macro datasets', () => {
-      const macros: MacroRow[] = [];
+    it('should not save when window is undefined', () => {
+      const originalWindow = globalThis.window;
+      delete (globalThis as { window?: typeof window }).window;
       
-      for (let i = 0; i < 100; i++) {
-        macros.push({
-          name: `Macro ${i}`,
-          project: 'Test',
-          taskDescription: `Task ${i}`
-        });
-      }
+      const macros = Array(5).fill(null).map(() => createEmptyMacro());
+      expect(() => saveMacros(macros)).not.toThrow();
       
-      saveMacros(macros);
-      const loaded = loadMacros();
-      
-      expect(loaded).toHaveLength(100);
+      (globalThis as { window: typeof window }).window = originalWindow;
     });
   });
 
-  describe('Macro Validation', () => {
-    it('should validate macro has required fields', () => {
-      const validateMacro = (macro: MacroRow) => {
-        return !!(macro.name && macro.project && macro.taskDescription);
-      };
-      
-      const validMacro: MacroRow = {
-        name: 'Test',
-        project: 'Test',
-        taskDescription: 'Task'
-      };
-      
-      const invalidMacro: MacroRow = {
-        name: 'Test',
-        project: '',
-        taskDescription: ''
-      };
-      
-      expect(validateMacro(validMacro)).toBe(true);
-      expect(validateMacro(invalidMacro)).toBe(false);
+  describe('isMacroEmpty', () => {
+    it('should return true for empty macro', () => {
+      const macro: MacroRow = createEmptyMacro();
+      expect(isMacroEmpty(macro)).toBe(true);
     });
 
-    it('should allow optional fields to be null', () => {
+    it('should return false when macro has name', () => {
       const macro: MacroRow = {
-        name: 'Test',
-        project: 'PTO/RTO',
-        tool: null,
-        chargeCode: null,
-        taskDescription: 'Task'
+        ...createEmptyMacro(),
+        name: 'Test Macro'
       };
-      
-      expect(macro.tool).toBeNull();
-      expect(macro.chargeCode).toBeNull();
-      expect(macro.name).toBeDefined();
+      expect(isMacroEmpty(macro)).toBe(false);
+    });
+
+    it('should return false when macro has project', () => {
+      const macro: MacroRow = {
+        ...createEmptyMacro(),
+        project: 'Test Project'
+      };
+      expect(isMacroEmpty(macro)).toBe(false);
+    });
+
+    it('should return false when macro has taskDescription', () => {
+      const macro: MacroRow = {
+        ...createEmptyMacro(),
+        taskDescription: 'Test Task'
+      };
+      expect(isMacroEmpty(macro)).toBe(false);
+    });
+
+    it('should return false when macro has timeIn', () => {
+      const macro: MacroRow = {
+        ...createEmptyMacro(),
+        timeIn: '08:00'
+      };
+      expect(isMacroEmpty(macro)).toBe(false);
+    });
+
+    it('should return false when macro has timeOut', () => {
+      const macro: MacroRow = {
+        ...createEmptyMacro(),
+        timeOut: '17:00'
+      };
+      expect(isMacroEmpty(macro)).toBe(false);
+    });
+
+    it('should return true when only tool is set (null is empty)', () => {
+      const macro: MacroRow = {
+        ...createEmptyMacro(),
+        tool: null
+      };
+      expect(isMacroEmpty(macro)).toBe(true);
+    });
+
+    it('should return false when tool has value', () => {
+      const macro: MacroRow = {
+        ...createEmptyMacro(),
+        tool: 'Tool 1'
+      };
+      expect(isMacroEmpty(macro)).toBe(false);
     });
   });
 
-  describe('Storage Corruption Recovery', () => {
-    it('should recover from corrupted JSON', () => {
-      mockLocalStorage['sheetpilot_macros'] = '{broken json]';
-      
-      const loaded = loadMacros();
-      expect(loaded).toEqual([]);
+  describe('isMacroValid', () => {
+    it('should return false for empty macro', () => {
+      const macro: MacroRow = createEmptyMacro();
+      expect(isMacroValid(macro)).toBe(false);
     });
 
-    it('should recover from null in localStorage', () => {
-      mockLocalStorage['sheetpilot_macros'] = 'null';
-      
-      const loaded = loadMacros();
-      expect(loaded).toEqual([]);
+    it('should return true when macro has project and taskDescription', () => {
+      const macro: MacroRow = {
+        ...createEmptyMacro(),
+        project: 'Test Project',
+        taskDescription: 'Test Task'
+      };
+      expect(isMacroValid(macro)).toBe(true);
     });
 
-    it('should recover from undefined in localStorage', () => {
-      mockLocalStorage['sheetpilot_macros'] = 'undefined';
-      
-      const loaded = loadMacros();
-      expect(loaded).toEqual([]);
+    it('should return false when only project is set', () => {
+      const macro: MacroRow = {
+        ...createEmptyMacro(),
+        project: 'Test Project'
+      };
+      expect(isMacroValid(macro)).toBe(false);
     });
 
-    it('should recover from non-macro data', () => {
-      mockLocalStorage['sheetpilot_macros'] = JSON.stringify('string data');
-      
-      const loaded = loadMacros();
-      expect(loaded).toEqual([]);
+    it('should return false when only taskDescription is set', () => {
+      const macro: MacroRow = {
+        ...createEmptyMacro(),
+        taskDescription: 'Test Task'
+      };
+      expect(isMacroValid(macro)).toBe(false);
     });
 
-    it('should recover from array of non-objects', () => {
-      mockLocalStorage['sheetpilot_macros'] = JSON.stringify([1, 2, 3]);
-      
-      const loaded = loadMacros();
-      // Depending on implementation, might return empty or filter out invalid items
-      expect(Array.isArray(loaded)).toBe(true);
-    });
-  });
-
-  describe('Performance', () => {
-    it('should save large macro sets efficiently', () => {
-      const macros: MacroRow[] = Array(100).fill({
-        name: 'Macro',
-        project: 'Test',
-        taskDescription: 'Task'
-      }).map((m, i) => ({ ...m, name: `Macro ${i}` }));
-      
-      const startTime = Date.now();
-      saveMacros(macros);
-      const duration = Date.now() - startTime;
-      
-      expect(duration).toBeLessThan(500);
-    });
-
-    it('should load large macro sets efficiently', () => {
-      const macros: MacroRow[] = Array(100).fill({
-        name: 'Macro',
-        project: 'Test',
-        taskDescription: 'Task'
-      });
-      
-      mockLocalStorage['sheetpilot_macros'] = JSON.stringify(macros);
-      
-      const startTime = Date.now();
-      const loaded = loadMacros();
-      const duration = Date.now() - startTime;
-      
-      expect(loaded).toHaveLength(100);
-      expect(duration).toBeLessThan(500);
+    it('should return true when macro has all fields', () => {
+      const macro: MacroRow = {
+        name: 'Macro 1',
+        timeIn: '08:00',
+        timeOut: '17:00',
+        project: 'Test Project',
+        tool: 'Tool 1',
+        chargeCode: 'CC1',
+        taskDescription: 'Test Task'
+      };
+      expect(isMacroValid(macro)).toBe(true);
     });
   });
 });
 
+function createEmptyMacro(): MacroRow {
+  return {
+    name: '',
+    timeIn: '',
+    timeOut: '',
+    project: '',
+    tool: null,
+    chargeCode: null,
+    taskDescription: ''
+  };
+}
