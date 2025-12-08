@@ -10,16 +10,26 @@ export default defineConfig({
     setupFiles: [path.resolve(__dirname, 'setup.ts')],
     globals: true,
     include: [
-      'app/frontend/tests/**/*.spec.{ts,tsx}',
-      'app/frontend/tests/**/*.test.{ts,tsx}'
+      'tests/**/*.spec.{ts,tsx}',
+      'tests/**/*.test.{ts,tsx}'
     ],
     exclude: [
       'node_modules',
       'dist',
-      'build',
-      '**/blank-screen-prevention.spec.{ts,tsx}',
-      '**/e2e-blank-screen-prevention.spec.{ts,tsx}'
+      'build'
     ],
+    deps: {
+      optimizer: {
+        web: {
+          include: [
+            '@emotion/react',
+            '@emotion/styled',
+            '@mui/material',
+            '@mui/styled-engine'
+          ]
+        }
+      }
+    },
     reporters: [
       'default',
       new MarkdownReporter({ 
@@ -31,15 +41,15 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'json-summary'],
       include: [
-        'app/frontend/src/**/*.{ts,tsx}'
+        'src/**/*.{ts,tsx}'
       ],
       exclude: [
-        'app/frontend/src/**/*.spec.{ts,tsx}',
-        'app/frontend/src/**/*.test.{ts,tsx}',
-        'app/frontend/tests/**/*',
-        'app/frontend/src/**/*.d.ts',
-        'app/frontend/src/main.tsx', // Entry point - tested via integration
-        'app/frontend/src/App.tsx' // Main app - tested via integration
+        'src/**/*.spec.{ts,tsx}',
+        'src/**/*.test.{ts,tsx}',
+        'tests/**/*',
+        'src/**/*.d.ts',
+        'src/main.tsx', // Entry point - tested via integration
+        'src/App.tsx' // Main app - tested via integration
       ],
       thresholds: {
         statements: 100,
