@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ipcMain } from 'electron';
 import { registerAuthHandlers } from '../../src/ipc/auth-handlers';
 import * as repositories from '../../src/repositories';
+// We use getCredentials from repositories in our mocks
 import { ipcLogger as _ipcLogger } from '../../../shared/logger';
 
 // Mock electron
@@ -14,6 +15,7 @@ vi.mock('electron', () => ({
 // Mock repositories
 vi.mock('../../src/repositories', () => ({
   storeCredentials: vi.fn(),
+  getCredentials: vi.fn(),
   createSession: vi.fn(),
   validateSession: vi.fn(),
   clearSession: vi.fn(),
@@ -89,6 +91,8 @@ describe('auth-handlers', () => {
 
   describe('auth:login handler', () => {
     it('should login regular user successfully', async () => {
+      // Mock getCredentials to return undefined (new user scenario)
+      vi.mocked(repositories.getCredentials).mockReturnValue(undefined);
       vi.mocked(repositories.storeCredentials).mockReturnValue({
         success: true,
         message: 'Stored',
@@ -147,6 +151,8 @@ describe('auth-handlers', () => {
     });
 
     it('should handle credential storage failure', async () => {
+      // Mock getCredentials to return undefined (new user scenario)
+      vi.mocked(repositories.getCredentials).mockReturnValue(undefined);
       vi.mocked(repositories.storeCredentials).mockReturnValue({
         success: false,
         message: 'Storage failed',
@@ -164,6 +170,8 @@ describe('auth-handlers', () => {
     });
 
     it('should handle errors gracefully', async () => {
+      // Mock getCredentials to return undefined (new user scenario)
+      vi.mocked(repositories.getCredentials).mockReturnValue(undefined);
       vi.mocked(repositories.storeCredentials).mockImplementation(() => {
         throw new Error('Database error');
       });

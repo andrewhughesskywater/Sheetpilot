@@ -7,5 +7,7 @@
 			"path": "../../AppData/Roaming/sheetpilot"
 		}
 	],
-	"settings": {}
+	"settings": {
+		"powershell.cwd": "Sheetpilot"
+	}
 }

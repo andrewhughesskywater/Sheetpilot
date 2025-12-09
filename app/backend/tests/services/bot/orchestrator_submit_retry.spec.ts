@@ -2,14 +2,33 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { BotOrchestrator } from '../../../src/services/bot/src/bot_orchestation';
 import { createFormConfig } from '../../../src/services/bot/src/automation_config';
 
-// Mock the automation config
+// Mock the automation config with all required exports
 vi.mock('../../../src/services/bot/src/automation_config', async () => {
-  const actual = await vi.importActual('../../../src/services/bot/src/automation_config');
+  const actual = await vi.importActual<typeof import('../../../src/services/bot/src/automation_config')>('../../../src/services/bot/src/automation_config');
   return {
+    // Spread all actual exports first
     ...actual,
-    SUBMIT_CLICK_RETRY_DELAY_S: 0.01, // Fast for tests
-    SUBMIT_RETRY_DELAY: 0.01, // Fast for tests
-    createFormConfig: (actual as { createFormConfig: unknown }).createFormConfig
+    // Add properties accessed by BotOrchestrator that don't exist in the real config
+    STATUS_COLUMN_NAME: undefined,
+    STATUS_COMPLETE: undefined,
+    // Override timing constants for fast tests
+    SUBMIT_CLICK_RETRY_DELAY_S: 0.01,
+    SUBMIT_RETRY_DELAY: 0.01,
+    SUBMIT_DELAY_AFTER_FILLING: 0.01,
+    DYNAMIC_WAIT_BASE_TIMEOUT: 0.01,
+    DYNAMIC_WAIT_MAX_TIMEOUT: 0.01,
+    GLOBAL_TIMEOUT: 0.1,
+    // Mock page-dependent functions to be no-ops for testing
+    wait_for_dom_stability: vi.fn().mockResolvedValue(true),
+    dynamic_wait_for_element: vi.fn().mockResolvedValue(true),
+    dynamic_wait_for_page_load: vi.fn().mockResolvedValue(true),
+    dynamic_wait_for_network_idle: vi.fn().mockResolvedValue(true),
+    dynamic_wait: vi.fn().mockResolvedValue(true),
+    wait_for_dropdown_options: vi.fn().mockResolvedValue(true),
+    wait_for_validation_stability: vi.fn().mockResolvedValue(true),
+    smart_wait_or_proceed: vi.fn().mockResolvedValue(true),
+    wait_for_submission_network_idle: vi.fn().mockResolvedValue(true),
+    sleep: vi.fn().mockResolvedValue(undefined)
   };
 });
 
@@ -20,6 +39,39 @@ const dummyFormConfig = createFormConfig(
   'https://app.smartsheet.com/b/form/0197cbae7daf72bdb96b3395b500d414', 
   '0197cbae7daf72bdb96b3395b500d414'
 );
+
+/**
+ * Mock page object for testing
+ * Provides minimal Playwright Page interface required by the bot
+ */
+const createMockPage = () => ({
+  waitForTimeout: vi.fn().mockResolvedValue(undefined),
+  waitForLoadState: vi.fn().mockResolvedValue(undefined),
+  locator: vi.fn().mockReturnValue({
+    count: vi.fn().mockResolvedValue(0),
+    first: vi.fn().mockReturnValue({
+      isVisible: vi.fn().mockResolvedValue(false),
+      isEnabled: vi.fn().mockResolvedValue(true)
+    }),
+    nth: vi.fn().mockReturnValue({
+      isVisible: vi.fn().mockResolvedValue(false),
+      isEnabled: vi.fn().mockResolvedValue(true)
+    }),
+    fill: vi.fn().mockResolvedValue(undefined),
+    click: vi.fn().mockResolvedValue(undefined),
+    press: vi.fn().mockResolvedValue(undefined),
+    getAttribute: vi.fn().mockResolvedValue(null),
+    evaluate: vi.fn().mockResolvedValue(null),
+    isVisible: vi.fn().mockResolvedValue(true),
+    isEnabled: vi.fn().mockResolvedValue(true),
+    boundingBox: vi.fn().mockResolvedValue({ x: 0, y: 0, width: 100, height: 50 }),
+    waitFor: vi.fn().mockResolvedValue(undefined)
+  }),
+  evaluate: vi.fn().mockResolvedValue('complete'),
+  goto: vi.fn().mockResolvedValue(undefined),
+  on: vi.fn(),
+  off: vi.fn()
+});
 
 /**
  * FakeFiller simulates WebformFiller behavior for testing
@@ -34,18 +86,16 @@ const dummyFormConfig = createFormConfig(
 class FakeFiller {
   submitSequence: boolean[];
   submissions: number = 0;
+  mockPage = createMockPage();
+  
   constructor(seq: boolean[]) { this.submitSequence = seq; }
   async wait_for_form_ready(): Promise<void> { /* no-op */ }
   async inject_field_value(_spec: Record<string, unknown>, _v: string): Promise<void> { /* no-op */ }
-  require_page(): { waitForTimeout: (ms: number) => Promise<void> } { 
-    return {
-      waitForTimeout: async (_ms: number) => { /* no-op */ }
-    }; 
+  require_page() { 
+    return this.mockPage;
   }
-  getPage(_contextIndex: number): { waitForTimeout: (ms: number) => Promise<void> } {
-    return {
-      waitForTimeout: async (_ms: number) => { /* no-op */ }
-    };
+  getPage(_contextIndex: number) {
+    return this.mockPage;
   }
   /**
    * Mock submit_form returns the next result in the sequence
