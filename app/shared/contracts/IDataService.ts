@@ -85,6 +85,7 @@ export interface LoadResult {
  */
 export interface DeleteResult {
   success: boolean;
+  changes?: number;
   error?: string;
 }
 

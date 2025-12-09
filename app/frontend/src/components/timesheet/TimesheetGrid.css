@@ -45,17 +45,9 @@
   box-shadow: var(--md-sys-elevation-level1);
 }
 
-/* Minimal Handsontable styling - let the theme drive appearance */
+/* Minimal Handsontable styling - let the native theme drive appearance */
 .timesheet-table-container .handsontable {
   width: auto;
-}
-
-/* Use Handsontable CSS variables for theme customization */
-.handsontable {
-  --ht-header-background-color: var(--md-sys-color-surface-container);
-  --ht-header-foreground-color: var(--md-sys-color-on-surface-variant);
-  --ht-header-font-weight: var(--md-sys-typescale-label-large-weight);
-  --ht-header-border-color: var(--md-sys-color-outline-variant);
 }
 
 /* Reduce header cell padding to prevent text truncation */
@@ -107,22 +99,7 @@
 /* Invalid cell styling - validation done in afterChange */
 .handsontable .htInvalid {
   background-color: rgba(255, 0, 0, 0.15) !important;
-  border: 1px solid var(--md-sys-color-error) !important;
-}
-
-/* Improve selection visibility using design tokens */
-.handsontable .ht_master .wtBorder.current {
-  border-color: var(--md-sys-color-primary) !important;
-}
-
-.handsontable .ht_master .area {
-  background-color: var(--md-sys-color-primary) !important;
-  opacity: 0.18 !important; /* subtle but visible overlay */
-}
-
-.handsontable .ht_master .area.corner {
-  background-color: var(--md-sys-color-primary) !important;
-  opacity: 0.28 !important; /* emphasize corner drag area */
+  border: 1px solid #d32f2f !important;
 }
 
 /* Selection borders should not intercept mouse events */

@@ -140,7 +140,8 @@ describe('Development Fallback Tests', () => {
       const { initializeAPIFallback } = await import('../src/utils/api-fallback');
       initializeAPIFallback();
       
-      const result = await window.database.getAllTimesheetEntries();
+      // getAllTimesheetEntries requires a token parameter
+      const result = await window.database.getAllTimesheetEntries('mock-session-token');
       
       expect(result.success).toBe(true);
       expect(result.entries).toBeDefined();

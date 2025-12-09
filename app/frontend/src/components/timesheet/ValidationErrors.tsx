@@ -5,8 +5,11 @@
  * Shows up to 3 individual errors, or a summary button for more.
  */
 
-import { Alert, Button, Box, Chip } from '@mui/material';
-import { Error as ErrorIcon } from '@mui/icons-material';
+import Alert from '@mui/material/Alert';
+import Button from '@mui/material/Button';
+import Box from '@mui/material/Box';
+import Chip from '@mui/material/Chip';
+import ErrorIcon from '@mui/icons-material/Error';
 
 interface ValidationError {
   row: number;

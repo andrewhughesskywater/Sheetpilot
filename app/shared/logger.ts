@@ -323,7 +323,7 @@ export class Logger {
         }
         
         // Use appropriate log level with map lookup
-        const logMethod = Logger.LOG_METHODS[level] || Logger.LOG_METHODS.info;
+        const logMethod = Logger.LOG_METHODS[level] || Logger.LOG_METHODS['info'];
         if (logMethod) {
             logMethod(entry);
         }

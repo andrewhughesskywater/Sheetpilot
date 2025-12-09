@@ -129,6 +129,48 @@ vi.mock('../src/services/database', () => {
   };
 });
 
+// Mock repositories module (delegates to database module mock)
+vi.mock('../src/repositories', async () => {
+  const db = await vi.importMock<typeof import('../src/services/database')>('../src/services/database');
+  
+  return {
+    // Connection management
+    setDbPath: db.setDbPath,
+    getDbPath: db.getDbPath,
+    getDb: db.getDb,
+    openDb: db.openDb,
+    closeConnection: vi.fn(),
+    shutdownDatabase: vi.fn(),
+    ensureSchema: db.ensureSchema,
+    rebuildDatabase: db.rebuildDatabase,
+    
+    // Timesheet operations
+    insertTimesheetEntry: vi.fn(),
+    getPendingTimesheetEntries: db.getPendingTimesheetEntries,
+    markTimesheetEntriesAsInProgress: vi.fn(),
+    resetTimesheetEntriesStatus: vi.fn(),
+    resetInProgressTimesheetEntries: vi.fn(() => 0),
+    markTimesheetEntriesAsSubmitted: vi.fn(),
+    removeFailedTimesheetEntries: vi.fn(),
+    getTimesheetEntriesByIds: vi.fn(() => []),
+    getSubmittedTimesheetEntriesForExport: vi.fn(() => []),
+    
+    // Credentials operations
+    storeCredentials: db.storeCredentials,
+    getCredentials: db.getCredentials,
+    listCredentials: db.listCredentials,
+    deleteCredentials: db.deleteCredentials,
+    clearAllCredentials: db.clearAllCredentials,
+    
+    // Session operations
+    createSession: db.createSession,
+    validateSession: db.validateSession,
+    clearSession: db.clearSession,
+    clearUserSessions: db.clearUserSessions,
+    getSessionByEmail: vi.fn()
+  };
+});
+
 vi.mock('../src/services/timesheet-importer', () => {
   return {
     submitTimesheets: vi.fn(async () => ({ ok: true, submittedIds: [1], removedIds: [], totalProcessed: 1, successCount: 1, removedCount: 0 }))

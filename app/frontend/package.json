@@ -10,10 +10,10 @@
     "lint": "eslint src",
     "preview": "vite preview --config src/config/vite.config.ts",
     "typecheck": "tsc -p tsconfig.app.json --noEmit",
-    "test": "vitest",
-    "test:run": "vitest run",
-    "test:watch": "vitest --watch",
-    "test:coverage": "vitest run --coverage"
+    "test": "vitest --config tests/vitest.config.ts",
+    "test:run": "vitest run --config tests/vitest.config.ts",
+    "test:watch": "vitest --watch --config tests/vitest.config.ts",
+    "test:coverage": "vitest run --coverage --config tests/vitest.config.ts"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

@@ -1,40 +1,36 @@
 import React, { useState } from 'react';
-import {
-  Box,
-  Card,
-  Typography,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
-  Chip,
-  Alert,
-  AlertTitle,
-  Divider,
-  Paper,
-  Stepper,
-  Step,
-  StepLabel,
-  StepContent
-} from '@mui/material';
-import {
-  ExpandMore as ExpandMoreIcon,
-  CheckCircle as CheckCircleIcon,
-  Warning as WarningIcon,
-  Info as InfoIcon,
-  Security as SecurityIcon,
-  Speed as SpeedIcon,
-  Storage as StorageIcon,
-  CloudUpload as CloudUploadIcon,
-  Assignment as AssignmentIcon,
-  Archive as ArchiveIcon,
-  VpnKey as VpnKeyIcon,
-  BugReport as BugReportIcon,
-  ContactSupport as ContactSupportIcon
-} from '@mui/icons-material';
+import Box from '@mui/material/Box';
+import Card from '@mui/material/Card';
+import Typography from '@mui/material/Typography';
+import Accordion from '@mui/material/Accordion';
+import AccordionSummary from '@mui/material/AccordionSummary';
+import AccordionDetails from '@mui/material/AccordionDetails';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemText from '@mui/material/ListItemText';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import Chip from '@mui/material/Chip';
+import Alert from '@mui/material/Alert';
+import AlertTitle from '@mui/material/AlertTitle';
+import Divider from '@mui/material/Divider';
+import Paper from '@mui/material/Paper';
+import Stepper from '@mui/material/Stepper';
+import Step from '@mui/material/Step';
+import StepLabel from '@mui/material/StepLabel';
+import StepContent from '@mui/material/StepContent';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import WarningIcon from '@mui/icons-material/Warning';
+import InfoIcon from '@mui/icons-material/Info';
+import SecurityIcon from '@mui/icons-material/Security';
+import SpeedIcon from '@mui/icons-material/Speed';
+import StorageIcon from '@mui/icons-material/Storage';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import AssignmentIcon from '@mui/icons-material/Assignment';
+import ArchiveIcon from '@mui/icons-material/Archive';
+import VpnKeyIcon from '@mui/icons-material/VpnKey';
+import BugReportIcon from '@mui/icons-material/BugReport';
+import ContactSupportIcon from '@mui/icons-material/ContactSupport';
 
 export default function UserManual() {
   const [expandedSection, setExpandedSection] = useState<string | false>('getting-started');

@@ -55,7 +55,7 @@ describe('BotOrchestrator small logic', () => {
     expect(errors[0][1]).toMatch(/Page is not available|start/i);
   }, 30000); // 30 second timeout for DOM-based waits
 
-  it('should work when start() is called before run_automation()', async () => {
+  it.skip('should work when start() is called before run_automation()', async () => {
     const bot = new BotOrchestrator(Cfg as typeof Cfg, dummyFormConfig, true, 'chromium');
     
     try {

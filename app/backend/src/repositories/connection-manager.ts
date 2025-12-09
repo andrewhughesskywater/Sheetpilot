@@ -9,6 +9,7 @@
  */
 
 import type BetterSqlite3 from 'better-sqlite3';
+import Database from 'better-sqlite3';
 import * as path from 'path';
 import * as fs from 'fs';
 import { dbLogger } from '../../../shared/logger';
@@ -35,9 +36,11 @@ let connectionInstance: BetterSqlite3.Database | null = null;
 let connectionLock: Promise<void> = Promise.resolve();
 let isInitializing = false;
 let schemaInitialized = false;
+let preventReconnection = false; // Test-only flag to prevent auto-reconnection
 
 /**
  * Sets the database file path
+ * Closes existing connection if path changes and resets schema initialization state
  */
 export const setDbPath = (p: string) => { 
     const newPath = path.resolve(p);
@@ -57,11 +60,26 @@ export const getDbPath = () => DB_PATH;
 
 /**
  * Check if the connection is open and healthy
+ * If connection is closed, reset the singleton to allow reinitialization
  */
 function isConnectionHealthy(): boolean {
     try {
-        return connectionInstance !== null && connectionInstance.open;
+        if (connectionInstance === null) {
+            return false;
+        }
+        // Check if connection is actually open
+        const isOpen = connectionInstance.open;
+        if (!isOpen) {
+            // Connection is closed, reset singleton
+            connectionInstance = null;
+            schemaInitialized = false;
+            return false;
+        }
+        return true;
     } catch {
+        // Connection is in an invalid state, reset singleton
+        connectionInstance = null;
+        schemaInitialized = false;
         return false;
     }
 }
@@ -80,6 +98,37 @@ export function closeConnection(): void {
             connectionInstance = null;
             isInitializing = false;
             schemaInitialized = false;
+            preventReconnection = false; // Reset flag when explicitly closing
+        }
+    } else {
+        // Reset flag even if connection was already closed
+        preventReconnection = false;
+    }
+}
+
+/**
+ * Resets the preventReconnection flag (for testing)
+ */
+export function resetPreventReconnectionFlag(): void {
+    preventReconnection = false;
+}
+
+/**
+ * Test-only function to close connection and prevent auto-reconnection
+ * This allows tests to verify error handling when database is closed
+ */
+export function closeConnectionForTesting(): void {
+    if (connectionInstance) {
+        try {
+            connectionInstance.close();
+            dbLogger.info('Database connection closed for testing');
+        } catch (error) {
+            dbLogger.error('Error closing database connection for testing', error);
+        } finally {
+            connectionInstance = null;
+            isInitializing = false;
+            schemaInitialized = false;
+            preventReconnection = true; // Prevent auto-reconnection
         }
     }
 }
@@ -100,7 +149,9 @@ function loadBetterSqlite3(): (typeof import('better-sqlite3')) {
     if (__betterSqlite3Module) return __betterSqlite3Module;
     try {
         dbLogger.verbose('Loading better-sqlite3 native module');
-        __betterSqlite3Module = require('better-sqlite3');
+        // Use the statically imported module instead of dynamic require
+        // This allows test mocks to properly intercept the module
+        __betterSqlite3Module = { default: Database } as unknown as (typeof import('better-sqlite3'));
         if (!__betterSqlite3Module) {
             throw new Error('Could not load better-sqlite3 module');
         }
@@ -134,43 +185,57 @@ function loadBetterSqlite3(): (typeof import('better-sqlite3')) {
 export function ensureSchemaInternal(db: BetterSqlite3.Database) {
     
     // Create timesheet table with comprehensive schema and constraints
+    // Note: Core fields are nullable to allow saving partial/draft rows.
+    // Required field validation is enforced at the application level before submission.
     db.exec(`
         CREATE TABLE IF NOT EXISTS timesheet(
             -- Primary key with auto-increment
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             
             -- Computed column: hours worked (automatically calculated from time difference)
+            -- Returns NULL if either time_in or time_out is NULL
             hours REAL
-                GENERATED ALWAYS AS ((time_out - time_in) / 60.0) 
+                GENERATED ALWAYS AS (
+                    CASE WHEN time_in IS NOT NULL AND time_out IS NOT NULL 
+                         THEN (time_out - time_in) / 60.0 
+                         ELSE NULL 
+                    END
+                ) 
                 STORED,
             
-            -- Core timesheet data fields
-            date TEXT NOT NULL,                    -- Work date in YYYY-MM-DD format
-            time_in INTEGER NOT NULL,              -- Start time in minutes since midnight
-            time_out INTEGER NOT NULL,             -- End time in minutes since midnight
-            project TEXT NOT NULL,                 -- Project name (required)
+            -- Core timesheet data fields (nullable to allow partial/draft saves)
+            date TEXT,                             -- Work date in YYYY-MM-DD format
+            time_in INTEGER,                       -- Start time in minutes since midnight
+            time_out INTEGER,                      -- End time in minutes since midnight
+            project TEXT,                          -- Project name
             tool TEXT,                             -- Tool used (optional)
             detail_charge_code TEXT,               -- Charge code (optional)
-            task_description TEXT NOT NULL,        -- Task description (required)
+            task_description TEXT,                 -- Task description
             
             -- Submission tracking fields
             status TEXT DEFAULT NULL,              -- Submission status: NULL (pending), 'in_progress' (submitting), 'Complete' (submitted)
             submitted_at DATETIME DEFAULT NULL,    -- Timestamp when successfully submitted
             
-            -- Data validation constraints
-            CHECK(time_in between 0 and 1439),     -- Valid time range: 00:00 to 23:59
-            CHECK(time_out between 1 and 1400),    -- Valid time range: 00:15 to 23:45
-            CHECK(time_out > time_in),             -- End time must be after start time
-            CHECK(time_in % 15 = 0),               -- Start time must be 15-minute increment
-            CHECK(time_out % 15 = 0)               -- End time must be 15-minute increment
+            -- Data validation constraints (only apply when values are present)
+            CHECK(time_in IS NULL OR time_in BETWEEN 0 AND 1439),     -- Valid time range: 00:00 to 23:59
+            CHECK(time_out IS NULL OR time_out BETWEEN 1 AND 1440),   -- Valid time range: 00:01 to 24:00
+            CHECK(time_in IS NULL OR time_out IS NULL OR time_out > time_in),  -- End time must be after start time
+            CHECK(time_in IS NULL OR time_in % 15 = 0),               -- Start time must be 15-minute increment
+            CHECK(time_out IS NULL OR time_out % 15 = 0)              -- End time must be 15-minute increment
         );
         
         -- Performance indexes for common queries
         CREATE INDEX IF NOT EXISTS idx_timesheet_date ON timesheet(date);
         CREATE INDEX IF NOT EXISTS idx_timesheet_project ON timesheet(project);
         CREATE INDEX IF NOT EXISTS idx_timesheet_status ON timesheet(status);
+        
+        -- Unique constraint only applies to complete rows (all key fields non-null)
         CREATE UNIQUE INDEX IF NOT EXISTS uq_timesheet_nk
-            ON timesheet(date, time_in, project, task_description);
+            ON timesheet(date, time_in, project, task_description)
+            WHERE date IS NOT NULL 
+              AND time_in IS NOT NULL 
+              AND project IS NOT NULL 
+              AND task_description IS NOT NULL;
         
         -- Credentials table for storing user authentication
         CREATE TABLE IF NOT EXISTS credentials(
@@ -198,6 +263,14 @@ export function ensureSchemaInternal(db: BetterSqlite3.Database) {
         -- Indexes for session lookups
         CREATE INDEX IF NOT EXISTS idx_sessions_email ON sessions(email);
         CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
+        
+        -- Schema version tracking table for migrations
+        -- CHECK constraint ensures only one row can exist (singleton pattern)
+        CREATE TABLE IF NOT EXISTS schema_info(
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            version INTEGER NOT NULL,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
     `);
 }
 
@@ -210,8 +283,23 @@ function getDbConnection(): BetterSqlite3.Database {
         return connectionInstance!;
     }
     
+    // If reconnection is prevented (for testing), throw error
+    if (preventReconnection) {
+        throw new DatabaseConnectionError({
+            dbPath: DB_PATH,
+            error: 'Database connection is closed (test mode)'
+        });
+    }
+    
     // Note: Since getDbConnection is synchronous, we can't await promises here
     // If initialization is in progress, we'll proceed with the lock check below
+    
+    // Reset connection instance if it was closed
+    // (isConnectionHealthy may have reset it, but ensure we handle it here too)
+    if (connectionInstance !== null && !connectionInstance.open) {
+        connectionInstance = null;
+        schemaInitialized = false;
+    }
     
     // If another thread is initializing, wait for it and check again
     if (connectionInstance === null && !isInitializing) {
@@ -309,7 +397,7 @@ export function getDb(): BetterSqlite3.Database {
 }
 
 /**
- * Backwards-compatible alias used in tests
+ * Backwards-compatible alias for getDb()
  */
 export function openDb(): BetterSqlite3.Database {
     return getDb();
@@ -319,6 +407,10 @@ export function openDb(): BetterSqlite3.Database {
  * Ensures the database schema is created and up-to-date
  */
 export function ensureSchema() {
+    // NOTE: Do NOT reset preventReconnection flag here
+    // Tests that close connection should remain closed until explicitly reset
+    // Schema initialization should only happen if connection is allowed
+    
     if (schemaInitialized) {
         dbLogger.debug('Schema already ensured, skipping');
         return;
@@ -350,6 +442,7 @@ export function rebuildDatabase(): void {
             DROP TABLE IF EXISTS timesheet;
             DROP TABLE IF EXISTS credentials;
             DROP TABLE IF EXISTS sessions;
+            DROP TABLE IF EXISTS schema_info;
         `);
         
         // Reset schema initialized flag to force recreation

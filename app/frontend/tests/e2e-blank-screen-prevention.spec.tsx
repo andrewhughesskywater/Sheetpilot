@@ -38,13 +38,13 @@ describe('End-to-End Blank Screen Prevention Tests', () => {
         <App />
       );
 
-      // Wait for the app to render - look for the logo which should be present
+      // Wait for the app to render - look for the navigation tabs which should be present
       await waitFor(() => {
-        expect(screen.getByAltText('SheetPilot')).toBeInTheDocument();
+        expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
       }, { timeout: 5000 });
 
       // Verify the app is not blank
-      expect(screen.getByAltText('SheetPilot')).toBeInTheDocument();
+      expect(screen.getByText('Timesheet')).toBeInTheDocument();
     });
 
     it('should handle the exact error sequence that caused blank screen', async () => {
@@ -65,11 +65,11 @@ describe('End-to-End Blank Screen Prevention Tests', () => {
 
       // Wait for the app to render
       await waitFor(() => {
-        expect(screen.getByAltText('SheetPilot')).toBeInTheDocument();
+        expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
       }, { timeout: 5000 });
 
       // Verify the app renders successfully
-      expect(screen.getByAltText('SheetPilot')).toBeInTheDocument();
+      expect(screen.getByText('Timesheet')).toBeInTheDocument();
     });
   });
 
@@ -84,7 +84,7 @@ describe('End-to-End Blank Screen Prevention Tests', () => {
       render(<App />);
 
       await waitFor(() => {
-        expect(screen.getByAltText('SheetPilot')).toBeInTheDocument();
+        expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
       });
     });
 
@@ -97,7 +97,7 @@ describe('End-to-End Blank Screen Prevention Tests', () => {
       render(<App />);
 
       await waitFor(() => {
-        expect(screen.getByAltText('SheetPilot')).toBeInTheDocument();
+        expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
       });
     });
 
@@ -109,7 +109,7 @@ describe('End-to-End Blank Screen Prevention Tests', () => {
       render(<App />);
 
       await waitFor(() => {
-        expect(screen.getByAltText('SheetPilot')).toBeInTheDocument();
+        expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
       });
     });
   });
@@ -121,7 +121,7 @@ describe('End-to-End Blank Screen Prevention Tests', () => {
       render(<App />);
 
       await waitFor(() => {
-        expect(screen.getByAltText('SheetPilot')).toBeInTheDocument();
+        expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
       });
 
       const renderTime = Date.now() - startTime;
@@ -144,12 +144,12 @@ describe('End-to-End Blank Screen Prevention Tests', () => {
   });
 
   describe('Accessibility Checks', () => {
-    it('should have accessible application name', async () => {
+    it('should have accessible navigation', async () => {
       render(<App />);
 
       await waitFor(() => {
-        const logo = screen.getByAltText('SheetPilot');
-        expect(logo).toBeInTheDocument();
+        const tablist = screen.getByRole('tablist', { name: 'navigation tabs' });
+        expect(tablist).toBeInTheDocument();
       });
     });
 
@@ -157,7 +157,7 @@ describe('End-to-End Blank Screen Prevention Tests', () => {
       render(<App />);
 
       await waitFor(() => {
-        expect(screen.getByAltText('SheetPilot')).toBeInTheDocument();
+        expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
       });
 
       // Application should be keyboard accessible
@@ -169,7 +169,7 @@ describe('End-to-End Blank Screen Prevention Tests', () => {
       render(<App />);
 
       await waitFor(() => {
-        expect(screen.getByAltText('SheetPilot')).toBeInTheDocument();
+        expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
       });
 
       // Should have semantic HTML structure
@@ -188,10 +188,10 @@ describe('End-to-End Blank Screen Prevention Tests', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByAltText('SheetPilot')).toBeInTheDocument();
+        expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
       }, { timeout: 5000 });
 
-      expect(screen.getByAltText('SheetPilot')).toBeInTheDocument();
+      expect(screen.getByText('Timesheet')).toBeInTheDocument();
     });
 
     it('should work correctly in production environment', async () => {
@@ -236,10 +236,10 @@ describe('End-to-End Blank Screen Prevention Tests', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByAltText('SheetPilot')).toBeInTheDocument();
+        expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
       }, { timeout: 5000 });
 
-      expect(screen.getByAltText('SheetPilot')).toBeInTheDocument();
+      expect(screen.getByText('Timesheet')).toBeInTheDocument();
     });
   });
 
@@ -283,10 +283,10 @@ describe('End-to-End Blank Screen Prevention Tests', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByAltText('SheetPilot')).toBeInTheDocument();
+        expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
       }, { timeout: 5000 });
 
-      expect(screen.getByAltText('SheetPilot')).toBeInTheDocument();
+      expect(screen.getByText('Timesheet')).toBeInTheDocument();
     });
 
     it('should handle malformed API responses gracefully', async () => {
@@ -320,10 +320,10 @@ describe('End-to-End Blank Screen Prevention Tests', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByAltText('SheetPilot')).toBeInTheDocument();
+        expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
       }, { timeout: 5000 });
 
-      expect(screen.getByAltText('SheetPilot')).toBeInTheDocument();
+      expect(screen.getByText('Timesheet')).toBeInTheDocument();
     });
   });
 });

@@ -23,7 +23,7 @@ vi.mock('path', async (importOriginal) => {
 describe('plugin-config', () => {
   const originalWindow = globalThis.window;
   const originalProcessEnv = process.env;
-  const originalConsole = console;
+  const _originalConsole = console;
 
   beforeEach(() => {
     vi.clearAllMocks();

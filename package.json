@@ -50,16 +50,18 @@
     "clean": "rimraf build/dist && cd app/backend/src/services/bot && npm run clean",
     "validate:compile": "npm run build:main && npm run build:renderer",
     "validate:bundle": "node scripts/validate-bundle.js",
-    "validate:deps": "electron-builder install-app-deps",
+    "validate:deps": "npm run rebuild",
+    "validate:packaged-deps": "node scripts/validate-packaged-deps.js",
     "validate:quick": "npm run type-check && npm run validate:compile && npm run validate:bundle",
-    "validate:full": "npm run validate:quick && npm run validate:deps && npm run build:dir",
+    "validate:full": "npm run validate:quick && npm run validate:deps && npm run build:dir && npm run validate:packaged-deps",
     "build:debug": "cross-env DEBUG=electron-builder npm run build"
   },
   "dependencies": {
     "better-sqlite3": "^12.4.1",
     "electron-log": "^5.4.3",
     "electron-updater": "^6.6.2",
-    "tslib": "^2.8.1"
+    "tslib": "^2.8.1",
+    "playwright": "^1.56.1"
   },
   "devDependencies": {
     "@emotion/react": "^11.14.0",
@@ -117,6 +119,7 @@
           "better-sqlite3/lib/**/*",
           "better-sqlite3/build/Release/*.node",
           "playwright/**/*",
+          "playwright-core/**/*",
           "@playwright/**/*"
         ]
       }
@@ -125,6 +128,7 @@
     "asarUnpack": [
       "**/node_modules/better-sqlite3/**/*",
       "**/node_modules/playwright/**/*",
+      "**/node_modules/playwright-core/**/*",
       "**/node_modules/@playwright/**/*"
     ],
     "compression": "maximum",
@@ -140,6 +144,16 @@
       "installerHeaderIcon": "build/icon.ico",
       "createDesktopShortcut": "always",
       "shortcutName": "Sheetpilot"
+    },
+    "mac": {
+      "category": "public.app-category.productivity",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist"
+    },
+    "dmg": {
+      "sign": false
     }
   }
 }

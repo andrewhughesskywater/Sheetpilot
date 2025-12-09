@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   loadMacros,
   saveMacros,
@@ -8,15 +8,12 @@ import {
 } from '../../src/utils/macroStorage';
 
 describe('macroStorage', () => {
-  let originalLocalStorage: Storage;
   let mockLocalStorage: Storage;
+  let storage: Record<string, string>;
 
   beforeEach(() => {
-    // Save original localStorage
-    originalLocalStorage = globalThis.localStorage;
-    
-    // Create mock localStorage
-    const storage: Record<string, string> = {};
+    // Create mock localStorage using vi.stubGlobal (jsdom makes localStorage read-only)
+    storage = {};
     mockLocalStorage = {
       getItem: vi.fn((key: string) => storage[key] || null),
       setItem: vi.fn((key: string, value: string) => {
@@ -34,11 +31,11 @@ describe('macroStorage', () => {
       key: vi.fn((index: number) => Object.keys(storage)[index] || null)
     } as Storage;
     
-    (globalThis as { localStorage: Storage }).localStorage = mockLocalStorage;
+    vi.stubGlobal('localStorage', mockLocalStorage);
   });
 
   afterEach(() => {
-    (globalThis as { localStorage: Storage }).localStorage = originalLocalStorage;
+    vi.unstubAllGlobals();
   });
 
   describe('loadMacros', () => {
@@ -167,12 +164,13 @@ describe('macroStorage', () => {
       expect(isMacroEmpty(macro)).toBe(true);
     });
 
-    it('should return false when macro has name', () => {
+    it('should return true when macro only has name (name is display-only, not actionable data)', () => {
+      // Note: isMacroEmpty checks for actionable data (time, project, etc.), not the display name
       const macro: MacroRow = {
         ...createEmptyMacro(),
         name: 'Test Macro'
       };
-      expect(isMacroEmpty(macro)).toBe(false);
+      expect(isMacroEmpty(macro)).toBe(true);
     });
 
     it('should return false when macro has project', () => {

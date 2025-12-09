@@ -1,45 +1,115 @@
+/**
+ * @fileoverview Data Context Provider
+ * 
+ * Centralized data management for timesheet draft and archive data.
+ * Provides loading states, error handling, and refresh capabilities for all data consumers.
+ * 
+ * Architecture decisions:
+ * - Delays data loading until user navigates to tabs (on-demand loading) to prevent
+ *   blocking startup and violating long task performance budgets
+ * - Uses yielding strategy (setTimeout 0) for large datasets to maintain UI responsiveness
+ * - Batches archive API calls (timesheet + credentials) to reduce IPC overhead
+ * - Requires authentication token for archive data access (security boundary)
+ * 
+ * Performance considerations:
+ * - Startup loading intentionally skipped to meet performance targets
+ * - Large dataset processing (>100 rows) yields control to prevent UI blocking
+ * - All async operations properly handle cleanup to prevent memory leaks
+ */
+
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import { useSession } from './SessionContext';
 
 // Define data types
+
+/**
+ * Timesheet row data structure for draft entries
+ * 
+ * Represents a single time entry in the editable timesheet grid.
+ * Fields are optional to support partial data entry.
+ */
 interface TimesheetRow {
+  /** Database ID (present after first save) */
   id?: number;
+  /** Date in MM/DD/YYYY format */
   date?: string;
+  /** Start time in HH:MM format (24-hour) */
   timeIn?: string;
+  /** End time in HH:MM format (24-hour) */
   timeOut?: string;
+  /** Project name from business config */
   project?: string;
+  /** Tool name (null if project doesn't require tools) */
   tool?: string | null;
+  /** Charge code (null if tool doesn't require charge code) */
   chargeCode?: string | null;
+  /** Task description text (max 120 chars) */
   taskDescription?: string;
 }
 
+/**
+ * Submitted timesheet entry from archive
+ * 
+ * Represents a completed and submitted time entry.
+ * Uses numeric time format (minutes since midnight) for database storage.
+ */
 interface TimesheetEntry {
+  /** Database ID */
   id: number;
+  /** Date in YYYY-MM-DD format */
   date: string;
+  /** Start time as minutes since midnight (e.g., 540 = 9:00 AM) */
   time_in: number;
+  /** End time as minutes since midnight */
   time_out: number;
+  /** Calculated hours (decimal) */
   hours: number;
+  /** Project name */
   project: string;
+  /** Tool name (if applicable) */
   tool?: string;
+  /** Charge code (if applicable) */
   detail_charge_code?: string;
+  /** Task description */
   task_description: string;
+  /** Submission status (pending, in_progress, submitted) */
   status?: string;
+  /** ISO timestamp of submission */
   submitted_at?: string;
 }
 
+/**
+ * Stored credential record
+ */
 interface Credential {
+  /** Database ID */
   id: number;
+  /** Service name (e.g., "smartsheet") */
   service: string;
+  /** User's email address */
   email: string;
+  /** ISO timestamp of creation */
   created_at: string;
+  /** ISO timestamp of last update */
   updated_at: string;
 }
 
+/**
+ * Combined archive data structure
+ */
 interface DatabaseData {
+  /** All submitted timesheet entries */
   timesheet: TimesheetEntry[];
+  /** All stored credentials */
   credentials: Credential[];
 }
 
+/**
+ * Data context interface
+ * 
+ * Provides centralized data access for timesheet and archive views.
+ * All data fetching, loading states, and refresh logic managed here.
+ */
 interface DataContextType {
   // Timesheet draft data
   timesheetDraftData: TimesheetRow[];
@@ -90,14 +160,39 @@ export function DataProvider({ children }: DataProviderProps) {
   const [archiveDataError, setArchiveDataError] = useState<string | null>(null);
 
 
-  // Utility function to yield control back to the browser
+  /**
+   * Yields control back to browser to prevent blocking main thread
+   * 
+   * Uses setTimeout(0) to break up long tasks and maintain UI responsiveness.
+   * Critical for meeting performance budgets during data processing.
+   * 
+   * @returns Promise that resolves after yielding
+   */
   const yieldToMain = () => {
     return new Promise(resolve => {
       setTimeout(resolve, 0);
     });
   };
 
-  // Load timesheet draft data - with proper yielding to prevent blocking
+  /**
+   * Load timesheet draft data from database
+   * 
+   * Fetches pending timesheet entries and prepares them for editing.
+   * Implements yielding strategy to prevent blocking UI thread.
+   * 
+   * Data flow:
+   * 1. Set loading state
+   * 2. Yield to main thread
+   * 3. Fetch draft entries via IPC
+   * 4. Yield after IPC call
+   * 5. Add blank row for data entry
+   * 6. Update state and clear loading
+   * 
+   * Error handling:
+   * - Sets error state on failure
+   * - Always provides fallback empty row
+   * - Logs errors for troubleshooting
+   */
   const loadTimesheetDraftData = useCallback(async () => {
     try {
       window.logger?.debug('[DataContext] Setting loading true for timesheet draft');
@@ -147,8 +242,28 @@ export function DataProvider({ children }: DataProviderProps) {
     }
   }, []);
 
-  // Load archive data - with proper yielding to prevent blocking
-  // Wrapped in useCallback to prevent stale closure bug
+  /**
+   * Load archive data (submitted timesheet entries and credentials)
+   * 
+   * Fetches historical timesheet data and stored credentials for archive view.
+   * Requires authentication token for security. Implements yielding for large datasets.
+   * 
+   * Data flow:
+   * 1. Validate token exists (security boundary)
+   * 2. Set loading state
+   * 3. Yield to main thread
+   * 4. Fetch batched archive data (timesheet + credentials in one IPC call)
+   * 5. Yield after IPC call
+   * 6. Yield again if dataset > 100 rows (performance optimization)
+   * 7. Update state with parsed data
+   * 
+   * Performance optimization:
+   * - Batches API calls to reduce IPC overhead
+   * - Yields for large datasets (>100 rows) to prevent UI freeze
+   * - Uses token dependency to trigger refresh on auth changes
+   * 
+   * @throws Sets error state if token missing or fetch fails
+   */
   const loadArchiveData = useCallback(async () => {
     try {
       setIsArchiveDataLoading(true);
@@ -217,22 +332,51 @@ export function DataProvider({ children }: DataProviderProps) {
     }
   }, [token]);
 
-  // Refresh functions - force reload data
-  // Wrapped in useCallback to prevent infinite re-renders
+  /**
+   * Force refresh timesheet draft data
+   * 
+   * Manually triggers data reload, typically called after:
+   * - Timesheet submission completes
+   * - User clicks refresh button
+   * - Tab navigation activates timesheet view
+   * 
+   * Wrapped in useCallback to prevent infinite re-renders in effect dependencies.
+   */
   const refreshTimesheetDraft = useCallback(async () => {
     window.logger?.info('[DataContext] Refreshing timesheet draft data');
     await loadTimesheetDraftData();
   }, [loadTimesheetDraftData]);
 
-  // Refresh archive data - now simply calls loadArchiveData which has proper token dependency
+  /**
+   * Force refresh archive data
+   * 
+   * Manually triggers archive data reload, typically called after:
+   * - Timesheet submission completes
+   * - User clicks refresh button
+   * - Tab navigation activates archive view
+   * 
+   * Automatically respects token dependency for proper auth handling.
+   */
   const refreshArchiveData = useCallback(async () => {
     window.logger?.info('[DataContext] Refreshing archive data');
     await loadArchiveData();
   }, [loadArchiveData]);
 
-  // Load data on mount - completely disabled during startup to prevent blocking
+  /**
+   * Initialize context state on mount
+   * 
+   * WHY: Intentionally skips data loading during startup to meet performance budgets.
+   * Loading data on mount violates long task performance targets (>50ms) and blocks
+   * initial render. Instead, data loads on-demand when user navigates to tabs.
+   * 
+   * This architecture decision improves:
+   * - Time to Interactive (TTI)
+   * - First Contentful Paint (FCP)
+   * - Cumulative Layout Shift (CLS)
+   * 
+   * Trade-off: Slight delay when first viewing each tab, but much faster startup.
+   */
   useEffect(() => {
-    // Don't load any data during startup - only load when user actually needs it
     window.logger?.info('[DataContext] Skipping startup data loading to prevent performance violations');
     
     // Set initial empty state immediately

@@ -141,24 +141,33 @@ export const getCurrentSessionSchema = z.object({
  * Schema for timesheet:saveDraft
  */
 export const saveDraftSchema = z.object({
-  id: z.number().int().positive().optional(),
-  date: dateSchema,
-  timeIn: timeSchema,
-  timeOut: timeSchema,
-  project: projectNameSchema,
+  id: z.number().int().positive().nullable().optional(),
+  date: dateSchema.optional(),
+  timeIn: timeSchema.optional(),
+  timeOut: timeSchema.optional(),
+  project: z.string().max(500).optional(),
   tool: z.string().max(500).nullable().optional(),
   chargeCode: z.string().max(100).nullable().optional(),
-  taskDescription: taskDescriptionSchema
+  taskDescription: z.string().max(5000).optional()
 }).refine((data) => {
-  // Validate that timeOut is after timeIn
-  const parseTime = (time: string) => {
-    const [hours, minutes] = time.split(':').map(Number);
-    return (hours || 0) * 60 + (minutes || 0);
-  };
-  return parseTime(data.timeOut) > parseTime(data.timeIn);
+  // Only validate timeOut > timeIn if both are present
+  if (data.timeIn && data.timeOut) {
+    const parseTime = (time: string) => {
+      const [hours, minutes] = time.split(':').map(Number);
+      return (hours || 0) * 60 + (minutes || 0);
+    };
+    return parseTime(data.timeOut) > parseTime(data.timeIn);
+  }
+  return true; // Allow partial data without time validation
 }, {
   message: 'Time Out must be after Time In',
   path: ['timeOut']
+}).refine((data) => {
+  // At least one field must be present (not counting id)
+  return data.date || data.timeIn || data.timeOut || data.project || data.taskDescription;
+}, {
+  message: 'At least one field must be provided',
+  path: []
 });
 
 /**

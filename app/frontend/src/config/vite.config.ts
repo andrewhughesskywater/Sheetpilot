@@ -35,8 +35,8 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       '/fonts': path.resolve(__dirname, 'assets/fonts'),
-      '@emotion/react': path.resolve(__dirname, '../../node_modules/@emotion/react'),
-      '@emotion/styled': path.resolve(__dirname, '../../node_modules/@emotion/styled'),
+      '@emotion/react': path.resolve(__dirname, '../../../../node_modules/@emotion/react'),
+      '@emotion/styled': path.resolve(__dirname, '../../../../node_modules/@emotion/styled'),
     },
   },
   optimizeDeps: {
@@ -47,7 +47,6 @@ export default defineConfig(({ mode }) => ({
       '@mui/material',
       '@mui/styled-engine',
       '@mui/icons-material',
-      '@mui/lab',
     ],
   },
   assetsInclude: ['**/*.ttf', '**/*.woff', '**/*.woff2', '**/*.ico'],

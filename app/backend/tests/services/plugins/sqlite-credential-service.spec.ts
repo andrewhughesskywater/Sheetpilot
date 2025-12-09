@@ -103,10 +103,7 @@ describe('SQLiteCredentialService', () => {
         }
       ];
 
-      vi.mocked(db.listCredentials).mockReturnValue({
-        success: true,
-        credentials: mockCredentials
-      });
+      vi.mocked(db.listCredentials).mockReturnValue(mockCredentials);
 
       const result = await service.list();
 

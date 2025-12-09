@@ -1,4 +1,7 @@
-import { Box, Skeleton, Card, CardContent } from '@mui/material';
+import Box from '@mui/material/Box';
+import Skeleton from '@mui/material/Skeleton';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
 
 /**
  * Loading skeleton for the Settings page

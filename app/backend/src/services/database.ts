@@ -5,8 +5,7 @@
  * for the Sheetpilot application. It handles SQLite database operations including
  * connection setup, path configuration, and timesheet table schema creation.
  * 
- * IMPROVED: Uses connection pooling with persistent connections for better performance
- * and thread safety.
+ * Uses a persistent singleton connection for better performance and thread safety.
  * 
  * @author Andrew Hughes
  * @version 2.0.0
@@ -24,7 +23,7 @@ import {
     DatabaseConnectionError,
     DatabaseSchemaError
 } from '../../../shared/errors';
-import { ensureSchemaInternal } from '../repositories/connection-manager';
+import { ensureSchemaInternal, setDbPath as setRepositoryDbPath, closeConnection as closeRepositoryConnection, getDb as getRepositoryDb } from '../repositories/connection-manager';
 
 /**
  * Database file path configuration
@@ -58,6 +57,8 @@ export const setDbPath = (p: string) => {
         closeConnection();
         DB_PATH = newPath;
         schemaInitialized = false;
+        // Also update the repository module's path to keep them in sync
+        setRepositoryDbPath(newPath);
         dbLogger.info('Database path changed', { newPath });
     }
 };
@@ -98,6 +99,12 @@ export function closeConnection(): void {
             connectionInstance = null;
             schemaInitialized = false;
         }
+    }
+    // Also close the repository connection to keep them in sync
+    try {
+        closeRepositoryConnection();
+    } catch {
+        // Ignore errors if already closed
     }
 }
 
@@ -245,7 +252,7 @@ export function openDb(): BetterSqlite3.Database {
  * 
  * Re-exported from timesheet-repository for backwards compatibility.
  * 
- * @deprecated Import from '../repositories/timesheet-repository' or '../repositories' instead
+ * @deprecated Import from '../repositories/timesheet-repository' or '../repositories' instead. Will be removed in v2.0.0
  */
 export { insertTimesheetEntry } from '../repositories/timesheet-repository';
 
@@ -273,7 +280,8 @@ export function checkDuplicateEntry(entry: {
     project: string;
     taskDescription: string;
 }): boolean {
-    const db = getDb();
+    // Use getRepositoryDb to ensure we use the same connection as insertTimesheetEntry from repositories
+    const db = getRepositoryDb();
     const checkDuplicate = db.prepare(`
         SELECT COUNT(*) as count 
         FROM timesheet 
@@ -298,7 +306,8 @@ export function checkDuplicateEntry(entry: {
  * });
  */
 export function getDuplicateEntries(startDate?: string, endDate?: string) {
-    const db = getDb();
+    // Use getRepositoryDb to ensure we use the same connection as insertTimesheetEntry from repositories
+    const db = getRepositoryDb();
     let query = `
         SELECT date, time_in, project, task_description, COUNT(*) as count
         FROM timesheet 
@@ -352,7 +361,8 @@ export function insertTimesheetEntries(entries: Array<{
     taskDescription: string;
 }>) {
     const timer = dbLogger.startTimer('insert-timesheet-entries-bulk');
-    const db = getDb();
+    // Use getRepositoryDb to ensure we use the same connection as insertTimesheetEntry from repositories
+    const db = getRepositoryDb();
     
     try {
         dbLogger.info('Starting bulk insert of timesheet entries', { count: entries.length });

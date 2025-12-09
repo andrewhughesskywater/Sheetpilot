@@ -289,16 +289,16 @@ export function registerTimesheetHandlers(): void {
     }
   });
 
-  // Handler for saving draft timesheet entries
+  // Handler for saving draft timesheet entries (allows partial data)
   ipcMain.handle('timesheet:saveDraft', async (_event, row: {
     id?: number;
-    date: string;
-    timeIn: string;
-    timeOut: string;
-    project: string;
+    date?: string;
+    timeIn?: string;
+    timeOut?: string;
+    project?: string;
     tool?: string | null;
     chargeCode?: string | null;
-    taskDescription: string;
+    taskDescription?: string;
   }) => {
     const timer = ipcLogger.startTimer('save-draft');
     
@@ -312,15 +312,38 @@ export function registerTimesheetHandlers(): void {
     const validatedRow = validation.data!;
     
     try {
-      ipcLogger.verbose('Saving draft timesheet entry', { 
+      ipcLogger.verbose('Saving draft timesheet entry (partial data allowed)', { 
         id: validatedRow.id,
         date: validatedRow.date,
         project: validatedRow.project 
       });
       
-      // Convert time strings (HH:mm) to minutes since midnight
-      const timeInMinutes = parseTimeToMinutes(validatedRow.timeIn);
-      const timeOutMinutes = parseTimeToMinutes(validatedRow.timeOut);
+      // Convert time strings (HH:mm) to minutes since midnight (if present)
+      let timeInMinutes: number | null = null;
+      let timeOutMinutes: number | null = null;
+      
+      if (validatedRow.timeIn) {
+        timeInMinutes = parseTimeToMinutes(validatedRow.timeIn);
+        
+        // Validate times are 15-minute increments
+        if (timeInMinutes % 15 !== 0) {
+          throw new Error('Time In must be in 15-minute increments');
+        }
+      }
+      
+      if (validatedRow.timeOut) {
+        timeOutMinutes = parseTimeToMinutes(validatedRow.timeOut);
+        
+        // Validate times are 15-minute increments
+        if (timeOutMinutes % 15 !== 0) {
+          throw new Error('Time Out must be in 15-minute increments');
+        }
+      }
+      
+      // Only validate timeOut > timeIn if both are present
+      if (timeInMinutes !== null && timeOutMinutes !== null && timeOutMinutes <= timeInMinutes) {
+        throw new Error('Time Out must be after Time In');
+      }
       
       ipcLogger.debug('Parsed time values', { 
         timeIn: validatedRow.timeIn,
@@ -329,21 +352,11 @@ export function registerTimesheetHandlers(): void {
         timeOutMinutes 
       });
       
-      // Note: Quarter validation happens during submission routing, not at save time
+      // Note: Quarter validation happens both at save time (frontend) and during submission (backend routing)
       // This allows users to enter historical data from any quarter
       
-      // Validate times are 15-minute increments
-      if (timeInMinutes % 15 !== 0 || timeOutMinutes % 15 !== 0) {
-        throw new Error('Times must be in 15-minute increments');
-      }
-      
-      // Validate timeOut > timeIn (already validated by schema, but double-check)
-      if (timeOutMinutes <= timeInMinutes) {
-        throw new Error('Time Out must be after Time In');
-      }
-      
       const db = getDb();
-      let result;
+      let result: { changes: number; lastInsertRowid: number | bigint } | undefined;
       let savedId: number;
       let savedEntry: {
         id: number;
@@ -358,80 +371,78 @@ export function registerTimesheetHandlers(): void {
       
       // Wrap save operation in transaction for atomicity
       const saveTransaction = db.transaction(() => {
-        // If row has an id, UPDATE the existing row
+        // If row has an id, UPDATE the existing row (partial update)
         if (validatedRow.id !== undefined && validatedRow.id !== null) {
-          ipcLogger.debug('Updating existing timesheet entry', { id: validatedRow.id });
+          ipcLogger.debug('Updating existing timesheet entry (partial data allowed)', { id: validatedRow.id });
           
-          // CRITICAL: Only update entries with status=NULL (pending drafts)
-          // Do NOT update entries that have been submitted (status='in_progress' or 'Complete')
-          // This prevents batch saves from overwriting successfully submitted entries
-          const update = db.prepare(`
-            UPDATE timesheet
-            SET date = ?,
-                time_in = ?,
-                time_out = ?,
-                project = ?,
-                tool = ?,
-                detail_charge_code = ?,
-                task_description = ?
-            WHERE id = ? AND status IS NULL
-          `);
+          // Build dynamic UPDATE statement based on provided fields
+          const updateFields: string[] = [];
+          const updateValues: (string | number | null)[] = [];
           
-          result = update.run(
-            validatedRow.date,
-            timeInMinutes,
-            timeOutMinutes,
-            validatedRow.project,
-            validatedRow.tool || null,
-            validatedRow.chargeCode || null,
-            validatedRow.taskDescription,
-            validatedRow.id
-          );
+          if (validatedRow.date !== undefined) {
+            updateFields.push('date = ?');
+            updateValues.push(validatedRow.date);
+          }
+          if (timeInMinutes !== null) {
+            updateFields.push('time_in = ?');
+            updateValues.push(timeInMinutes);
+          }
+          if (timeOutMinutes !== null) {
+            updateFields.push('time_out = ?');
+            updateValues.push(timeOutMinutes);
+          }
+          if (validatedRow.project !== undefined) {
+            updateFields.push('project = ?');
+            updateValues.push(validatedRow.project);
+          }
+          if (validatedRow.tool !== undefined) {
+            updateFields.push('tool = ?');
+            updateValues.push(validatedRow.tool || null);
+          }
+          if (validatedRow.chargeCode !== undefined) {
+            updateFields.push('detail_charge_code = ?');
+            updateValues.push(validatedRow.chargeCode || null);
+          }
+          if (validatedRow.taskDescription !== undefined) {
+            updateFields.push('task_description = ?');
+            updateValues.push(validatedRow.taskDescription);
+          }
+          
+          // Only execute UPDATE if there are fields to update
+          if (updateFields.length > 0) {
+            // CRITICAL: Only update entries with status=NULL (pending drafts)
+            // Do NOT update entries that have been submitted (status='in_progress' or 'Complete')
+            const updateSql = `UPDATE timesheet SET ${updateFields.join(', ')} WHERE id = ? AND status IS NULL`;
+            const update = db.prepare(updateSql);
+            result = update.run(...updateValues, validatedRow.id);
+          } else {
+            // No fields to update, create a mock result
+            result = { changes: 0, lastInsertRowid: validatedRow.id };
+          }
           savedId = validatedRow.id;
         } else {
-          // If no id, INSERT a new row (with deduplication)
-          ipcLogger.debug('Inserting new timesheet entry');
+          // If no id, INSERT a new row with provided fields (allow partial data)
+          ipcLogger.debug('Inserting new timesheet entry (partial data allowed)');
           const insert = db.prepare(`
             INSERT INTO timesheet
             (date, time_in, time_out, project, tool, detail_charge_code, task_description, status)
             VALUES (?, ?, ?, ?, ?, ?, ?, NULL)
-            ON CONFLICT(date, time_in, project, task_description) DO UPDATE SET
-              time_out = excluded.time_out,
-              tool = excluded.tool,
-              detail_charge_code = excluded.detail_charge_code
-            WHERE status IS NULL
           `);
           
           result = insert.run(
-            validatedRow.date,
+            validatedRow.date || null,
             timeInMinutes,
             timeOutMinutes,
-            validatedRow.project,
+            validatedRow.project || null,
             validatedRow.tool || null,
             validatedRow.chargeCode || null,
-            validatedRow.taskDescription
+            validatedRow.taskDescription || null
           );
           
-          // Get the ID of the saved row
-          // For INSERT, use lastInsertRowid; for ON CONFLICT DO UPDATE, query the row
-          if (result.changes > 0 && (result as { lastInsertRowid?: number }).lastInsertRowid) {
-            // New insert - use lastInsertRowid
-            savedId = (result as { lastInsertRowid: number }).lastInsertRowid;
-          } else {
-            // ON CONFLICT DO UPDATE case or no changes - query to get the existing ID
-            const getSaved = db.prepare(`
-              SELECT id FROM timesheet 
-              WHERE date = ? AND time_in = ? AND project = ? AND task_description = ? AND status IS NULL
-              LIMIT 1
-            `);
-            const savedRow = getSaved.get(
-              validatedRow.date,
-              timeInMinutes,
-              validatedRow.project,
-              validatedRow.taskDescription
-            ) as { id: number } | undefined;
-            savedId = savedRow?.id ?? 0;
-          }
+          // Get the ID of the saved row (convert bigint to number if needed)
+          savedId = typeof result.lastInsertRowid === 'bigint' 
+            ? Number(result.lastInsertRowid) 
+            : result.lastInsertRowid;
         }
         
         // Fetch the complete saved entry to return to frontend (within transaction)

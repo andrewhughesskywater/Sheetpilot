@@ -11,21 +11,33 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const mockWindow = {
-  auth: {
-    login: vi.fn(),
-    validateSession: vi.fn(),
-    logout: vi.fn()
-  },
-  credentials: {
-    store: vi.fn(),
-    get: vi.fn()
-  }
-};
-
 describe('Authentication Flow Integration', () => {
+  let mockWindow: {
+    auth: {
+      login: ReturnType<typeof vi.fn>;
+      validateSession: ReturnType<typeof vi.fn>;
+      logout: ReturnType<typeof vi.fn>;
+    };
+    credentials: {
+      store: ReturnType<typeof vi.fn>;
+      get: ReturnType<typeof vi.fn>;
+    };
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
+    // Create fresh mocks for each test
+    mockWindow = {
+      auth: {
+        login: vi.fn(),
+        validateSession: vi.fn(),
+        logout: vi.fn()
+      },
+      credentials: {
+        store: vi.fn(),
+        get: vi.fn()
+      }
+    };
     (global as {window?: unknown}).window = mockWindow;
   });
 

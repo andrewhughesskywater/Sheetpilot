@@ -52,9 +52,9 @@ export function registerDatabaseHandlers(): void {
       const countResult = countStmt.get() as { total: number };
       const totalCount = countResult.total;
       
-      // Get paginated entries
+      // Get paginated entries (compute hours from time_in and time_out)
       const getAll = db.prepare(`
-        SELECT * FROM timesheet 
+        SELECT *, (time_out - time_in) / 60.0 as hours FROM timesheet 
         WHERE status = 'Complete' 
         ORDER BY date ASC, time_in ASC 
         LIMIT ? OFFSET ?
@@ -119,8 +119,8 @@ export function registerDatabaseHandlers(): void {
     try {
       const db = getDb();
       
-      // Get timesheet entries
-      const getTimesheet = db.prepare('SELECT * FROM timesheet WHERE status = \'Complete\' ORDER BY date ASC, time_in ASC');
+      // Get timesheet entries (compute hours from time_in and time_out)
+      const getTimesheet = db.prepare('SELECT *, (time_out - time_in) / 60.0 as hours FROM timesheet WHERE status = \'Complete\' ORDER BY date ASC, time_in ASC');
       const timesheet = getTimesheet.all();
       
       // Get credentials

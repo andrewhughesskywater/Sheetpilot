@@ -2,12 +2,13 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { BotOrchestrator } from '../../../src/services/bot/src/bot_orchestation';
 import { createFormConfig } from '../../../src/services/bot/src/automation_config';
 
-// Mock the automation config to allow test to override SUBMIT_RETRY_ATTEMPTS
+// Mock the automation config
 vi.mock('../../../src/services/bot/src/automation_config', async () => {
   const actual = await vi.importActual('../../../src/services/bot/src/automation_config');
   return {
     ...actual,
-    SUBMIT_RETRY_ATTEMPTS: 3, // Default value, will be overridden in tests
+    SUBMIT_CLICK_RETRY_DELAY_S: 0.01, // Fast for tests
+    SUBMIT_RETRY_DELAY: 0.01, // Fast for tests
     createFormConfig: (actual as { createFormConfig: unknown }).createFormConfig
   };
 });
@@ -22,8 +23,13 @@ const dummyFormConfig = createFormConfig(
 
 /**
  * FakeFiller simulates WebformFiller behavior for testing
- * The submit_form() method returns true/false representing the final result
- * after checking both HTTP responses AND DOM success indicators
+ * 
+ * The sequential retry flow is:
+ * 1. Initial submit
+ * 2. Level 1 retry (no form re-fill)
+ * 3. Level 2 retry (with form re-fill)
+ * 
+ * Total: 3 submit_form() calls max
  */
 class FakeFiller {
   submitSequence: boolean[];
@@ -42,12 +48,8 @@ class FakeFiller {
     };
   }
   /**
-   * Mock submit_form returns the result of checking both:
-   * 1. HTTP response validation (submissionId, token, confirmation.message)
-   * 2. DOM success indicator detection (.success-message, .submission-success, etc.)
-   * 
-   * A 'true' return means EITHER validation method succeeded
-   * A 'false' return means BOTH validation methods failed
+   * Mock submit_form returns the next result in the sequence
+   * Each call represents one submission attempt
    */
   async submit_form(): Promise<boolean> {
     const idx = Math.min(this.submissions, this.submitSequence.length - 1);
@@ -62,18 +64,10 @@ class FakeFiller {
 
 class FakeLoginManager { async run_login_steps(): Promise<void> { /* no-op */ } }
 
-function buildBotWithFakes(submitSeq: boolean[], totalAttempts: number = 2) {
-  // Configure retry attempts: SUBMIT_RETRY_ATTEMPTS is the total number of attempts (not retries)
-  process.env['SUBMIT_RETRY_ATTEMPTS'] = String(totalAttempts);
+function buildBotWithFakes(submitSeq: boolean[]) {
   process.env['SUBMIT'] = '1';
-  
-  // Create a custom config object with the desired retry attempts
-  const customCfg = {
-    ...Cfg,
-    SUBMIT_RETRY_ATTEMPTS: totalAttempts
-  };
 
-  const bot = new BotOrchestrator(customCfg as typeof Cfg, dummyFormConfig, true, 'chromium');
+  const bot = new BotOrchestrator(Cfg as typeof Cfg, dummyFormConfig, true, 'chromium');
   // @ts-ignore override collaborators for isolated testing
   (bot as Record<string, unknown>).webform_filler = new FakeFiller(submitSeq);
   // @ts-ignore override login
@@ -81,7 +75,7 @@ function buildBotWithFakes(submitSeq: boolean[], totalAttempts: number = 2) {
   return bot;
 }
 
-describe('BotOrchestrator submit retry behavior (one retry only)', () => {
+describe('BotOrchestrator sequential submit retry behavior', () => {
   const dfRow = {
     Project: 'OSC-BBB',
     Date: '07/15/2025',  // Q3 2025 date to match the dummyFormConfig
@@ -90,39 +84,44 @@ describe('BotOrchestrator submit retry behavior (one retry only)', () => {
   };
 
   beforeEach(() => {
-    // Reset environment variable and mock to default
-    delete process.env['SUBMIT_RETRY_ATTEMPTS'];
-    // Reset the mock value
-    vi.doMock('../../../src/services/bot/src/automation_config', async () => {
-      const actual = await vi.importActual('../../../src/services/bot/src/automation_config');
-      return {
-        ...actual,
-        SUBMIT_RETRY_ATTEMPTS: 3,
-        createFormConfig: (actual as { createFormConfig: unknown }).createFormConfig
-      };
-    });
+    vi.clearAllMocks();
   });
 
-  it('succeeds when first submit fails and second succeeds (one retry)', async () => {
-    // Build bot with 2 total attempts: first fails, second succeeds
-    const bot = buildBotWithFakes([false, true], 2);
+  it('succeeds on initial submission', async () => {
+    const bot = buildBotWithFakes([true]); // Initial succeeds
     const [ok, submitted, errors] = await bot.run_automation([dfRow], ['user@test', 'pw']);
+    
     expect(ok).toBe(true);
     expect(submitted).toEqual([0]);
     expect(errors.length).toBe(0);
   });
 
-  it('fails when both first and retry submissions fail', async () => {
-    // Build bot with 2 total attempts: both fail
-    const bot = buildBotWithFakes([false, false], 2);
+  it('succeeds on Level 1 retry (quick re-click)', async () => {
+    const bot = buildBotWithFakes([false, true]); // Initial fails, Level 1 succeeds
     const [ok, submitted, errors] = await bot.run_automation([dfRow], ['user@test', 'pw']);
+    
+    expect(ok).toBe(true);
+    expect(submitted).toEqual([0]);
+    expect(errors.length).toBe(0);
+  });
+
+  it('succeeds on Level 2 retry (form re-fill)', async () => {
+    const bot = buildBotWithFakes([false, false, true]); // Initial and Level 1 fail, Level 2 succeeds
+    const [ok, submitted, errors] = await bot.run_automation([dfRow], ['user@test', 'pw']);
+    
+    expect(ok).toBe(true);
+    expect(submitted).toEqual([0]);
+    expect(errors.length).toBe(0);
+  });
+
+  it('fails when all 3 attempts fail', async () => {
+    const bot = buildBotWithFakes([false, false, false]); // All 3 attempts fail
+    const [ok, submitted, errors] = await bot.run_automation([dfRow], ['user@test', 'pw']);
+    
     expect(ok).toBe(false);
     expect(submitted.length).toBe(0);
     expect(errors.length).toBe(1);
-    expect(errors[0][0]).toBe(0);
-    // Expect error message to match the configured 2 attempts
-    expect(String(errors[0][1])).toMatch(/after 2 attempts/i);
+    expect(errors[0][0]).toBe(0); // Row index
+    expect(String(errors[0][1])).toMatch(/after 3 attempts/i);
   });
 });
-
-

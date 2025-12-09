@@ -239,8 +239,16 @@ module.exports = [
         cancelAnimationFrame: 'readonly',
         HTMLInputElement: 'readonly',
         HTMLDivElement: 'readonly',
+        HTMLElement: 'readonly',
+        HTMLTextAreaElement: 'readonly',
         CustomEvent: 'readonly',
-        Event: 'readonly'
+        Event: 'readonly',
+        Window: 'readonly',
+        Document: 'readonly',
+        Storage: 'readonly',
+        MediaQueryList: 'readonly',
+        EventListener: 'readonly',
+        MutationObserver: 'readonly'
       }
     },
     plugins: {

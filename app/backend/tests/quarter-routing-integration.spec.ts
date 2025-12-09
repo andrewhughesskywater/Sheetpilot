@@ -11,7 +11,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { BotOrchestrator } from '../src/services/bot/src/bot_orchestation';
-import { WebformFiller } from '../src/services/bot/src/webform_flow';
+import { WebformFiller as _WebformFiller } from '../src/services/bot/src/webform_flow';
 import { createFormConfig, type FormConfig } from '../src/services/bot/src/automation_config';
 import * as Cfg from '../src/services/bot/src/automation_config';
 import { QUARTER_DEFINITIONS } from '../src/services/bot/src/quarter_config';

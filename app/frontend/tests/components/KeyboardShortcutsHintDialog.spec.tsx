@@ -4,12 +4,11 @@ import userEvent from '@testing-library/user-event';
 import KeyboardShortcutsHintDialog from '../../src/components/KeyboardShortcutsHintDialog';
 
 describe('KeyboardShortcutsHintDialog', () => {
-  let originalLocalStorage: Storage;
   let mockLocalStorage: Storage;
+  let storage: Record<string, string>;
 
   beforeEach(() => {
-    originalLocalStorage = globalThis.localStorage;
-    const storage: Record<string, string> = {};
+    storage = {};
     mockLocalStorage = {
       getItem: vi.fn((key: string) => storage[key] || null),
       setItem: vi.fn((key: string, value: string) => {
@@ -26,11 +25,11 @@ describe('KeyboardShortcutsHintDialog', () => {
       },
       key: vi.fn((index: number) => Object.keys(storage)[index] || null)
     } as Storage;
-    (globalThis as { localStorage: Storage }).localStorage = mockLocalStorage;
+    vi.stubGlobal('localStorage', mockLocalStorage);
   });
 
   afterEach(() => {
-    (globalThis as { localStorage: Storage }).localStorage = originalLocalStorage;
+    vi.unstubAllGlobals();
   });
 
   it('should render when open', () => {
@@ -71,7 +70,12 @@ describe('KeyboardShortcutsHintDialog', () => {
     const onClose = vi.fn();
     render(<KeyboardShortcutsHintDialog open={true} onClose={onClose} />);
 
-    const closeButton = screen.getByRole('button', { name: /close/i });
+    // Navigate to page 2 first (page 1 has "Next", page 2 has "Got it")
+    const nextButton = screen.getByRole('button', { name: /next/i });
+    await user.click(nextButton);
+
+    // "Got it" is the close/confirm button on page 2
+    const closeButton = screen.getByRole('button', { name: /got it/i });
     await user.click(closeButton);
 
     expect(onClose).toHaveBeenCalled();
@@ -85,7 +89,11 @@ describe('KeyboardShortcutsHintDialog', () => {
     const checkbox = screen.getByRole('checkbox');
     await user.click(checkbox);
 
-    const closeButton = screen.getByRole('button', { name: /close/i });
+    // Navigate to page 2 and click "Got it" to close
+    const nextButton = screen.getByRole('button', { name: /next/i });
+    await user.click(nextButton);
+
+    const closeButton = screen.getByRole('button', { name: /got it/i });
     await user.click(closeButton);
 
     expect(mockLocalStorage.setItem).toHaveBeenCalledWith(
@@ -99,12 +107,13 @@ describe('KeyboardShortcutsHintDialog', () => {
     const onClose = vi.fn();
     render(<KeyboardShortcutsHintDialog open={true} onClose={onClose} />);
 
+    // Page 1 should have "Next" button
     const nextButton = screen.getByRole('button', { name: /next/i });
-    if (nextButton) {
-      await user.click(nextButton);
-      // Should be on page 2
-      expect(screen.getByText(/next/i) || screen.getByText(/back/i)).toBeInTheDocument();
-    }
+    await user.click(nextButton);
+
+    // Page 2 should have "Back" and "Got it" buttons
+    expect(screen.getByRole('button', { name: /back/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /got it/i })).toBeInTheDocument();
   });
 });
 

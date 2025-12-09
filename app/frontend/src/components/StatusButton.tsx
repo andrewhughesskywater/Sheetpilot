@@ -1,12 +1,12 @@
 /**
  * StatusButton Component
- * Thin wrapper around MUI LoadingButton with status-based coloring
+ * Thin wrapper around MUI Button with status-based coloring
  * - neutral: No data or inactive state (gray, disabled)
  * - ready: Ready for action (success color, enabled)
  * - warning: Has issues/validation errors (warning color, disabled)
  */
 
-import { LoadingButton } from '@mui/lab';
+import Button from '@mui/material/Button';
 import type { ReactNode } from 'react';
 
 export type ButtonStatus = 'neutral' | 'ready' | 'warning';
@@ -20,7 +20,7 @@ export interface StatusButtonProps {
   onClick: () => void;
   /** Is the button currently processing */
   isProcessing?: boolean;
-  /** Processing state text (e.g., "Submitting...") - not used with LoadingButton */
+  /** Processing state text (e.g., "Submitting...") - not used with Button loading */
   processingText?: string;
   /** Icon to display when not processing */
   icon?: ReactNode;
@@ -58,7 +58,7 @@ export function StatusButton({
   };
 
   return (
-    <LoadingButton
+    <Button
       variant="contained"
       size={size}
       loading={isProcessing}
@@ -69,7 +69,7 @@ export function StatusButton({
       color={getColor()}
     >
       {children}
-    </LoadingButton>
+    </Button>
   );
 }
 

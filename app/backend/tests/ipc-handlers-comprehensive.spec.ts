@@ -114,7 +114,11 @@ vi.mock('electron', () => {
 const createMockDb = () => ({
   prepare: vi.fn(() => ({ all: vi.fn(() => []), run: vi.fn(() => ({ changes: 1 })), get: vi.fn(() => ({})) })),
   exec: vi.fn(),
-  close: vi.fn()
+  close: vi.fn(),
+  transaction: vi.fn((callback) => {
+    // Return a function that executes the callback when called (matches better-sqlite3 API)
+    return () => callback();
+  })
 });
 
 // Store reference to the mock DB that will be returned by openDb
@@ -152,6 +156,50 @@ vi.mock('../src/services/database', () => {
       const result = resetStatus.run();
       return result.changes;
     })
+  };
+});
+
+// Mock repositories module (which now contains the connection manager)
+// Use async mock factory to import the database mock and delegate to it
+vi.mock('../src/repositories', async () => {
+  const db = await vi.importMock<typeof import('../src/services/database')>('../src/services/database');
+  
+  // Return an object that delegates to the database module mock
+  return {
+    // Connection management - delegate to database module
+    setDbPath: db.setDbPath,
+    getDbPath: db.getDbPath,
+    getDb: db.getDb,
+    openDb: db.openDb,
+    closeConnection: vi.fn(),
+    shutdownDatabase: vi.fn(),
+    ensureSchema: db.ensureSchema,
+    rebuildDatabase: db.rebuildDatabase,
+    
+    // Timesheet operations - delegate to database module
+    insertTimesheetEntry: vi.fn(),
+    getPendingTimesheetEntries: db.getPendingTimesheetEntries,
+    markTimesheetEntriesAsInProgress: vi.fn(),
+    resetTimesheetEntriesStatus: vi.fn(),
+    resetInProgressTimesheetEntries: db.resetInProgressTimesheetEntries,
+    markTimesheetEntriesAsSubmitted: vi.fn(),
+    removeFailedTimesheetEntries: vi.fn(),
+    getTimesheetEntriesByIds: vi.fn(() => []),
+    getSubmittedTimesheetEntriesForExport: db.getSubmittedTimesheetEntriesForExport,
+    
+    // Credentials operations - delegate to database module
+    storeCredentials: db.storeCredentials,
+    getCredentials: db.getCredentials,
+    listCredentials: db.listCredentials,
+    deleteCredentials: db.deleteCredentials,
+    clearAllCredentials: db.clearAllCredentials,
+    
+    // Session operations - delegate to database module
+    createSession: db.createSession,
+    validateSession: db.validateSession,
+    clearSession: db.clearSession,
+    clearUserSessions: db.clearUserSessions,
+    getSessionByEmail: vi.fn()
   };
 });
 
@@ -241,6 +289,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
     }));
     mockDbInstance.exec = vi.fn();
     mockDbInstance.close = vi.fn();
+    mockDbInstance.transaction = vi.fn((callback) => () => callback());
     
     // Re-setup openDb and getDb mocks to return mockDbInstance
     mdb.openDb.mockImplementation(() => mockDbInstance);
@@ -636,10 +685,28 @@ describe('IPC Handlers Comprehensive Tests', () => {
         taskDescription: 'Test task'
       };
 
-      mockDbInstance.prepare.mockReturnValue({
+      // First prepare call: INSERT statement
+      mockDbInstance.prepare.mockReturnValueOnce({
         all: vi.fn(() => []),
-        run: vi.fn(() => ({ changes: 1 })),
+        run: vi.fn(() => ({ changes: 1, lastInsertRowid: 1 })),
         get: vi.fn(() => ({}))
+      });
+      
+      // Second prepare call: SELECT statement
+      mockDbInstance.prepare.mockReturnValueOnce({
+        all: vi.fn(() => []),
+        run: vi.fn(() => ({ changes: 0 })),
+        get: vi.fn(() => ({
+          id: 1,
+          date: '2025-10-15',
+          time_in: 540, // 09:00 in minutes
+          time_out: 1020, // 17:00 in minutes
+          project: 'Test Project',
+          tool: null,
+          detail_charge_code: null,
+          task_description: 'Test task',
+          status: null
+        }))
       });
 
       const result = await handlers['timesheet:saveDraft'](validRow);
@@ -690,6 +757,30 @@ describe('IPC Handlers Comprehensive Tests', () => {
         taskDescription: 'Test task'
       };
 
+      // First prepare call: INSERT statement
+      mockDbInstance.prepare.mockReturnValueOnce({
+        all: vi.fn(() => []),
+        run: vi.fn(() => ({ changes: 1, lastInsertRowid: 2 })),
+        get: vi.fn(() => ({}))
+      });
+      
+      // Second prepare call: SELECT statement
+      mockDbInstance.prepare.mockReturnValueOnce({
+        all: vi.fn(() => []),
+        run: vi.fn(() => ({ changes: 0 })),
+        get: vi.fn(() => ({
+          id: 2,
+          date: '2024-01-15',
+          time_in: 540,
+          time_out: 1020,
+          project: 'Test Project',
+          tool: null,
+          detail_charge_code: null,
+          task_description: 'Test task',
+          status: null
+        }))
+      });
+
       const result = await handlers['timesheet:saveDraft'](historicalRow);
       
       // Should succeed - quarter validation is deferred to submission
@@ -706,22 +797,51 @@ describe('IPC Handlers Comprehensive Tests', () => {
         taskDescription: 'Test task'
       };
 
-      // First call succeeds with changes = 1
+      // First saveDraft call: INSERT statement, then SELECT statement
       mockDbInstance.prepare.mockReturnValueOnce({
         all: vi.fn(() => []),
-        run: vi.fn(() => ({ changes: 1 })),
+        run: vi.fn(() => ({ changes: 1, lastInsertRowid: 3 })),
         get: vi.fn(() => ({}))
+      });
+      mockDbInstance.prepare.mockReturnValueOnce({
+        all: vi.fn(() => []),
+        run: vi.fn(() => ({ changes: 0 })),
+        get: vi.fn(() => ({
+          id: 3,
+          date: '2025-10-15',
+          time_in: 540,
+          time_out: 1020,
+          project: 'Test Project',
+          tool: null,
+          detail_charge_code: null,
+          task_description: 'Test task',
+          status: null
+        }))
       });
 
       const result1 = await handlers['timesheet:saveDraft'](duplicateRow);
       expect(result1.success).toBe(true);
 
-      // Second call succeeds with changes = 0 (upsert on conflict does update)
-      // Since the unique constraint includes all fields, it will update
+      // Second saveDraft call: INSERT statement (with conflict), then SELECT statement
+      mockDbInstance.prepare.mockReturnValueOnce({
+        all: vi.fn(() => []),
+        run: vi.fn(() => ({ changes: 0, lastInsertRowid: 3 })),
+        get: vi.fn(() => ({}))
+      });
       mockDbInstance.prepare.mockReturnValueOnce({
         all: vi.fn(() => []),
         run: vi.fn(() => ({ changes: 0 })),
-        get: vi.fn(() => ({}))
+        get: vi.fn(() => ({
+          id: 3,
+          date: '2025-10-15',
+          time_in: 540,
+          time_out: 1020,
+          project: 'Test Project',
+          tool: null,
+          detail_charge_code: null,
+          task_description: 'Test task',
+          status: null
+        }))
       });
 
       const result2 = await handlers['timesheet:saveDraft'](duplicateRow);

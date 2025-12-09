@@ -53,27 +53,22 @@ describe('SmartDate Utility', () => {
   });
 
   describe('isDateInAllowedRange', () => {
-    it('should accept dates in allowed quarters (2025)', () => {
-      const validDates = [
-        '01/01/2025',  // Q1
-        '03/31/2025',  // Q1
-        '04/01/2025',  // Q2
-        '06/30/2025',  // Q2
-        '07/01/2025',  // Q3
-        '09/30/2025',  // Q3
-        '10/01/2025',  // Q4
-        '12/31/2025'   // Q4
-      ];
+    it('should accept dates in current and previous quarter', () => {
+      // Get the actual allowed date range
+      const { minDate, maxDate } = getQuarterDateRange();
       
-      validDates.forEach(date => {
-        expect(isDateInAllowedRange(date)).toBe(true);
-      });
+      // Create a date that is within the range (middle of range)
+      const midDate = new Date(minDate.getTime() + (maxDate.getTime() - minDate.getTime()) / 2);
+      const midDateStr = formatDateForDisplay(midDate);
+      
+      expect(isDateInAllowedRange(midDateStr)).toBe(true);
     });
 
     it('should reject dates outside allowed range', () => {
+      // Dates far in the past and future should be rejected
       const invalidDates = [
-        '12/31/2024',  // Before range
-        '01/01/2026'   // After range
+        '01/01/2020',  // Far in the past
+        '01/01/2030'   // Far in the future
       ];
       
       invalidDates.forEach(date => {

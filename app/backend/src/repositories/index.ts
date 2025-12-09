@@ -16,6 +16,8 @@ export {
     getDb,
     openDb,
     closeConnection,
+    closeConnectionForTesting,
+    resetPreventReconnectionFlag,
     shutdownDatabase,
     ensureSchema,
     rebuildDatabase
@@ -51,4 +53,14 @@ export {
     clearUserSessions,
     getSessionByEmail
 } from './session-repository';
+
+// Migrations
+export {
+    CURRENT_SCHEMA_VERSION,
+    getCurrentSchemaVersion,
+    setSchemaVersion,
+    createBackup,
+    runMigrations,
+    needsMigration
+} from './migrations';
 

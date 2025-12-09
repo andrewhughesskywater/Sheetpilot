@@ -1,17 +1,31 @@
 /**
- * Navigation Component
- * Simple MUI Tabs-based navigation
+ * @fileoverview Navigation Component
+ * 
+ * Tab-based navigation bar using Material-UI Tabs.
+ * Provides access to Timesheet, Archive, and Settings pages.
  */
 
 import React from 'react';
-import { Tabs, Tab, Box } from '@mui/material';
-import { Schedule as ScheduleIcon, Archive as ArchiveIcon, Settings as SettingsIcon } from '@mui/icons-material';
+import Tabs from '@mui/material/Tabs';
+import Tab from '@mui/material/Tab';
+import Box from '@mui/material/Box';
+import ScheduleIcon from '@mui/icons-material/Schedule';
+import ArchiveIcon from '@mui/icons-material/Archive';
+import SettingsIcon from '@mui/icons-material/Settings';
 
 interface NavigationProps {
   activeTab: number;
   onTabChange: (tabIndex: number) => void;
 }
 
+/**
+ * Navigation tabs component
+ * 
+ * @param props - Component props
+ * @param props.activeTab - Currently active tab index (0-2)
+ * @param props.onTabChange - Callback fired when tab changes
+ * @returns Navigation tab bar
+ */
 export default function Navigation({ activeTab, onTabChange }: NavigationProps) {
   const handleChange = (_event: React.SyntheticEvent, newValue: number) => {
     onTabChange(newValue);

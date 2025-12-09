@@ -1,26 +1,41 @@
+/**
+ * @fileoverview Settings Component
+ * 
+ * Comprehensive settings page providing access to application configuration,
+ * user account management, system tools, and administrative functions.
+ * 
+ * Features:
+ * - Credential management (update SmartSheet login)
+ * - Log file export for troubleshooting
+ * - User guide access
+ * - Application settings (headless mode, etc.)
+ * - Admin tools (database maintenance, credential clearing)
+ * - About dialog with version information
+ * 
+ * Access control:
+ * - Admin-specific tools only visible to admin users
+ * - Token-based authentication for sensitive operations
+ */
+
 import { useState, useEffect } from 'react';
-import {
-  Box,
-  Button,
-  Card,
-  CardContent,
-  Typography,
-  CircularProgress,
-  Alert,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Switch,
-  FormControlLabel
-} from '@mui/material';
-import {
-  Download as DownloadIcon,
-  Delete as DeleteIcon,
-  Security as SecurityIcon,
-  Settings as SettingsIcon
-} from '@mui/icons-material';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Typography from '@mui/material/Typography';
+import CircularProgress from '@mui/material/CircularProgress';
+import Alert from '@mui/material/Alert';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import TextField from '@mui/material/TextField';
+import Switch from '@mui/material/Switch';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import DownloadIcon from '@mui/icons-material/Download';
+import DeleteIcon from '@mui/icons-material/Delete';
+import SecurityIcon from '@mui/icons-material/Security';
+import SettingsIcon from '@mui/icons-material/Settings';
 import UserManual from './UserManual';
 import { useSession } from '../contexts/SessionContext';
 import { APP_VERSION } from '../../../shared/constants';
@@ -28,6 +43,25 @@ import logoImage from '../assets/images/logo.svg';
 import './Settings.css';
 import { autoCompleteEmailDomain } from '../utils/emailAutoComplete';
 
+/**
+ * Settings page component
+ * 
+ * Comprehensive settings interface organized as feature cards providing:
+ * - Log file export for troubleshooting
+ * - Credential management (update SmartSheet login)
+ * - User guide access
+ * - Application settings (browser headless mode, etc.)
+ * - About dialog with version info
+ * - Logout functionality
+ * - Admin tools (visible only to admin users)
+ * 
+ * Admin features:
+ * - Clear all credentials (destructive)
+ * - Rebuild database (destructive)
+ * - Restricted by admin flag from session context
+ * 
+ * @returns Settings page with feature cards and dialogs
+ */
 function Settings() {
   const { token, isAdmin, logout: sessionLogout } = useSession();
   const [logPath, setLogPath] = useState<string>('');
@@ -267,21 +301,13 @@ function Settings() {
       return;
     }
     
-    const latestLogFile = logFiles[logFiles.length - 1];
-    if (!latestLogFile) {
-      const errorMsg = 'Could not determine latest log file';
-      setError(errorMsg);
-      window.logger?.warn('Export logs attempted but latest log file could not be determined');
-      return;
-    }
-    
     setIsExporting(true);
     setError('');
     
     let downloadUrl: string | null = null;
     
     try {
-      const fullLogPath = logPath.endsWith('\\') ? (logPath + latestLogFile) : (logPath + '\\' + latestLogFile);
+      // logPath is already the full path to the latest log file from the backend
       
       if (!window.logs?.exportLogs) {
         const errorMsg = 'Logs API not available';
@@ -290,7 +316,7 @@ function Settings() {
         return;
       }
       
-      const response = await window.logs.exportLogs(fullLogPath, 'txt');
+      const response = await window.logs.exportLogs(logPath, 'txt');
       
       if (!response) {
         const errorMsg = 'Logs API returned no response';

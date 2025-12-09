@@ -1,8 +1,11 @@
 import { useState, useEffect, useMemo, memo } from 'react';
 import { HotTable } from '@handsontable/react-wrapper';
 import { registerAllModules } from 'handsontable/registry';
-import { Download as DownloadIcon, Refresh as RefreshIcon } from '@mui/icons-material';
-import { IconButton, Tooltip, CircularProgress } from '@mui/material';
+import DownloadIcon from '@mui/icons-material/Download';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
+import CircularProgress from '@mui/material/CircularProgress';
 import 'handsontable/styles/handsontable.css';
 import 'handsontable/styles/ht-theme-horizon.css';
 import { useData } from '../../contexts/DataContext';

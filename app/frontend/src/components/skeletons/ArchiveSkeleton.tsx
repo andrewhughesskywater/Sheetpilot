@@ -1,4 +1,5 @@
-import { Box, Skeleton } from '@mui/material';
+import Box from '@mui/material/Box';
+import Skeleton from '@mui/material/Skeleton';
 
 /**
  * Loading skeleton for the Archive page

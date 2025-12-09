@@ -87,8 +87,10 @@ function createMuiTheme(mode: 'light' | 'dark') {
 }
 
 // Component wrapper to manage dynamic MUI theme
+// eslint-disable-next-line react-refresh/only-export-components
 function ThemedApp() {
   const [muiTheme, setMuiTheme] = useState(() => createMuiTheme(getCurrentEffectiveTheme()));
+  const [mountSplash, setMountSplash] = useState(() => window.location.hash.includes('splash'));
 
   useEffect(() => {
     // Update theme when it changes
@@ -99,7 +101,20 @@ function ThemedApp() {
     return unsubscribe;
   }, []);
 
-  const mountSplash = window.location.hash.includes('splash');
+  useEffect(() => {
+    // Listen for hash changes to transition from splash to app
+    const handleHashChange = () => {
+      setMountSplash(window.location.hash.includes('splash'));
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    // Also check on initial load
+    handleHashChange();
+
+    return () => {
+      window.removeEventListener('hashchange', handleHashChange);
+    };
+  }, []);
 
   return (
     <ThemeProvider theme={muiTheme}>

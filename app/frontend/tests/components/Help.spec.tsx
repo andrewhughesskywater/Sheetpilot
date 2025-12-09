@@ -11,30 +11,51 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const mockWindow = {
-  logs: {
-    getLogPath: vi.fn(),
-    exportLogs: vi.fn()
-  },
-  credentials: {
-    list: vi.fn(),
-    store: vi.fn()
-  },
-  admin: {
-    clearCredentials: vi.fn(),
-    rebuildDatabase: vi.fn()
-  },
-  logger: {
-    error: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    userAction: vi.fn()
-  }
-};
-
 describe('Help Component', () => {
+  let mockWindow: {
+    logs: {
+      getLogPath: ReturnType<typeof vi.fn>;
+      exportLogs: ReturnType<typeof vi.fn>;
+    };
+    credentials: {
+      list: ReturnType<typeof vi.fn>;
+      store: ReturnType<typeof vi.fn>;
+    };
+    admin: {
+      clearCredentials: ReturnType<typeof vi.fn>;
+      rebuildDatabase: ReturnType<typeof vi.fn>;
+    };
+    logger: {
+      error: ReturnType<typeof vi.fn>;
+      info: ReturnType<typeof vi.fn>;
+      warn: ReturnType<typeof vi.fn>;
+      userAction: ReturnType<typeof vi.fn>;
+    };
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
+    // Create fresh mocks for each test
+    mockWindow = {
+      logs: {
+        getLogPath: vi.fn(),
+        exportLogs: vi.fn()
+      },
+      credentials: {
+        list: vi.fn(),
+        store: vi.fn()
+      },
+      admin: {
+        clearCredentials: vi.fn(),
+        rebuildDatabase: vi.fn()
+      },
+      logger: {
+        error: vi.fn(),
+        info: vi.fn(),
+        warn: vi.fn(),
+        userAction: vi.fn()
+      }
+    };
     (global as {window?: unknown}).window = mockWindow;
   });
 

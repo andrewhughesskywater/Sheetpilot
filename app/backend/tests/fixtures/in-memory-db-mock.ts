@@ -78,6 +78,7 @@ class InMemoryDatabase {
 
   close(): void {
     this.open = false;
+    // Don't clear data on close - tests expect persistence across close/reopen
   }
 
   pragma(command: string): unknown {
@@ -132,17 +133,19 @@ class InMemoryDatabase {
     };
 
     // Handle well-known tables with hard-coded schemas for accuracy
+    // Note: Core fields are nullable to allow saving partial/draft rows.
+    // Required field validation is enforced at the application level before submission.
     if (tableName === 'timesheet') {
       schema.columns = [
         { name: 'id', type: 'INTEGER', nullable: false },
         { name: 'hours', type: 'REAL', nullable: true },
-        { name: 'date', type: 'TEXT', nullable: false },
-        { name: 'time_in', type: 'INTEGER', nullable: false },
-        { name: 'time_out', type: 'INTEGER', nullable: false },
-        { name: 'project', type: 'TEXT', nullable: false },
+        { name: 'date', type: 'TEXT', nullable: true },
+        { name: 'time_in', type: 'INTEGER', nullable: true },
+        { name: 'time_out', type: 'INTEGER', nullable: true },
+        { name: 'project', type: 'TEXT', nullable: true },
         { name: 'tool', type: 'TEXT', nullable: true },
         { name: 'detail_charge_code', type: 'TEXT', nullable: true },
-        { name: 'task_description', type: 'TEXT', nullable: false },
+        { name: 'task_description', type: 'TEXT', nullable: true },
         { name: 'status', type: 'TEXT', nullable: true },
         { name: 'submitted_at', type: 'DATETIME', nullable: true }
       ];
@@ -476,14 +479,19 @@ class InMemoryDatabase {
         if (tableName === 'timesheet') {
           tableSql = `CREATE TABLE IF NOT EXISTS timesheet(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            hours REAL GENERATED ALWAYS AS ((time_out - time_in) / 60.0) STORED,
-            date TEXT NOT NULL,
-            time_in INTEGER NOT NULL,
-            time_out INTEGER NOT NULL,
-            project TEXT NOT NULL,
+            hours REAL GENERATED ALWAYS AS (
+              CASE WHEN time_in IS NOT NULL AND time_out IS NOT NULL 
+                   THEN (time_out - time_in) / 60.0 
+                   ELSE NULL 
+              END
+            ) STORED,
+            date TEXT,
+            time_in INTEGER,
+            time_out INTEGER,
+            project TEXT,
             tool TEXT,
             detail_charge_code TEXT,
-            task_description TEXT NOT NULL,
+            task_description TEXT,
             status TEXT DEFAULT NULL,
             submitted_at DATETIME DEFAULT NULL
           )`;
@@ -505,7 +513,7 @@ class InMemoryDatabase {
           // Generate proper SQL for unique index
           let indexSql = `CREATE INDEX ${indexName} ON ${tableName}(...)`;
           if (indexName === 'uq_timesheet_nk') {
-            indexSql = `CREATE UNIQUE INDEX IF NOT EXISTS uq_timesheet_nk ON timesheet(date, time_in, project, task_description)`;
+            indexSql = `CREATE UNIQUE INDEX IF NOT EXISTS uq_timesheet_nk ON timesheet(date, time_in, project, task_description) WHERE date IS NOT NULL AND time_in IS NOT NULL AND project IS NOT NULL AND task_description IS NOT NULL`;
           } else if (indexName.startsWith('idx_')) {
             const colName = indexName.replace('idx_timesheet_', '').replace('idx_', '');
             indexSql = `CREATE INDEX IF NOT EXISTS ${indexName} ON ${tableName}(${colName})`;
@@ -672,36 +680,71 @@ class InMemoryDatabase {
   }
 
   private matchesWhere(row: DatabaseRow, whereClause: string, args: unknown[]): boolean {
-    // Simple WHERE clause matching
-    if (whereClause.includes('IS NULL')) {
-      const colMatch = whereClause.match(/(\w+)\s+IS NULL/i);
+    // Handle complex WHERE clauses with AND/OR
+    // For now, handle common patterns used in tests
+    
+    // Handle: id IN (...) AND (status IS NULL OR status = 'in_progress')
+    if (whereClause.includes('AND')) {
+      const conditions = whereClause.split(/\s+AND\s+/i);
+      let argIndex = 0;
+      return conditions.every(cond => {
+        const trimmedCond = cond.trim();
+        
+        // Check if this condition has a parenthesized OR clause
+        if (trimmedCond.includes('(') && trimmedCond.includes('OR')) {
+          const orGroupMatch = trimmedCond.match(/\(([^)]+)\)/);
+          if (orGroupMatch) {
+            const orGroup = orGroupMatch[1];
+            const orConditions = orGroup?.split(/\s+OR\s+/i) || [];
+            // OR conditions typically don't consume args (they're usually IS NULL checks)
+            return orConditions.some(orCond => this.matchesSingleCondition(row, orCond.trim(), []));
+          }
+        }
+        
+        // Count how many placeholders this condition uses
+        const placeholderCount = (trimmedCond.match(/\?/g) || []).length;
+        const conditionArgs = args.slice(argIndex, argIndex + placeholderCount);
+        argIndex += placeholderCount;
+        return this.matchesSingleCondition(row, trimmedCond, conditionArgs);
+      });
+    }
+    
+    // Handle: condition1 OR condition2 (parentheses)
+    if (whereClause.includes('OR') && whereClause.includes('(')) {
+      // Extract parenthesized OR group: (status IS NULL OR status = 'in_progress')
+      const orGroupMatch = whereClause.match(/\(([^)]+)\)/);
+      if (orGroupMatch) {
+        const orGroup = orGroupMatch[1];
+        const orConditions = orGroup?.split(/\s+OR\s+/i) || [];
+        return orConditions.some(cond => this.matchesSingleCondition(row, cond.trim(), args));
+      }
+    }
+    
+    return this.matchesSingleCondition(row, whereClause, args);
+  }
+  
+  private matchesSingleCondition(row: DatabaseRow, condition: string, args: unknown[]): boolean {
+    // IS NULL
+    if (condition.includes('IS NULL')) {
+      const colMatch = condition.match(/(\w+)\s+IS NULL/i);
       if (colMatch && colMatch[1]) {
         const col = colMatch[1].toLowerCase();
         return row[col] === null || row[col] === undefined;
       }
     }
-    if (whereClause.includes('IS NOT NULL')) {
-      const colMatch = whereClause.match(/(\w+)\s+IS NOT NULL/i);
+    
+    // IS NOT NULL
+    if (condition.includes('IS NOT NULL')) {
+      const colMatch = condition.match(/(\w+)\s+IS NOT NULL/i);
       if (colMatch && colMatch[1]) {
         const col = colMatch[1].toLowerCase();
         return row[col] !== null && row[col] !== undefined;
       }
     }
-    if (whereClause.includes('=')) {
-      const parts = whereClause.split('=').map(s => s.trim());
-      if (parts.length === 2 && parts[0] && parts[1]) {
-        const col = parts[0].replace(/^[^.]+\./, '').toLowerCase();
-        let value = parts[1];
-        if (value === '?') {
-          value = String(args[0] || '');
-        } else {
-          value = value.replace(/'/g, '').trim();
-        }
-        return String(row[col]) === value;
-      }
-    }
-    if (whereClause.includes('IN')) {
-      const inMatch = whereClause.match(/(\w+)\s+IN\s*\(([^)]+)\)/i);
+    
+    // IN clause
+    if (condition.includes('IN')) {
+      const inMatch = condition.match(/(\w+)\s+IN\s*\(([^)]+)\)/i);
       if (inMatch) {
         const col = inMatch[1]?.toLowerCase();
         const values = inMatch[2]?.split(',').map(v => v.trim().replace(/'/g, '')) || [];
@@ -714,6 +757,22 @@ class InMemoryDatabase {
         return values.includes(String(row[col || '']));
       }
     }
+    
+    // Equality
+    if (condition.includes('=')) {
+      const parts = condition.split('=').map(s => s.trim());
+      if (parts.length === 2 && parts[0] && parts[1]) {
+        const col = parts[0].replace(/^[^.]+\./, '').toLowerCase();
+        let value = parts[1];
+        if (value === '?') {
+          value = String(args[0] || '');
+        } else {
+          value = value.replace(/'/g, '').trim();
+        }
+        return String(row[col]) === value;
+      }
+    }
+    
     return true; // Default to match if we can't parse
   }
 

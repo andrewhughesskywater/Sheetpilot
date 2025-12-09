@@ -20,6 +20,8 @@ Complete documentation for using SheetPilot, including:
 
 👉 **[DEVELOPER_WIKI.md](./DEVELOPER_WIKI.md)** - Comprehensive reference guide
 
+👉 **[SECURITY.md](./SECURITY.md)** - Security architecture and model
+
 This wiki consolidates all essential information for developing SheetPilot, including:
 
 - Architecture overview (including plugin architecture)

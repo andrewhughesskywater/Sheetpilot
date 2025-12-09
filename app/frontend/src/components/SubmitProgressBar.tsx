@@ -4,8 +4,8 @@
  * Simple submit button using MUI Button with loading functionality
  */
 
-import { Button } from '@mui/material';
-import { PlayArrow as PlayArrowIcon } from '@mui/icons-material';
+import Button from '@mui/material/Button';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import type { ReactNode } from 'react';
 
 export interface SubmitProgressBarProps {

@@ -56,6 +56,10 @@ export function normalizeTrailingBlank(rows: TimesheetRow[]): TimesheetRow[] {
       break;
     }
   }
-  return rows.slice(0, lastNonEmptyIndex + 2); // Keep one blank row at the end
+  
+  // Get rows up to last non-empty, then add one blank row
+  const trimmedRows = rows.slice(0, lastNonEmptyIndex + 1);
+  trimmedRows.push({});
+  return trimmedRows;
 }
 

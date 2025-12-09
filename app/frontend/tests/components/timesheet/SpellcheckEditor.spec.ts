@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { SpellcheckEditor } from '../../../../src/components/timesheet/SpellcheckEditor';
+import { SpellcheckEditor } from '../../../src/components/timesheet/SpellcheckEditor';
 
 // Mock Handsontable TextEditor
 vi.mock('handsontable/editors/textEditor', () => {

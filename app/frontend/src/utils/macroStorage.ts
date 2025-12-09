@@ -15,6 +15,16 @@ const MACRO_COUNT = 5;
 /**
  * Macro row data structure (excludes date field)
  */
+/**
+ * @fileoverview Macro Storage Utilities
+ * 
+ * Manages persistent storage of user-defined macros in localStorage.
+ * Macros allow quick data entry by pre-filling common time entries with Ctrl+1-5.
+ */
+
+/**
+ * Macro data structure for quick time entry
+ */
 export interface MacroRow {
   name?: string;
   timeIn?: string;

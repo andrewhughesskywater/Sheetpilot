@@ -105,17 +105,99 @@ export class MemoryDataService implements IDataService {
 
       const index = this.draftEntries.findIndex(e => e.id === id);
       if (index < 0) {
-        return { success: false, error: 'Draft entry not found' };
+        return { success: false, error: 'Entry not found' };
       }
       
       this.draftEntries.splice(index, 1);
-      return { success: true };
+      return { success: true, changes: 1 };
     } catch (error) {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Could not delete draft timesheet entry'
       };
     }
+  }
+
+  /**
+   * Archive a draft entry (move to archive)
+   */
+  public async archiveEntry(id: number): Promise<{ success: boolean; error?: string }> {
+    try {
+      if (!id || typeof id !== 'number') {
+        return { success: false, error: 'Valid ID is required' };
+      }
+
+      const index = this.draftEntries.findIndex(e => e.id === id);
+      if (index < 0) {
+        return { success: false, error: 'Entry not found' };
+      }
+      
+      const entry = this.draftEntries[index];
+      
+      // Validate required fields exist before archiving
+      if (!entry || !entry.id || !entry.date || !entry.timeIn || !entry.timeOut || 
+          !entry.project || !entry.taskDescription) {
+        return { success: false, error: 'Entry missing required fields' };
+      }
+      
+      // Convert to DbTimesheetEntry format
+      const dbEntry: DbTimesheetEntry = {
+        id: entry.id,
+        date: entry.date,
+        time_in: this.parseTimeToMinutes(entry.timeIn),
+        time_out: this.parseTimeToMinutes(entry.timeOut),
+        hours: this.calculateHours(entry.timeIn, entry.timeOut),
+        project: entry.project,
+        tool: entry.tool || null,
+        detail_charge_code: entry.chargeCode || null,
+        task_description: entry.taskDescription,
+        status: 'submitted',
+        submitted_at: new Date().toISOString()
+      };
+      
+      this.archiveEntries.push(dbEntry);
+      this.draftEntries.splice(index, 1);
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Could not archive entry'
+      };
+    }
+  }
+
+  /**
+   * Load archived entries
+   */
+  public async loadArchive(): Promise<{ success: boolean; entries?: DbTimesheetEntry[]; error?: string }> {
+    try {
+      return { success: true, entries: [...this.archiveEntries] };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Could not load archive',
+        entries: []
+      };
+    }
+  }
+
+  /**
+   * Parse time string to minutes
+   */
+  private parseTimeToMinutes(time: string): number {
+    const parts = time.split(':').map(Number);
+    const hours = parts[0] ?? 0;
+    const minutes = parts[1] ?? 0;
+    return hours * 60 + minutes;
+  }
+
+  /**
+   * Calculate hours between two times
+   */
+  private calculateHours(timeIn: string, timeOut: string): number {
+    const inMinutes = this.parseTimeToMinutes(timeIn);
+    const outMinutes = this.parseTimeToMinutes(timeOut);
+    return (outMinutes - inMinutes) / 60;
   }
 
   /**

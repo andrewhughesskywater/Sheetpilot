@@ -10,8 +10,8 @@ export default defineConfig({
     setupFiles: [path.resolve(__dirname, 'setup.ts')],
     globals: true,
     include: [
-      'app/frontend/tests/**/*.spec.{ts,tsx}',
-      'app/frontend/tests/**/*.test.{ts,tsx}'
+      'tests/**/*.spec.{ts,tsx}',
+      'tests/**/*.test.{ts,tsx}'
     ],
     exclude: [
       'node_modules',

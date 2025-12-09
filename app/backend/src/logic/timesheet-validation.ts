@@ -28,24 +28,25 @@ export interface TimesheetRow {
 
 /**
  * Check if a date string is valid
+ * Accepts both MM/DD/YYYY and YYYY-MM-DD formats
  */
 export function isValidDate(dateStr?: string): boolean {
   // Check if input is a string type
   if (typeof dateStr !== 'string') return false;
   if (!dateStr) return false;
   
-  // Must match mm/dd/yyyy format
-  const formatMatch = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (!formatMatch) return false;
+  // Check for MM/DD/YYYY or M/D/YYYY format (slash-separated only)
+  const usFormatMatch = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!usFormatMatch) return false;
   
-  const month = parseInt(formatMatch[1]!, 10);
-  const day = parseInt(formatMatch[2]!, 10);
-  const year = parseInt(formatMatch[3]!, 10);
+  const month = parseInt(usFormatMatch[1]!, 10);
+  const day = parseInt(usFormatMatch[2]!, 10);
+  const year = parseInt(usFormatMatch[3]!, 10);
   
   // Validate ranges
   if (month < 1 || month > 12) return false;
   if (day < 1 || day > 31) return false;
-  if (year < 1900 || year > 3000) return false;
+  if (year < 1900 || year > 2500) return false;
   
   // Create date object using ISO format to avoid locale issues
   // Note: month is 0-indexed in Date constructor
@@ -198,7 +199,7 @@ export function validateField(
   switch (prop) {
     case 'date': {
       if (!value) return 'Date is required - please enter a date';
-      if (!isValidDate(String(value))) return 'Date must be like 01/15/2024';
+      if (!isValidDate(String(value))) return 'Date must be like 01/15/2024 or 2024-01-15';
       
       // Convert mm/dd/yyyy to yyyy-mm-dd for quarter validation
       const dateStr = String(value);

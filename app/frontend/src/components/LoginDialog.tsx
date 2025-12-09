@@ -13,20 +13,18 @@
  * - Error handling with user-friendly messages
  */
 
-import React, { useState, useEffect } from 'react';
-import {
-  Card,
-  CardContent,
-  CardActions,
-  TextField,
-  Button,
-  Checkbox,
-  FormControlLabel,
-  Typography,
-  Alert,
-  CircularProgress,
-  Box
-} from '@mui/material';
+import React, { useState, useEffect, useRef } from 'react';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import CardActions from '@mui/material/CardActions';
+import TextField from '@mui/material/TextField';
+import Button from '@mui/material/Button';
+import Checkbox from '@mui/material/Checkbox';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import Typography from '@mui/material/Typography';
+import Alert from '@mui/material/Alert';
+import CircularProgress from '@mui/material/CircularProgress';
+import Box from '@mui/material/Box';
 import './LoginDialog.css';
 import { autoCompleteEmailDomain } from '../utils/emailAutoComplete';
 
@@ -62,11 +60,17 @@ function LoginDialog({ open, onLoginSuccess }: LoginDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [isFirstTime, setIsFirstTime] = useState(false);
+  const emailInputRef = useRef<HTMLInputElement>(null);
 
-  // Check if this is a first-time user (no credentials exist)
+  // Check if this is a first-time user (no credentials exist) and focus email field
   useEffect(() => {
     if (open) {
       checkFirstTime();
+      // Ensure email field gets focus after render
+      const focusTimer = setTimeout(() => {
+        emailInputRef.current?.focus();
+      }, 100);
+      return () => clearTimeout(focusTimer);
     }
   }, [open]);
 
@@ -171,6 +175,8 @@ function LoginDialog({ open, onLoginSuccess }: LoginDialogProps) {
             variant="outlined"
             disabled={isLoading}
             autoFocus
+            inputRef={emailInputRef}
+            inputProps={{ tabIndex: 0 }}
             className="login-email-field"
           />
           <TextField
@@ -187,6 +193,7 @@ function LoginDialog({ open, onLoginSuccess }: LoginDialogProps) {
             margin="normal"
             variant="outlined"
             disabled={isLoading}
+            inputProps={{ tabIndex: 0 }}
             className="login-password-field"
           />
 

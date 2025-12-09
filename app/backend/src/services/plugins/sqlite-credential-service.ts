@@ -13,8 +13,7 @@ import type {
   ICredentialService,
   CredentialResult,
   CredentialListResult,
-  CredentialGetResult,
-  CredentialRecord
+  CredentialGetResult
 } from '../../../../shared/contracts/ICredentialService';
 import type { PluginMetadata } from '../../../../shared/plugin-types';
 import {
@@ -82,10 +81,10 @@ export class SQLiteCredentialService implements ICredentialService {
    */
   public async list(): Promise<CredentialListResult> {
     try {
-      const credentials = listCredentials() as CredentialRecord[];
+      const credentials = listCredentials();
       return {
         success: true,
-        credentials
+        credentials: credentials as { id: number; service: string; email: string; created_at: string; updated_at: string }[]
       };
     } catch (error) {
       return {

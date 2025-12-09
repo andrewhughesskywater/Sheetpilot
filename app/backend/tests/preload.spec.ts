@@ -15,14 +15,14 @@ vi.mock('electron', () => ({
 }));
 
 describe('preload.ts', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+    vi.resetModules();
+    // Import preload fresh for each test
+    await import('../src/preload');
   });
 
   it('should expose api.ping handler', async () => {
-    // Import preload to trigger execution
-    await import('../src/preload');
-
     expect(contextBridge.exposeInMainWorld).toHaveBeenCalledWith(
       'api',
       expect.objectContaining({
@@ -42,8 +42,6 @@ describe('preload.ts', () => {
   });
 
   it('should expose timesheet handlers', async () => {
-    await import('../src/preload');
-
     expect(contextBridge.exposeInMainWorld).toHaveBeenCalledWith(
       'timesheet',
       expect.objectContaining({
@@ -62,8 +60,6 @@ describe('preload.ts', () => {
   });
 
   it('should expose credentials handlers', async () => {
-    await import('../src/preload');
-
     expect(contextBridge.exposeInMainWorld).toHaveBeenCalledWith(
       'credentials',
       expect.objectContaining({
@@ -76,8 +72,6 @@ describe('preload.ts', () => {
   });
 
   it('should expose auth handlers', async () => {
-    await import('../src/preload');
-
     expect(contextBridge.exposeInMainWorld).toHaveBeenCalledWith(
       'auth',
       expect.objectContaining({
@@ -90,8 +84,6 @@ describe('preload.ts', () => {
   });
 
   it('should expose admin handlers', async () => {
-    await import('../src/preload');
-
     expect(contextBridge.exposeInMainWorld).toHaveBeenCalledWith(
       'admin',
       expect.objectContaining({
@@ -102,8 +94,6 @@ describe('preload.ts', () => {
   });
 
   it('should expose database handlers', async () => {
-    await import('../src/preload');
-
     expect(contextBridge.exposeInMainWorld).toHaveBeenCalledWith(
       'database',
       expect.objectContaining({
@@ -116,8 +106,6 @@ describe('preload.ts', () => {
   });
 
   it('should expose logs handlers', async () => {
-    await import('../src/preload');
-
     expect(contextBridge.exposeInMainWorld).toHaveBeenCalledWith(
       'logs',
       expect.objectContaining({
@@ -129,8 +117,6 @@ describe('preload.ts', () => {
   });
 
   it('should expose logger handlers', async () => {
-    await import('../src/preload');
-
     expect(contextBridge.exposeInMainWorld).toHaveBeenCalledWith(
       'logger',
       expect.objectContaining({
@@ -145,8 +131,6 @@ describe('preload.ts', () => {
   });
 
   it('should expose updates handlers', async () => {
-    await import('../src/preload');
-
     expect(contextBridge.exposeInMainWorld).toHaveBeenCalledWith(
       'updates',
       expect.objectContaining({
@@ -161,8 +145,6 @@ describe('preload.ts', () => {
   });
 
   it('should expose settings handlers', async () => {
-    await import('../src/preload');
-
     expect(contextBridge.exposeInMainWorld).toHaveBeenCalledWith(
       'settings',
       expect.objectContaining({
@@ -174,8 +156,6 @@ describe('preload.ts', () => {
   });
 
   it('should handle timesheet progress listener setup', async () => {
-    await import('../src/preload');
-
     const exposed = vi.mocked(contextBridge.exposeInMainWorld).mock.calls.find(
       call => call[0] === 'timesheet'
     )?.[1] as {
@@ -194,8 +174,6 @@ describe('preload.ts', () => {
   });
 
   it('should handle logger methods correctly', async () => {
-    await import('../src/preload');
-
     const exposed = vi.mocked(contextBridge.exposeInMainWorld).mock.calls.find(
       call => call[0] === 'logger'
     )?.[1] as {

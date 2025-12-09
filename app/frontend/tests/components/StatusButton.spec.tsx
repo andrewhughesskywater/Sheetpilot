@@ -91,7 +91,7 @@ describe('StatusButton', () => {
   });
 
   it('should not call onClick when disabled', async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ pointerEventsCheck: 0 }); // Skip pointer-events check for disabled button
     const onClick = vi.fn();
     render(
       <StatusButton status="neutral" onClick={onClick}>
@@ -114,7 +114,8 @@ describe('StatusButton', () => {
     );
 
     const button = screen.getByRole('button');
-    expect(button).toHaveAttribute('aria-busy', 'true');
+    // MUI LoadingButton uses disabled state and loading indicator, not aria-busy
+    expect(button).toBeDisabled();
   });
 
   it('should use correct color for ready status', () => {

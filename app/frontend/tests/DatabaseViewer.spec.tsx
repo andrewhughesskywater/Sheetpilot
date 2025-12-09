@@ -9,7 +9,8 @@ vi.mock('../src/contexts/DataContext', () => ({
       credentials: []
     },
     isArchiveDataLoading: false,
-    archiveDataError: null
+    archiveDataError: null,
+    refreshArchiveData: vi.fn().mockResolvedValue(undefined)
   }),
   DataProvider: ({ children }: { children: React.ReactNode }) => React.createElement('div', {}, children)
 }));
@@ -31,8 +32,8 @@ import '@testing-library/jest-dom/vitest';
 describe('DatabaseViewer', () => {
   it('renders without crashing', () => {
     render(<Archive />);
-    // Check for the main heading
-    expect(screen.getByText('Archive')).toBeInTheDocument();
+    // Check for the no data message
+    expect(screen.getByText(/No data available/)).toBeInTheDocument();
     // Check for the data info
     expect(screen.getByText(/Timesheet entries: 0/)).toBeInTheDocument();
     expect(screen.getByText(/Credentials: 0/)).toBeInTheDocument();

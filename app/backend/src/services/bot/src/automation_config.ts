@@ -237,9 +237,16 @@ export const SUBMIT_SUCCESS_INDICATORS: string[] = [
   "thank you for your submission",
 ];
 
-/** Number of retry attempts for failed form submissions */
+/** 
+ * @deprecated No longer used. The retry flow is now fixed at 3 attempts:
+ * Initial → Level 1 retry (quick re-click) → Level 2 retry (form re-fill)
+ */
 export const SUBMIT_RETRY_ATTEMPTS: number = Number(process.env['SUBMIT_RETRY_ATTEMPTS'] ?? "3");
-/** Delay between submission retry attempts in seconds */
+
+/** Delay for Level 1 retry (quick re-click) in seconds */
+export const SUBMIT_CLICK_RETRY_DELAY_S: number = Number(process.env['SUBMIT_CLICK_RETRY_DELAY_S'] ?? "1.0");
+
+/** Delay for Level 2 retry (form re-fill) in seconds */
 export const SUBMIT_RETRY_DELAY: number = Number(process.env['SUBMIT_RETRY_DELAY'] ?? "2.0");
 
 // ============================================================================
@@ -600,10 +607,12 @@ export async function sleep(ms: number): Promise<void> {
         // Quick check if element exists and is in desired state
         // Capture state in closure since evaluate doesn't accept parameters for this use case
         const targetState = state;
+        // eslint-disable-next-line no-undef
         const isInState = await element.evaluate((el: HTMLElement | SVGElement) => {
           if (!el) return false;
           
           // Use type guard to check if element is HTMLElement
+          // eslint-disable-next-line no-undef
           const htmlEl = el as HTMLElement & { offsetWidth?: number; offsetHeight?: number };
           
           // Use DOM APIs to check element state

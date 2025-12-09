@@ -11,18 +11,27 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const mockWindow = {
-  timesheet: {
-    saveDraft: vi.fn(),
-    loadDraft: vi.fn(),
-    deleteDraft: vi.fn(),
-    submit: vi.fn()
-  }
-};
-
 describe('Data Flow Integration', () => {
+  let mockWindow: {
+    timesheet: {
+      saveDraft: ReturnType<typeof vi.fn>;
+      loadDraft: ReturnType<typeof vi.fn>;
+      deleteDraft: ReturnType<typeof vi.fn>;
+      submit: ReturnType<typeof vi.fn>;
+    };
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
+    // Create fresh mocks for each test
+    mockWindow = {
+      timesheet: {
+        saveDraft: vi.fn(),
+        loadDraft: vi.fn(),
+        deleteDraft: vi.fn(),
+        submit: vi.fn()
+      }
+    };
     (global as {window?: unknown}).window = mockWindow;
   });
 

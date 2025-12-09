@@ -108,7 +108,7 @@ export class BotOrchestrator {
    * Executes the main automation process for timesheet data
    * 
    * Processes an array of data rows, authenticates, fills forms, and submits entries.
-   * Each row should be a map of column labels to values (similar to pandas DataFrame rows).
+   * Each row should be an object mapping column labels to values (like { 'Date': '01/15/2024', 'Project': 'MyProject' }).
    * 
    * @param df - Array of data rows, each containing column label -> value mappings
    * @param creds - Tuple containing [email, password] for authentication
@@ -340,10 +340,10 @@ export class BotOrchestrator {
         'form stabilization before submission'
       );
       
-      // Submit with retry
+      // Submit with retry (Initial + Level 1 + Level 2 = 3 attempts)
       const submissionSuccess = await this._submitWithRetryWithFields(rowIndex, fields);
       if (!submissionSuccess) {
-        return [false, `Form submission failed after ${this.cfg.SUBMIT_RETRY_ATTEMPTS} attempts`];
+        return [false, 'Form submission failed after 3 attempts (initial + Level 1 retry + Level 2 retry)'];
       }
     }
 
@@ -353,47 +353,84 @@ export class BotOrchestrator {
   }
 
   /**
-   * Submits form with retry logic and re-fills fields on retry
+   * Submits form with two-level retry logic:
+   * - Level 1 retry: Quick retry - just click submit again after 1s delay (no form re-fill)
+   * - Level 2 retry: Full retry - re-fill form and submit after 2s delay
+   * 
+   * Flow: Initial → failed → Level 1 retry → failed → Level 2 retry → failed → give up
+   * 
    * @private
    * @param rowIndex - Row index for logging
-   * @param fields - Fields to fill if retry is needed
+   * @param fields - Fields to fill if Level 2 retry is needed
    * @returns Promise resolving to true if submission succeeded, false otherwise
    */
   private async _submitWithRetryWithFields(rowIndex: number, fields: Record<string, unknown>): Promise<boolean> {
-    const maxRetries = this.cfg.SUBMIT_RETRY_ATTEMPTS;
-    let submissionSuccess = false;
+    // Attempt 1: Initial submit
+    botLogger.info('Attempting initial submission', { rowIndex, attempt: 1, retryLevel: 'initial' });
+    let success = await this.webform_filler.submit_form();
     
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      botLogger.info('Submitting form', { rowIndex, attempt: attempt + 1, maxRetries });
-      const success = await this.webform_filler.submit_form();
-      
-      if (success) {
-        botLogger.info('Row submitted successfully', { rowIndex, httpStatus: 200 });
-        submissionSuccess = true;
-        break;
-      } else {
-        botLogger.warn('Submission attempt unsuccessful', { rowIndex, attempt: attempt + 1, reason: 'No HTTP 200 response' });
-        if (attempt < maxRetries - 1) {
-          const retryDelay = Cfg.SUBMIT_RETRY_DELAY;
-          botLogger.verbose('Waiting for page to stabilize before retry', { rowIndex, retryDelay });
-          // Wait for page to be stable before retry
-          await Cfg.wait_for_dom_stability(
-            this.webform_filler.require_page(),
-            'body',
-            'visible',
-            retryDelay,
-            retryDelay * 2,
-            'page stabilization before retry'
-          );
-          
-          // Re-fill the form before retry
-          botLogger.verbose('Re-filling form fields for retry attempt', { rowIndex });
-          await this._fill_fields(fields);
-        }
-      }
+    if (success) {
+      botLogger.info('Initial submission succeeded', { rowIndex, attempt: 1, retryLevel: 'initial', result: 'success' });
+      return true;
     }
     
-    return submissionSuccess;
+    botLogger.warn('Initial submission failed', { rowIndex, attempt: 1, retryLevel: 'initial', result: 'failed' });
+    
+    // Attempt 2: Level 1 retry - quick retry, just click submit again (no form re-fill)
+    const level1Delay = Cfg.SUBMIT_CLICK_RETRY_DELAY_S;
+    botLogger.info('Starting Level 1 retry (quick re-click, no form re-fill)', { 
+      rowIndex, 
+      attempt: 2, 
+      retryLevel: 'level-1', 
+      delaySeconds: level1Delay 
+    });
+    await new Promise(resolve => setTimeout(resolve, level1Delay * 1000));
+    
+    botLogger.info('Attempting Level 1 retry submission', { rowIndex, attempt: 2, retryLevel: 'level-1' });
+    success = await this.webform_filler.submit_form();
+    
+    if (success) {
+      botLogger.info('Level 1 retry succeeded', { rowIndex, attempt: 2, retryLevel: 'level-1', result: 'success' });
+      return true;
+    }
+    
+    botLogger.warn('Level 1 retry failed', { rowIndex, attempt: 2, retryLevel: 'level-1', result: 'failed' });
+    
+    // Attempt 3: Level 2 retry - re-fill form and submit
+    const level2Delay = Cfg.SUBMIT_RETRY_DELAY;
+    botLogger.info('Starting Level 2 retry (re-fill form and submit)', { 
+      rowIndex, 
+      attempt: 3, 
+      retryLevel: 'level-2', 
+      delaySeconds: level2Delay 
+    });
+    await Cfg.wait_for_dom_stability(
+      this.webform_filler.require_page(),
+      'body',
+      'visible',
+      level2Delay,
+      level2Delay * 2,
+      'page stabilization before Level 2 retry'
+    );
+    
+    botLogger.verbose('Re-filling form fields for Level 2 retry', { rowIndex, retryLevel: 'level-2' });
+    await this._fill_fields(fields);
+    
+    botLogger.info('Attempting Level 2 retry submission', { rowIndex, attempt: 3, retryLevel: 'level-2' });
+    success = await this.webform_filler.submit_form();
+    
+    if (success) {
+      botLogger.info('Level 2 retry succeeded', { rowIndex, attempt: 3, retryLevel: 'level-2', result: 'success' });
+      return true;
+    }
+    
+    botLogger.error('All submission attempts exhausted', { 
+      rowIndex, 
+      totalAttempts: 3, 
+      retryLevels: ['initial', 'level-1', 'level-2'],
+      result: 'failed'
+    });
+    return false;
   }
 
   /**

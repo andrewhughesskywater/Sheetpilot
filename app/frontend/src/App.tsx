@@ -1,10 +1,28 @@
+/**
+ * @fileoverview Main Application Component
+ * 
+ * Root component orchestrating the application shell, navigation, authentication,
+ * and lazy-loaded page content with smooth transitions.
+ * 
+ * Key responsibilities:
+ * - Authentication flow and session management
+ * - Tab-based navigation with animated transitions
+ * - Lazy loading of heavy components (TimesheetGrid, Archive, Settings)
+ * - Auto-update handling with progress tracking
+ * - On-demand data loading per tab to optimize startup performance
+ * 
+ * Architecture decisions:
+ * - Lazy loading with Suspense to reduce initial bundle size
+ * - On-demand data fetching when tabs activate (not on mount) for performance
+ * - Accessibility fix for background blur when dialogs open (prevents focus traps)
+ * - Real-time row saves eliminate need for batch save on tab change
+ */
+
 import { useState, useEffect, Suspense, lazy, useRef } from 'react';
-import {
-  Box,
-  Typography,
-  CircularProgress,
-  LinearProgress
-} from '@mui/material';
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
+import CircularProgress from '@mui/material/CircularProgress';
+import LinearProgress from '@mui/material/LinearProgress';
 const Archive = lazy(() => import('./components/archive/DatabaseViewer'));
 const TimesheetGrid = lazy(() => import('./components/timesheet/TimesheetGrid'));
 import type { TimesheetGridHandle } from './components/timesheet/TimesheetGrid';
@@ -23,6 +41,14 @@ import { APP_VERSION } from '../../shared/constants';
 import './styles/App.css';
 import './styles/transitions.css';
 
+/**
+ * About dialog content component
+ * 
+ * Displays application branding, version, and author information.
+ * Used in both splash screen and settings about dialog.
+ * 
+ * @returns About content with logo, version, and description
+ */
 export function AboutBody() {
   return (
     <Box className="about-dialog-content">
@@ -44,16 +70,47 @@ export function AboutBody() {
   );
 }
 
+/**
+ * Splash screen component shown during app initialization and updates
+ * 
+ * Displays application branding and update progress during:
+ * - Initial app startup
+ * - Update download and installation
+ * - Update finalization after restart
+ * 
+ * Update flow:
+ * 1. Checking - Looking for available updates
+ * 2. Downloading - Downloading update with progress bar
+ * 3. Installing - Preparing update for installation
+ * 4. Finalizing - Post-restart update completion (detected via URL hash)
+ * 5. Ready - Proceeding to main app
+ * 
+ * @returns Splash screen with progress indicator
+ */
 export function Splash() {
   const [progress, setProgress] = useState<number | null>(null);
   const [status, setStatus] = useState<'checking' | 'downloading' | 'installing' | 'finalizing' | 'ready'>(() => {
-    // Detect finalize state from URL hash on initial render
+    // Detect finalize state from URL hash to show appropriate message after app restart
     const hash = window.location.hash || '';
     return hash.includes('state=finalize') ? 'finalizing' : 'checking';
   });
 
   useEffect(() => {
-    if (!window.updates) return;
+    const transitionToApp = () => {
+      setStatus('ready');
+      // Remove splash hash to transition to main app
+      if (window.location.hash.includes('splash')) {
+        window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        // Trigger hashchange event to update ThemedApp component
+        window.dispatchEvent(new HashChangeEvent('hashchange'));
+      }
+    };
+
+    if (!window.updates) {
+      // If updates API is not available, transition to main app after a brief delay
+      const timer = setTimeout(transitionToApp, 1000);
+      return () => clearTimeout(timer);
+    }
 
     window.updates.onUpdateAvailable((_version) => {
       setStatus('downloading');
@@ -66,10 +123,18 @@ export function Splash() {
       setStatus('installing');
     });
 
+    // After checking for updates (or if no updates available), transition to main app
+    const checkTimer = setTimeout(() => {
+      if (status === 'checking') {
+        transitionToApp();
+      }
+    }, 1500);
+
     return () => {
+      clearTimeout(checkTimer);
       window.updates?.removeAllListeners();
     };
-  }, []);
+  }, [status]);
 
   const renderStatus = () => {
     switch (status) {
@@ -112,6 +177,27 @@ export function Splash() {
   );
 }
 
+/**
+ * Main application content after authentication
+ * 
+ * Orchestrates the entire application UI including:
+ * - Tab-based navigation (Timesheet, Archive, Settings)
+ * - Lazy-loaded page content with loading skeletons
+ * - Animated page transitions
+ * - Update progress dialogs
+ * - On-demand data loading per tab
+ * 
+ * State management:
+ * - Prevents duplicate data fetches during React StrictMode
+ * - Handles empty data refresh edge cases
+ * - Manages transition animations to prevent UI glitches
+ * 
+ * Accessibility:
+ * - Implements workaround for MUI dialog focus trap issue
+ * - Monitors aria-hidden changes to blur background content
+ * 
+ * @returns Authenticated application shell with navigation and content
+ */
 function AppContent() {
   const { isLoggedIn, isLoading: sessionLoading, login: sessionLogin } = useSession();
   const [activeTab, setActiveTab] = useState(0);
@@ -121,28 +207,22 @@ function AppContent() {
   const hasRefreshedEmptyOnceRef = useRef(false);
   const timesheetGridRef = useRef<TimesheetGridHandle>(null);
   
-  // Update dialog state
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
   const [updateVersion, setUpdateVersion] = useState<string>('');
   const [updateProgress, setUpdateProgress] = useState(0);
   const [updateStatus, setUpdateStatus] = useState<'downloading' | 'installing'>('downloading');
   
-  // Use data context
   const { refreshTimesheetDraft, refreshArchiveData, isTimesheetDraftLoading, timesheetDraftData } = useData();
-
-  // Load data when user navigates to tabs (on-demand loading)
   useEffect(() => {
     if (!isLoggedIn) return;
 
     if (activeTab === 0) {
-      // Prevent duplicate initial loads (StrictMode/effect re-runs)
       if (!hasRequestedInitialTimesheetRef.current) {
         window.logger?.debug('[App] Refreshing timesheet draft on initial tab activate');
         hasRequestedInitialTimesheetRef.current = true;
         refreshTimesheetDraft();
         return;
       }
-      // If data appears effectively empty and not loading, refresh once more
       const hasRealRows = Array.isArray(timesheetDraftData) && timesheetDraftData.some((r) => {
         const row = r as Record<string, unknown>;
         return !!(row?.date || row?.timeIn || row?.timeOut || row?.project || row?.taskDescription);
@@ -158,12 +238,9 @@ function AppContent() {
     }
   }, [activeTab, isLoggedIn, refreshTimesheetDraft, refreshArchiveData, isTimesheetDraftLoading, timesheetDraftData]);
 
-  // Initialize theme on mount
   useEffect(() => {
     initializeTheme();
   }, []);
-
-  // Fix accessibility warning: blur background focus when dialogs set aria-hidden on root
   useEffect(() => {
     const rootElement = document.getElementById('root');
     if (!rootElement) return;
@@ -171,11 +248,8 @@ function AppContent() {
     const handleAriaHiddenChange = () => {
       const isHidden = rootElement.getAttribute('aria-hidden') === 'true';
       if (isHidden) {
-        // Use setTimeout to ensure this runs after MUI's focus management
         setTimeout(() => {
           const activeElement = document.activeElement;
-          // Only blur if the focused element is a descendant of root (background content)
-          // Dialog content is rendered in a portal outside root, so it won't be affected
           if (activeElement && rootElement.contains(activeElement) && activeElement !== document.body) {
             (activeElement as HTMLElement).blur();
           }
@@ -183,6 +257,8 @@ function AppContent() {
       }
     };
 
+    // WHY: MutationObserver is browser API, not Node.js - eslint false positive for 'no-undef'
+    // eslint-disable-next-line no-undef
     const observer = new MutationObserver(handleAriaHiddenChange);
 
     observer.observe(rootElement, {
@@ -190,7 +266,6 @@ function AppContent() {
       attributeFilter: ['aria-hidden']
     });
 
-    // Also check immediately in case aria-hidden is already set
     handleAriaHiddenChange();
 
     return () => {
@@ -198,13 +273,11 @@ function AppContent() {
     };
   }, []);
   
-  // Listen for update events
   useEffect(() => {
     if (!window.updates) {
       return;
     }
     
-    // Listen for update available
     window.updates.onUpdateAvailable((version) => {
       window.logger?.info('Update available event received', { version });
       setUpdateVersion(version);
@@ -212,19 +285,16 @@ function AppContent() {
       setShowUpdateDialog(true);
     });
     
-    // Listen for download progress
     window.updates.onDownloadProgress((progress) => {
       window.logger?.debug('Download progress', { percent: progress.percent });
       setUpdateProgress(progress.percent);
     });
     
-    // Listen for update downloaded
     window.updates.onUpdateDownloaded((version) => {
       window.logger?.info('Update downloaded event received', { version });
       setUpdateStatus('installing');
     });
     
-    // Cleanup listeners on unmount
     return () => {
       window.updates?.removeAllListeners();
     };
@@ -237,7 +307,6 @@ function AppContent() {
 
   return (
     <div className="app-container">
-      {/* Navigation */}
       <Navigation 
         activeTab={activeTab}
         onTabChange={async (newTab) => {
@@ -245,27 +314,19 @@ function AppContent() {
           
           window.logger?.userAction('tab-change', { from: activeTab, to: newTab });
           
-          // Start transition
           setIsTransitioning(true);
           
-          // Note: No batch save needed - rows are saved in real-time as user edits
-          
-          // Wait for exit animation
           await new Promise(resolve => setTimeout(resolve, 200));
           
-          // Update both activeTab (for navigation) and displayedTab (for content)
           setActiveTab(newTab);
           setDisplayedTab(newTab);
           
-          // Wait for enter animation to start
           await new Promise(resolve => setTimeout(resolve, 100));
           setIsTransitioning(false);
         }}
       />
       
-      {/* Main Content Area */}
       <div className="main-content-area">
-        {/* Main Content */}
         <div className="content-area">
           {sessionLoading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
@@ -296,7 +357,6 @@ function AppContent() {
           )}
         </div>
 
-        {/* Update Dialog */}
         <UpdateDialog 
           open={showUpdateDialog}
           version={updateVersion}

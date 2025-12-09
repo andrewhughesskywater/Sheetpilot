@@ -1,10 +1,24 @@
+/**
+ * @fileoverview Timesheet Validation
+ * 
+ * Field-level validation logic for timesheet entries.
+ * Validates individual fields and returns user-friendly error messages.
+ * Used by Handsontable for inline validation during data entry.
+ */
+
 import type { TimesheetRow } from './timesheet.schema';
 import { isValidDate, isValidTime, isTimeOutAfterTimeIn, hasTimeOverlapWithPreviousEntries } from './timesheet.schema';
-import { doesProjectNeedTools, doesToolNeedChargeCode } from '../../config/business-config';
+import { doesProjectNeedTools, doesToolNeedChargeCode } from '../../../../shared/business-config';
 import { isDateInAllowedRange } from '../../utils/smartDate';
 
 /**
- * Validate a single field value
+ * Validate a single field value with context-aware rules
+ * 
+ * @param value - Field value to validate
+ * @param row - Row index for context (overlap detection)
+ * @param prop - Field name being validated
+ * @param rows - All rows for overlap detection
+ * @returns Error message if invalid, null if valid
  */
 export function validateField(
   value: unknown, 

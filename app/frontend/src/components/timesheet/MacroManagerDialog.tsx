@@ -1,13 +1,11 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  Box,
-  Typography
-} from '@mui/material';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import Button from '@mui/material/Button';
+import Box from '@mui/material/Box';
+import Typography from '@mui/material/Typography';
 import { HotTable } from '@handsontable/react-wrapper';
 import type { HotTableRef } from '@handsontable/react-wrapper';
 import { registerAllModules } from 'handsontable/registry';
@@ -18,7 +16,7 @@ import './TimesheetGrid.css'; // Reuse TimesheetGrid styles
 
 import type { MacroRow } from '../../utils/macroStorage';
 import { saveMacros, loadMacros } from '../../utils/macroStorage';
-import { PROJECTS, CHARGE_CODES, getToolsForProject, doesToolNeedChargeCode, doesProjectNeedTools } from '../../config/business-config';
+import { PROJECTS, CHARGE_CODES, getToolsForProject, doesToolNeedChargeCode, doesProjectNeedTools } from '../../../../shared/business-config';
 import { formatTimeInput } from './timesheet.schema';
 import { SpellcheckEditor } from './SpellcheckEditor';
 
@@ -56,6 +54,9 @@ const MacroManagerDialog = ({ open, onClose, onSave }: MacroManagerDialogProps) 
         chargeCode: null,
         taskDescription: ''
       });
+      // This is an appropriate use of setState in useEffect - we're synchronizing
+      // with external state (localStorage) when the dialog opens
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMacroData(filledMacros);
     }
   }, [open]);

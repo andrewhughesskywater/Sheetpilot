@@ -14,15 +14,22 @@ import {
 } from '../../src/utils/theme-manager';
 
 describe('theme-manager', () => {
-  let originalWindow: typeof window;
-  let originalDocument: typeof document;
   let mockWindow: Window & typeof globalThis;
   let mockDocument: Document;
+  let mockStorage: Record<string, string>;
 
   beforeEach(() => {
-    // Save originals
-    originalWindow = globalThis.window;
-    originalDocument = globalThis.document;
+    // Create mock localStorage storage
+    mockStorage = {};
+    const mockLocalStorage = {
+      getItem: vi.fn((key: string) => mockStorage[key] || null),
+      setItem: vi.fn((key: string, value: string) => { mockStorage[key] = value; }),
+      removeItem: vi.fn((key: string) => { delete mockStorage[key]; }),
+      clear: vi.fn(() => { mockStorage = {}; }),
+      length: 0,
+      key: vi.fn(() => null)
+    };
+    vi.stubGlobal('localStorage', mockLocalStorage);
 
     // Create mocks
     mockWindow = {
@@ -44,11 +51,8 @@ describe('theme-manager', () => {
     } as unknown as Document;
 
     // Replace globals
-    (globalThis as { window: typeof window }).window = mockWindow;
-    (globalThis as { document: typeof document }).document = mockDocument;
-
-    // Clear localStorage
-    localStorage.clear();
+    vi.stubGlobal('window', mockWindow);
+    vi.stubGlobal('document', mockDocument);
 
     // Mock logger
     (mockWindow as unknown as { logger?: { error: (msg: string, data?: unknown) => void; debug: (msg: string, data?: unknown) => void; warn: (msg: string, data?: unknown) => void } }).logger = {
@@ -59,10 +63,7 @@ describe('theme-manager', () => {
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
-    // Restore originals
-    (globalThis as { window: typeof window }).window = originalWindow;
-    (globalThis as { document: typeof document }).document = originalDocument;
+    vi.unstubAllGlobals();
   });
 
   describe('getSystemTheme', () => {
@@ -148,7 +149,8 @@ describe('theme-manager', () => {
     });
 
     it('should log error when localStorage fails', () => {
-      const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      // Override the stubbed localStorage's setItem to throw
+      vi.mocked(localStorage.setItem).mockImplementation(() => {
         throw new Error('localStorage failed');
       });
       const logger = (mockWindow as unknown as { logger?: { error: (msg: string, data?: unknown) => void } }).logger;
@@ -159,8 +161,6 @@ describe('theme-manager', () => {
         'Failed to store theme',
         { error: 'localStorage failed' }
       );
-
-      setItemSpy.mockRestore();
     });
   });
 

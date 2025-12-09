@@ -1,5 +1,43 @@
 import type { TimesheetRow } from './timesheet.schema';
 
+const LOCAL_BACKUP_KEY = 'sheetpilot_timesheet_backup';
+
+/**
+ * Checks if a row has any non-empty field values
+ */
+function isRowNonEmpty(row: TimesheetRow): boolean {
+  return !!(
+    row.date ||
+    row.timeIn ||
+    row.timeOut ||
+    row.project ||
+    row.taskDescription ||
+    row.tool ||
+    row.chargeCode
+  );
+}
+
+/**
+ * Save timesheet rows to localStorage as a backup
+ * Filters out completely empty rows before saving
+ */
+export function saveLocalBackup(data: TimesheetRow[]): void {
+  try {
+    const nonEmptyRows = data.filter(isRowNonEmpty);
+    const backup = {
+      data: nonEmptyRows,
+      timestamp: new Date().toISOString()
+    };
+    localStorage.setItem(LOCAL_BACKUP_KEY, JSON.stringify(backup));
+  } catch (error) {
+    // Silently handle errors (e.g., QuotaExceededError)
+    // Don't throw - local backup is a nice-to-have, not critical
+    window.logger?.warn('Could not save local backup', {
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+}
+
 /**
  * Save a single row to the database and return the saved entry
  */
@@ -12,39 +50,51 @@ export async function saveRowToDatabase(
   }
   
   try {
-    // Validate row has required fields before saving
-    if (!row.date || !row.timeIn || !row.timeOut || !row.project || !row.taskDescription) {
-      window.logger?.debug('Skipping save - row incomplete', { 
-        hasDate: !!row.date,
-        hasTimeIn: !!row.timeIn,
-        hasTimeOut: !!row.timeOut,
-        hasProject: !!row.project,
-        hasTaskDescription: !!row.taskDescription
-      });
-      return { success: false, error: 'Row is incomplete' };
-    }
+    // Allow partial row saves - no validation check for required fields
+    // Backend will handle validation and return appropriate errors
+    window.logger?.debug('Saving row (partial data allowed)', { 
+      hasDate: !!row.date,
+      hasTimeIn: !!row.timeIn,
+      hasTimeOut: !!row.timeOut,
+      hasProject: !!row.project,
+      hasTaskDescription: !!row.taskDescription
+    });
     
+    // Build draft data with only the fields that are present
     const draftData: {
       id?: number;
-      date: string;
-      timeIn: string;
-      timeOut: string;
-      project: string;
+      date?: string;
+      timeIn?: string;
+      timeOut?: string;
+      project?: string;
       tool?: string | null;
       chargeCode?: string | null;
-      taskDescription: string;
-    } = {
-      date: row.date,
-      timeIn: row.timeIn,
-      timeOut: row.timeOut,
-      project: row.project,
-      tool: row.tool ?? null,
-      chargeCode: row.chargeCode ?? null,
-      taskDescription: row.taskDescription
-    };
+      taskDescription?: string;
+    } = {};
     
     if (row.id !== undefined) {
       draftData.id = row.id;
+    }
+    if (row.date) {
+      draftData.date = row.date;
+    }
+    if (row.timeIn) {
+      draftData.timeIn = row.timeIn;
+    }
+    if (row.timeOut) {
+      draftData.timeOut = row.timeOut;
+    }
+    if (row.project) {
+      draftData.project = row.project;
+    }
+    if (row.tool !== undefined) {
+      draftData.tool = row.tool ?? null;
+    }
+    if (row.chargeCode !== undefined) {
+      draftData.chargeCode = row.chargeCode ?? null;
+    }
+    if (row.taskDescription) {
+      draftData.taskDescription = row.taskDescription;
     }
     
     const result = await window.timesheet.saveDraft(draftData);

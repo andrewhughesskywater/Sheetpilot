@@ -69,9 +69,9 @@ describe('Backend Timesheet Validation Logic', () => {
 
     it('should handle year boundaries correctly', () => {
       expect(isValidDate('01/01/1900')).toBe(true);  // Min year
-      expect(isValidDate('12/31/2100')).toBe(true);  // Max year
+      expect(isValidDate('12/31/2500')).toBe(true);  // Max year
       expect(isValidDate('12/31/1899')).toBe(false); // Below min
-      expect(isValidDate('01/01/2101')).toBe(false); // Above max
+      expect(isValidDate('01/01/2501')).toBe(false); // Above max
     });
 
     it('should handle leap years correctly', () => {
@@ -115,7 +115,9 @@ describe('Backend Timesheet Validation Logic', () => {
     });
 
     it('should handle non-string inputs', () => {
-      expect(formatTimeInput(900)).toBe('900');
+      // Numbers are converted to strings and formatted
+      expect(formatTimeInput(900)).toBe('09:00');
+      // Non-numeric types are stringified without formatting
       expect(formatTimeInput(true)).toBe('true');
       expect(formatTimeInput({})).toBe('[object Object]');
     });

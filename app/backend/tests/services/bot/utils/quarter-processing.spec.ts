@@ -72,7 +72,13 @@ describe('quarter-processing', () => {
         new Map([['Q1-2025', entries]])
       );
 
-      const config = createConfig();
+      const config = createConfig({
+        runBot: vi.fn().mockResolvedValue({
+          ok: true,
+          submitted: [0, 1], // Both entries submitted
+          errors: []
+        })
+      });
       const result = await processEntriesByQuarter(entries, config);
 
       expect(result.ok).toBe(true);
@@ -141,6 +147,10 @@ describe('quarter-processing', () => {
       process.env.MOCK_WEBSITE_URL = 'http://localhost:3000';
       process.env.MOCK_FORM_ID = 'mock-form-id';
 
+      vi.mocked(groupEntriesByQuarter).mockReturnValue(
+        new Map([['Q1-2025', entries]])
+      );
+
       const config = createConfig({ useMockWebsite: true });
       await processEntriesByQuarter(entries, config);
 
@@ -163,6 +173,10 @@ describe('quarter-processing', () => {
       const entries = [createEntry(1, '2025-01-15')];
       const abortSignal = new AbortController().signal;
 
+      vi.mocked(groupEntriesByQuarter).mockReturnValue(
+        new Map([['Q1-2025', entries]])
+      );
+
       const config = createConfig({ abortSignal });
       await processEntriesByQuarter(entries, config);
 
@@ -172,6 +186,10 @@ describe('quarter-processing', () => {
     it('should throw error when aborted during processing', async () => {
       const entries = [createEntry(1, '2025-01-15')];
       const abortSignal = new AbortController().signal;
+
+      vi.mocked(groupEntriesByQuarter).mockReturnValue(
+        new Map([['Q1-2025', entries]])
+      );
 
       vi.mocked(checkAborted).mockImplementation(() => {
         throw new Error('Submission was cancelled');
@@ -193,6 +211,10 @@ describe('quarter-processing', () => {
         createEntry(3, '2025-01-17')
       ];
 
+      vi.mocked(groupEntriesByQuarter).mockReturnValue(
+        new Map([['Q1-2025', entries]])
+      );
+
       const config = createConfig({
         runBot: vi.fn().mockResolvedValue({
           ok: true,
@@ -212,6 +234,10 @@ describe('quarter-processing', () => {
     it('should filter out invalid bot indices', async () => {
       const entries = [createEntry(1, '2025-01-15')];
 
+      vi.mocked(groupEntriesByQuarter).mockReturnValue(
+        new Map([['Q1-2025', entries]])
+      );
+
       const config = createConfig({
         runBot: vi.fn().mockResolvedValue({
           ok: true,
@@ -227,6 +253,10 @@ describe('quarter-processing', () => {
 
     it('should handle bot errors', async () => {
       const entries = [createEntry(1, '2025-01-15')];
+
+      vi.mocked(groupEntriesByQuarter).mockReturnValue(
+        new Map([['Q1-2025', entries]])
+      );
 
       const config = createConfig({
         runBot: vi.fn().mockResolvedValue({
@@ -250,6 +280,10 @@ describe('quarter-processing', () => {
     it('should call progress callback when provided', async () => {
       const entries = [createEntry(1, '2025-01-15')];
       const progressCallback = vi.fn();
+
+      vi.mocked(groupEntriesByQuarter).mockReturnValue(
+        new Map([['Q1-2025', entries]])
+      );
 
       const config = createConfig({
         progressCallback,
@@ -280,7 +314,17 @@ describe('quarter-processing', () => {
         createEntry(2, '2025-01-16')
       ];
 
-      const config = createConfig();
+      vi.mocked(groupEntriesByQuarter).mockReturnValue(
+        new Map([['Q1-2025', entries]])
+      );
+
+      const config = createConfig({
+        runBot: vi.fn().mockResolvedValue({
+          ok: true,
+          submitted: [0, 1], // Both entries submitted
+          errors: []
+        })
+      });
       const result = await processEntriesByQuarter(entries, config);
 
       // Entry without ID should not be included in submittedIds

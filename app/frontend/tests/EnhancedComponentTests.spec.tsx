@@ -34,22 +34,6 @@ const mockDatabase = {
   clearDatabase: vi.fn()
 };
 
-// Mock window APIs
-Object.defineProperty(window, 'timesheet', {
-  value: mockTimesheet,
-  writable: true
-});
-
-Object.defineProperty(window, 'credentials', {
-  value: mockCredentials,
-  writable: true
-});
-
-Object.defineProperty(window, 'database', {
-  value: mockDatabase,
-  writable: true
-});
-
 // Mock Handsontable components
 vi.mock('handsontable/dist/handsontable.full.min.css', () => ({}));
 vi.mock('handsontable/registry', () => ({
@@ -88,6 +72,25 @@ import { HotTable } from '@handsontable/react-wrapper';
 describe('Enhanced Component Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    
+    // Mock window APIs
+    Object.defineProperty(window, 'timesheet', {
+      value: mockTimesheet,
+      writable: true,
+      configurable: true
+    });
+
+    Object.defineProperty(window, 'credentials', {
+      value: mockCredentials,
+      writable: true,
+      configurable: true
+    });
+
+    Object.defineProperty(window, 'database', {
+      value: mockDatabase,
+      writable: true,
+      configurable: true
+    });
   });
 
   afterEach(() => {

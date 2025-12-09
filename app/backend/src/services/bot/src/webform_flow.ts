@@ -790,7 +790,7 @@ export class WebformFiller {
         throw new Error('No submit button found');
       }
       
-      // Submit the form
+      // Click the submit button
       botLogger.verbose('Clicking submit button');
       await submitButton.click();
       botLogger.info('Form submit button clicked');

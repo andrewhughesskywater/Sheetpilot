@@ -141,23 +141,10 @@
   box-shadow: var(--md-sys-elevation-level1);
 }
 
-/* Minimal Handsontable styling - let the theme drive appearance */
+/* Minimal Handsontable styling - let the native theme drive appearance */
 .grid-container .handsontable {
   width: 100%;
   max-width: 100%;
-}
-
-/* Use Handsontable CSS variables for theme customization */
-.handsontable {
-  --ht-header-background-color: var(--md-sys-color-surface-container);
-  --ht-header-foreground-color: var(--md-sys-color-on-surface-variant);
-  --ht-header-font-weight: var(--md-sys-typescale-label-large-weight);
-  --ht-header-border-color: var(--md-sys-color-outline-variant);
-  --ht-cell-background-color: var(--md-sys-color-surface);
-  --ht-cell-foreground-color: var(--md-sys-color-on-surface);
-  --ht-cell-border-color: var(--md-sys-color-outline-variant);
-  --ht-row-cell-odd-background-color: var(--md-sys-color-surface-container-low);
-  --ht-row-cell-even-background-color: var(--md-sys-color-surface);
 }
 
 /* Error message styling */

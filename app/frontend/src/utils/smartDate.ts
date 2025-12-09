@@ -92,7 +92,7 @@ export function isDateInAllowedRange(dateStr: string): boolean {
 
 /**
  * Parse a date string in MM/DD/YYYY format to a Date object
- * Returns null if invalid format
+ * Returns null if invalid format or invalid date values
  */
 export function parseDateString(dateStr: string): Date | null {
   if (!dateStr) return null;
@@ -106,8 +106,21 @@ export function parseDateString(dateStr: string): Date | null {
   
   if (isNaN(month) || isNaN(day) || isNaN(year)) return null;
   
+  // Validate month range (1-12)
+  if (month < 1 || month > 12) return null;
+  
+  // Validate day range (1-31)
+  if (day < 1 || day > 31) return null;
+  
   // Month is 0-indexed in Date constructor
-  return new Date(year, month - 1, day);
+  const date = new Date(year, month - 1, day);
+  
+  // Validate that the date components didn't overflow (e.g., Feb 30 becomes Mar 2)
+  if (date.getMonth() !== month - 1 || date.getDate() !== day || date.getFullYear() !== year) {
+    return null;
+  }
+  
+  return date;
 }
 
 /**

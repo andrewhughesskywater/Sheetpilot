@@ -12,6 +12,7 @@ import { ipcMain } from 'electron';
 import { ipcLogger, appLogger } from '../../../shared/logger';
 import { 
   storeCredentials,
+  getCredentials,
   createSession, 
   validateSession, 
   clearSession, 
@@ -71,11 +72,35 @@ export function registerAuthHandlers(): void {
         isAdmin = true;
         ipcLogger.info('Admin login successful', { email: validatedData.email });
       } else {
-        // For regular users, store credentials (service: 'smartsheet')
-        ipcLogger.verbose('Storing user credentials', { email: validatedData.email });
-        const storeResult = storeCredentials('smartsheet', validatedData.email, validatedData.password);
-        if (!storeResult.success) {
-          return { success: false, error: storeResult.message };
+        // For regular users, check if credentials already exist
+        const existingCredentials = getCredentials('smartsheet');
+        
+        if (existingCredentials) {
+          // Returning user - verify password matches stored credentials
+          if (existingCredentials.email !== validatedData.email) {
+            ipcLogger.warn('Login email mismatch', { 
+              providedEmail: validatedData.email,
+              storedEmail: existingCredentials.email 
+            });
+            return { 
+              success: false, 
+              error: `Credentials are stored for ${existingCredentials.email}. Use that email or clear credentials in Settings.` 
+            };
+          }
+          
+          if (existingCredentials.password !== validatedData.password) {
+            ipcLogger.warn('Login password mismatch', { email: validatedData.email });
+            return { success: false, error: 'Incorrect password. Please try again.' };
+          }
+          
+          ipcLogger.verbose('Password verified for returning user', { email: validatedData.email });
+        } else {
+          // New user - store credentials
+          ipcLogger.verbose('Storing credentials for new user', { email: validatedData.email });
+          const storeResult = storeCredentials('smartsheet', validatedData.email, validatedData.password);
+          if (!storeResult.success) {
+            return { success: false, error: storeResult.message };
+          }
         }
       }
 

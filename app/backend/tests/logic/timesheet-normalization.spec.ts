@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { normalizeRowData, normalizeTrailingBlank, type TimesheetRow } from '../../src/logic/timesheet-normalization';
-import { projectNeedsTools, toolNeedsChargeCode } from '../../src/logic/dropdown-logic';
+import { projectNeedsTools as _projectNeedsTools, toolNeedsChargeCode as _toolNeedsChargeCode } from '../../src/logic/dropdown-logic';
 
 // Mock dropdown-logic
 vi.mock('../../src/logic/dropdown-logic', () => ({
@@ -40,7 +40,8 @@ describe('timesheet-normalization', () => {
       const normalized = normalizeRowData(row);
 
       expect(normalized.tool).toBe('SomeTool');
-      expect(normalized.chargeCode).toBe('SomeCode');
+      // chargeCode is cleared because 'SomeTool' doesn't need a charge code per the mock
+      expect(normalized.chargeCode).toBeNull();
     });
 
     it('should clear chargeCode when tool does not need charge code', () => {

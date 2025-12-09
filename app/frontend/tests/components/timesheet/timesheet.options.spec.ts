@@ -17,7 +17,7 @@ import {
   getToolsForProject as getToolOptions,
   doesProjectNeedTools as projectNeedsTools,
   doesToolNeedChargeCode as toolNeedsChargeCode
-} from '../../../src/config/business-config';
+} from '@sheetpilot/shared/business-config';
 
 // Convert arrays to Sets for backward compatibility with tests
 const projectsWithoutTools = new Set(PROJECTS_WITHOUT_TOOLS);
@@ -94,7 +94,8 @@ describe('Timesheet Options Module', () => {
     });
 
     it('should handle invalid project', () => {
-      expect(projectNeedsTools('InvalidProject')).toBe(false);
+      // Invalid projects are assumed to need tools (returns true) but have no tool options
+      expect(projectNeedsTools('InvalidProject')).toBe(true);
       expect(getToolOptions('InvalidProject')).toEqual([]);
     });
   });
@@ -155,12 +156,15 @@ describe('Timesheet Options Module', () => {
 
   describe('Edge Cases', () => {
     it('should handle whitespace in project names', () => {
-      expect(projectNeedsTools('  FL-Carver Techs  ')).toBe(false); // Exact match required
+      // Whitespace doesn't match exact project name, so it's treated as unknown project needing tools
+      expect(projectNeedsTools('  FL-Carver Techs  ')).toBe(true);
     });
 
     it('should handle case sensitivity', () => {
-      expect(projectNeedsTools('pto/rto')).toBe(false); // Case sensitive
-      expect(projectNeedsTools('PTO/RTO')).toBe(false); // Correct case
+      // Lowercase doesn't match PTO/RTO exactly, so it's treated as unknown project needing tools
+      expect(projectNeedsTools('pto/rto')).toBe(true);
+      // PTO/RTO is in PROJECTS_WITHOUT_TOOLS, so it does NOT need tools
+      expect(projectNeedsTools('PTO/RTO')).toBe(false);
     });
 
     it('should handle special characters in project names', () => {

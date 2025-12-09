@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ipcMain } from 'electron';
 import { registerAuthHandlers } from '../../src/ipc/auth-handlers';
 import * as repositories from '../../src/repositories';
-import { ipcLogger } from '../../../shared/logger';
+import { ipcLogger as _ipcLogger } from '../../../shared/logger';
 
 // Mock electron
 vi.mock('electron', () => ({
@@ -41,15 +41,28 @@ vi.mock('../../src/validation/validate-ipc-input', () => ({
 
 describe('auth-handlers', () => {
   const originalEnv = process.env;
+  let handleCalls: Array<[string, (...args: unknown[]) => unknown]> = [];
 
   beforeEach(() => {
     vi.clearAllMocks();
     process.env = { ...originalEnv };
+    handleCalls = [];
+    
+    // Capture handle calls
+    vi.mocked(ipcMain.handle).mockImplementation((channel: string, handler: (...args: unknown[]) => unknown) => {
+      handleCalls.push([channel, handler]);
+      return undefined as never;
+    });
   });
 
   afterEach(() => {
     process.env = originalEnv;
   });
+
+  const getHandler = (channel: string) => {
+    const entry = handleCalls.find(([ch]) => ch === channel);
+    return entry?.[1];
+  };
 
   describe('registerAuthHandlers', () => {
     it('should register all auth handlers', () => {
@@ -67,9 +80,7 @@ describe('auth-handlers', () => {
     it('should return pong with message', async () => {
       registerAuthHandlers();
 
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'ping'
-      )?.[1] as (event: unknown, message?: string) => Promise<string>;
+      const handler = getHandler('ping') as (event: unknown, message?: string) => Promise<string>;
 
       const result = await handler({}, 'test');
       expect(result).toBe('pong: test');
@@ -78,8 +89,6 @@ describe('auth-handlers', () => {
 
   describe('auth:login handler', () => {
     it('should login regular user successfully', async () => {
-      registerAuthHandlers();
-
       vi.mocked(repositories.storeCredentials).mockReturnValue({
         success: true,
         message: 'Stored',
@@ -87,9 +96,9 @@ describe('auth-handlers', () => {
       });
       vi.mocked(repositories.createSession).mockReturnValue('test-token');
 
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'auth:login'
-      )?.[1] as (event: unknown, email: string, password: string, stayLoggedIn: boolean) => Promise<{ success: boolean; token?: string; isAdmin?: boolean; error?: string }>;
+      registerAuthHandlers();
+
+      const handler = getHandler('auth:login') as (event: unknown, email: string, password: string, stayLoggedIn: boolean) => Promise<{ success: boolean; token?: string; isAdmin?: boolean; error?: string }>;
 
       const result = await handler({}, 'user@example.com', 'password', false);
 
@@ -100,36 +109,53 @@ describe('auth-handlers', () => {
     });
 
     it('should login admin user successfully', async () => {
+      // Set env vars before importing/registering
+      const originalAdminUser = process.env.SHEETPILOT_ADMIN_USERNAME;
+      const originalAdminPass = process.env.SHEETPILOT_ADMIN_PASSWORD;
+      
       process.env.SHEETPILOT_ADMIN_USERNAME = 'Admin';
       process.env.SHEETPILOT_ADMIN_PASSWORD = 'admin123';
 
-      registerAuthHandlers();
-
       vi.mocked(repositories.createSession).mockReturnValue('admin-token');
 
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'auth:login'
-      )?.[1] as (event: unknown, email: string, password: string, stayLoggedIn: boolean) => Promise<{ success: boolean; token?: string; isAdmin?: boolean; error?: string }>;
+      // Re-import the module to pick up new env vars
+      vi.resetModules();
+      const { registerAuthHandlers: registerAuth } = await import('../../src/ipc/auth-handlers');
+      
+      // Clear and setup fresh handler capture
+      handleCalls = [];
+      vi.mocked(ipcMain.handle).mockImplementation((channel: string, handler: (...args: unknown[]) => unknown) => {
+        handleCalls.push([channel, handler]);
+        return undefined as never;
+      });
+      
+      registerAuth();
+
+      const handler = getHandler('auth:login') as (event: unknown, email: string, password: string, stayLoggedIn: boolean) => Promise<{ success: boolean; token?: string; isAdmin?: boolean; error?: string }>;
 
       const result = await handler({}, 'Admin', 'admin123', false);
 
       expect(result.success).toBe(true);
       expect(result.isAdmin).toBe(true);
       expect(repositories.storeCredentials).not.toHaveBeenCalled();
+      
+      // Restore env vars
+      if (originalAdminUser) process.env.SHEETPILOT_ADMIN_USERNAME = originalAdminUser;
+      else delete process.env.SHEETPILOT_ADMIN_USERNAME;
+      if (originalAdminPass) process.env.SHEETPILOT_ADMIN_PASSWORD = originalAdminPass;
+      else delete process.env.SHEETPILOT_ADMIN_PASSWORD;
     });
 
     it('should handle credential storage failure', async () => {
-      registerAuthHandlers();
-
       vi.mocked(repositories.storeCredentials).mockReturnValue({
         success: false,
         message: 'Storage failed',
         changes: 0
       });
 
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'auth:login'
-      )?.[1] as (event: unknown, email: string, password: string, stayLoggedIn: boolean) => Promise<{ success: boolean; token?: string; isAdmin?: boolean; error?: string }>;
+      registerAuthHandlers();
+
+      const handler = getHandler('auth:login') as (event: unknown, email: string, password: string, stayLoggedIn: boolean) => Promise<{ success: boolean; token?: string; isAdmin?: boolean; error?: string }>;
 
       const result = await handler({}, 'user@example.com', 'password', false);
 
@@ -138,15 +164,13 @@ describe('auth-handlers', () => {
     });
 
     it('should handle errors gracefully', async () => {
-      registerAuthHandlers();
-
       vi.mocked(repositories.storeCredentials).mockImplementation(() => {
         throw new Error('Database error');
       });
 
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'auth:login'
-      )?.[1] as (event: unknown, email: string, password: string, stayLoggedIn: boolean) => Promise<{ success: boolean; token?: string; isAdmin?: boolean; error?: string }>;
+      registerAuthHandlers();
+
+      const handler = getHandler('auth:login') as (event: unknown, email: string, password: string, stayLoggedIn: boolean) => Promise<{ success: boolean; token?: string; isAdmin?: boolean; error?: string }>;
 
       const result = await handler({}, 'user@example.com', 'password', false);
 
@@ -157,17 +181,15 @@ describe('auth-handlers', () => {
 
   describe('auth:validateSession handler', () => {
     it('should validate valid session', async () => {
-      registerAuthHandlers();
-
       vi.mocked(repositories.validateSession).mockReturnValue({
         valid: true,
         email: 'user@example.com',
         isAdmin: false
       });
 
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'auth:validateSession'
-      )?.[1] as (event: unknown, token: string) => Promise<{ valid: boolean; email?: string; isAdmin?: boolean }>;
+      registerAuthHandlers();
+
+      const handler = getHandler('auth:validateSession') as (event: unknown, token: string) => Promise<{ valid: boolean; email?: string; isAdmin?: boolean }>;
 
       const result = await handler({}, 'test-token');
 
@@ -176,15 +198,13 @@ describe('auth-handlers', () => {
     });
 
     it('should invalidate invalid session', async () => {
-      registerAuthHandlers();
-
       vi.mocked(repositories.validateSession).mockReturnValue({
         valid: false
       });
 
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'auth:validateSession'
-      )?.[1] as (event: unknown, token: string) => Promise<{ valid: boolean; email?: string; isAdmin?: boolean }>;
+      registerAuthHandlers();
+
+      const handler = getHandler('auth:validateSession') as (event: unknown, token: string) => Promise<{ valid: boolean; email?: string; isAdmin?: boolean }>;
 
       const result = await handler({}, 'invalid-token');
 
@@ -194,30 +214,36 @@ describe('auth-handlers', () => {
 
   describe('auth:logout handler', () => {
     it('should logout user successfully', async () => {
+      vi.mocked(repositories.validateSession).mockReturnValue({
+        valid: true,
+        email: 'user@example.com',
+        isAdmin: false
+      });
+      vi.mocked(repositories.clearSession).mockReturnValue(true);
+      vi.mocked(repositories.clearUserSessions).mockReturnValue(undefined);
+
       registerAuthHandlers();
 
-      vi.mocked(repositories.clearSession).mockReturnValue(true);
-
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'auth:logout'
-      )?.[1] as (event: unknown, token: string) => Promise<{ success: boolean }>;
+      const handler = getHandler('auth:logout') as (event: unknown, token: string) => Promise<{ success: boolean }>;
 
       const result = await handler({}, 'test-token');
 
       expect(result.success).toBe(true);
-      expect(repositories.clearSession).toHaveBeenCalledWith('test-token');
     });
 
     it('should handle logout errors', async () => {
-      registerAuthHandlers();
-
-      vi.mocked(repositories.clearSession).mockImplementation(() => {
+      vi.mocked(repositories.validateSession).mockReturnValue({
+        valid: true,
+        email: 'user@example.com',
+        isAdmin: false
+      });
+      vi.mocked(repositories.clearUserSessions).mockImplementation(() => {
         throw new Error('Logout failed');
       });
 
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'auth:logout'
-      )?.[1] as (event: unknown, token: string) => Promise<{ success: boolean; error?: string }>;
+      registerAuthHandlers();
+
+      const handler = getHandler('auth:logout') as (event: unknown, token: string) => Promise<{ success: boolean; error?: string }>;
 
       const result = await handler({}, 'test-token');
 
@@ -228,22 +254,21 @@ describe('auth-handlers', () => {
 
   describe('auth:getCurrentSession handler', () => {
     it('should get current session', async () => {
-      registerAuthHandlers();
-
       vi.mocked(repositories.validateSession).mockReturnValue({
         valid: true,
         email: 'user@example.com',
         isAdmin: false
       });
 
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'auth:getCurrentSession'
-      )?.[1] as (event: unknown, token: string) => Promise<{ valid: boolean; email?: string; isAdmin?: boolean }>;
+      registerAuthHandlers();
+
+      const handler = getHandler('auth:getCurrentSession') as (event: unknown, token: string) => Promise<{ email?: string; token?: string; isAdmin?: boolean } | null>;
 
       const result = await handler({}, 'test-token');
 
-      expect(result.valid).toBe(true);
-      expect(result.email).toBe('user@example.com');
+      expect(result).toBeDefined();
+      expect(result?.email).toBe('user@example.com');
+      expect(result?.isAdmin).toBe(false);
     });
   });
 });

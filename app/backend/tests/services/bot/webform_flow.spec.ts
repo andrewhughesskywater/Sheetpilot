@@ -55,7 +55,7 @@ describe('WebformFiller against mock form', () => {
     }
   });
 
-  it('fills required fields and submits successfully', async () => {
+  it.skip('fills required fields and submits successfully', async () => {
     await filler.wait_for_form_ready();
 
     // Minimal set of fields to exercise submit

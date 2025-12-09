@@ -1,15 +1,45 @@
+/**
+ * Timesheet row data structure
+ * 
+ * Represents a single time entry in the editable grid.
+ * All fields are optional to support partial data entry during editing.
+ * 
+ * Data format notes:
+ * - date: MM/DD/YYYY format (validates both MM/DD/YYYY and YYYY-MM-DD, normalizes to MM/DD/YYYY)
+ * - timeIn/timeOut: HH:MM 24-hour format (validates 15-minute increments)
+ * - tool/chargeCode: null when not applicable based on business rules
+ */
 export interface TimesheetRow {
+  /** Database ID (assigned after first save) */
   id?: number;
+  /** Date in MM/DD/YYYY format */
   date?: string;
+  /** Start time in HH:MM format (24-hour, 15-min increments) */
   timeIn?: string;
+  /** End time in HH:MM format (24-hour, 15-min increments) */
   timeOut?: string;
+  /** Project name from PROJECTS config */
   project?: string;
+  /** Tool name (null if project doesn't require tools) */
   tool?: string | null;
+  /** Charge code (null if tool doesn't require charge code) */
   chargeCode?: string | null;
+  /** Task description text (max 120 characters for SmartSheet) */
   taskDescription?: string;
 }
 
-// Helper function to format numeric time input (e.g., 800 -> 08:00, 1430 -> 14:30)
+/**
+ * Format various time input formats to HH:MM
+ * 
+ * Accepts flexible time entry formats for better UX:
+ * - "8" or "08" → "08:00"
+ * - "800" → "08:00"
+ * - "1430" → "14:30"
+ * - "08:30" → "08:30" (already formatted)
+ * 
+ * @param timeStr - Time string in various formats
+ * @returns Formatted time string in HH:MM format
+ */
 export function formatTimeInput(timeStr: unknown): string {
   if (typeof timeStr !== 'string') return String(timeStr || '');
   // Remove any non-numeric characters
@@ -38,19 +68,67 @@ export function formatTimeInput(timeStr: unknown): string {
   return timeStr;
 }
 
+/**
+ * Normalize date to MM/DD/YYYY format
+ * Accepts both MM/DD/YYYY and YYYY-MM-DD formats
+ */
+export function normalizeDateFormat(dateStr?: string): string {
+  const d = dateStr ?? '';
+  if (!d) return '';
+  
+  // Check if already in MM/DD/YYYY format
+  const usFormatRegex = /^\d{1,2}\/\d{1,2}\/\d{4}$/;
+  if (usFormatRegex.test(d)) {
+    return d; // Already in correct format
+  }
+  
+  // Check for YYYY-MM-DD format (ISO format, dash-separated)
+  const isoFormatRegex = /^\d{4}-\d{1,2}-\d{1,2}$/;
+  if (isoFormatRegex.test(d)) {
+    const dateParts = d.split('-');
+    if (dateParts.length !== 3) return d;
+    const [yearStr, monthStr, dayStr] = dateParts;
+    const month = parseInt(monthStr ?? '', 10);
+    const day = parseInt(dayStr ?? '', 10);
+    const year = parseInt(yearStr ?? '', 10);
+    
+    // Convert to MM/DD/YYYY
+    return `${month}/${day}/${year}`;
+  }
+  
+  // Return original if format not recognized
+  return d;
+}
+
 export function isValidDate(dateStr?: string): boolean {
   const d = dateStr ?? '';
   if (!d) return false;
-  // Check format first
-  const dateRegex = /^\d{1,2}\/\d{1,2}\/\d{4}$/;
-  if (!dateRegex.test(d)) return false;
-  // Parse the date components
-  const dateParts = d.split('/');
-  if (dateParts.length !== 3) return false;
-  const [monthStr, dayStr, yearStr] = dateParts;
-  const month = parseInt(monthStr ?? '', 10);
-  const day = parseInt(dayStr ?? '', 10);
-  const year = parseInt(yearStr ?? '', 10);
+  
+  let month: number;
+  let day: number;
+  let year: number;
+  
+  // Check for MM/DD/YYYY or M/D/YYYY format (slash-separated)
+  const usFormatRegex = /^\d{1,2}\/\d{1,2}\/\d{4}$/;
+  if (usFormatRegex.test(d)) {
+    const dateParts = d.split('/');
+    if (dateParts.length !== 3) return false;
+    const [monthStr, dayStr, yearStr] = dateParts;
+    month = parseInt(monthStr ?? '', 10);
+    day = parseInt(dayStr ?? '', 10);
+    year = parseInt(yearStr ?? '', 10);
+  }
+  // Check for YYYY-MM-DD format (ISO format, dash-separated)
+  else {
+    const isoFormatRegex = /^\d{4}-\d{1,2}-\d{1,2}$/;
+    if (!isoFormatRegex.test(d)) return false;
+    const dateParts = d.split('-');
+    if (dateParts.length !== 3) return false;
+    const [yearStr, monthStr, dayStr] = dateParts;
+    month = parseInt(monthStr ?? '', 10);
+    day = parseInt(dayStr ?? '', 10);
+    year = parseInt(yearStr ?? '', 10);
+  }
   
   // Basic range checks
   if (month < 1 || month > 12) return false;

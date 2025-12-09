@@ -8,6 +8,9 @@
   align-items: center;
   justify-content: center;
   z-index: 1300;
+  /* Ensure the container can receive focus and pointer events */
+  pointer-events: auto;
+  background-color: rgba(0, 0, 0, 0.5);
 }
 
 .login-dialog-paper {

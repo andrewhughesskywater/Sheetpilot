@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // Mock window object
 const createMockWindow = () => ({
@@ -29,9 +29,8 @@ describe('api-fallback', () => {
   });
 
   it('should be importable', async () => {
-    expect(() => {
-      require('../../src/utils/api-fallback');
-    }).not.toThrow();
+    // Use dynamic import for ESM compatibility
+    await expect(import('../../src/utils/api-fallback')).resolves.toBeDefined();
   });
 
   it('should initialize API fallbacks when window APIs are missing', async () => {
