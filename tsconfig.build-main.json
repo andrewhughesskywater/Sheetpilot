@@ -26,6 +26,7 @@
   ],
   "exclude": [
     "app/backend/tests/**/*",
+    "app/shared/tests/**/*",
     "app/backend/src/services/bot/**/*",
     "node_modules",
     "build",

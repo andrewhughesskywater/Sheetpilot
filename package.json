@@ -145,6 +145,14 @@
       "createDesktopShortcut": "always",
       "shortcutName": "Sheetpilot"
     },
+    "linux": {
+      "category": "Utility",
+      "icon": "build/icon-256.png",
+      "target": [
+        "AppImage",
+        "snap"
+      ]
+    },
     "mac": {
       "category": "public.app-category.productivity",
       "hardenedRuntime": true,
