@@ -1,6 +1,6 @@
 {
   "name": "sheetpilot",
-  "version": "1.5.1",
+  "version": "1.5.3",
   "private": true,
   "description": "Business timesheet management and reporting tool",
   "author": "Andrew Hughes",
@@ -28,8 +28,9 @@
     "build:renderer": "npm run -w @sheetpilot/frontend build",
     "build:renderer:analyze": "npm run -w @sheetpilot/frontend build:analyze",
     "build:bot": "cd app/backend/src/services/bot && npm run build",
-    "build": "npm run build:bot && npm run build:main && npm run build:renderer && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder",
-    "build:dir": "npm run build:bot && npm run build:main && npm run build:renderer && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --dir",
+    "install:browsers": "cross-env PLAYWRIGHT_BROWSERS_PATH=node_modules/.playwright npx playwright install chromium",
+    "build": "npm run build:bot && npm run install:browsers && npm run build:main && npm run build:renderer && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder",
+    "build:dir": "npm run build:bot && npm run install:browsers && npm run build:main && npm run build:renderer && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --dir",
     "type-check": "npm run type-check:root && npm run type-check:backend && npm run type-check:frontend",
     "type-check:root": "tsc --noEmit --project tsconfig.typecheck.json",
     "type-check:backend": "npm run -w @sheetpilot/backend typecheck",
@@ -91,7 +92,6 @@
   },
     "build": {
     "appId": "com.sheetpilot.app",
-    "afterPack": "scripts/after-pack.js",
     "electronLanguages": [
       "en-US"
     ],
@@ -110,28 +110,19 @@
       "app/frontend/dist/**/*",
       "package.json",
       "plugin-config.json",
-      "scripts/fix-shortcut-icon.ps1",
-      {
-        "from": "node_modules",
-        "to": "node_modules",
-        "filter": [
-          "better-sqlite3/package.json",
-          "better-sqlite3/lib/**/*",
-          "better-sqlite3/build/Release/*.node",
-          "playwright/**/*",
-          "playwright-core/**/*",
-          "@playwright/**/*"
-        ]
-      }
+      "scripts/fix-shortcut-icon.ps1"
     ],
     "asar": true,
     "asarUnpack": [
-      "**/node_modules/better-sqlite3/**/*",
-      "**/node_modules/playwright/**/*",
-      "**/node_modules/playwright-core/**/*",
-      "**/node_modules/@playwright/**/*"
+      "**/node_modules/better-sqlite3/**/*"
     ],
-    "compression": "maximum",
+    "extraResources": [
+      {
+        "from": "node_modules/.playwright",
+        "to": "build/playwright-browsers",
+        "filter": ["**/*"]
+      }
+    ],
     "extraMetadata": {
       "main": "build/dist/backend/src/main.js"
     },
