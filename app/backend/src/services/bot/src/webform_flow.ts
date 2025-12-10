@@ -113,6 +113,7 @@ export class WebformFiller {
 
   /**
    * Gets the path to the bundled Chromium executable
+   * Also sets PLAYWRIGHT_BROWSERS_PATH environment variable so Playwright can find browsers
    * @private
    * @returns Path to the Chromium executable or undefined if not found
    */
@@ -124,9 +125,9 @@ export class WebformFiller {
     }
 
     try {
-      // In packaged app, browsers are bundled in resources/app.asar.unpacked/build/playwright-browsers/
+      // In packaged app, browsers are bundled in resources/build/playwright-browsers/ (via extraResources)
       const resourcesPath = process.resourcesPath;
-      const browsersBasePath = path.join(resourcesPath, 'app.asar.unpacked', 'build', 'playwright-browsers');
+      const browsersBasePath = path.join(resourcesPath, 'build', 'playwright-browsers');
       
       botLogger.verbose('Searching for bundled browsers', { browsersBasePath });
 
@@ -140,9 +141,14 @@ export class WebformFiller {
       const chromiumDir = entries.find(entry => entry.startsWith('chromium-'));
 
       if (!chromiumDir) {
-        botLogger.warn('Chromium directory not found in bundled browsers', { browsersBasePath });
+        botLogger.warn('Chromium directory not found in bundled browsers', { 
+          browsersBasePath, 
+          foundEntries: entries 
+        });
         return undefined;
       }
+
+      botLogger.verbose('Found Chromium directory', { chromiumDir });
 
       // Construct path to executable based on platform
       let executablePath: string;
@@ -155,10 +161,15 @@ export class WebformFiller {
       }
 
       if (fs.existsSync(executablePath)) {
+        // Only set PLAYWRIGHT_BROWSERS_PATH after verifying the executable exists
+        // This is the directory containing the chromium-* folders, not the executable itself
+        process.env.PLAYWRIGHT_BROWSERS_PATH = browsersBasePath;
+        botLogger.verbose('Set PLAYWRIGHT_BROWSERS_PATH', { browsersBasePath });
         botLogger.info('Found bundled Chromium browser', { executablePath });
         return executablePath;
       } else {
         botLogger.warn('Bundled Chromium executable not found', { executablePath });
+        // Don't set PLAYWRIGHT_BROWSERS_PATH if executable doesn't exist - let Playwright use default behavior
         return undefined;
       }
     } catch (error) {
