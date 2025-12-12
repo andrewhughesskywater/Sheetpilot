@@ -6,7 +6,7 @@
  * waits for form readiness, injects field values, and submits forms.
  */
 
-import { chromium, Browser, BrowserContext, Page, Locator } from 'playwright';
+import { chromium, Browser, BrowserContext, Page } from 'playwright';
 import * as cfg from '../config/automation_config';
 import { botLogger } from '../../../../../../shared/logger';
 
@@ -119,6 +119,18 @@ export class WebformFiller {
   require_page(): Page {
     if (!this.page) throw new BotNotStartedError('Page not available');
     return this.page;
+  }
+
+  /**
+   * Gets the Playwright Page for a specific context index.
+   * Some collaborators (e.g., login manager) can operate on non-default contexts.
+   */
+  getPage(index: number): Page {
+    const page = this.pages[index];
+    if (!page) {
+      throw new BotNotStartedError(`Page not available for context index ${index}`);
+    }
+    return page;
   }
 
   async close(): Promise<void> {

@@ -9,7 +9,7 @@
  * @since 2025
  */
 
-import { botLogger } from '../../../../../shared/logger';
+import { botLogger } from '@sheetpilot/shared/logger';
 
 // ============================================================================
 // TYPE DEFINITIONS
