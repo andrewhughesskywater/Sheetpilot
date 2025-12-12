@@ -20,7 +20,6 @@ import {
   projectNameSchema,
   taskDescriptionSchema,
   storeCredentialsSchema,
-  getCredentialsSchema,
   deleteCredentialsSchema,
   loginSchema,
   validateSessionSchema,
@@ -313,17 +312,6 @@ describe('IPC Schemas Validation', () => {
         };
         
         expect(() => storeCredentialsSchema.parse(invalid)).toThrow();
-      });
-    });
-
-    describe('getCredentialsSchema', () => {
-      it('should accept valid service name', () => {
-        expect(() => getCredentialsSchema.parse({ service: 'smartsheet' })).not.toThrow();
-      });
-
-      it('should reject invalid service names', () => {
-        expect(() => getCredentialsSchema.parse({ service: '' })).toThrow();
-        expect(() => getCredentialsSchema.parse({ service: 'invalid name!' })).toThrow();
       });
     });
 

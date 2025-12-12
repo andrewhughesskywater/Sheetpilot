@@ -78,7 +78,7 @@ vi.mock('electron-updater', () => ({
 }));
 
 // Mock the database module
-vi.mock('../../../app/backend/src/services/database', () => ({
+vi.mock('../../../app/backend/src/repositories', () => ({
   ensureSchema: vi.fn(),
   getDb: vi.fn(() => ({
     prepare: vi.fn(() => ({
@@ -303,7 +303,7 @@ describe('Submission Progress Integration Test', () => {
 
   it('should handle submission with no pending entries', async () => {
     // Mock getPendingTimesheetEntries to return empty array
-    const { getPendingTimesheetEntries } = await import('../../../app/backend/src/services/database');
+    const { getPendingTimesheetEntries } = await import('../../../app/backend/src/repositories');
     vi.mocked(getPendingTimesheetEntries).mockReturnValueOnce([]);
 
     // Import and register handlers

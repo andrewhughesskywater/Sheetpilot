@@ -43,13 +43,15 @@ vi.mock('electron', () => {
   if (!globalThis.__test_handlers) {
     globalThis.__test_handlers = {};
   }
+
+  const MAIN_WEB_CONTENTS_ID = 1;
   
   const ipcMain = {
     handle: vi.fn((channel: string, fn: (...args: unknown[]) => unknown) => {
       // Wrap handler to skip the event parameter when called from tests
       (globalThis.__test_handlers as Record<string, (...args: unknown[]) => unknown>)[channel] = async (...args: unknown[]) => {
-        // Call the actual handler with null event and the provided args
-        return fn(null, ...args);
+        // Call the actual handler with a mocked event/sender and the provided args
+        return fn({ sender: { id: MAIN_WEB_CONTENTS_ID } }, ...args);
       };
       return undefined;
     }),
@@ -93,6 +95,7 @@ vi.mock('electron', () => {
     shell,
     BrowserWindow: vi.fn().mockImplementation(() => ({
       webContents: {
+        id: MAIN_WEB_CONTENTS_ID,
         on: vi.fn(),
         once: vi.fn(),
         send: vi.fn(),
@@ -112,7 +115,7 @@ vi.mock('electron', () => {
 
 // Create mockDb in module scope so we can access it
 const createMockDb = () => ({
-  prepare: vi.fn(() => ({ all: vi.fn(() => []), run: vi.fn(() => ({ changes: 1 })), get: vi.fn(() => ({})) })),
+  prepare: vi.fn((_sql?: string) => ({ all: vi.fn(() => []), run: vi.fn(() => ({ changes: 1 })), get: vi.fn(() => ({})) })),
   exec: vi.fn(),
   close: vi.fn(),
   transaction: vi.fn((callback) => {
@@ -124,13 +127,48 @@ const createMockDb = () => ({
 // Store reference to the mock DB that will be returned by openDb
 let mockDbInstance = createMockDb();
 
-// Mock database module
-vi.mock('../src/services/database', () => {
+// Mock repositories module (single source of truth)
+vi.mock('../src/repositories', () => {
+  const resetInProgressTimesheetEntries = vi.fn(() => {
+    const db = mockDbInstance;
+    const resetStatus = db.prepare(`UPDATE timesheet SET status = NULL WHERE status = 'in_progress'`);
+    const result = resetStatus.run();
+    return result.changes;
+  });
+
   return {
+    // Connection management
     setDbPath: vi.fn(),
     ensureSchema: vi.fn(),
     getDbPath: vi.fn(() => 'C:/tmp/sheetpilot.sqlite'),
     getDb: vi.fn(() => mockDbInstance),
+    openDb: vi.fn(() => mockDbInstance),
+    closeConnection: vi.fn(),
+    shutdownDatabase: vi.fn(),
+    rebuildDatabase: vi.fn(),
+
+    // Timesheet operations
+    insertTimesheetEntry: vi.fn(),
+    insertTimesheetEntries: vi.fn(() => ({ success: true, total: 0, inserted: 0, duplicates: 0, errors: 0 })),
+    checkDuplicateEntry: vi.fn(() => false),
+    getDuplicateEntries: vi.fn(() => []),
+    getPendingTimesheetEntries: vi.fn(() => []),
+    markTimesheetEntriesAsInProgress: vi.fn(),
+    resetTimesheetEntriesStatus: vi.fn(),
+    resetInProgressTimesheetEntries,
+    markTimesheetEntriesAsSubmitted: vi.fn(),
+    removeFailedTimesheetEntries: vi.fn(),
+    getTimesheetEntriesByIds: vi.fn(() => []),
+    getSubmittedTimesheetEntriesForExport: vi.fn(() => []),
+
+    // Credentials operations
+    storeCredentials: vi.fn(),
+    getCredentials: vi.fn(),
+    listCredentials: vi.fn(),
+    deleteCredentials: vi.fn(),
+    clearAllCredentials: vi.fn(),
+
+    // Session operations
     createSession: vi.fn(() => 'mock-session-token'),
     validateSession: vi.fn((token: string) => {
       if (token === 'valid-token' || token === 'mock-session-token') {
@@ -140,66 +178,10 @@ vi.mock('../src/services/database', () => {
     }),
     clearSession: vi.fn(),
     clearUserSessions: vi.fn(),
-    clearAllCredentials: vi.fn(),
-    rebuildDatabase: vi.fn(),
-    storeCredentials: vi.fn(),
-    getCredentials: vi.fn(),
-    listCredentials: vi.fn(),
-    deleteCredentials: vi.fn(),
-    openDb: vi.fn(() => mockDbInstance),
-    getPendingTimesheetEntries: vi.fn(() => []),
-    getSubmittedTimesheetEntriesForExport: vi.fn(() => []),
-    resetInProgressTimesheetEntries: vi.fn(() => {
-      // Simulate the actual implementation which uses db.prepare()
-      const db = mockDbInstance;
-      const resetStatus = db.prepare(`UPDATE timesheet SET status = NULL WHERE status = 'in_progress'`);
-      const result = resetStatus.run();
-      return result.changes;
-    })
-  };
-});
+    getSessionByEmail: vi.fn(),
 
-// Mock repositories module (which now contains the connection manager)
-// Use async mock factory to import the database mock and delegate to it
-vi.mock('../src/repositories', async () => {
-  const db = await vi.importMock<typeof import('../src/services/database')>('../src/services/database');
-  
-  // Return an object that delegates to the database module mock
-  return {
-    // Connection management - delegate to database module
-    setDbPath: db.setDbPath,
-    getDbPath: db.getDbPath,
-    getDb: db.getDb,
-    openDb: db.openDb,
-    closeConnection: vi.fn(),
-    shutdownDatabase: vi.fn(),
-    ensureSchema: db.ensureSchema,
-    rebuildDatabase: db.rebuildDatabase,
-    
-    // Timesheet operations - delegate to database module
-    insertTimesheetEntry: vi.fn(),
-    getPendingTimesheetEntries: db.getPendingTimesheetEntries,
-    markTimesheetEntriesAsInProgress: vi.fn(),
-    resetTimesheetEntriesStatus: vi.fn(),
-    resetInProgressTimesheetEntries: db.resetInProgressTimesheetEntries,
-    markTimesheetEntriesAsSubmitted: vi.fn(),
-    removeFailedTimesheetEntries: vi.fn(),
-    getTimesheetEntriesByIds: vi.fn(() => []),
-    getSubmittedTimesheetEntriesForExport: db.getSubmittedTimesheetEntriesForExport,
-    
-    // Credentials operations - delegate to database module
-    storeCredentials: db.storeCredentials,
-    getCredentials: db.getCredentials,
-    listCredentials: db.listCredentials,
-    deleteCredentials: db.deleteCredentials,
-    clearAllCredentials: db.clearAllCredentials,
-    
-    // Session operations - delegate to database module
-    createSession: db.createSession,
-    validateSession: db.validateSession,
-    clearSession: db.clearSession,
-    clearUserSessions: db.clearUserSessions,
-    getSessionByEmail: vi.fn()
+    // Migrations (used by bootstrap-database)
+    runMigrations: vi.fn(() => ({ success: true, migrationsRun: 0, fromVersion: 0, toVersion: 0 }))
   };
 });
 
@@ -241,11 +223,11 @@ vi.mock('../../shared/logger', () => {
 
 // Import after mocks
 import { registerAllIPCHandlers } from '../src/ipc/index';
-import * as db from '../src/services/database';
+import * as repo from '../src/repositories';
 import * as imp from '../src/services/timesheet-importer';
 
 type VMock = ReturnType<typeof vi.fn>;
-const mdb = db as unknown as {
+const mdb = repo as unknown as {
   openDb: VMock;
   getDb: VMock;
   setDbPath: VMock;
@@ -268,9 +250,11 @@ describe('IPC Handlers Comprehensive Tests', () => {
   let testDbPath: string;
   let handlers: Record<string, (...args: unknown[]) => unknown>;
 
-  beforeAll(() => {
-    // Register handlers once for all tests (pass null for mainWindow in tests)
-    registerAllIPCHandlers(null);
+  beforeAll(async () => {
+    // Register handlers once for all tests (provide a mainWindow so sender validation can pass)
+    const electron = await import('electron');
+    const mainWindow = new electron.BrowserWindow();
+    registerAllIPCHandlers(mainWindow as unknown as import('electron').BrowserWindow);
     handlers = globalThis.__test_handlers!;
   });
 
@@ -353,7 +337,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
         changes: 1
       });
 
-      const result = await handlers['credentials:store']('test-service', 'user@test.com', 'password123');
+      const result = await handlers['credentials:store']('test-service', 'user@test.com', 'password123') as { success: boolean; message: string; changes?: number; error?: string };
       
       expect(result.success).toBe(true);
       expect(result.message).toBe('Credentials stored successfully');
@@ -367,48 +351,17 @@ describe('IPC Handlers Comprehensive Tests', () => {
         changes: 0
       });
 
-      const result = await handlers['credentials:store']('test-service', 'user@test.com', 'password123');
+      const result = await handlers['credentials:store']('test-service', 'user@test.com', 'password123') as { success: boolean; message: string; changes?: number; error?: string };
       
       expect(result.success).toBe(false);
       expect(result.message).toBe('Database error');
     });
 
     it('should handle invalid parameters', async () => {
-      const result = await handlers['credentials:store']('', '', '');
+      const result = await handlers['credentials:store']('', '', '') as { success: boolean; message?: string; changes?: number; error?: string };
       
       expect(result.success).toBe(false);
       expect(result.error).toContain('Invalid input');
-    });
-  });
-
-  describe('credentials:get handler', () => {
-    it('should retrieve credentials successfully', async () => {
-      mdb.getCredentials.mockReturnValue({
-        email: 'user@test.com',
-        password: 'password123'
-      });
-
-      const result = await handlers['credentials:get']('test-service');
-      
-      expect(result.success).toBe(true);
-      expect(result.credentials.email).toBe('user@test.com');
-      expect(mdb.getCredentials).toHaveBeenCalledWith('test-service');
-    });
-
-    it('should handle missing credentials', async () => {
-      mdb.getCredentials.mockReturnValue(null);
-
-      const result = await handlers['credentials:get']('test-service');
-      
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('Credentials not found');
-    });
-
-    it('should handle invalid service parameter', async () => {
-      const result = await handlers['credentials:get']('');
-      
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('Service name is required');
     });
   });
 
@@ -420,7 +373,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
       ];
       mdb.listCredentials.mockReturnValue(mockCredentials);
 
-      const result = await handlers['credentials:list']();
+      const result = await handlers['credentials:list']() as { success: boolean; credentials: Array<{ id: number; service: string; email: string; created_at: string }> };
       
       expect(result.success).toBe(true);
       expect(result.credentials).toEqual(mockCredentials);
@@ -430,7 +383,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
     it('should handle empty credentials list', async () => {
       mdb.listCredentials.mockReturnValue([]);
 
-      const result = await handlers['credentials:list']();
+      const result = await handlers['credentials:list']() as { success: boolean; credentials: unknown[] };
       
       expect(result.success).toBe(true);
       expect(result.credentials).toEqual([]);
@@ -445,7 +398,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
         changes: 1
       });
 
-      const result = await handlers['credentials:delete']('test-service');
+      const result = await handlers['credentials:delete']('test-service') as { success: boolean; message: string; changes?: number };
       
       expect(result.success).toBe(true);
       expect(result.message).toBe('Credentials deleted successfully');
@@ -459,14 +412,14 @@ describe('IPC Handlers Comprehensive Tests', () => {
         changes: 0
       });
 
-      const result = await handlers['credentials:delete']('test-service');
+      const result = await handlers['credentials:delete']('test-service') as { success: boolean; message: string; changes?: number; error?: string };
       
       expect(result.success).toBe(false);
       expect(result.message).toBe('Database error');
     });
 
     it('should handle invalid service parameter', async () => {
-      const result = await handlers['credentials:delete']('');
+      const result = await handlers['credentials:delete']('') as { success: boolean; message?: string; changes?: number; error?: string };
       
       expect(result.success).toBe(false);
       expect(result.error).toContain('Service name is required');
@@ -487,7 +440,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
         get: vi.fn(() => ({}))
       });
 
-      const result = await handlers['database:getAllTimesheetEntries']('valid-token');
+      const result = await handlers['database:getAllTimesheetEntries']('valid-token') as { success: boolean; entries: Array<{ id: number; date: string; project: string; status: string | null }>; error?: string };
       
       expect(result.success).toBe(true);
       expect(result.entries).toEqual(mockEntries);
@@ -500,7 +453,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
         get: vi.fn(() => ({}))
       });
 
-      const result = await handlers['database:getAllTimesheetEntries']('valid-token');
+      const result = await handlers['database:getAllTimesheetEntries']('valid-token') as { success: boolean; entries: unknown[]; error?: string };
       
       expect(result.success).toBe(true);
       expect(result.entries).toEqual([]);
@@ -511,30 +464,10 @@ describe('IPC Handlers Comprehensive Tests', () => {
         throw new Error('Database connection failed');
       });
 
-      const result = await handlers['database:getAllTimesheetEntries']('valid-token');
+      const result = await handlers['database:getAllTimesheetEntries']('valid-token') as { success: boolean; entries?: unknown[]; error?: string };
       
       expect(result.success).toBe(false);
       expect(result.error).toContain('Database connection failed');
-    });
-  });
-
-  describe('database:getAllCredentials handler', () => {
-    it('should retrieve all credentials', async () => {
-      const mockCredentials = [
-        { id: 1, service: 'service1', email: 'user1@test.com' },
-        { id: 2, service: 'service2', email: 'user2@test.com' }
-      ];
-      
-      mockDbInstance.prepare.mockReturnValue({
-        all: vi.fn(() => mockCredentials),
-        run: vi.fn(() => ({ changes: 1 })),
-        get: vi.fn(() => ({}))
-      });
-
-      const result = await handlers['database:getAllCredentials']();
-      
-      expect(result.success).toBe(true);
-      expect(result.credentials).toEqual(mockCredentials);
     });
   });
 
@@ -554,14 +487,22 @@ describe('IPC Handlers Comprehensive Tests', () => {
         callCount++;
         if (callCount === 1) {
           // First call is for timesheet
-          return { all: vi.fn(() => mockTimesheet) };
+          return { 
+            all: vi.fn(() => mockTimesheet),
+            run: vi.fn(() => ({ changes: 0 })),
+            get: vi.fn(() => ({}))
+          };
         } else {
           // Second call is for credentials
-          return { all: vi.fn(() => mockCredentials) };
+          return { 
+            all: vi.fn(() => mockCredentials),
+            run: vi.fn(() => ({ changes: 0 })),
+            get: vi.fn(() => ({}))
+          };
         }
       });
 
-      const result = await handlers['database:getAllArchiveData']('valid-token');
+      const result = await handlers['database:getAllArchiveData']('valid-token') as { success: boolean; timesheet: unknown[]; credentials: unknown[]; error?: string };
       
       expect(result.success).toBe(true);
       expect(result.timesheet).toEqual(mockTimesheet);
@@ -570,7 +511,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
     });
 
     it('should require valid session token', async () => {
-      const result = await handlers['database:getAllArchiveData']('');
+      const result = await handlers['database:getAllArchiveData']('') as { success: boolean; timesheet?: unknown[]; credentials?: unknown[]; error?: string };
       
       expect(result.success).toBe(false);
       expect(result.error).toContain('Session token is required');
@@ -578,7 +519,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
 
     it('should validate session token', async () => {
       // validateSession mock already returns { valid: false } for 'invalid-token'
-      const result = await handlers['database:getAllArchiveData']('invalid-token');
+      const result = await handlers['database:getAllArchiveData']('invalid-token') as { success: boolean; timesheet?: unknown[]; credentials?: unknown[]; error?: string };
       
       expect(result.success).toBe(false);
       expect(result.error).toContain('Session is invalid or expired');
@@ -589,7 +530,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
         throw new Error('Database connection failed');
       });
 
-      const result = await handlers['database:getAllArchiveData']('valid-token');
+      const result = await handlers['database:getAllArchiveData']('valid-token') as { success: boolean; timesheet?: unknown[]; credentials?: unknown[]; error?: string };
       
       expect(result.success).toBe(false);
       expect(result.error).toContain('Database connection failed');
@@ -614,7 +555,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
       ];
       mdb.getSubmittedTimesheetEntriesForExport.mockReturnValue(mockEntries);
 
-      const result = await handlers['timesheet:exportToCSV']();
+      const result = await handlers['timesheet:exportToCSV']() as { success: boolean; csvData?: string; error?: string };
       
       expect(result.success).toBe(true);
       expect(result.csvData).toContain('Date,Start Time,End Time,Hours,Project,Tool,Charge Code,Task Description,Status,Submitted At');
@@ -624,7 +565,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
     it('should handle empty data export', async () => {
       mdb.getSubmittedTimesheetEntriesForExport.mockReturnValue([]);
 
-      const result = await handlers['timesheet:exportToCSV']();
+      const result = await handlers['timesheet:exportToCSV']() as { success: boolean; csvData?: string; error?: string };
       
       expect(result.success).toBe(false);
       expect(result.error).toContain('No submitted timesheet entries found');
@@ -635,42 +576,10 @@ describe('IPC Handlers Comprehensive Tests', () => {
         throw new Error('Export failed');
       });
 
-      const result = await handlers['timesheet:exportToCSV']();
+      const result = await handlers['timesheet:exportToCSV']() as { success: boolean; csvData?: string; error?: string };
       
       expect(result.success).toBe(false);
       expect(result.error).toContain('Export failed');
-    });
-  });
-
-  describe('database:clearDatabase handler', () => {
-    it('should clear all database tables', async () => {
-      const mockDb = {
-        exec: vi.fn(),
-        close: vi.fn()
-      };
-      mdb.getDb.mockReturnValue(mockDb);
-
-      const result = await handlers['database:clearDatabase']();
-      
-      expect(result.success).toBe(true);
-      expect(result.message).toBe('Database cleared successfully');
-      expect(mockDb.exec).toHaveBeenCalledWith('DELETE FROM timesheet');
-      expect(mockDb.exec).toHaveBeenCalledWith('DELETE FROM credentials');
-    });
-
-    it('should handle clear database errors', async () => {
-      const mockDb = {
-        exec: vi.fn(() => {
-          throw new Error('Database locked');
-        }),
-        close: vi.fn()
-      };
-      mdb.getDb.mockReturnValue(mockDb);
-
-      const result = await handlers['database:clearDatabase']();
-      
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('Database locked');
     });
   });
 
@@ -709,7 +618,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
         }))
       });
 
-      const result = await handlers['timesheet:saveDraft'](validRow);
+      const result = await handlers['timesheet:saveDraft'](validRow) as { success: boolean; changes?: number; error?: string };
       
       expect(result).toBeDefined();
       expect(result.success).toBe(true);
@@ -725,7 +634,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
         taskDescription: 'Test task'
       };
 
-      const result = await handlers['timesheet:saveDraft'](invalidRow);
+      const result = await handlers['timesheet:saveDraft'](invalidRow) as { success: boolean; changes?: number; error?: string };
       
       expect(result.success).toBe(false);
       expect(result.error).toContain('Invalid input');
@@ -740,7 +649,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
         taskDescription: 'Test task'
       };
 
-      const result = await handlers['timesheet:saveDraft'](invalidRow);
+      const result = await handlers['timesheet:saveDraft'](invalidRow) as { success: boolean; changes?: number; error?: string };
       
       expect(result.success).toBe(false);
       expect(result.error).toContain('Invalid time format');
@@ -781,7 +690,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
         }))
       });
 
-      const result = await handlers['timesheet:saveDraft'](historicalRow);
+      const result = await handlers['timesheet:saveDraft'](historicalRow) as { success: boolean; changes?: number; error?: string };
       
       // Should succeed - quarter validation is deferred to submission
       expect(result.success).toBe(true);
@@ -819,7 +728,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
         }))
       });
 
-      const result1 = await handlers['timesheet:saveDraft'](duplicateRow);
+      const result1 = await handlers['timesheet:saveDraft'](duplicateRow) as { success: boolean; changes?: number; error?: string };
       expect(result1.success).toBe(true);
 
       // Second saveDraft call: INSERT statement (with conflict), then SELECT statement
@@ -844,7 +753,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
         }))
       });
 
-      const result2 = await handlers['timesheet:saveDraft'](duplicateRow);
+      const result2 = await handlers['timesheet:saveDraft'](duplicateRow) as { success: boolean; changes?: number; error?: string };
       expect(result2.success).toBe(true); // Still succeeds due to ON CONFLICT DO UPDATE
     });
   });
@@ -867,12 +776,12 @@ describe('IPC Handlers Comprehensive Tests', () => {
       
       // resetInProgressTimesheetEntries uses db.prepare internally, so we need to handle multiple prepare calls
       let prepareCallCount = 0;
-      mockDbInstance.prepare.mockImplementation((sql: string) => {
+      mockDbInstance.prepare.mockImplementation((_sql?: string) => {
         prepareCallCount++;
         if (prepareCallCount === 1) {
           // First call is for resetInProgressTimesheetEntries (UPDATE query)
-          expect(sql).toContain('UPDATE timesheet');
-          expect(sql).toContain('SET status = NULL');
+          expect(_sql).toContain('UPDATE timesheet');
+          expect(_sql).toContain('SET status = NULL');
           return {
             all: vi.fn(() => []),
             run: vi.fn(() => ({ changes: 0 })),
@@ -880,8 +789,8 @@ describe('IPC Handlers Comprehensive Tests', () => {
           };
         } else {
           // Second call is for the SELECT query
-          expect(sql).toContain('SELECT * FROM timesheet');
-          expect(sql).toContain('WHERE status IS NULL');
+          expect(_sql).toContain('SELECT * FROM timesheet');
+          expect(_sql).toContain('WHERE status IS NULL');
           return {
             all: vi.fn(() => mockEntries),
             run: vi.fn(() => ({ changes: 1 })),
@@ -890,7 +799,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
         }
       });
 
-      const result = await handlers['timesheet:loadDraft']();
+      const result = await handlers['timesheet:loadDraft']() as { success: boolean; entries: Array<{ date: string; timeIn: string; timeOut: string; [key: string]: unknown }>; error?: string };
       
       expect(result.success).toBe(true);
       expect(result.entries).toHaveLength(1);
@@ -902,11 +811,11 @@ describe('IPC Handlers Comprehensive Tests', () => {
     it('should handle empty draft data', async () => {
       // resetInProgressTimesheetEntries uses db.prepare internally, so we need to handle multiple prepare calls
       let prepareCallCount = 0;
-      mockDbInstance.prepare.mockImplementation((sql: string) => {
+      mockDbInstance.prepare.mockImplementation((_sql?: string) => {
         prepareCallCount++;
         if (prepareCallCount === 1) {
           // First call is for resetInProgressTimesheetEntries (UPDATE query)
-          expect(sql).toContain('UPDATE timesheet');
+          expect(_sql).toContain('UPDATE timesheet');
           return {
             all: vi.fn(() => []),
             run: vi.fn(() => ({ changes: 0 })),
@@ -914,7 +823,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
           };
         } else {
           // Second call is for the SELECT query (returns empty array)
-          expect(sql).toContain('SELECT * FROM timesheet');
+          expect(_sql).toContain('SELECT * FROM timesheet');
           return {
             all: vi.fn(() => []),
             run: vi.fn(() => ({ changes: 1 })),
@@ -923,7 +832,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
         }
       });
 
-      const result = await handlers['timesheet:loadDraft']();
+      const result = await handlers['timesheet:loadDraft']() as { success: boolean; entries: unknown[]; error?: string };
       
       expect(result.success).toBe(true);
       expect(result.entries).toEqual([{}]); // Should return one blank row
@@ -932,11 +841,11 @@ describe('IPC Handlers Comprehensive Tests', () => {
     it('should handle load errors', async () => {
       // resetInProgressTimesheetEntries uses db.prepare internally, so we need to handle multiple prepare calls
       let prepareCallCount = 0;
-      mockDbInstance.prepare.mockImplementation((sql: string) => {
+      mockDbInstance.prepare.mockImplementation((_sql?: string) => {
         prepareCallCount++;
         if (prepareCallCount === 1) {
           // First call is for resetInProgressTimesheetEntries (UPDATE query) - should succeed
-          expect(sql).toContain('UPDATE timesheet');
+          expect(_sql).toContain('UPDATE timesheet');
           return {
             all: vi.fn(() => []),
             run: vi.fn(() => ({ changes: 0 })),
@@ -955,7 +864,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
         }
       });
 
-      const result = await handlers['timesheet:loadDraft']();
+      const result = await handlers['timesheet:loadDraft']() as { success: boolean; entries?: unknown[]; error?: string };
       
       expect(result.success).toBe(false);
       expect(result.error).toContain('Database error');
@@ -972,7 +881,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
         get: vi.fn(() => ({ id: validId, status: null }))
       });
 
-      const result = await handlers['timesheet:deleteDraft'](validId);
+      const result = await handlers['timesheet:deleteDraft'](validId) as { success: boolean; changes?: number; error?: string };
       
       expect(result).toBeDefined();
       expect(result.success).toBe(true);
@@ -989,7 +898,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
     });
 
     it('should validate ID parameter', async () => {
-      const result = await handlers['timesheet:deleteDraft'](undefined);
+      const result = await handlers['timesheet:deleteDraft'](undefined) as { success: boolean; changes?: number; error?: string };
       
       expect(result.success).toBe(false);
       expect(result.error).toContain('Invalid input');
@@ -1004,7 +913,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
         get: vi.fn(() => ({}))
       });
 
-      const result = await handlers['timesheet:deleteDraft'](nonExistentId);
+      const result = await handlers['timesheet:deleteDraft'](nonExistentId) as { success: boolean; changes?: number; error?: string };
       
       expect(result.success).toBe(false);
       expect(result.error).toContain('Entry not found');
@@ -1019,7 +928,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
         get: vi.fn(() => ({}))
       });
 
-      const result = await handlers['timesheet:deleteDraft'](1);
+      const result = await handlers['timesheet:deleteDraft'](1) as { success: boolean; changes?: number; error?: string };
       
       expect(result.success).toBe(false);
       expect(result.error).toContain('Database connection failed');
@@ -1053,7 +962,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
         password: 'password123'
       });
 
-      const result = await handlers['timesheet:submit']('valid-token');
+      const result = await handlers['timesheet:submit']('valid-token') as { submitResult?: { ok: boolean; successCount: number; removedCount: number; totalProcessed: number }; dbPath?: string; error?: string };
       
       // Check if result has the expected structure
       expect(result).toBeDefined();
@@ -1064,7 +973,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
       }
       
       expect(result.submitResult).toBeDefined();
-      expect(result.submitResult.ok).toBe(true);
+      expect(result.submitResult!.ok).toBe(true);
       // Verify that submitTimesheets was called with correct credentials, progressCallback, AbortSignal, and useMockWebsite
       expect(mimps.submitTimesheets).toHaveBeenCalledWith(
         'user@test.com', 
@@ -1074,14 +983,14 @@ describe('IPC Handlers Comprehensive Tests', () => {
         undefined // useMockWebsite is optional and defaults to undefined
       );
       // With mocked database (0 entries), successCount should be 0
-      expect(result.submitResult.successCount).toBe(0);
-      expect(result.submitResult.totalProcessed).toBe(0);
+      expect(result.submitResult?.successCount).toBe(0);
+      expect(result.submitResult?.totalProcessed).toBe(0);
     });
 
     it('should handle missing credentials', async () => {
       mdb.getCredentials.mockReturnValue(null);
 
-      const result = await handlers['timesheet:submit']('valid-token');
+      const result = await handlers['timesheet:submit']('valid-token') as { submitResult?: { ok: boolean; successCount: number; removedCount: number; totalProcessed: number }; dbPath?: string; error?: string };
       
       expect(result).toBeDefined();
       expect(result.error).toContain('credentials not found');
@@ -1095,7 +1004,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
         password: 'password123'
       });
 
-      const result = await handlers['timesheet:submit']('valid-token');
+      const result = await handlers['timesheet:submit']('valid-token') as { submitResult?: { ok: boolean; successCount: number; removedCount: number; totalProcessed: number }; dbPath?: string; error?: string };
       
       expect(result).toBeDefined();
       expect(result.submitResult).toBeDefined();
@@ -1108,8 +1017,8 @@ describe('IPC Handlers Comprehensive Tests', () => {
         undefined // useMockWebsite is optional and defaults to undefined
       );
       // With mocked database (0 entries), the handler completes successfully
-      expect(result.submitResult.ok).toBe(true);
-      expect(result.submitResult.successCount).toBe(0);
+      expect(result.submitResult!.ok).toBe(true);
+      expect(result.submitResult!.successCount).toBe(0);
     });
   });
 });

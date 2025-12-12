@@ -22,6 +22,8 @@
     "electron-log": "^5.4.3"
   },
   "scripts": {
+    "lint": "eslint . --max-warnings 0 --cache --ignore-pattern \"tests/**\"",
+    "lint:fix": "eslint . --max-warnings 0 --cache --ignore-pattern \"tests/**\" --fix",
     "typecheck": "tsc -p ../../tsconfig.typecheck.json --noEmit"
   }
 }

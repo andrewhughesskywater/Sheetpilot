@@ -10,6 +10,7 @@
 
 import { ipcMain } from 'electron';
 import { ipcLogger, appLogger } from '../../../shared/logger';
+import { isTrustedIpcSender } from './handlers/timesheet/main-window';
 import { 
   storeCredentials,
   getCredentials,
@@ -45,14 +46,20 @@ export function registerAuthHandlers(): void {
   ipcLogger.verbose('Registering authentication IPC handlers');
   
   // Handler for ping (connectivity test)
-  ipcMain.handle('ping', async (_event, message?: string) => {
+  ipcMain.handle('ping', async (event, message?: string) => {
+    if (!isTrustedIpcSender(event)) {
+      return 'Could not respond to ping: unauthorized request';
+    }
     ipcLogger.debug('Ping handler called', { message });
     return `pong: ${message}`;
   });
   ipcLogger.verbose('Registered handler: ping');
   
   // Handler for user login
-  ipcMain.handle('auth:login', async (_event, email: string, password: string, stayLoggedIn: boolean) => {
+  ipcMain.handle('auth:login', async (event, email: string, password: string, stayLoggedIn: boolean) => {
+    if (!isTrustedIpcSender(event)) {
+      return { success: false, error: 'Could not login: unauthorized request' };
+    }
     ipcLogger.debug('Login handler called', { email });
 
     // Validate input using Zod schema
@@ -122,7 +129,10 @@ export function registerAuthHandlers(): void {
   ipcLogger.verbose('Registered handler: auth:login');
 
   // Handler for session validation
-  ipcMain.handle('auth:validateSession', async (_event, token: string) => {
+  ipcMain.handle('auth:validateSession', async (event, token: string) => {
+    if (!isTrustedIpcSender(event)) {
+      return { valid: false };
+    }
     // Validate input using Zod schema
     const validation = validateInput(validateSessionSchema, { token }, 'auth:validateSession');
     if (!validation.success) {
@@ -142,7 +152,10 @@ export function registerAuthHandlers(): void {
   ipcLogger.verbose('Registered handler: auth:validateSession');
 
   // Handler for logout
-  ipcMain.handle('auth:logout', async (_event, token: string) => {
+  ipcMain.handle('auth:logout', async (event, token: string) => {
+    if (!isTrustedIpcSender(event)) {
+      return { success: false, error: 'Could not logout: unauthorized request' };
+    }
     // Validate input using Zod schema
     const validation = validateInput(logoutSchema, { token }, 'auth:logout');
     if (!validation.success) {
@@ -171,7 +184,10 @@ export function registerAuthHandlers(): void {
   ipcLogger.verbose('Registered handler: auth:logout');
 
   // Handler for getting current session
-  ipcMain.handle('auth:getCurrentSession', async (_event, token: string) => {
+  ipcMain.handle('auth:getCurrentSession', async (event, token: string) => {
+    if (!isTrustedIpcSender(event)) {
+      return null;
+    }
     // Validate input using Zod schema
     const validation = validateInput(getCurrentSessionSchema, { token }, 'auth:getCurrentSession');
     if (!validation.success) {

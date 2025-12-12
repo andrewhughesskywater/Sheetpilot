@@ -16,6 +16,8 @@
  */
 
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
+import { logout as logoutIpc, validateSession as validateSessionIpc } from '../services/ipc/auth';
+import { logError, logInfo, logVerbose } from '../services/ipc/logger';
 
 /**
  * Session context interface providing authentication state and actions
@@ -85,28 +87,28 @@ export function SessionProvider({ children }: SessionProviderProps) {
     const loadSession = async () => {
       try {
         const storedToken = localStorage.getItem('sessionToken');
-        if (storedToken && window.auth?.validateSession) {
-          const result = await window.auth.validateSession(storedToken);
+        if (storedToken) {
+          const result = await validateSessionIpc(storedToken);
           if (result.valid && result.email) {
             setToken(storedToken);
             setEmail(result.email);
             setIsAdmin(result.isAdmin || false);
-            window.logger?.info('Session restored', { email: result.email });
+            logInfo('Session restored', { email: result.email });
           } else {
             // Session invalid, clear it
             localStorage.removeItem('sessionToken');
-            window.logger?.verbose('Session invalid, cleared');
+            logVerbose('Session invalid, cleared');
           }
         }
       } catch (err) {
-        window.logger?.error('Could not load session', { error: err });
+        logError('Could not load session', { error: err instanceof Error ? err.message : String(err) });
         localStorage.removeItem('sessionToken');
       } finally {
         setIsLoading(false);
       }
     };
 
-    loadSession();
+    void loadSession();
   }, []);
 
   /**
@@ -121,7 +123,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
     setEmail(newEmail);
     setIsAdmin(newIsAdmin);
     localStorage.setItem('sessionToken', newToken);
-    window.logger?.info('User logged in', { email: newEmail, isAdmin: newIsAdmin });
+    logInfo('User logged in', { email: newEmail, isAdmin: newIsAdmin });
   }, []);
 
   /**
@@ -132,11 +134,11 @@ export function SessionProvider({ children }: SessionProviderProps) {
    */
   const logout = useCallback(async () => {
     const currentToken = token;
-    if (currentToken && window.auth?.logout) {
+    if (currentToken) {
       try {
-        await window.auth.logout(currentToken);
+        await logoutIpc(currentToken);
       } catch (err) {
-        window.logger?.error('Could not logout', { error: err });
+        logError('Could not logout', { error: err instanceof Error ? err.message : String(err) });
       }
     }
     
@@ -144,7 +146,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
     setEmail(null);
     setIsAdmin(false);
     localStorage.removeItem('sessionToken');
-    window.logger?.info('User logged out');
+    logInfo('User logged out');
   }, [token]);
 
   const value: SessionContextType = useMemo(() => ({

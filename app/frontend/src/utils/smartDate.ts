@@ -145,7 +145,7 @@ export function incrementDate(dateStr: string, days: number, skipWeekends = fals
   const date = parseDateString(dateStr);
   if (!date) return '';
   
-  let currentDate = new Date(date);
+  const currentDate = new Date(date);
   let daysToAdd = Math.abs(days);
   const direction = days > 0 ? 1 : -1;
   

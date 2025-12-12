@@ -22,7 +22,7 @@ import * as path from 'path';
 /**
  * Register all default plugins with the registry
  */
-export function registerDefaultPlugins(): void {
+export async function registerDefaultPlugins(): Promise<void> {
   const registry = PluginRegistry.getInstance();
   
   // Load configuration
@@ -31,15 +31,15 @@ export function registerDefaultPlugins(): void {
   registry.loadConfig(config);
   
   // Register data services
-  registry.registerPlugin('data', 'sqlite', new SQLiteDataService());
-  registry.registerPlugin('data', 'memory', new MemoryDataService());
+  await registry.registerPlugin('data', 'sqlite', new SQLiteDataService());
+  await registry.registerPlugin('data', 'memory', new MemoryDataService());
   
   // Register credential services
-  registry.registerPlugin('credentials', 'sqlite', new SQLiteCredentialService());
+  await registry.registerPlugin('credentials', 'sqlite', new SQLiteCredentialService());
   
   // Register submission services
-  registry.registerPlugin('submission', 'electron', new ElectronBotService());
-  registry.registerPlugin('submission', 'mock', new MockSubmissionService());
+  await registry.registerPlugin('submission', 'electron', new ElectronBotService());
+  await registry.registerPlugin('submission', 'mock', new MockSubmissionService());
   
   appLogger.info('Default plugins registered successfully');
   appLogger.verbose('Active plugins configured', {

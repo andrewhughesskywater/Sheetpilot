@@ -26,6 +26,9 @@ export {
 // Timesheet Repository
 export {
     insertTimesheetEntry,
+    insertTimesheetEntries,
+    checkDuplicateEntry,
+    getDuplicateEntries,
     getPendingTimesheetEntries,
     markTimesheetEntriesAsInProgress,
     resetTimesheetEntriesStatus,

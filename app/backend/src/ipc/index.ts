@@ -9,7 +9,7 @@
  * @since 2025
  */
 
-import { BrowserWindow } from 'electron';
+import type { BrowserWindow } from 'electron';
 import { appLogger } from '../../../shared/logger';
 import { registerAuthHandlers } from './auth-handlers';
 import { registerCredentialsHandlers } from './credentials-handlers';

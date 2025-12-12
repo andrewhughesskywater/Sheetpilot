@@ -1,16 +1,17 @@
 /**
- * @fileoverview Quarter Processing Utilities
- * 
- * Shared utilities for processing timesheet entries grouped by quarter.
- * 
- * @author Andrew Hughes
- * @version 1.0.0
- * @since 2025
+ * Quarter processing helpers for submissions.
+ *
+ * This module groups `TimesheetEntry` items by quarter, builds the correct form
+ * config per quarter, runs the bot, and maps bot result indices back to entry IDs.
+ *
+ * ## Index → ID mapping
+ * `runBot()` returns indices into the `botRows` array. This function builds `ids`
+ * in the same order as `botRows`, so `ids[i]` maps bot index `i` to `TimesheetEntry.id`.
  */
 
 import type { TimesheetEntry } from '../../../../../../shared/contracts/IDataService';
 import type { SubmissionResult } from '../../../../../../shared/contracts/ISubmissionService';
-import { getQuarterForDate, groupEntriesByQuarter } from '../config/quarter_config';
+import { getQuarterForDate, groupEntriesByQuarter } from '../quarter_config';
 import { createFormConfig } from '../automation_config';
 import { botLogger } from '../../../../../../shared/logger';
 import { checkAborted } from './abort-utils';
@@ -53,7 +54,7 @@ export async function processEntriesByQuarter(
   entries: TimesheetEntry[],
   config: QuarterProcessingConfig
 ): Promise<SubmissionResult> {
-  // Debug: Check each entry's quarter
+  // Helpful diagnostic: log each entry’s derived quarter so routing issues surface quickly.
   botLogger.debug('Checking entries for quarter assignment', {
     entries: entries.map(entry => ({
       id: entry.id,
@@ -115,7 +116,8 @@ export async function processEntriesByQuarter(
       formConfig = createFormConfig(quarterDef.formUrl, quarterDef.formId);
     }
     
-    // Convert entries to bot format
+    // Convert entries to bot format. Keep `ids` and `botRows` in the same order so the
+    // bot’s returned indices map back to stable entry IDs.
     const ids = quarterEntries.map(e => e.id).filter((id): id is number => id !== undefined);
     const botRows = quarterEntries.map(entry => config.toBotRow(entry));
     botLogger.debug('Converted to bot format', { idMappings: ids });

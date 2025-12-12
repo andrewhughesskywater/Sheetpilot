@@ -26,8 +26,9 @@ import {
     insertTimesheetEntry,
     insertTimesheetEntries,
     checkDuplicateEntry,
-    getDuplicateEntries
-} from '../src/services/database';
+    getDuplicateEntries,
+    shutdownDatabase
+} from '../src/repositories';
 
 describe('Database Module', () => {
     let testDbPath: string;
@@ -48,7 +49,6 @@ describe('Database Module', () => {
     afterEach(() => {
         // Ensure connection is closed and reset
         try {
-            const { shutdownDatabase } = require('../src/services/database');
             shutdownDatabase();
         } catch {
             // Ignore if shutdownDatabase doesn't exist or fails

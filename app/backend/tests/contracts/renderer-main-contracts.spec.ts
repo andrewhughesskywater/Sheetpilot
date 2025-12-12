@@ -61,40 +61,60 @@ describe('Renderer-Main Communication Contracts', () => {
   describe('IPC Channel Contracts', () => {
     it('should define all required IPC channels', () => {
       const requiredChannels = [
-        'timesheet:saveDraft',
-        'timesheet:loadDraft', 
-        'timesheet:deleteDraft',
-        'timesheet:submit',
-        'timesheet:getAllEntries',
+        'ping',
+        'auth:login',
+        'auth:validateSession',
+        'auth:logout',
+        'auth:getCurrentSession',
         'credentials:store',
-        'credentials:get',
         'credentials:list',
         'credentials:delete',
-        'app:getVersion',
-        'app:getPath',
-        'app:showMessageBox',
-        'app:showOpenDialog',
-        'app:showSaveDialog'
+        'timesheet:saveDraft',
+        'timesheet:loadDraft',
+        'timesheet:loadDraftById',
+        'timesheet:deleteDraft',
+        'timesheet:submit',
+        'timesheet:cancel',
+        'timesheet:resetInProgress',
+        'timesheet:exportToCSV',
+        'admin:clearCredentials',
+        'admin:rebuildDatabase',
+        'database:getAllTimesheetEntries',
+        'database:getAllArchiveData',
+        'logs:getLogPath',
+        'logs:exportLogs',
+        'settings:get',
+        'settings:set',
+        'settings:getAll'
       ];
       
       requiredChannels.forEach(channel => {
         expect(channel).toBeDefined();
         expect(typeof channel).toBe('string');
-        expect(channel).toMatch(/^[a-z]+:[a-zA-Z]+$/);
+        expect(channel).toMatch(/^([a-z]+:[a-zA-Z]+|ping)$/);
       });
     });
 
     it('should follow consistent channel naming convention', () => {
       const channels = [
+        'ping',
         'timesheet:saveDraft',
         'credentials:store',
-        'app:getVersion'
+        'auth:login',
+        'logs:exportLogs'
       ];
       
       channels.forEach(channel => {
         // Should be namespace:action format
-        expect(channel).toMatch(/^[a-z]+:[a-zA-Z]+$/);
+        if (channel !== 'ping') {
+          expect(channel).toMatch(/^[a-z]+:[a-zA-Z]+$/);
+        }
         
+        if (channel === 'ping') {
+          expect(channel).toBe('ping');
+          return;
+        }
+
         const [namespace, action] = channel.split(':');
         expect(namespace).toBeDefined();
         expect(action).toBeDefined();

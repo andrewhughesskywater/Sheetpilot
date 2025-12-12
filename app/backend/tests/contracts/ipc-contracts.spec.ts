@@ -48,7 +48,7 @@ vi.mock('electron', () => {
 });
 
 // Mock database and services
-vi.mock('../../src/services/database', () => ({
+vi.mock('../../src/repositories', () => ({
   setDbPath: vi.fn(),
   ensureSchema: vi.fn(),
   getDbPath: vi.fn(() => 'C:/tmp/sheetpilot.sqlite'),

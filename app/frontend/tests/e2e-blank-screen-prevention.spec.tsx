@@ -26,12 +26,12 @@ describe('End-to-End Blank Screen Prevention Tests', () => {
       vi.stubEnv('NODE_ENV', 'development');
       
       // Ensure no APIs are available (simulating browser environment)
-      delete (window as unknown as Record<string, unknown>).logger;
-      delete (window as unknown as Record<string, unknown>).timesheet;
-      delete (window as unknown as Record<string, unknown>).credentials;
-      delete (window as unknown as Record<string, unknown>).database;
-      delete (window as unknown as Record<string, unknown>).logs;
-      delete (window as unknown as Record<string, unknown>).api;
+      delete window.logger;
+      delete window.timesheet;
+      delete window.credentials;
+      delete window.database;
+      delete window.logs;
+      delete window.api;
 
       // Render the app
       render(
@@ -52,11 +52,11 @@ describe('End-to-End Blank Screen Prevention Tests', () => {
       vi.stubEnv('DEV', true);
       
       // Start with no APIs (browser environment)
-      delete (window as unknown as Record<string, unknown>).logger;
-      delete (window as unknown as Record<string, unknown>).timesheet;
-      delete (window as unknown as Record<string, unknown>).credentials;
-      delete (window as unknown as Record<string, unknown>).database;
-      delete (window as unknown as Record<string, unknown>).logs;
+      delete window.logger;
+      delete window.timesheet;
+      delete window.credentials;
+      delete window.database;
+      delete window.logs;
 
       // Render the app
       render(
@@ -199,7 +199,7 @@ describe('End-to-End Blank Screen Prevention Tests', () => {
       vi.stubEnv('NODE_ENV', 'production');
       
       // Mock production APIs (simulating Electron environment)
-      (window as unknown as Record<string, unknown>).logger = {
+      window.logger = {
         error: vi.fn(),
         warn: vi.fn(),
         info: vi.fn(),
@@ -207,27 +207,24 @@ describe('End-to-End Blank Screen Prevention Tests', () => {
         debug: vi.fn(),
         userAction: vi.fn()
       };
-      (window as unknown as Record<string, unknown>).timesheet = {
+      window.timesheet = {
         loadDraft: vi.fn().mockResolvedValue({ success: true, entries: [] }),
         saveDraft: vi.fn(),
         deleteDraft: vi.fn(),
         submit: vi.fn(),
         exportToCSV: vi.fn()
       };
-      (window as unknown as Record<string, unknown>).credentials = {
+      window.credentials = {
         store: vi.fn(),
-        get: vi.fn(),
         list: vi.fn().mockResolvedValue({ success: true, credentials: [] }),
         delete: vi.fn()
       };
-      (window as unknown as Record<string, unknown>).database = {
+      window.database = {
         getAllTimesheetEntries: vi.fn(),
-        getAllCredentials: vi.fn(),
-        clearDatabase: vi.fn()
+        getAllArchiveData: vi.fn()
       };
-      (window as unknown as Record<string, unknown>).logs = {
+      window.logs = {
         getLogPath: vi.fn(),
-        readLogFile: vi.fn(),
         exportLogs: vi.fn()
       };
 
@@ -248,7 +245,7 @@ describe('End-to-End Blank Screen Prevention Tests', () => {
       vi.stubEnv('DEV', true);
       
       // Mock APIs that timeout
-      (window as unknown as Record<string, unknown>).timesheet = {
+      window.timesheet = {
         loadDraft: vi.fn().mockImplementation(() => 
           new Promise((_, reject) => 
             setTimeout(() => reject(new Error('Timeout')), 100)
@@ -259,9 +256,8 @@ describe('End-to-End Blank Screen Prevention Tests', () => {
         submit: vi.fn(),
         exportToCSV: vi.fn()
       };
-      (window as unknown as Record<string, unknown>).credentials = {
+      window.credentials = {
         store: vi.fn(),
-        get: vi.fn(),
         list: vi.fn().mockImplementation(() => 
           new Promise((_, reject) => 
             setTimeout(() => reject(new Error('Timeout')), 100)
@@ -269,7 +265,7 @@ describe('End-to-End Blank Screen Prevention Tests', () => {
         ),
         delete: vi.fn()
       };
-      (window as unknown as Record<string, unknown>).logger = {
+      window.logger = {
         error: vi.fn(),
         warn: vi.fn(),
         info: vi.fn(),
@@ -293,20 +289,19 @@ describe('End-to-End Blank Screen Prevention Tests', () => {
       vi.stubEnv('DEV', true);
       
       // Mock APIs that return malformed data
-      (window as unknown as Record<string, unknown>).timesheet = {
+      window.timesheet = {
         loadDraft: vi.fn().mockResolvedValue(null),
         saveDraft: vi.fn(),
         deleteDraft: vi.fn(),
         submit: vi.fn(),
         exportToCSV: vi.fn()
       };
-      (window as unknown as Record<string, unknown>).credentials = {
+      window.credentials = {
         store: vi.fn(),
-        get: vi.fn(),
         list: vi.fn().mockResolvedValue(undefined),
         delete: vi.fn()
       };
-      (window as unknown as Record<string, unknown>).logger = {
+      window.logger = {
         error: vi.fn(),
         warn: vi.fn(),
         info: vi.fn(),

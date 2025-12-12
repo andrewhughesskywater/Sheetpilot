@@ -17,7 +17,7 @@
  * - Token-based authentication for sensitive operations
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
@@ -42,6 +42,11 @@ import { APP_VERSION } from '../../../shared/constants';
 import logoImage from '../assets/images/logo.svg';
 import './Settings.css';
 import { autoCompleteEmailDomain } from '../utils/emailAutoComplete';
+import { clearCredentials as clearCredentialsIpc, rebuildDatabase as rebuildDatabaseIpc } from '../services/ipc/admin';
+import { listCredentials as listCredentialsIpc, storeCredentials as storeCredentialsIpc } from '../services/ipc/credentials';
+import { getLogPath as getLogPathIpc, exportLogs as exportLogsIpc } from '../services/ipc/logs';
+import { getSetting, setSetting } from '../services/ipc/settings';
+import { logError, logInfo, logUserAction, logWarn } from '../services/ipc/logger';
 
 /**
  * Settings page component
@@ -97,74 +102,62 @@ function Settings() {
 
   const loadStoredCredentials = async () => {
     try {
-      if (window.credentials?.list) {
-        const response = await window.credentials.list();
-        if (response?.success) {
-          setStoredCredentials(response.credentials || []);
-        }
+      const response = await listCredentialsIpc();
+      if (response?.success) {
+        setStoredCredentials(response.credentials || []);
       }
     } catch (err) {
-      window.logger?.error('Could not load credentials', { 
-        error: err instanceof Error ? err.message : String(err) 
-      });
+      logError('Could not load credentials', { error: err instanceof Error ? err.message : String(err) });
       // Don't set error state here as it's not critical
     }
   };
 
-  const loadLogFiles = async () => {
+  const loadLogFiles = useCallback(async () => {
     setIsLoading(true);
     setError('');
     
     try {
-      const response = await window.logs?.getLogPath?.();
+      const response = token ? await getLogPathIpc(token) : null;
       if (!response) {
-        window.logger?.warn('Logs API not available');
+        logWarn('Logs API not available');
       } else if (response.success) {
         setLogPath(response.logPath || '');
         setLogFiles(response.logFiles || []);
       } else {
-        window.logger?.error('Failed to load log files', { error: response.error });
+        logError('Could not load log files', { error: response.error });
       }
     } catch (err) {
-      window.logger?.error('Error loading log files', { 
-        error: err instanceof Error ? err.message : String(err) 
-      });
+      logError('Error loading log files', { error: err instanceof Error ? err.message : String(err) });
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [token]);
 
   const loadSettings = async () => {
     try {
-      if (window.settings?.get) {
-        const response = await window.settings.get('browserHeadless');
-        if (response?.success && response.value !== undefined) {
-          setHeadlessMode(Boolean(response.value));
-        }
+      const response = await getSetting('browserHeadless');
+      if (response?.success && response.value !== undefined) {
+        setHeadlessMode(Boolean(response.value));
       }
     } catch (err) {
-      window.logger?.error('Could not load settings', { 
-        error: err instanceof Error ? err.message : String(err) 
-      });
+      logError('Could not load settings', { error: err instanceof Error ? err.message : String(err) });
     }
   };
 
   const handleHeadlessModeToggle = async (checked: boolean) => {
     setIsLoadingSettings(true);
     try {
-      if (window.settings?.set) {
-        const response = await window.settings.set('browserHeadless', checked);
-        if (response?.success) {
-          setHeadlessMode(checked);
-          window.logger?.info('Headless mode setting updated', { headlessMode: checked });
-        } else {
-          setError('Could not save headless mode setting');
-          window.logger?.error('Could not save headless mode setting', { error: response.error });
-        }
+      const response = await setSetting('browserHeadless', checked);
+      if (response?.success) {
+        setHeadlessMode(checked);
+        logInfo('Headless mode setting updated', { headlessMode: checked });
+      } else {
+        setError('Could not save headless mode setting');
+        logError('Could not save headless mode setting', { error: response?.error });
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
-      window.logger?.error('Headless mode toggle error', { error: err });
+      logError('Headless mode toggle error', { error: err instanceof Error ? err.message : String(err) });
     } finally {
       setIsLoadingSettings(false);
     }
@@ -172,11 +165,11 @@ function Settings() {
 
   // Load log files, credentials, and settings on component mount
   useEffect(() => {
-    loadLogFiles();
-    loadStoredCredentials();
-    loadSettings();
+    void loadLogFiles();
+    void loadStoredCredentials();
+    void loadSettings();
    
-  }, []);
+  }, [loadLogFiles]);
 
   const handleUpdateCredentials = async () => {
     if (!updateEmail || !updatePassword) {
@@ -184,7 +177,7 @@ function Settings() {
       return;
     }
 
-    if (!window.credentials?.store || !token) {
+    if (!token) {
       setError('Credentials API not available');
       return;
     }
@@ -193,23 +186,23 @@ function Settings() {
     setError('');
 
     try {
-      window.logger?.userAction('update-credentials', { email: updateEmail });
-      const result = await window.credentials.store('smartsheet', updateEmail, updatePassword);
+      logUserAction('update-credentials', { email: updateEmail });
+      const result = await storeCredentialsIpc('smartsheet', updateEmail, updatePassword);
       
       if (result.success) {
-        window.logger?.info('Credentials updated successfully', { email: updateEmail });
+        logInfo('Credentials updated successfully', { email: updateEmail });
         setShowUpdateCredentialsDialog(false);
         setUpdateEmail('');
         setUpdatePassword('');
         await loadStoredCredentials();
       } else {
         setError(result.message || 'Failed to update credentials');
-        window.logger?.error('Could not update credentials', { error: result.message });
+        logError('Could not update credentials', { error: result.message });
       }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Unknown error occurred';
       setError(errorMsg);
-      window.logger?.error('Update credentials error', { error: errorMsg });
+      logError('Update credentials error', { error: errorMsg });
     } finally {
       setIsUpdatingCredentials(false);
     }
@@ -218,15 +211,15 @@ function Settings() {
   const handleLogout = async () => {
     try {
       await sessionLogout();
-      window.logger?.info('User logged out from Settings page');
+      logInfo('User logged out from Settings page');
     } catch (err) {
-      window.logger?.error('Could not logout', { error: err });
+      logError('Could not logout', { error: err instanceof Error ? err.message : String(err) });
       setError('Could not logout');
     }
   };
 
   const handleAdminClearCredentials = async () => {
-    if (!token || !window.admin?.clearCredentials) {
+    if (!token) {
       setError('Admin API not available');
       return;
     }
@@ -235,28 +228,28 @@ function Settings() {
     setError('');
 
     try {
-      window.logger?.info('Admin clearing all credentials');
-      const result = await window.admin.clearCredentials(token);
+      logInfo('Admin clearing all credentials');
+      const result = await clearCredentialsIpc(token);
       
       if (result.success) {
-        window.logger?.info('All credentials cleared by admin');
+        logInfo('All credentials cleared by admin');
         setShowClearCredentialsDialog(false);
         await loadStoredCredentials();
       } else {
         setError(result.error || 'Failed to clear credentials');
-        window.logger?.error('Could not clear credentials', { error: result.error });
+        logError('Could not clear credentials', { error: result.error });
       }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Unknown error occurred';
       setError(errorMsg);
-      window.logger?.error('Clear credentials error', { error: errorMsg });
+      logError('Clear credentials error', { error: errorMsg });
     } finally {
       setIsAdminActionLoading(false);
     }
   };
 
   const handleAdminRebuildDatabase = async () => {
-    if (!token || !window.admin?.rebuildDatabase) {
+    if (!token) {
       setError('Admin API not available');
       return;
     }
@@ -265,39 +258,46 @@ function Settings() {
     setError('');
 
     try {
-      window.logger?.warn('Admin rebuilding database');
-      const result = await window.admin.rebuildDatabase(token);
+      logWarn('Admin rebuilding database');
+      const result = await rebuildDatabaseIpc(token);
       
       if (result.success) {
-        window.logger?.info('Database rebuilt by admin');
+        logInfo('Database rebuilt by admin');
         setShowRebuildDatabaseDialog(false);
         await loadStoredCredentials();
       } else {
         setError(result.error || 'Failed to rebuild database');
-        window.logger?.error('Could not rebuild database', { error: result.error });
+        logError('Could not rebuild database', { error: result.error });
       }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Unknown error occurred';
       setError(errorMsg);
-      window.logger?.error('Rebuild database error', { error: errorMsg });
+      logError('Rebuild database error', { error: errorMsg });
     } finally {
       setIsAdminActionLoading(false);
     }
   };
 
   const exportLogs = async () => {
+    if (!token) {
+      const errorMsg = 'Session token not available';
+      setError(errorMsg);
+      logWarn('Export logs attempted without session token');
+      return;
+    }
+
     // Use the latest log file if available
     if (!logFiles || logFiles.length === 0) {
       const errorMsg = 'No log files available';
       setError(errorMsg);
-      window.logger?.warn('Export logs attempted with no log files available');
+      logWarn('Export logs attempted with no log files available');
       return;
     }
     
     if (!logPath) {
       const errorMsg = 'Log path not available';
       setError(errorMsg);
-      window.logger?.warn('Export logs attempted with no log path');
+      logWarn('Export logs attempted with no log path');
       return;
     }
     
@@ -309,40 +309,33 @@ function Settings() {
     try {
       // logPath is already the full path to the latest log file from the backend
       
-      if (!window.logs?.exportLogs) {
-        const errorMsg = 'Logs API not available';
-        setError(errorMsg);
-        window.logger?.error('Export logs failed - API not available');
-        return;
-      }
-      
-      const response = await window.logs.exportLogs(logPath, 'txt');
+      const response = await exportLogsIpc(token, logPath, 'txt');
       
       if (!response) {
         const errorMsg = 'Logs API returned no response';
         setError(errorMsg);
-        window.logger?.error('Export logs failed - no response from API');
+        logError('Export logs returned no response', { logPath });
         return;
       }
       
       if (!response.success) {
         const errorMsg = response.error || 'Failed to export logs';
         setError(errorMsg);
-        window.logger?.error('Export logs failed', { error: errorMsg });
+        logError('Could not export logs', { error: errorMsg });
         return;
       }
       
       if (!response.content) {
         const errorMsg = 'Log file content is empty';
         setError(errorMsg);
-        window.logger?.error('Export logs failed - empty content');
+        logError('Export logs returned empty content');
         return;
       }
       
       if (!response.filename) {
         const errorMsg = 'Log filename not provided';
         setError(errorMsg);
-        window.logger?.error('Export logs failed - no filename');
+        logError('Export logs missing filename');
         return;
       }
       
@@ -357,31 +350,24 @@ function Settings() {
         a.click();
         document.body.removeChild(a);
         
-        window.logger?.info('Logs exported successfully', { filename: response.filename });
+        logInfo('Logs exported successfully', { filename: response.filename });
       } catch (blobError) {
         const errorMsg = `Failed to create download: ${blobError instanceof Error ? blobError.message : String(blobError)}`;
         setError(errorMsg);
-        window.logger?.error('Export logs failed - blob creation error', { 
-          error: blobError instanceof Error ? blobError.message : String(blobError) 
-        });
+        logError('Export logs failed - blob creation error', { error: blobError instanceof Error ? blobError.message : String(blobError) });
         return;
       }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Unknown error';
       setError(errorMsg);
-      window.logger?.error('Export logs error', { 
-        error: errorMsg,
-        stack: err instanceof Error ? err.stack : undefined
-      });
+      logError('Export logs error', { error: errorMsg, stack: err instanceof Error ? err.stack : undefined });
     } finally {
       // Clean up blob URL if it was created
       if (downloadUrl) {
         try {
           URL.revokeObjectURL(downloadUrl);
         } catch (revokeError) {
-          window.logger?.warn('Could not revoke blob URL', { 
-            error: revokeError instanceof Error ? revokeError.message : String(revokeError) 
-          });
+          logWarn('Could not revoke blob URL', { error: revokeError instanceof Error ? revokeError.message : String(revokeError) });
         }
       }
       setIsExporting(false);
@@ -478,14 +464,14 @@ function Settings() {
             <Box 
               className="settings-feature-card"
               onClick={() => {
-                window.logger?.userAction('about-dialog-opened');
+                logUserAction('about-dialog-opened');
                 setShowAboutDialog(true);
               }}
               role="button"
               tabIndex={0}
               onKeyPress={(e) => {
                 if (e.key === 'Enter') {
-                  window.logger?.userAction('about-dialog-opened');
+                  logUserAction('about-dialog-opened');
                   setShowAboutDialog(true);
                 }
               }}

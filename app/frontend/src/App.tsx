@@ -40,6 +40,8 @@ import logoImage from './assets/images/logo.svg';
 import { APP_VERSION } from '../../shared/constants';
 import './styles/App.css';
 import './styles/transitions.css';
+import { onDownloadProgress, onUpdateAvailable, onUpdateDownloaded, removeAllUpdateListeners } from './services/ipc/updates';
+import { logDebug, logInfo, logUserAction } from './services/ipc/logger';
 
 /**
  * About dialog content component
@@ -102,7 +104,7 @@ export function Splash() {
       if (window.location.hash.includes('splash')) {
         window.history.replaceState(null, '', window.location.pathname + window.location.search);
         // Trigger hashchange event to update ThemedApp component
-        window.dispatchEvent(new HashChangeEvent('hashchange'));
+        window.dispatchEvent(new Event('hashchange'));
       }
     };
 
@@ -112,14 +114,14 @@ export function Splash() {
       return () => clearTimeout(timer);
     }
 
-    window.updates.onUpdateAvailable((_version) => {
+    onUpdateAvailable((_version) => {
       setStatus('downloading');
     });
-    window.updates.onDownloadProgress((p) => {
+    onDownloadProgress((p) => {
       setStatus('downloading');
       setProgress(p.percent);
     });
-    window.updates.onUpdateDownloaded((_version) => {
+    onUpdateDownloaded((_version) => {
       setStatus('installing');
     });
 
@@ -132,7 +134,7 @@ export function Splash() {
 
     return () => {
       clearTimeout(checkTimer);
-      window.updates?.removeAllListeners();
+      removeAllUpdateListeners();
     };
   }, [status]);
 
@@ -220,21 +222,27 @@ function AppContent() {
       if (!hasRequestedInitialTimesheetRef.current) {
         window.logger?.debug('[App] Refreshing timesheet draft on initial tab activate');
         hasRequestedInitialTimesheetRef.current = true;
-        refreshTimesheetDraft();
+        void refreshTimesheetDraft();
         return;
       }
       const hasRealRows = Array.isArray(timesheetDraftData) && timesheetDraftData.some((r) => {
         const row = r as Record<string, unknown>;
-        return !!(row?.date || row?.timeIn || row?.timeOut || row?.project || row?.taskDescription);
+        return Boolean(
+          row['date'] ||
+          row['timeIn'] ||
+          row['timeOut'] ||
+          row['project'] ||
+          row['taskDescription']
+        );
       });
       if (!isTimesheetDraftLoading && !hasRealRows && !hasRefreshedEmptyOnceRef.current) {
         window.logger?.debug('[App] Timesheet appears empty post-init; refreshing once');
         hasRefreshedEmptyOnceRef.current = true;
-        refreshTimesheetDraft();
+        void refreshTimesheetDraft();
       }
     } else if (activeTab === 1) {
       window.logger?.debug('[App] Refreshing archive data on tab activate');
-      refreshArchiveData();
+      void refreshArchiveData();
     }
   }, [activeTab, isLoggedIn, refreshTimesheetDraft, refreshArchiveData, isTimesheetDraftLoading, timesheetDraftData]);
 
@@ -257,8 +265,6 @@ function AppContent() {
       }
     };
 
-    // WHY: MutationObserver is browser API, not Node.js - eslint false positive for 'no-undef'
-    // eslint-disable-next-line no-undef
     const observer = new MutationObserver(handleAriaHiddenChange);
 
     observer.observe(rootElement, {
@@ -278,25 +284,25 @@ function AppContent() {
       return;
     }
     
-    window.updates.onUpdateAvailable((version) => {
-      window.logger?.info('Update available event received', { version });
+    onUpdateAvailable((version) => {
+      logInfo('Update available event received', { version });
       setUpdateVersion(version);
       setUpdateStatus('downloading');
       setShowUpdateDialog(true);
     });
     
-    window.updates.onDownloadProgress((progress) => {
-      window.logger?.debug('Download progress', { percent: progress.percent });
+    onDownloadProgress((progress) => {
+      logDebug('Download progress', { percent: progress.percent });
       setUpdateProgress(progress.percent);
     });
     
-    window.updates.onUpdateDownloaded((version) => {
-      window.logger?.info('Update downloaded event received', { version });
+    onUpdateDownloaded((version) => {
+      logInfo('Update downloaded event received', { version });
       setUpdateStatus('installing');
     });
     
     return () => {
-      window.updates?.removeAllListeners();
+      removeAllUpdateListeners();
     };
   }, []);
 
@@ -312,7 +318,7 @@ function AppContent() {
         onTabChange={async (newTab) => {
           if (isTransitioning || newTab === activeTab) return;
           
-          window.logger?.userAction('tab-change', { from: activeTab, to: newTab });
+          logUserAction('tab-change', { from: activeTab, to: newTab });
           
           setIsTransitioning(true);
           

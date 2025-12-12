@@ -3,6 +3,8 @@
  *
  * The implementation lives under `src/utils/authentication_flow.ts`, but consumers
  * historically imported from `src/authentication_flow`.
+ *
+ * Prefer importing `LoginManager` from `src/utils/` in new code.
  */
 export * from './utils/authentication_flow';
 

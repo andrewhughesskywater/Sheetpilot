@@ -45,7 +45,7 @@ describe('bootstrap-plugins', () => {
 
     mockRegistry = {
       loadConfig: vi.fn(),
-      registerPlugin: vi.fn(),
+      registerPlugin: vi.fn().mockResolvedValue(undefined),
       getActivePluginName: vi.fn((type: string) => {
         const names: Record<string, string> = {
           data: 'sqlite',
@@ -62,16 +62,16 @@ describe('bootstrap-plugins', () => {
   });
 
   describe('registerDefaultPlugins', () => {
-    it('should load plugin configuration', () => {
-      registerDefaultPlugins();
+    it('should load plugin configuration', async () => {
+      await registerDefaultPlugins();
 
       expect(path.join).toHaveBeenCalledWith(process.cwd(), 'plugin-config.json');
       expect(loadPluginConfig).toHaveBeenCalled();
       expect(mockRegistry.loadConfig).toHaveBeenCalled();
     });
 
-    it('should register all data services', () => {
-      registerDefaultPlugins();
+    it('should register all data services', async () => {
+      await registerDefaultPlugins();
 
       expect(mockRegistry.registerPlugin).toHaveBeenCalledWith(
         'data',
@@ -85,8 +85,8 @@ describe('bootstrap-plugins', () => {
       );
     });
 
-    it('should register credential service', () => {
-      registerDefaultPlugins();
+    it('should register credential service', async () => {
+      await registerDefaultPlugins();
 
       expect(mockRegistry.registerPlugin).toHaveBeenCalledWith(
         'credentials',
@@ -95,8 +95,8 @@ describe('bootstrap-plugins', () => {
       );
     });
 
-    it('should register submission services', () => {
-      registerDefaultPlugins();
+    it('should register submission services', async () => {
+      await registerDefaultPlugins();
 
       expect(mockRegistry.registerPlugin).toHaveBeenCalledWith(
         'submission',
@@ -110,14 +110,14 @@ describe('bootstrap-plugins', () => {
       );
     });
 
-    it('should log success message', () => {
-      registerDefaultPlugins();
+    it('should log success message', async () => {
+      await registerDefaultPlugins();
 
       expect(appLogger.info).toHaveBeenCalledWith('Default plugins registered successfully');
     });
 
-    it('should log active plugins configuration', () => {
-      registerDefaultPlugins();
+    it('should log active plugins configuration', async () => {
+      await registerDefaultPlugins();
 
       expect(appLogger.verbose).toHaveBeenCalledWith(
         'Active plugins configured',

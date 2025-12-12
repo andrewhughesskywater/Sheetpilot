@@ -1,0 +1,34 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["node", "vitest", "vitest/globals"],
+    "jsx": "react-jsx",
+    "noPropertyAccessFromIndexSignature": true,
+    "useUnknownInCatchVariables": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": false,
+    "exactOptionalPropertyTypes": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
+  },
+  "include": [
+    "app/backend/tests/**/*.ts",
+    "app/shared/tests/**/*.ts",
+    "app/tests/**/*.ts",
+    "app/frontend/tests/**/*.ts",
+    "app/frontend/tests/**/*.tsx",
+    "app/frontend/src/contracts/window.ts",
+    "app/frontend/src/utils/safe-init.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "build",
+    "release",
+    "app/backend/tests/mock-website/node_modules",
+    "app/backend/src/services/bot/node_modules",
+    "app/backend/src/services/bot/dist"
+  ]
+}
+
+

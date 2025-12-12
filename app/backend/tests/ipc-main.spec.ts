@@ -96,19 +96,47 @@ vi.mock('electron', () => {
   return { app, BrowserWindow, ipcMain, dialog, shell, screen, process: { on: vi.fn(), env: { NODE_ENV: 'test', ELECTRON_IS_DEV: 'true' } } };
 });
 
-// Mock backend modules used by main.ts
-vi.mock('../src/services/database', () => {
+// Mock repositories module used by IPC handlers and startup code
+vi.mock('../src/repositories', () => {
   const mockDb = {
     prepare: vi.fn(() => ({ all: vi.fn(() => []), get: vi.fn(() => ({})), run: vi.fn(() => ({ changes: 1 })) })),
     exec: vi.fn(),
     close: vi.fn()
   };
-  
+
   return {
+    // Connection management
     setDbPath: vi.fn(),
     ensureSchema: vi.fn(),
     getDbPath: vi.fn(() => 'C:/tmp/sheetpilot.sqlite'),
     getDb: vi.fn(() => mockDb),
+    openDb: vi.fn(() => mockDb),
+    closeConnection: vi.fn(),
+    shutdownDatabase: vi.fn(),
+    rebuildDatabase: vi.fn(),
+
+    // Timesheet operations
+    insertTimesheetEntry: vi.fn(),
+    insertTimesheetEntries: vi.fn(() => ({ success: true, total: 0, inserted: 0, duplicates: 0, errors: 0 })),
+    checkDuplicateEntry: vi.fn(() => false),
+    getDuplicateEntries: vi.fn(() => []),
+    getPendingTimesheetEntries: vi.fn(() => []),
+    markTimesheetEntriesAsInProgress: vi.fn(),
+    resetTimesheetEntriesStatus: vi.fn(),
+    resetInProgressTimesheetEntries: vi.fn(() => 0),
+    markTimesheetEntriesAsSubmitted: vi.fn(),
+    removeFailedTimesheetEntries: vi.fn(),
+    getTimesheetEntriesByIds: vi.fn(() => []),
+    getSubmittedTimesheetEntriesForExport: vi.fn(() => []),
+
+    // Credentials operations
+    storeCredentials: vi.fn(),
+    getCredentials: vi.fn(() => null),
+    listCredentials: vi.fn(() => []),
+    deleteCredentials: vi.fn(),
+    clearAllCredentials: vi.fn(),
+
+    // Session operations
     createSession: vi.fn(() => 'mock-session-token'),
     validateSession: vi.fn((token: string) => {
       if (token === 'valid-token' || token === 'mock-session-token') {
@@ -118,56 +146,10 @@ vi.mock('../src/services/database', () => {
     }),
     clearSession: vi.fn(),
     clearUserSessions: vi.fn(),
-    clearAllCredentials: vi.fn(),
-    rebuildDatabase: vi.fn(),
-    storeCredentials: vi.fn(),
-    getCredentials: vi.fn(() => null),
-    listCredentials: vi.fn(() => []),
-    deleteCredentials: vi.fn(),
-    openDb: vi.fn(() => mockDb),
-    getPendingTimesheetEntries: vi.fn(() => []) // Added missing export
-  };
-});
+    getSessionByEmail: vi.fn(),
 
-// Mock repositories module (delegates to database module mock)
-vi.mock('../src/repositories', async () => {
-  const db = await vi.importMock<typeof import('../src/services/database')>('../src/services/database');
-  
-  return {
-    // Connection management
-    setDbPath: db.setDbPath,
-    getDbPath: db.getDbPath,
-    getDb: db.getDb,
-    openDb: db.openDb,
-    closeConnection: vi.fn(),
-    shutdownDatabase: vi.fn(),
-    ensureSchema: db.ensureSchema,
-    rebuildDatabase: db.rebuildDatabase,
-    
-    // Timesheet operations
-    insertTimesheetEntry: vi.fn(),
-    getPendingTimesheetEntries: db.getPendingTimesheetEntries,
-    markTimesheetEntriesAsInProgress: vi.fn(),
-    resetTimesheetEntriesStatus: vi.fn(),
-    resetInProgressTimesheetEntries: vi.fn(() => 0),
-    markTimesheetEntriesAsSubmitted: vi.fn(),
-    removeFailedTimesheetEntries: vi.fn(),
-    getTimesheetEntriesByIds: vi.fn(() => []),
-    getSubmittedTimesheetEntriesForExport: vi.fn(() => []),
-    
-    // Credentials operations
-    storeCredentials: db.storeCredentials,
-    getCredentials: db.getCredentials,
-    listCredentials: db.listCredentials,
-    deleteCredentials: db.deleteCredentials,
-    clearAllCredentials: db.clearAllCredentials,
-    
-    // Session operations
-    createSession: db.createSession,
-    validateSession: db.validateSession,
-    clearSession: db.clearSession,
-    clearUserSessions: db.clearUserSessions,
-    getSessionByEmail: vi.fn()
+    // Migrations (used by bootstrap-database)
+    runMigrations: vi.fn(() => ({ success: true, migrationsRun: 0, fromVersion: 0, toVersion: 0 }))
   };
 });
 
@@ -206,7 +188,7 @@ vi.mock('../../shared/logger', () => {
 import { registerAllIPCHandlers } from '../src/ipc/index';
 
 // Re-get typed references to mocked modules for assertions
-import * as db from '../src/services/database';
+import * as repo from '../src/repositories';
 import * as imp from '../src/services/timesheet-importer';
 
 const mimps = imp as unknown as { submitTimesheets: ReturnType<typeof vi.fn> };
@@ -218,10 +200,10 @@ describe('Electron IPC Handlers (main.ts)', () => {
   beforeEach(() => {
     // Reset stub return values between tests
     (imp as { submitTimesheets: { mockClear?: () => void } }).submitTimesheets.mockClear?.();
-    const dbTyped = db as { getCredentials: { mockReset?: () => void; mockReturnValue?: (value: unknown) => void } };
-    dbTyped.getCredentials.mockReset?.();
+    const repoTyped = repo as unknown as { getCredentials: { mockReset?: () => void; mockReturnValue?: (value: unknown) => void } };
+    repoTyped.getCredentials.mockReset?.();
     // Reset to default null value
-    dbTyped.getCredentials.mockReturnValue?.(null);
+    repoTyped.getCredentials.mockReturnValue?.(null);
   });
 
   beforeAll(() => {
@@ -230,16 +212,16 @@ describe('Electron IPC Handlers (main.ts)', () => {
   });
 
   it('timesheet:submit returns error if credentials missing', async () => {
-    (db as { getCredentials: { mockReturnValue: (value: unknown) => void } }).getCredentials.mockReturnValue(null);
-    const res = await handlers['timesheet:submit']('valid-token');
+    (repo as unknown as { getCredentials: { mockReturnValue: (value: unknown) => void } }).getCredentials.mockReturnValue(null);
+    const res = await handlers['timesheet:submit']('valid-token') as { submitResult?: { ok: boolean; successCount: number; removedCount: number; totalProcessed: number }; dbPath?: string; error?: string };
     expect(res.error).toContain('credentials not found');
   });
 
   it('timesheet:submit submits with stored credentials', async () => {
-    const dbTyped = db as { getCredentials: { mockReturnValue: (value: unknown) => void } };
-    dbTyped.getCredentials.mockReturnValue({ email: 'user@test', password: 'pw' });
+    const repoTyped = repo as unknown as { getCredentials: { mockReturnValue: (value: unknown) => void } };
+    repoTyped.getCredentials.mockReturnValue({ email: 'user@test', password: 'pw' });
     
-    const res = await handlers['timesheet:submit']('valid-token');
+    const res = await handlers['timesheet:submit']('valid-token') as { submitResult?: { ok: boolean; successCount: number; removedCount: number; totalProcessed: number }; dbPath?: string; error?: string };
     
     // DEBUG: Print response if error
     if (res && typeof res === 'object' && 'error' in res) {

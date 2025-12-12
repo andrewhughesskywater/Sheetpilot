@@ -10,21 +10,16 @@
 
 import { ipcMain } from 'electron';
 import { ipcLogger } from '../../../shared/logger';
+import { isTrustedIpcSender } from './handlers/timesheet/main-window';
 import { 
   storeCredentials, 
-  getCredentials, 
   listCredentials, 
   deleteCredentials 
 } from '../repositories';
-import { 
-  CredentialsNotFoundError,
-  CredentialsStorageError,
-  isAppError
-} from '../../../shared/errors';
+import { CredentialsStorageError } from '../../../shared/errors';
 import { validateInput } from '../validation/validate-ipc-input';
 import { 
   storeCredentialsSchema,
-  getCredentialsSchema,
   deleteCredentialsSchema 
 } from '../validation/ipc-schemas';
 
@@ -34,11 +29,15 @@ import {
 export function registerCredentialsHandlers(): void {
   
   // Handler for storing credentials
-  ipcMain.handle('credentials:store', async (_event, service: string, email: string, password: string) => {
+  ipcMain.handle('credentials:store', async (event, service: string, email: string, password: string) => {
+    if (!isTrustedIpcSender(event)) {
+      return { success: false, message: 'Could not store credentials: unauthorized request', changes: 0 };
+    }
+
     // Validate input using Zod schema
     const validation = validateInput(storeCredentialsSchema, { service, email, password }, 'credentials:store');
     if (!validation.success) {
-      return { success: false, error: validation.error };
+      return { success: false, message: validation.error, changes: 0 };
     }
     
     const validatedData = validation.data!;
@@ -65,40 +64,11 @@ export function registerCredentialsHandlers(): void {
     }
   });
 
-  // Handler for getting credentials
-  ipcMain.handle('credentials:get', async (_event, service: string) => {
-    // Validate input using Zod schema
-    const validation = validateInput(getCredentialsSchema, { service }, 'credentials:get');
-    if (!validation.success) {
-      return { success: false, error: validation.error };
-    }
-    
-    const validatedData = validation.data!;
-    
-    try {
-      const credentials = getCredentials(validatedData.service);
-      if (!credentials) {
-        throw new CredentialsNotFoundError(validatedData.service);
-      }
-      return { success: true, credentials };
-    } catch (err: unknown) {
-      if (isAppError(err)) {
-        ipcLogger.error('Credentials retrieval failed', {
-          code: err.code,
-          category: err.category,
-          context: err.context
-        });
-        return { success: false, error: err.toUserMessage() };
-      }
-      
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      ipcLogger.error('Could not retrieve credentials', { error: errorMessage });
-      return { success: false, error: errorMessage };
-    }
-  });
-
   // Handler for listing credentials
-  ipcMain.handle('credentials:list', async () => {
+  ipcMain.handle('credentials:list', async (event) => {
+    if (!isTrustedIpcSender(event)) {
+      return { success: false, error: 'Could not list credentials: unauthorized request', credentials: [] };
+    }
     try {
       const credentials = listCredentials();
       return { success: true, credentials };
@@ -109,11 +79,14 @@ export function registerCredentialsHandlers(): void {
   });
 
   // Handler for deleting credentials
-  ipcMain.handle('credentials:delete', async (_event, service: string) => {
+  ipcMain.handle('credentials:delete', async (event, service: string) => {
+    if (!isTrustedIpcSender(event)) {
+      return { success: false, message: 'Could not delete credentials: unauthorized request', changes: 0 };
+    }
     // Validate input using Zod schema
     const validation = validateInput(deleteCredentialsSchema, { service }, 'credentials:delete');
     if (!validation.success) {
-      return { success: false, error: validation.error };
+      return { success: false, message: validation.error, changes: 0 };
     }
     
     const validatedData = validation.data!;
@@ -126,7 +99,7 @@ export function registerCredentialsHandlers(): void {
     } catch (err: unknown) {
       ipcLogger.error('Could not delete credentials', err);
       const errorMessage = err instanceof Error ? err.message : String(err);
-      return { success: false, error: errorMessage, changes: 0 };
+      return { success: false, message: errorMessage, changes: 0 };
     }
   });
 }

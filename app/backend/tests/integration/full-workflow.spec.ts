@@ -30,7 +30,7 @@ vi.mock('../../../shared/logger', () => ({
   }
 }));
 
-import { setDbPath, ensureSchema, openDb } from '../../src/services/database';
+import { setDbPath, ensureSchema, openDb, shutdownDatabase } from '../../src/repositories';
 import { createSession, validateSession } from '../../src/repositories/session-repository';
 import { storeCredentials, getCredentials } from '../../src/repositories/credentials-repository';
 import { insertTimesheetEntry, getPendingTimesheetEntries } from '../../src/repositories/timesheet-repository';
@@ -46,7 +46,6 @@ describe('Full Workflow Integration', () => {
 
   afterEach(() => {
     try {
-      const { shutdownDatabase } = require('../../src/services/database');
       shutdownDatabase();
     } catch {
       // Ignore

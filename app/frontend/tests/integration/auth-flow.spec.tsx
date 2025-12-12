@@ -20,7 +20,6 @@ describe('Authentication Flow Integration', () => {
     };
     credentials: {
       store: ReturnType<typeof vi.fn>;
-      get: ReturnType<typeof vi.fn>;
     };
   };
 
@@ -35,7 +34,6 @@ describe('Authentication Flow Integration', () => {
       },
       credentials: {
         store: vi.fn(),
-        get: vi.fn()
       }
     };
     (global as {window?: unknown}).window = mockWindow;

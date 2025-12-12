@@ -1,12 +1,31 @@
 /**
- * @fileoverview Main entry point for the timesheet automation bot
- * 
- * This module re-exports all public classes, types, and utilities
- * from the automation system components for easy importing.
- * 
- * @author Andrew Hughes
- * @version 1.0.0
- * @since 2025
+ * Public API for the Sheetpilot timesheet automation bot.
+ *
+ * ## How to navigate this package
+ * - **Orchestration**: `BotOrchestrator` coordinates the full workflow (login → fill → submit).
+ * - **Browser automation**: `WebformFiller` owns Playwright lifecycle and page interactions.
+ * - **Authentication**: `LoginManager` executes `LOGIN_STEPS` (config-driven login recipe).
+ * - **Configuration**: `automation_config.ts` provides selectors, timeouts, and behavior flags.
+ * - **Quarter routing**: `quarter_config.ts` maps dates to the correct Smartsheet form.
+ *
+ * ## Common call path (simplified)
+ *
+ * ```mermaid
+ * flowchart TD
+ *   caller[Caller] --> runTimesheet
+ *   runTimesheet --> orchestrator[BotOrchestrator]
+ *   orchestrator --> startBrowser[WebformFiller.start]
+ *   orchestrator --> login[LoginManager.run_login_steps]
+ *   orchestrator --> processRows[ProcessRows]
+ *   processRows --> fill[FillFields]
+ *   processRows --> submit[SubmitAndVerify]
+ *   submit --> monitor[SubmissionMonitor_or_submit_form]
+ *   processRows --> cleanup[CloseBrowser]
+ * ```
+ *
+ * ## Compatibility note
+ * Some files in `src/` exist only to preserve historic import paths (re-exports).
+ * Prefer importing from this module (`src/core/index.ts`) for new code.
  */
 
 // Core automation classes
@@ -26,19 +45,15 @@ export { WebformFiller, BotNotStartedError } from '../webform_flow';
 export * from '../automation_config';
 
 // Quarter configuration and routing
-export * from '../config/quarter_config';
+export * from '../quarter_config';
 
 /**
- * Simple interface function for running timesheet automation
- * 
- * @param rows - Array of timesheet rows to submit
- * @param email - Email for authentication
- * @param password - Password for authentication
- * @param formConfig - Form configuration for dynamic form URLs/IDs (required)
- * @param progressCallback - Optional callback for progress updates
- * @param headless - Whether to run browser in headless mode (default: read from environment variable)
- * @param abortSignal - Optional abort signal for cancellation support
- * @returns Promise with automation results
+ * Runs timesheet automation for a batch of rows.
+ *
+ * Callers typically create `rows` from timesheet entries. The bot returns
+ * **row indices** (0-based, relative to the `rows` array passed in).
+ *
+ * `formConfig` must match the form you expect to submit to (usually quarter-based).
  */
 export async function runTimesheet(
   rows: Array<Record<string, unknown>>, 
@@ -53,8 +68,8 @@ export async function runTimesheet(
   submitted: number[];
   errors: Array<[number, string]>;
 }> {
-  // Read headless setting from shared settings object if not explicitly provided
-  // appSettings.browserHeadless updates dynamically when changed via Settings UI
+  // Prefer the explicit parameter, otherwise use the UI-controlled setting.
+  // `appSettings.browserHeadless` updates at runtime when a user changes Settings.
   const useHeadless = headless !== undefined ? headless : appSettings.browserHeadless;
   botLogger.info('Initializing bot orchestrator', { 
     headlessParam: headless,

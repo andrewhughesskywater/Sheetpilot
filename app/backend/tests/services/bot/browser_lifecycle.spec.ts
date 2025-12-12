@@ -170,34 +170,33 @@ describe('Browser Lifecycle Management', () => {
   });
 
   it('should handle headless mode configuration correctly', async () => {
+    // Always force headless in tests to prevent opening real browser windows.
+    // Some environments will open a visible browser for headed mode, and a timeout race can leak it.
+
     // Test headless mode
     const headlessBot = new BotOrchestrator(Cfg as typeof Cfg, dummyFormConfig, true, 'chromium');
     await headlessBot.start();
     await headlessBot.close();
     
-    // Test headed mode (might fail in CI, but shouldn't crash)
+    // Only run headed mode when explicitly requested.
+    // Default behavior should not open visible browser windows during tests.
+    if (process.env['SHEETPILOT_TEST_HEADED_BROWSER'] !== 'true') {
+      return;
+    }
+
     const headedBot = new BotOrchestrator(Cfg as typeof Cfg, dummyFormConfig, false, 'chromium');
-    
-    // Use a race condition with a timeout to prevent hanging
+
     const startPromise = headedBot.start();
-    const timeoutPromise = new Promise((_, reject) => 
+    const timeoutPromise = new Promise<void>((_resolve, reject) =>
       setTimeout(() => reject(new Error('Headed mode start timeout')), 10000)
     );
-    
+
     try {
       await Promise.race([startPromise, timeoutPromise]);
+    } finally {
+      // Prevent leaking a visible browser window if startPromise resolves after the timeout.
+      await Promise.allSettled([startPromise]);
       await headedBot.close();
-    } catch (error) {
-      // Headed mode might not work in CI environment or timeout
-      // This is expected in environments without display
-      await headedBot.close();
-      
-      // Verify it's an expected error (timeout or display-related)
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      const isExpectedError = errorMsg.includes('timeout') || 
-                             errorMsg.includes('display') || 
-                             errorMsg.includes('DISPLAY');
-      expect(isExpectedError || true).toBe(true); // Always pass - headed mode is optional
     }
   }, 25000); // 25 second timeout for browser startup with buffer
 });

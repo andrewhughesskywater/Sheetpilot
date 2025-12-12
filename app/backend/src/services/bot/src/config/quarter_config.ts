@@ -1,12 +1,16 @@
 /**
- * @fileoverview Quarter Configuration - Defines quarters and form routing
- * 
- * This module contains quarter definitions, date-to-quarter mapping logic,
- * and validation functions for routing timesheet entries to appropriate forms.
- * 
- * @author Andrew Hughes
- * @version 1.0.0
- * @since 2025
+ * Quarter routing configuration (date → Smartsheet form).
+ *
+ * The bot uses quarter routing to ensure it submits entries to the correct form.
+ * `getQuarterForDate()` expects **YYYY-MM-DD** (ISO-ish) dates.
+ *
+ * To add a new quarter:
+ * 1. Add an entry to `QUARTER_DEFINITIONS`
+ * 2. Ensure `startDate`/`endDate` use `YYYY-MM-DD`
+ * 3. Set `formUrl` + `formId` to the matching Smartsheet form
+ *
+ * Callers who start with `mm/dd/yyyy` should convert before calling this module
+ * (see `_validateQuarterMatch()` in `core/bot_orchestation.ts` for an example).
  */
 
 /**

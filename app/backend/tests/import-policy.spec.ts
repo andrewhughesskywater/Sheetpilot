@@ -14,8 +14,16 @@ describe('Import policy - late import of logger and runtime deps', () => {
   it('preflight should exist to resolve critical modules', () => {
     const mainPath = path.resolve(__dirname, '../src/main.ts');
     const content = fs.readFileSync(mainPath, 'utf8');
-    expect(content.includes('function preflightResolve(')).toBe(true);
-    expect(content.includes("['electron-log', 'electron-updater', 'better-sqlite3']")).toBe(true);
+    // The project moved preflight logic into a dedicated module to keep main.ts thin.
+    // Assert that main.ts still runs the preflight, and that the module list remains present.
+    expect(content.includes('preflightResolveCriticalModules(')).toBe(true);
+
+    const preflightPath = path.resolve(
+      __dirname,
+      '../src/bootstrap/preflight/resolve-critical-modules.ts'
+    );
+    const preflightContent = fs.readFileSync(preflightPath, 'utf8');
+    expect(preflightContent.includes("['electron-log', 'electron-updater', 'better-sqlite3']")).toBe(true);
   });
 });
 

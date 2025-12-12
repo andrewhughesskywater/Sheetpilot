@@ -104,8 +104,31 @@ function extractMessageAndContext(data: unknown[]): { message: string; context?:
  * @private
  */
 function createFileFormat(): (msg: { level: string; data: unknown[] }) => string[] {
+    const formatContextForDisplay = (context: Record<string, unknown>): string => {
+        const parts: string[] = [];
+        for (const [key, value] of Object.entries(context)) {
+            if (value === undefined) {
+                continue;
+            }
+            if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' || value === null) {
+                parts.push(`${key}=${String(value)}`);
+                continue;
+            }
+            if (value instanceof Error) {
+                parts.push(`${key}=${value.name}:${value.message}`);
+                continue;
+            }
+            try {
+                parts.push(`${key}=${JSON.stringify(value)}`);
+            } catch {
+                parts.push(`${key}=[unserializable]`);
+            }
+        }
+        return parts.join(' ');
+    };
+
     return (msg: { level: string; data: unknown[] }) => {
-        const { message, context } = extractMessageAndContext(msg.data);
+        const { message, context, component } = extractMessageAndContext(msg.data);
         
         const logEntry: Record<string, unknown> = {
             // ISO 8601 timestamp for precise time tracking
@@ -136,11 +159,24 @@ function createFileFormat(): (msg: { level: string; data: unknown[] }) => string
             // Primary message content (plain text, not JSON encoded)
             message,
         };
+
+        if (component !== undefined && component.length > 0) {
+            logEntry['component'] = component;
+        }
         
         // Add context as separate field if present
         if (context) {
             logEntry['context'] = context;
         }
+
+        // Human-readable single-field view (still structured NDJSON overall)
+        // Keep one-line output to preserve NDJSON and machine-parsability.
+        const levelUpper = msg.level.toUpperCase();
+        const displayComponent = component !== undefined && component.length > 0 ? component : 'Application';
+        const displayContext = context ? formatContextForDisplay(context) : '';
+        logEntry['display'] = displayContext.length > 0
+            ? `[${levelUpper}] [${displayComponent}] ${message} | ${displayContext}`
+            : `[${levelUpper}] [${displayComponent}] ${message}`;
         
         return [JSON.stringify(logEntry)];
     };
@@ -318,8 +354,24 @@ export class Logger {
             message,
         };
         
+        const isPlainObject = (value: unknown): value is Record<string, unknown> => {
+            if (typeof value !== 'object' || value === null) {
+                return false;
+            }
+            if (Array.isArray(value)) {
+                return false;
+            }
+            return Object.prototype.toString.call(value) === '[object Object]';
+        };
+
         if (data !== undefined && data !== null) {
-            entry['data'] = data;
+            // Merge structured metadata directly into the entry to avoid nesting under a reserved "data" key.
+            // This prevents confusing output like context.data.data when callers legitimately use a "data" field.
+            if (isPlainObject(data)) {
+                Object.assign(entry, data);
+            } else {
+                entry['data'] = data;
+            }
         }
         
         // Use appropriate log level with map lookup

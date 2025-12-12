@@ -1,18 +1,24 @@
 /**
- * @fileoverview Authentication Flow - Handles login and authentication processes
- * 
- * This module manages the authentication workflow for the timesheet automation system.
- * It handles navigation to login pages, credential entry, and authentication state validation.
- * 
- * @author Andrew Hughes
- * @version 1.0.0
- * @since 2025
+ * Authentication flow helpers (login/navigation).
+ *
+ * `LoginManager` executes a config-driven login “recipe” (`LOGIN_STEPS`).
+ * This keeps selectors and auth branching mostly in configuration rather than code.
+ *
+ * ## `LOGIN_STEPS` contract (from `config/automation_config.ts`)
+ * Each step uses `action` plus a few optional fields:
+ * - `wait`: uses `element_selector` + `wait_condition` (`visible|hidden|attached|detached`)
+ * - `input`: uses `locator` + `value_key` (`email|password|literal`) and optional `sensitive`
+ * - `click`: uses `locator` and optional `expects_navigation`
+ *
+ * ## Contexts
+ * The bot can hold multiple Playwright contexts/pages. `contextIndex` allows
+ * callers to run login steps against a non-default context.
  */
 
-import { Page } from 'playwright';
+import type { Page } from 'playwright';
 import * as C from '../automation_config';
 import type { LoginStep } from '../automation_config';
-import { WebformFiller } from '../webform_flow';
+import type { WebformFiller } from '../webform_flow';
 import { authLogger } from '@sheetpilot/shared/logger';
 
 /**
@@ -112,11 +118,9 @@ export class LoginManager {
       contextIndex
     });
     
-    if (isSensitive) {
-      await locator.type(val);
-    } else {
-      await locator.fill(val);
-    }
+    // Use fill() even for sensitive values to avoid slow per-keystroke typing during SSO.
+    // `sensitive` still controls logging hygiene via the caller and config.
+    await locator.fill(val);
   }
 
   /**
@@ -151,7 +155,8 @@ export class LoginManager {
    * 
    * @param email - User email for authentication
    * @param password - User password for authentication
-   * @param contextIndex - Optional context index
+   * @param contextIndex - Target browser context index. When set, `LoginManager`
+   *   memoizes login state per context to avoid repeating auth flows.
    * @returns Promise that resolves when login is complete
    * @throws BotNavigationError if navigation fails after retries
    */
@@ -173,7 +178,8 @@ export class LoginManager {
         navigation_attempt += 1;
         authLogger.verbose('Navigation attempt', { attempt: navigation_attempt, maxRetries: max_navigation_retries, contextIndex });
         const page = contextIndex !== undefined ? this.browser_manager.getPage(contextIndex) : this.browser_manager.require_page();
-        // Wait for page to be ready before navigation attempt
+        // Wait for page to settle before attempting navigation. This reduces flakiness
+        // after prior failures (especially when the page still animates or loads).
         await C.wait_for_dom_stability(page, 'body', 'visible', C.DYNAMIC_WAIT_BASE_TIMEOUT * C.HALF_TIMEOUT_MULTIPLIER, C.DYNAMIC_WAIT_BASE_TIMEOUT * 1.0, 'navigation retry delay');
         await this._navigate_to_base(page);
         authLogger.verbose('Successfully navigated to base URL', { contextIndex });
@@ -276,8 +282,10 @@ export class LoginManager {
         authLogger.info('Login state validated successfully');
         return true;
       }
+      // Compatibility behavior: default to true when URL heuristics do not match.
+      // Tighten this if you need strict “logged-in vs logged-out” detection.
       authLogger.verbose('No success URL match, defaulting to validated');
-      return true; // Default to true for compatibility with existing behavior
+      return true;
     } catch (error) {
       authLogger.warn('Login state validation failed', { error });
       return false;

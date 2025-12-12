@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { ipcMain } from 'electron';
+import { ipcMain, IpcMainInvokeEvent } from 'electron';
 import { registerAuthHandlers } from '../../src/ipc/auth-handlers';
 import * as repositories from '../../src/repositories';
 // We use getCredentials from repositories in our mocks
@@ -10,6 +10,10 @@ vi.mock('electron', () => ({
   ipcMain: {
     handle: vi.fn()
   }
+}));
+
+vi.mock('../../src/ipc/handlers/timesheet/main-window', () => ({
+  isTrustedIpcSender: vi.fn(() => true)
 }));
 
 // Mock repositories
@@ -43,7 +47,7 @@ vi.mock('../../src/validation/validate-ipc-input', () => ({
 
 describe('auth-handlers', () => {
   const originalEnv = process.env;
-  let handleCalls: Array<[string, (...args: unknown[]) => unknown]> = [];
+  let handleCalls: Array<[string, (event: IpcMainInvokeEvent, ...args: any[]) => any]> = [];
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -51,7 +55,7 @@ describe('auth-handlers', () => {
     handleCalls = [];
     
     // Capture handle calls
-    vi.mocked(ipcMain.handle).mockImplementation((channel: string, handler: (...args: unknown[]) => unknown) => {
+    vi.mocked(ipcMain.handle).mockImplementation((channel: string, handler: (event: IpcMainInvokeEvent, ...args: any[]) => any) => {
       handleCalls.push([channel, handler]);
       return undefined as never;
     });
@@ -91,8 +95,8 @@ describe('auth-handlers', () => {
 
   describe('auth:login handler', () => {
     it('should login regular user successfully', async () => {
-      // Mock getCredentials to return undefined (new user scenario)
-      vi.mocked(repositories.getCredentials).mockReturnValue(undefined);
+      // Mock getCredentials to return null (new user scenario)
+      vi.mocked(repositories.getCredentials).mockReturnValue(null);
       vi.mocked(repositories.storeCredentials).mockReturnValue({
         success: true,
         message: 'Stored',
@@ -114,11 +118,11 @@ describe('auth-handlers', () => {
 
     it('should login admin user successfully', async () => {
       // Set env vars before importing/registering
-      const originalAdminUser = process.env.SHEETPILOT_ADMIN_USERNAME;
-      const originalAdminPass = process.env.SHEETPILOT_ADMIN_PASSWORD;
+      const originalAdminUser = process.env['SHEETPILOT_ADMIN_USERNAME'];
+      const originalAdminPass = process.env['SHEETPILOT_ADMIN_PASSWORD'];
       
-      process.env.SHEETPILOT_ADMIN_USERNAME = 'Admin';
-      process.env.SHEETPILOT_ADMIN_PASSWORD = 'admin123';
+      process.env['SHEETPILOT_ADMIN_USERNAME'] = 'Admin';
+      process.env['SHEETPILOT_ADMIN_PASSWORD'] = 'admin123';
 
       vi.mocked(repositories.createSession).mockReturnValue('admin-token');
 
@@ -144,15 +148,15 @@ describe('auth-handlers', () => {
       expect(repositories.storeCredentials).not.toHaveBeenCalled();
       
       // Restore env vars
-      if (originalAdminUser) process.env.SHEETPILOT_ADMIN_USERNAME = originalAdminUser;
-      else delete process.env.SHEETPILOT_ADMIN_USERNAME;
-      if (originalAdminPass) process.env.SHEETPILOT_ADMIN_PASSWORD = originalAdminPass;
-      else delete process.env.SHEETPILOT_ADMIN_PASSWORD;
+      if (originalAdminUser) process.env['SHEETPILOT_ADMIN_USERNAME'] = originalAdminUser;
+      else delete process.env['SHEETPILOT_ADMIN_USERNAME'];
+      if (originalAdminPass) process.env['SHEETPILOT_ADMIN_PASSWORD'] = originalAdminPass;
+      else delete process.env['SHEETPILOT_ADMIN_PASSWORD'];
     });
 
     it('should handle credential storage failure', async () => {
-      // Mock getCredentials to return undefined (new user scenario)
-      vi.mocked(repositories.getCredentials).mockReturnValue(undefined);
+      // Mock getCredentials to return null (new user scenario)
+      vi.mocked(repositories.getCredentials).mockReturnValue(null);
       vi.mocked(repositories.storeCredentials).mockReturnValue({
         success: false,
         message: 'Storage failed',
@@ -170,8 +174,8 @@ describe('auth-handlers', () => {
     });
 
     it('should handle errors gracefully', async () => {
-      // Mock getCredentials to return undefined (new user scenario)
-      vi.mocked(repositories.getCredentials).mockReturnValue(undefined);
+      // Mock getCredentials to return null (new user scenario)
+      vi.mocked(repositories.getCredentials).mockReturnValue(null);
       vi.mocked(repositories.storeCredentials).mockImplementation(() => {
         throw new Error('Database error');
       });
@@ -227,7 +231,7 @@ describe('auth-handlers', () => {
         email: 'user@example.com',
         isAdmin: false
       });
-      vi.mocked(repositories.clearSession).mockReturnValue(true);
+      vi.mocked(repositories.clearSession).mockReturnValue(undefined);
       vi.mocked(repositories.clearUserSessions).mockReturnValue(undefined);
 
       registerAuthHandlers();

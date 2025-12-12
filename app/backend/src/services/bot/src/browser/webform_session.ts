@@ -1,4 +1,15 @@
-// webform_session.ts
+/**
+ * Webform session management (contexts + pages).
+ *
+ * This module is currently **not wired** into `BotOrchestrator`.
+ * It exists as a more structured alternative to `WebformFiller`’s direct
+ * `contexts[]/pages[]` management.
+ *
+ * Key ideas:
+ * - Create N isolated browser contexts up-front
+ * - Apply consistent “stealth” scripts and realistic headers/user-agent
+ * - Provide a single place to wait for a form to become interactive
+ */
 import type { Browser, BrowserContext, Page } from 'playwright';
 import * as cfg from '../automation_config';
 import { botLogger } from '@sheetpilot/shared/logger';
@@ -15,6 +26,12 @@ export type BrowserSession = {
   page: Page;
 };
 
+/**
+ * Manages multiple Playwright contexts/pages as discrete “sessions”.
+ *
+ * Use this when you need parallel or isolated browser state (e.g., multiple logins).
+ * The current bot flow typically uses only one session (index 0).
+ */
 export class WebformSessionManager {
   private sessions: BrowserSession[] = [];
   private defaultSessionIndex = 0;
@@ -25,6 +42,7 @@ export class WebformSessionManager {
   ) {}
 
   async initContexts(count: number = 1): Promise<void> {
+    // Create contexts up-front so callers can address them by index.
     for (let i = 0; i < count; i++) {
       const context = await this.browser.newContext({
         viewport: {
@@ -36,6 +54,7 @@ export class WebformSessionManager {
         userAgent:
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         extraHTTPHeaders: {
+          // These headers aim to mirror a typical interactive browser session.
           'Accept-Language': 'en-US,en;q=0.9',
           'Accept-Encoding': 'gzip, deflate, br',
           Accept:

@@ -119,8 +119,6 @@ declare global {
     credentials?: {
       /** Store credentials securely */
       store: (service: string, email: string, password: string) => Promise<{ success: boolean; message: string; changes: number }>;
-      /** Retrieve credentials for a service */
-      get: (service: string) => Promise<{ email: string; password: string } | null>;
       /** List all stored credential services */
       list: () => Promise<{ success: boolean; credentials: Array<{ id: number; service: string; email: string; created_at: string; updated_at: string }>; error?: string }>;
       /** Delete credentials for a service */
@@ -174,12 +172,6 @@ declare global {
         }>;
         error?: string;
       }>;
-      /** Get all stored credential records */
-      getAllCredentials: () => Promise<{
-        success: boolean;
-        credentials?: Array<{ id: number; service: string; email: string; created_at: string; updated_at: string }>;
-        error?: string;
-      }>;
       /** Get all archive data in single batched call (timesheet + credentials) */
       getAllArchiveData: (token: string) => Promise<{
         success: boolean;
@@ -191,8 +183,6 @@ declare global {
         credentials?: Array<{ id: number; service: string; email: string; created_at: string; updated_at: string }>;
         error?: string;
       }>;
-      /** Clear entire database (development only) */
-      clearDatabase: () => Promise<{ success: boolean; error?: string }>;
     };
     
     /**
@@ -202,30 +192,9 @@ declare global {
      */
     logs?: {
       /** Get log directory path and list of log files */
-      getLogPath: () => Promise<{ success: boolean; logPath?: string; logFiles?: string[]; error?: string }>;
-      /** Read and parse log file */
-      readLogFile: (logPath: string) => Promise<{
-        success: boolean;
-        logs?: Array<{
-          lineNumber: number;
-          timestamp?: string;
-          level?: string;
-          message?: string;
-          component?: string;
-          sessionId?: string;
-          username?: string;
-          application?: string;
-          version?: string;
-          environment?: string;
-          process?: { pid: number; platform: string; nodeVersion: string };
-          data?: unknown;
-          raw?: string;
-        }>;
-        totalLines?: number;
-        error?: string;
-      }>;
+      getLogPath: (token: string) => Promise<{ success: boolean; logPath?: string; logFiles?: string[]; error?: string }>;
       /** Export logs for download */
-      exportLogs: (logPath: string, format?: 'json' | 'txt') => Promise<{ success: boolean; content?: string; filename?: string; mimeType?: string; error?: string }>;
+      exportLogs: (token: string, logPath: string, format?: 'json' | 'txt') => Promise<{ success: boolean; content?: string; filename?: string; mimeType?: string; error?: string }>;
     };
     
     /**

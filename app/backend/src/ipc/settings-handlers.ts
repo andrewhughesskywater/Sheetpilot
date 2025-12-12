@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import { app } from 'electron';
 import { ipcLogger } from '../../../shared/logger';
 import { setBrowserHeadless } from '../../../shared/constants';
+import { isTrustedIpcSender } from './handlers/timesheet/main-window';
 
 /**
  * Settings Handlers
@@ -76,7 +77,10 @@ export function registerSettingsHandlers(): void {
     });
   }
   
-  ipcMain.handle('settings:get', async (_event, key: string) => {
+  ipcMain.handle('settings:get', async (event, key: string) => {
+    if (!isTrustedIpcSender(event)) {
+      return { success: false, error: 'Could not get setting: unauthorized request' };
+    }
     try {
       const settings = loadSettings();
       return { success: true, value: settings[key as keyof AppSettings] };
@@ -88,7 +92,10 @@ export function registerSettingsHandlers(): void {
     }
   });
 
-  ipcMain.handle('settings:set', async (_event, key: string, value: unknown) => {
+  ipcMain.handle('settings:set', async (event, key: string, value: unknown) => {
+    if (!isTrustedIpcSender(event)) {
+      return { success: false, error: 'Could not set setting: unauthorized request' };
+    }
     try {
       const settingsPath = getSettingsPath();
       const settings = loadSettings();
@@ -121,7 +128,9 @@ export function registerSettingsHandlers(): void {
       }
       
       if (!savedCorrectly) {
-        throw new Error(`Setting was not saved correctly. Expected ${value}, got ${verifiedSettings[key as keyof AppSettings]}`);
+        throw new Error(
+          `Setting was not saved correctly. Expected ${String(value)}, got ${String(verifiedSettings[key as keyof AppSettings])}`
+        );
       }
       
       return { success: true };
@@ -138,7 +147,10 @@ export function registerSettingsHandlers(): void {
     }
   });
 
-  ipcMain.handle('settings:getAll', async () => {
+  ipcMain.handle('settings:getAll', async (event) => {
+    if (!isTrustedIpcSender(event)) {
+      return { success: false, error: 'Could not get settings: unauthorized request' };
+    }
     try {
       const settings = loadSettings();
       return { success: true, settings };

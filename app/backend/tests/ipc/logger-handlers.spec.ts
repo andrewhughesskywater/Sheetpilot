@@ -10,6 +10,10 @@ vi.mock('electron', () => ({
   }
 }));
 
+vi.mock('../../src/ipc/handlers/timesheet/main-window', () => ({
+  isTrustedIpcSender: vi.fn(() => true)
+}));
+
 // Mock logger
 vi.mock('../../../shared/logger', () => ({
   ipcLogger: {

@@ -30,10 +30,7 @@ import {
     markTimesheetEntriesAsSubmitted,
     removeFailedTimesheetEntries,
     closeConnection
-} from '../src/services/database';
-
-// Type for database row
-interface DbRow { [key: string]: unknown }
+} from '../src/repositories';
 
 describe('Database Persistence Regression Tests', () => {
     let testDbPath: string;
@@ -93,7 +90,7 @@ describe('Database Persistence Regression Tests', () => {
             expect(pendingEntries).toHaveLength(5);
 
             // Get entry IDs
-            const entryIds = pendingEntries.map((e: DbRow) => e.id as number);
+            const entryIds = pendingEntries.map((e) => e.id);
 
             // SIMULATE: Successful submission to Smartsheet (bot succeeded)
             // Mark entries as submitted (this is where the bug occurred)
@@ -105,13 +102,13 @@ describe('Database Persistence Regression Tests', () => {
 
             // VERIFY: Entries should be in archive (status = 'Complete')
             const db = openDb();
-            const archivedEntries = db.prepare('SELECT * FROM timesheet WHERE status = ?').all('Complete');
+            const archivedEntries = db.prepare('SELECT * FROM timesheet WHERE status = ?').all('Complete') as Array<{ submitted_at?: string | null; status?: string | null }>;
             expect(archivedEntries).toHaveLength(5);
 
             // Verify submitted_at timestamp is set
-            archivedEntries.forEach((entry: DbRow) => {
-                expect(entry.submitted_at as string).toBeTruthy();
-                expect(entry.status as string).toBe('Complete');
+            archivedEntries.forEach((entry) => {
+                expect(entry.submitted_at).toBeTruthy();
+                expect(entry.status).toBe('Complete');
             });
 
             db.close();
@@ -126,15 +123,15 @@ describe('Database Persistence Regression Tests', () => {
             expect(pendingAfterReload).toHaveLength(0);
 
             const dbReload = openDb();
-            const archivedAfterReload = dbReload.prepare('SELECT * FROM timesheet WHERE status = ?').all('Complete');
+            const archivedAfterReload = dbReload.prepare('SELECT * FROM timesheet WHERE status = ?').all('Complete') as Array<{ status?: string | null; submitted_at?: string | null; project?: string; task_description?: string }>;
             expect(archivedAfterReload).toHaveLength(5);
 
             // Verify data integrity
-            archivedAfterReload.forEach((entry: DbRow) => {
-                expect(entry.status as string).toBe('Complete');
-                expect(entry.submitted_at as string).toBeTruthy();
-                expect(entry.project as string).toBeTruthy();
-                expect(entry.task_description as string).toBeTruthy();
+            archivedAfterReload.forEach((entry) => {
+                expect(entry.status).toBe('Complete');
+                expect(entry.submitted_at).toBeTruthy();
+                expect(entry.project).toBeTruthy();
+                expect(entry.task_description).toBeTruthy();
             });
 
             dbReload.close();
@@ -159,7 +156,7 @@ describe('Database Persistence Regression Tests', () => {
             });
 
             const pendingEntries = getPendingTimesheetEntries();
-            const realIds = pendingEntries.map((e: DbRow) => e.id as number);
+            const realIds = pendingEntries.map((e) => e.id);
 
             // Try to mark non-existent ID along with real IDs
             const idsWithFake = [...realIds, 99999];
@@ -204,7 +201,7 @@ describe('Database Persistence Regression Tests', () => {
             // Verify entry was still marked as submitted despite checkpoint issues
             const db = openDb();
             const entry = db.prepare('SELECT * FROM timesheet WHERE id = ?').get(entryId);
-            expect((entry as DbRow).status as string).toBe('Complete');
+            expect((entry as { status?: string | null }).status).toBe('Complete');
             db.close();
         });
 
@@ -232,8 +229,8 @@ describe('Database Persistence Regression Tests', () => {
 
                 const db = openDb();
                 const entry = db.prepare('SELECT * FROM timesheet WHERE id = ?').get(entryId);
-                expect((entry as DbRow).status as string).toBe('Complete');
-                expect((entry as DbRow).submitted_at as string).toBeTruthy();
+                expect((entry as { status?: string | null }).status).toBe('Complete');
+                expect((entry as { submitted_at?: string | null }).submitted_at).toBeTruthy();
                 db.close();
             }
         });
@@ -301,7 +298,7 @@ describe('Database Persistence Regression Tests', () => {
             });
 
             const pendingEntries = getPendingTimesheetEntries();
-            const entryIds = pendingEntries.map((e: DbRow) => e.id as number);
+            const entryIds = pendingEntries.map((e) => e.id);
 
             // First marking should succeed
             markTimesheetEntriesAsSubmitted(entryIds);
@@ -314,7 +311,7 @@ describe('Database Persistence Regression Tests', () => {
             // Verify entry is still Complete (not corrupted)
             const db = openDb();
             const entry = db.prepare('SELECT * FROM timesheet WHERE id = ?').get(entryIds[0]);
-            expect((entry as DbRow).status as string).toBe('Complete');
+            expect((entry as { status?: string | null }).status).toBe('Complete');
             db.close();
         });
 
@@ -331,7 +328,7 @@ describe('Database Persistence Regression Tests', () => {
             }
 
             const pendingEntries = getPendingTimesheetEntries();
-            const entryIds = pendingEntries.map((e: DbRow) => e.id as number);
+            const entryIds = pendingEntries.map((e) => e.id);
 
             // Add a fake ID to cause partial failure
             const idsWithFake = [...entryIds, 99999];
@@ -374,7 +371,7 @@ describe('Database Persistence Regression Tests', () => {
 
             // Count total entries
             const countBeforeRevert = db.prepare('SELECT COUNT(*) as count FROM timesheet').get();
-            expect((countBeforeRevert as DbRow).count as number).toBe(1);
+            expect((countBeforeRevert as { count?: number }).count).toBe(1);
 
             db.close();
 
@@ -384,12 +381,12 @@ describe('Database Persistence Regression Tests', () => {
             // Verify entry still exists
             const dbAfter = openDb();
             const countAfterRevert = dbAfter.prepare('SELECT COUNT(*) as count FROM timesheet').get();
-            expect((countAfterRevert as DbRow).count as number).toBe(1);
+            expect((countAfterRevert as { count?: number }).count).toBe(1);
 
             // Verify status is NULL (pending)
             const entry = dbAfter.prepare('SELECT * FROM timesheet WHERE id = ?').get(entryId);
-            expect((entry as DbRow).status).toBeNull();
-            expect((entry as DbRow).project as string).toBe('NoDeleteTest');
+            expect((entry as { status?: string | null }).status).toBeNull();
+            expect((entry as { project?: string }).project).toBe('NoDeleteTest');
 
             dbAfter.close();
         });
@@ -418,15 +415,15 @@ describe('Database Persistence Regression Tests', () => {
             const db = openDb();
             const submittedEntry = db.prepare('SELECT * FROM timesheet WHERE id = ?').get(entryId);
 
-            expect((submittedEntry as DbRow).date as string).toBe(originalEntry.date);
-            expect((submittedEntry as DbRow).time_in as number).toBe(originalEntry.timeIn);
-            expect((submittedEntry as DbRow).time_out as number).toBe(originalEntry.timeOut);
-            expect((submittedEntry as DbRow).project as string).toBe(originalEntry.project);
-            expect((submittedEntry as DbRow).tool as string).toBe(originalEntry.tool);
-            expect((submittedEntry as DbRow).detail_charge_code as string).toBe(originalEntry.detailChargeCode);
-            expect((submittedEntry as DbRow).task_description as string).toBe(originalEntry.taskDescription);
-            expect((submittedEntry as DbRow).status as string).toBe('Complete');
-            expect((submittedEntry as DbRow).submitted_at as string).toBeTruthy();
+            expect((submittedEntry as { date?: string }).date).toBe(originalEntry.date);
+            expect((submittedEntry as { time_in?: number }).time_in).toBe(originalEntry.timeIn);
+            expect((submittedEntry as { time_out?: number }).time_out).toBe(originalEntry.timeOut);
+            expect((submittedEntry as { project?: string }).project).toBe(originalEntry.project);
+            expect((submittedEntry as { tool?: string | null }).tool).toBe(originalEntry.tool);
+            expect((submittedEntry as { detail_charge_code?: string | null }).detail_charge_code).toBe(originalEntry.detailChargeCode);
+            expect((submittedEntry as { task_description?: string }).task_description).toBe(originalEntry.taskDescription);
+            expect((submittedEntry as { status?: string | null }).status).toBe('Complete');
+            expect((submittedEntry as { submitted_at?: string | null }).submitted_at).toBeTruthy();
 
             db.close();
         });
@@ -460,7 +457,7 @@ describe('Database Persistence Regression Tests', () => {
             const pendingEntries = getPendingTimesheetEntries();
             expect(pendingEntries).toHaveLength(100);
 
-            const entryIds = pendingEntries.map((e: DbRow) => e.id as number);
+            const entryIds = pendingEntries.map((e) => e.id);
 
             // Mark all as submitted
             markTimesheetEntriesAsSubmitted(entryIds);
@@ -468,7 +465,7 @@ describe('Database Persistence Regression Tests', () => {
             // Verify all marked
             const db = openDb();
             const completeEntries = db.prepare('SELECT COUNT(*) as count FROM timesheet WHERE status = ?').get('Complete');
-            expect((completeEntries as DbRow).count as number).toBe(100);
+            expect((completeEntries as { count?: number }).count).toBe(100);
             db.close();
         });
 
@@ -498,7 +495,7 @@ describe('Database Persistence Regression Tests', () => {
 
                 const db = openDb();
                 const complete = db.prepare('SELECT COUNT(*) as count FROM timesheet WHERE status = ?').get('Complete');
-                expect((complete as DbRow).count as number).toBe(1);
+                expect((complete as { count?: number }).count).toBe(1);
                 db.close();
             }
         });

@@ -21,18 +21,15 @@ const mockWindow = {
   },
   credentials: {
     store: vi.fn(),
-    get: vi.fn(),
     list: vi.fn(),
     delete: vi.fn()
   },
   database: {
     getAllTimesheetEntries: vi.fn(),
-    getAllCredentials: vi.fn(),
-    clearDatabase: vi.fn()
+    getAllArchiveData: vi.fn()
   },
   logs: {
     getLogPath: vi.fn(),
-    readLogFile: vi.fn(),
     exportLogs: vi.fn()
   },
   api: {
@@ -51,12 +48,12 @@ describe('App Rendering Tests - Blank Screen Prevention', () => {
     vi.clearAllMocks();
     
     // Clear window APIs
-    delete (window as unknown as Record<string, unknown>).logger;
-    delete (window as unknown as Record<string, unknown>).timesheet;
-    delete (window as unknown as Record<string, unknown>).credentials;
-    delete (window as unknown as Record<string, unknown>).database;
-    delete (window as unknown as Record<string, unknown>).logs;
-    delete (window as unknown as Record<string, unknown>).api;
+    delete window.logger;
+    delete window.timesheet;
+    delete window.credentials;
+    delete window.database;
+    delete window.logs;
+    delete window.api;
     
     // Mock window object
     Object.assign(window, mockWindow);

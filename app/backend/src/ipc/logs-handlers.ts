@@ -11,8 +11,11 @@
 import { ipcMain, app } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
+import { ipcLogger } from '../../../shared/logger';
+import { validateSession } from '../repositories';
+import { isTrustedIpcSender } from './handlers/timesheet/main-window';
 import { validateInput } from '../validation/validate-ipc-input';
-import { readLogFileSchema, exportLogsSchema } from '../validation/ipc-schemas';
+import { exportLogsSchema } from '../validation/ipc-schemas';
 
 /**
  * Register all logs-related IPC handlers
@@ -20,7 +23,20 @@ import { readLogFileSchema, exportLogsSchema } from '../validation/ipc-schemas';
 export function registerLogsHandlers(): void {
   
   // Handler for getting log file path
-  ipcMain.handle('logs:getLogPath', async () => {
+  ipcMain.handle('logs:getLogPath', async (event, token: string) => {
+    if (!isTrustedIpcSender(event)) {
+      return { success: false, error: 'Could not get log path: unauthorized request' };
+    }
+
+    if (!token) {
+      return { success: false, error: 'Session token is required. Please log in to access logs.' };
+    }
+
+    const session = validateSession(token);
+    if (!session.valid) {
+      return { success: false, error: 'Session is invalid or expired. Please log in again.' };
+    }
+
     try {
       const userDataPath = app.getPath('userData');
       const allFiles = await fs.promises.readdir(userDataPath);
@@ -41,56 +57,21 @@ export function registerLogsHandlers(): void {
     }
   });
 
-  // Handler for reading log file contents with pagination
-  ipcMain.handle('logs:readLogFile', async (_event, logPath: string, options?: { page?: number; pageSize?: number }) => {
-    // Validate input using Zod schema
-    const validation = validateInput(readLogFileSchema, { logPath }, 'logs:readLogFile');
-    if (!validation.success) {
-      return { success: false, error: validation.error };
-    }
-    
-    const validatedData = validation.data!;
-    
-    try {
-      const logContent = await fs.promises.readFile(validatedData.logPath, 'utf8');
-      const lines = logContent.split('\n').filter((line: string) => line.trim() !== '');
-      
-      // Pagination parameters with defaults
-      const page = options?.page ?? 0;
-      const pageSize = options?.pageSize ?? 100; // Default 100 lines per page
-      const offset = page * pageSize;
-      const totalLines = lines.length;
-      const totalPages = Math.ceil(totalLines / pageSize);
-      
-      // Get paginated lines
-      const paginatedLines = lines.slice(offset, offset + pageSize);
-      
-      // Parse JSON log entries
-      const parsedLogs = paginatedLines.map((line: string, index: number) => {
-        try {
-          const parsed = JSON.parse(line);
-          return { lineNumber: offset + index + 1, ...parsed };
-        } catch {
-          return { lineNumber: offset + index + 1, raw: line };
-        }
-      });
-      
-      return { 
-        success: true, 
-        logs: parsedLogs, 
-        totalLines,
-        page,
-        pageSize,
-        totalPages
-      };
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      return { success: false, error: errorMessage };
-    }
-  });
-
   // Handler for exporting logs
-  ipcMain.handle('logs:exportLogs', async (_event, logPath: string, exportFormat: 'json' | 'txt' = 'txt') => {
+  ipcMain.handle('logs:exportLogs', async (event, token: string, logPath: string, exportFormat: 'json' | 'txt' = 'txt') => {
+    if (!isTrustedIpcSender(event)) {
+      return { success: false, error: 'Could not export logs: unauthorized request' };
+    }
+
+    if (!token) {
+      return { success: false, error: 'Session token is required. Please log in to export logs.' };
+    }
+
+    const session = validateSession(token);
+    if (!session.valid) {
+      return { success: false, error: 'Session is invalid or expired. Please log in again.' };
+    }
+
     // Validate input using Zod schema
     const validation = validateInput(exportLogsSchema, { logPath, exportFormat }, 'logs:exportLogs');
     if (!validation.success) {
@@ -100,6 +81,23 @@ export function registerLogsHandlers(): void {
     const validatedData = validation.data!;
     
     try {
+      const userDataPath = app.getPath('userData');
+      const resolvedUserDataPath = path.resolve(userDataPath);
+      const resolvedLogPath = path.resolve(validatedData.logPath);
+      const logFileName = path.basename(resolvedLogPath);
+      const isExpectedLogFile = logFileName.startsWith('sheetpilot_') && logFileName.endsWith('.log');
+      const isWithinUserData =
+        resolvedLogPath === resolvedUserDataPath || resolvedLogPath.startsWith(resolvedUserDataPath + path.sep);
+
+      if (!isWithinUserData || !isExpectedLogFile) {
+        ipcLogger.security('logs-access-denied', 'Unauthorized log path requested', {
+          requestedPath: validatedData.logPath,
+          resolvedLogPath,
+          userDataPath: resolvedUserDataPath
+        });
+        return { success: false, error: 'Could not export logs: log path not allowed' };
+      }
+
       const logContent = await fs.promises.readFile(validatedData.logPath, 'utf8');
       
       if (validatedData.exportFormat === 'json') {

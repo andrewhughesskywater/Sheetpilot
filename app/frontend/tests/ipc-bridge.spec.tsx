@@ -33,13 +33,13 @@ describe('IPC Bridge Tests', () => {
   afterEach(() => {
     // Clean up global mocks - use configurable properties
     if (window.timesheet !== undefined) {
-      delete (window as unknown as Record<string, unknown>).timesheet;
+      delete window.timesheet;
     }
     if (window.credentials !== undefined) {
-      delete (window as unknown as Record<string, unknown>).credentials;
+      delete window.credentials;
     }
     if (window.logger !== undefined) {
-      delete (window as unknown as Record<string, unknown>).logger;
+      delete window.logger;
     }
   });
 
@@ -71,7 +71,6 @@ describe('IPC Bridge Tests', () => {
     // Mock the credentials IPC bridge
     const mockCredentials = {
       store: vi.fn(),
-      get: vi.fn(),
       list: vi.fn(),
       delete: vi.fn()
     };
@@ -84,7 +83,6 @@ describe('IPC Bridge Tests', () => {
 
     expect(window.credentials).toBeDefined();
     expect(window.credentials.store).toBeDefined();
-    expect(window.credentials.get).toBeDefined();
     expect(window.credentials.list).toBeDefined();
     expect(window.credentials.delete).toBeDefined();
   });

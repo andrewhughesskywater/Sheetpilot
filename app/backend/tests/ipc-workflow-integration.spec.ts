@@ -13,7 +13,7 @@ import {
     setDbPath,
     openDb,
     closeConnection
-} from '../src/services/database';
+} from '../src/repositories';
 import { submitTimesheets } from '../src/services/timesheet-importer';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -67,10 +67,10 @@ describe('IPC Workflow Integration', () => {
         expect(result.totalProcessed).toBe(1);
         
         // Even if submission fails (expected in test), it should not fail with browser init error
-        if (!result.ok && result.errors) {
-            const errorMessages = result.errors?.map((e: [string, string]) => e[1]).join(' ').toLowerCase();
-            expect(errorMessages).not.toContain('page is not available');
-            expect(errorMessages).not.toContain('call start() first');
+        if (!result.ok && result.error) {
+            const errorMessage = result.error.toLowerCase();
+            expect(errorMessage).not.toContain('page is not available');
+            expect(errorMessage).not.toContain('call start() first');
         }
     });
 
@@ -156,7 +156,7 @@ describe('IPC Workflow Integration', () => {
         // Verify data hasn't been corrupted
         const db = openDb();
         const getEntry = db.prepare('SELECT * FROM timesheet WHERE id = ?');
-        const currentEntry = getEntry.get(originalEntry.id);
+        const currentEntry = getEntry.get(originalEntry.id) as { project: string; tool: string | null; detail_charge_code: string | null; task_description: string };
         db.close();
 
         expect(currentEntry.project).toBe(originalEntry.project);

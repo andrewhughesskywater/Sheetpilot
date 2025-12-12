@@ -14,6 +14,21 @@ vi.mock('electron', () => ({
   }
 }));
 
+vi.mock('../../src/ipc/handlers/timesheet/main-window', () => ({
+  isTrustedIpcSender: vi.fn(() => true)
+}));
+
+vi.mock('../../src/repositories', () => ({
+  validateSession: vi.fn(() => ({ valid: true, email: 'user@example.com', isAdmin: false }))
+}));
+
+vi.mock('../../../shared/logger', () => ({
+  ipcLogger: {
+    security: vi.fn(),
+    warn: vi.fn()
+  }
+}));
+
 // Mock fs
 vi.mock('fs', () => ({
   default: {
@@ -52,7 +67,6 @@ describe('logs-handlers', () => {
       registerLogsHandlers();
 
       expect(ipcMain.handle).toHaveBeenCalledWith('logs:getLogPath', expect.any(Function));
-      expect(ipcMain.handle).toHaveBeenCalledWith('logs:readLogFile', expect.any(Function));
       expect(ipcMain.handle).toHaveBeenCalledWith('logs:exportLogs', expect.any(Function));
     });
   });
@@ -69,9 +83,9 @@ describe('logs-handlers', () => {
 
       const handler = vi.mocked(ipcMain.handle).mock.calls.find(
         call => call[0] === 'logs:getLogPath'
-      )?.[1] as () => Promise<{ success: boolean; logPath?: string; logFiles?: string[] }>;
+      )?.[1] as (event: unknown, token: string) => Promise<{ success: boolean; logPath?: string; logFiles?: string[] }>;
 
-      const result = await handler();
+      const result = await handler({}, 'test-token');
 
       expect(result.success).toBe(true);
       expect(result.logPath).toBe('/mock/user/data/sheetpilot_2025-01-02.log');
@@ -86,9 +100,9 @@ describe('logs-handlers', () => {
 
       const handler = vi.mocked(ipcMain.handle).mock.calls.find(
         call => call[0] === 'logs:getLogPath'
-      )?.[1] as () => Promise<{ success: boolean; error?: string }>;
+      )?.[1] as (event: unknown, token: string) => Promise<{ success: boolean; error?: string }>;
 
-      const result = await handler();
+      const result = await handler({}, 'test-token');
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('No log files found');
@@ -101,83 +115,9 @@ describe('logs-handlers', () => {
 
       const handler = vi.mocked(ipcMain.handle).mock.calls.find(
         call => call[0] === 'logs:getLogPath'
-      )?.[1] as () => Promise<{ success: boolean; error?: string }>;
+      )?.[1] as (event: unknown, token: string) => Promise<{ success: boolean; error?: string }>;
 
-      const result = await handler();
-
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('Read error');
-    });
-  });
-
-  describe('logs:readLogFile handler', () => {
-    it('should read log file with pagination', async () => {
-      registerLogsHandlers();
-
-      const mockLogContent = `{"level":"info","message":"Test 1"}
-{"level":"info","message":"Test 2"}
-{"level":"info","message":"Test 3"}`;
-
-      vi.mocked(fs.promises.readFile).mockResolvedValue(mockLogContent);
-
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'logs:readLogFile'
-      )?.[1] as (event: unknown, logPath: string, options?: { page?: number; pageSize?: number }) => Promise<{ success: boolean; logs?: unknown[]; totalLines?: number; page?: number; pageSize?: number; totalPages?: number }>;
-
-      const result = await handler({}, '/path/to/log.log', { page: 0, pageSize: 2 });
-
-      expect(result.success).toBe(true);
-      expect(result.logs).toHaveLength(2);
-      expect(result.totalLines).toBe(3);
-      expect(result.totalPages).toBe(2);
-    });
-
-    it('should parse JSON log entries', async () => {
-      registerLogsHandlers();
-
-      const mockLogContent = '{"level":"info","message":"Test"}';
-
-      vi.mocked(fs.promises.readFile).mockResolvedValue(mockLogContent);
-
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'logs:readLogFile'
-      )?.[1] as (event: unknown, logPath: string) => Promise<{ success: boolean; logs?: Array<{ level?: string; message?: string; lineNumber: number }> }>;
-
-      const result = await handler({}, '/path/to/log.log');
-
-      expect(result.success).toBe(true);
-      expect(result.logs?.[0]).toHaveProperty('level', 'info');
-      expect(result.logs?.[0]).toHaveProperty('message', 'Test');
-      expect(result.logs?.[0]).toHaveProperty('lineNumber', 1);
-    });
-
-    it('should handle non-JSON lines', async () => {
-      registerLogsHandlers();
-
-      const mockLogContent = 'Not JSON';
-
-      vi.mocked(fs.promises.readFile).mockResolvedValue(mockLogContent);
-
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'logs:readLogFile'
-      )?.[1] as (event: unknown, logPath: string) => Promise<{ success: boolean; logs?: Array<{ raw?: string; lineNumber: number }> }>;
-
-      const result = await handler({}, '/path/to/log.log');
-
-      expect(result.success).toBe(true);
-      expect(result.logs?.[0]).toHaveProperty('raw', 'Not JSON');
-    });
-
-    it('should handle read errors', async () => {
-      registerLogsHandlers();
-
-      vi.mocked(fs.promises.readFile).mockRejectedValue(new Error('Read error'));
-
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'logs:readLogFile'
-      )?.[1] as (event: unknown, logPath: string) => Promise<{ success: boolean; error?: string }>;
-
-      const result = await handler({}, '/path/to/log.log');
+      const result = await handler({}, 'test-token');
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('Read error');
@@ -194,9 +134,9 @@ describe('logs-handlers', () => {
 
       const handler = vi.mocked(ipcMain.handle).mock.calls.find(
         call => call[0] === 'logs:exportLogs'
-      )?.[1] as (event: unknown, logPath: string, exportFormat: 'json' | 'txt') => Promise<{ success: boolean; content?: string; filename?: string; mimeType?: string }>;
+      )?.[1] as (event: unknown, token: string, logPath: string, exportFormat: 'json' | 'txt') => Promise<{ success: boolean; content?: string; filename?: string; mimeType?: string }>;
 
-      const result = await handler({}, '/path/to/log.log', 'json');
+      const result = await handler({}, 'test-token', '/mock/user/data/sheetpilot_2025-01-02.log', 'json');
 
       expect(result.success).toBe(true);
       expect(result.mimeType).toBe('application/json');
@@ -213,9 +153,9 @@ describe('logs-handlers', () => {
 
       const handler = vi.mocked(ipcMain.handle).mock.calls.find(
         call => call[0] === 'logs:exportLogs'
-      )?.[1] as (event: unknown, logPath: string, exportFormat: 'json' | 'txt') => Promise<{ success: boolean; content?: string; filename?: string; mimeType?: string }>;
+      )?.[1] as (event: unknown, token: string, logPath: string, exportFormat: 'json' | 'txt') => Promise<{ success: boolean; content?: string; filename?: string; mimeType?: string }>;
 
-      const result = await handler({}, '/path/to/log.log', 'txt');
+      const result = await handler({}, 'test-token', '/mock/user/data/sheetpilot_2025-01-02.log', 'txt');
 
       expect(result.success).toBe(true);
       expect(result.mimeType).toBe('text/plain');
@@ -232,9 +172,9 @@ describe('logs-handlers', () => {
 
       const handler = vi.mocked(ipcMain.handle).mock.calls.find(
         call => call[0] === 'logs:exportLogs'
-      )?.[1] as (event: unknown, logPath: string, exportFormat?: 'json' | 'txt') => Promise<{ success: boolean; mimeType?: string }>;
+      )?.[1] as (event: unknown, token: string, logPath: string, exportFormat?: 'json' | 'txt') => Promise<{ success: boolean; mimeType?: string }>;
 
-      const result = await handler({}, '/path/to/log.log');
+      const result = await handler({}, 'test-token', '/mock/user/data/sheetpilot_2025-01-02.log');
 
       expect(result.success).toBe(true);
       expect(result.mimeType).toBe('text/plain');
@@ -247,9 +187,9 @@ describe('logs-handlers', () => {
 
       const handler = vi.mocked(ipcMain.handle).mock.calls.find(
         call => call[0] === 'logs:exportLogs'
-      )?.[1] as (event: unknown, logPath: string) => Promise<{ success: boolean; error?: string }>;
+      )?.[1] as (event: unknown, token: string, logPath: string) => Promise<{ success: boolean; error?: string }>;
 
-      const result = await handler({}, '/path/to/log.log');
+      const result = await handler({}, 'test-token', '/mock/user/data/sheetpilot_2025-01-02.log');
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('Read error');

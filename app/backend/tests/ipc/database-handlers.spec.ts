@@ -10,6 +10,10 @@ vi.mock('electron', () => ({
   }
 }));
 
+vi.mock('../../src/ipc/handlers/timesheet/main-window', () => ({
+  isTrustedIpcSender: vi.fn(() => true)
+}));
+
 // Mock repositories
 vi.mock('../../src/repositories', () => ({
   getDb: vi.fn(),
@@ -47,9 +51,7 @@ describe('database-handlers', () => {
       registerDatabaseHandlers();
 
       expect(ipcMain.handle).toHaveBeenCalledWith('database:getAllTimesheetEntries', expect.any(Function));
-      expect(ipcMain.handle).toHaveBeenCalledWith('database:getAllCredentials', expect.any(Function));
       expect(ipcMain.handle).toHaveBeenCalledWith('database:getAllArchiveData', expect.any(Function));
-      expect(ipcMain.handle).toHaveBeenCalledWith('database:clearDatabase', expect.any(Function));
     });
   });
 
@@ -145,49 +147,6 @@ describe('database-handlers', () => {
     });
   });
 
-  describe('database:getAllCredentials handler', () => {
-    it('should get all credentials', async () => {
-      registerDatabaseHandlers();
-
-      const mockCredentials = [
-        { id: 1, service: 'smartsheet', email: 'user@example.com', created_at: '2025-01-01', updated_at: '2025-01-01' }
-      ];
-
-      const mockStmt = {
-        all: vi.fn().mockReturnValue(mockCredentials)
-      };
-
-      mockDb.prepare.mockReturnValue(mockStmt);
-
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'database:getAllCredentials'
-      )?.[1] as () => Promise<{ success: boolean; credentials: unknown[] }>;
-
-      const result = await handler();
-
-      expect(result.success).toBe(true);
-      expect(result.credentials).toEqual(mockCredentials);
-    });
-
-    it('should handle errors', async () => {
-      registerDatabaseHandlers();
-
-      mockDb.prepare.mockImplementation(() => {
-        throw new Error('Database error');
-      });
-
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'database:getAllCredentials'
-      )?.[1] as () => Promise<{ success: boolean; error?: string; credentials: unknown[] }>;
-
-      const result = await handler();
-
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('Database error');
-      expect(result.credentials).toEqual([]);
-    });
-  });
-
   describe('database:getAllArchiveData handler', () => {
     it('should get all archive data', async () => {
       registerDatabaseHandlers();
@@ -231,42 +190,6 @@ describe('database-handlers', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('Session token is required');
-    });
-  });
-
-  describe('database:clearDatabase handler', () => {
-    it('should clear database', async () => {
-      registerDatabaseHandlers();
-
-      mockDb.exec.mockReturnValue(undefined);
-
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'database:clearDatabase'
-      )?.[1] as () => Promise<{ success: boolean; message?: string }>;
-
-      const result = await handler();
-
-      expect(result.success).toBe(true);
-      expect(result.message).toBe('Database cleared successfully');
-      expect(mockDb.exec).toHaveBeenCalledWith('DELETE FROM timesheet');
-      expect(mockDb.exec).toHaveBeenCalledWith('DELETE FROM credentials');
-    });
-
-    it('should handle errors', async () => {
-      registerDatabaseHandlers();
-
-      mockDb.exec.mockImplementation(() => {
-        throw new Error('Clear failed');
-      });
-
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'database:clearDatabase'
-      )?.[1] as () => Promise<{ success: boolean; error?: string }>;
-
-      const result = await handler();
-
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('Clear failed');
     });
   });
 });

@@ -11,10 +11,13 @@ vi.mock('electron', () => ({
   }
 }));
 
+vi.mock('../../src/ipc/handlers/timesheet/main-window', () => ({
+  isTrustedIpcSender: vi.fn(() => true)
+}));
+
 // Mock repositories
 vi.mock('../../src/repositories', () => ({
   storeCredentials: vi.fn(),
-  getCredentials: vi.fn(),
   listCredentials: vi.fn(),
   deleteCredentials: vi.fn()
 }));
@@ -44,7 +47,6 @@ describe('credentials-handlers', () => {
       registerCredentialsHandlers();
 
       expect(ipcMain.handle).toHaveBeenCalledWith('credentials:store', expect.any(Function));
-      expect(ipcMain.handle).toHaveBeenCalledWith('credentials:get', expect.any(Function));
       expect(ipcMain.handle).toHaveBeenCalledWith('credentials:list', expect.any(Function));
       expect(ipcMain.handle).toHaveBeenCalledWith('credentials:delete', expect.any(Function));
     });
@@ -86,61 +88,6 @@ describe('credentials-handlers', () => {
     });
   });
 
-  describe('credentials:get handler', () => {
-    it('should get credentials successfully', async () => {
-      registerCredentialsHandlers();
-
-      vi.mocked(repositories.getCredentials).mockReturnValue({
-        email: 'user@example.com',
-        password: 'password123'
-      });
-
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'credentials:get'
-      )?.[1] as (event: unknown, service: string) => Promise<{ success: boolean; credentials?: unknown; error?: string }>;
-
-      const result = await handler({}, 'smartsheet');
-
-      expect(result.success).toBe(true);
-      expect(result.credentials).toEqual({
-        email: 'user@example.com',
-        password: 'password123'
-      });
-    });
-
-    it('should handle credentials not found', async () => {
-      registerCredentialsHandlers();
-
-      vi.mocked(repositories.getCredentials).mockReturnValue(null);
-
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'credentials:get'
-      )?.[1] as (event: unknown, service: string) => Promise<{ success: boolean; credentials?: unknown; error?: string }>;
-
-      const result = await handler({}, 'smartsheet');
-
-      expect(result.success).toBe(false);
-      expect(result.error).toBeDefined();
-    });
-
-    it('should handle errors gracefully', async () => {
-      registerCredentialsHandlers();
-
-      vi.mocked(repositories.getCredentials).mockImplementation(() => {
-        throw new Error('Database error');
-      });
-
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'credentials:get'
-      )?.[1] as (event: unknown, service: string) => Promise<{ success: boolean; credentials?: unknown; error?: string }>;
-
-      const result = await handler({}, 'smartsheet');
-
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('Database error');
-    });
-  });
-
   describe('credentials:list handler', () => {
     it('should list credentials successfully', async () => {
       registerCredentialsHandlers();
@@ -153,9 +100,9 @@ describe('credentials-handlers', () => {
 
       const handler = vi.mocked(ipcMain.handle).mock.calls.find(
         call => call[0] === 'credentials:list'
-      )?.[1] as () => Promise<{ success: boolean; credentials: unknown[] }>;
+      )?.[1] as (event: unknown) => Promise<{ success: boolean; credentials: unknown[] }>;
 
-      const result = await handler();
+      const result = await handler({});
 
       expect(result.success).toBe(true);
       expect(result.credentials).toEqual(mockCredentials);
@@ -170,9 +117,9 @@ describe('credentials-handlers', () => {
 
       const handler = vi.mocked(ipcMain.handle).mock.calls.find(
         call => call[0] === 'credentials:list'
-      )?.[1] as () => Promise<{ success: boolean; credentials: unknown[]; error?: string }>;
+      )?.[1] as (event: unknown) => Promise<{ success: boolean; credentials: unknown[]; error?: string }>;
 
-      const result = await handler();
+      const result = await handler({});
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('List failed');
@@ -215,7 +162,8 @@ describe('credentials-handlers', () => {
       const result = await handler({}, 'smartsheet');
 
       expect(result.success).toBe(false);
-      expect(result.error).toBe('Delete failed');
+      // Implementation returns `message` for this handler on error.
+      expect((result as { message?: string }).message).toBe('Delete failed');
       expect(result.changes).toBe(0);
     });
   });

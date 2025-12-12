@@ -29,10 +29,9 @@ import {
   storeCredentials,
   getCredentials,
   listCredentials,
-  deleteCredentials,
-  updateCredentials
+  deleteCredentials
 } from '../../src/repositories/credentials-repository';
-import { setDbPath, openDb, ensureSchema } from '../../src/services/database';
+import { setDbPath, openDb, ensureSchema, shutdownDatabase } from '../../src/repositories';
 
 // Type for database row
 interface DbRow { [key: string]: unknown }
@@ -50,7 +49,6 @@ describe('Credentials Repository', () => {
 
   afterEach(() => {
     try {
-      const { shutdownDatabase } = require('../../src/services/database');
       shutdownDatabase();
     } catch {
       // Ignore if not exists
@@ -86,8 +84,8 @@ describe('Credentials Repository', () => {
       db.close();
       
       expect(row).toBeDefined();
-      expect((row as DbRow).password as string).not.toBe('password123'); // Should be encrypted
-      expect(((row as DbRow).password as string).length).toBeGreaterThan(20); // Encrypted is longer
+      expect((row as DbRow)['password'] as string).not.toBe('password123'); // Should be encrypted
+      expect(((row as DbRow)['password'] as string).length).toBeGreaterThan(20); // Encrypted is longer
     });
 
     it('should update existing credentials', () => {
@@ -102,7 +100,7 @@ describe('Credentials Repository', () => {
       // Verify only one entry exists
       const db = openDb();
       const count = db.prepare('SELECT COUNT(*) as count FROM credentials WHERE service = ?').get('smartsheet');
-      expect((count as DbRow).count as number).toBe(1);
+      expect((count as DbRow)['count'] as number).toBe(1);
       db.close();
     });
 
@@ -112,7 +110,7 @@ describe('Credentials Repository', () => {
       
       const db = openDb();
       const count = db.prepare('SELECT COUNT(*) as count FROM credentials').get();
-      expect((count as DbRow).count as number).toBe(2);
+      expect((count as DbRow)['count'] as number).toBe(2);
       db.close();
     });
 
@@ -239,7 +237,8 @@ describe('Credentials Repository', () => {
     it('should update existing credentials', () => {
       storeCredentials('smartsheet', 'old@test.com', 'oldpassword');
       
-      const result = updateCredentials('smartsheet', 'new@test.com', 'newpassword');
+      // Use storeCredentials to update (it updates if exists)
+      const result = storeCredentials('smartsheet', 'new@test.com', 'newpassword');
       
       expect(result.success).toBe(true);
       
@@ -249,7 +248,8 @@ describe('Credentials Repository', () => {
     });
 
     it('should handle update of non-existent credentials', () => {
-      const result = updateCredentials('non-existent', 'user@test.com', 'password');
+      // Use storeCredentials which creates if doesn't exist
+      const result = storeCredentials('non-existent', 'user@test.com', 'password');
       
       // Should either fail or create new entry
       expect(result).toBeDefined();
@@ -268,7 +268,7 @@ describe('Credentials Repository', () => {
       db.close();
       
       // Same password should have different encrypted values (due to random IV)
-      expect((cred1 as DbRow).password as string).not.toBe((cred2 as DbRow).password as string);
+      expect((cred1 as DbRow)['password'] as string).not.toBe((cred2 as DbRow)['password'] as string);
     });
 
     it('should decrypt to correct plaintext', () => {
@@ -368,7 +368,7 @@ describe('Credentials Repository', () => {
       db.close();
       
       // Even with same password, encrypted values should differ
-      expect((cred1 as DbRow).password as string).not.toBe((cred2 as DbRow).password as string);
+      expect((cred1 as DbRow)['password'] as string).not.toBe((cred2 as DbRow)['password'] as string);
     });
 
     it('should validate service name to prevent injection', () => {
@@ -457,7 +457,7 @@ describe('Credentials Repository', () => {
         db2.close();
         
         // updated_at should change
-        expect((after as DbRow).updated_at as string).not.toBe((before as DbRow).updated_at as string);
+        expect((after as DbRow)['updated_at'] as string).not.toBe((before as DbRow)['updated_at'] as string);
       }, 100);
     });
 
@@ -476,7 +476,7 @@ describe('Credentials Repository', () => {
       db2.close();
       
       // created_at should not change
-      expect((stillCreated as DbRow).created_at as string).toBe((created as DbRow).created_at as string);
+      expect((stillCreated as DbRow)['created_at'] as string).toBe((created as DbRow)['created_at'] as string);
     });
   });
 

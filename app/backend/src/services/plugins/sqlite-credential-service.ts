@@ -21,7 +21,7 @@ import {
   getCredentials,
   listCredentials,
   deleteCredentials
-} from '../database';
+} from '../../repositories';
 
 /**
  * SQLite implementation of the credential service

@@ -75,21 +75,21 @@ describe('errors', () => {
 
   describe('DatabaseError', () => {
     it('should create database error', () => {
-      const error = new DatabaseConnectionError('Connection failed', { dbPath: '/test.db' });
+      const error = new DatabaseConnectionError({ dbPath: '/test.db' });
       
       expect(error).toBeInstanceOf(DatabaseError);
       expect(error).toBeInstanceOf(AppError);
       expect(error.category).toBe(ErrorCategory.DATABASE);
-      expect(error.code).toBe('DATABASE_CONNECTION_ERROR');
+      expect(error.code).toBe('DB_CONNECTION_ERROR');
       expect(error.context).toEqual({ dbPath: '/test.db' });
     });
 
     it('should create schema error', () => {
-      const error = new DatabaseSchemaError('Schema invalid', { table: 'test' });
+      const error = new DatabaseSchemaError({ table: 'test' });
       
       expect(error).toBeInstanceOf(DatabaseError);
       expect(error.category).toBe(ErrorCategory.DATABASE);
-      expect(error.code).toBe('DATABASE_SCHEMA_ERROR');
+      expect(error.code).toBe('DB_SCHEMA_ERROR');
     });
 
     it('should create query error', () => {
@@ -97,26 +97,26 @@ describe('errors', () => {
       
       expect(error).toBeInstanceOf(DatabaseError);
       expect(error.category).toBe(ErrorCategory.DATABASE);
-      expect(error.code).toBe('DATABASE_QUERY_ERROR');
+      expect(error.code).toBe('DB_QUERY_ERROR');
     });
   });
 
   describe('CredentialsError', () => {
     it('should create credentials not found error', () => {
-      const error = new CredentialsNotFoundError('Service not found', { service: 'test' });
+      const error = new CredentialsNotFoundError('test', { service: 'test' });
       
       expect(error).toBeInstanceOf(CredentialsError);
       expect(error).toBeInstanceOf(AppError);
       expect(error.category).toBe(ErrorCategory.CREDENTIALS);
-      expect(error.code).toBe('CREDENTIALS_NOT_FOUND');
+      expect(error.code).toBe('CRED_NOT_FOUND');
     });
 
     it('should create credentials storage error', () => {
-      const error = new CredentialsStorageError('Storage failed', { service: 'test' });
+      const error = new CredentialsStorageError('test', { service: 'test' });
       
       expect(error).toBeInstanceOf(CredentialsError);
       expect(error.category).toBe(ErrorCategory.CREDENTIALS);
-      expect(error.code).toBe('CREDENTIALS_STORAGE_ERROR');
+      expect(error.code).toBe('CRED_STORAGE_ERROR');
     });
   });
 

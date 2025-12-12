@@ -10,6 +10,7 @@
 
 import { ipcMain } from 'electron';
 import { ipcLogger } from '../../../shared/logger';
+import { isTrustedIpcSender } from './handlers/timesheet/main-window';
 import { 
   validateSession,
   clearAllCredentials,
@@ -24,7 +25,10 @@ import { adminTokenSchema } from '../validation/ipc-schemas';
 export function registerAdminHandlers(): void {
   
   // Handler for admin to clear all credentials
-  ipcMain.handle('admin:clearCredentials', async (_event, token: string) => {
+  ipcMain.handle('admin:clearCredentials', async (event, token: string) => {
+    if (!isTrustedIpcSender(event)) {
+      return { success: false, error: 'Could not clear credentials: unauthorized request' };
+    }
     // Validate input using Zod schema
     const validation = validateInput(adminTokenSchema, { token }, 'admin:clearCredentials');
     if (!validation.success) {
@@ -54,7 +58,10 @@ export function registerAdminHandlers(): void {
   });
 
   // Handler for admin to rebuild database
-  ipcMain.handle('admin:rebuildDatabase', async (_event, token: string) => {
+  ipcMain.handle('admin:rebuildDatabase', async (event, token: string) => {
+    if (!isTrustedIpcSender(event)) {
+      return { success: false, error: 'Could not rebuild database: unauthorized request' };
+    }
     // Validate input using Zod schema
     const validation = validateInput(adminTokenSchema, { token }, 'admin:rebuildDatabase');
     if (!validation.success) {

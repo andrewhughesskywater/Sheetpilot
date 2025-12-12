@@ -1,12 +1,20 @@
 /**
- * @fileoverview Automation Configuration - Central configuration for timesheet automation
- * 
- * This module contains all configuration constants, environment variable mappings,
- * field definitions, and utility functions for the timesheet automation system.
- * 
- * @author Andrew Hughes
- * @version 1.0.0
- * @since 2025
+ * Central configuration for timesheet automation.
+ *
+ * This file defines:
+ * - behavior flags (submit vs fill-only, debugging toggles)
+ * - timeouts and dynamic-wait tuning
+ * - login steps (`LOGIN_STEPS`)
+ * - field definitions (`FIELD_DEFINITIONS` / `FIELD_ORDER`)
+ * - helper wait utilities
+ *
+ * ## How to change behavior safely
+ * - Prefer updating selectors/steps here instead of scattering logic changes across the bot.
+ * - Keep the unit conventions in mind:
+ *   - most timeouts are **seconds**
+ *   - names ending in `_MS` are **milliseconds**
+ * - Use `createFormConfig()` (or quarter routing) for form URLs/IDs. Several legacy
+ *   constants (`BASE_URL`, `FORM_ID`, `SUBMISSION_ENDPOINT`) exist only for compatibility.
  */
 
 import { botLogger } from '@sheetpilot/shared/logger';
@@ -378,14 +386,14 @@ export const FIELD_DEFINITIONS: Record<string, FieldDefinition> = {
     label: "Project",
     locator: "input[aria-label='Project']",
     validation: (x: unknown) => x !== "DISALLOWED",
-    error_message: (x: unknown) => `Project code '${x}' is not allowed.`,
+    error_message: (x: unknown) => `Project code '${String(x)}' is not allowed.`,
     inject_value: true,
   },
   date: {
     label: "Date",
     locator: "input[placeholder='mm/dd/yyyy']",
     validation: (x: unknown) => Boolean(x),
-    error_message: (x: unknown) => `Date '${x}' must be mm/dd/yyyy`,
+    error_message: (x: unknown) => `Date '${String(x)}' must be mm/dd/yyyy`,
     inject_value: true,
   },
   hours: {
@@ -414,7 +422,7 @@ export const FIELD_DEFINITIONS: Record<string, FieldDefinition> = {
     label: "Detail Charge Code",
     locator: "input[aria-label='Detail Charge Code']",
     validation: (_: unknown) => true,
-    error_message: (x: unknown) => `Detail code '${x}' is not allowed.`,
+    error_message: (x: unknown) => `Detail code '${String(x)}' is not allowed.`,
     optional: true,
     inject_value: true,
   },
@@ -607,12 +615,10 @@ export async function sleep(ms: number): Promise<void> {
         // Quick check if element exists and is in desired state
         // Capture state in closure since evaluate doesn't accept parameters for this use case
         const targetState = state;
-        // eslint-disable-next-line no-undef
         const isInState = await element.evaluate((el: HTMLElement | SVGElement) => {
           if (!el) return false;
           
           // Use type guard to check if element is HTMLElement
-          // eslint-disable-next-line no-undef
           const htmlEl = el as HTMLElement & { offsetWidth?: number; offsetHeight?: number };
           
           // Use DOM APIs to check element state

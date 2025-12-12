@@ -22,10 +22,13 @@ vi.mock('../../../src/services/bot/src/authentication_flow', () => {
 });
 
 describe('runTimesheet wrapper function', () => {
-  const testFormConfig = createFormConfig('https://app.smartsheet.com/b/form/q1-2025-placeholder', 'q1-2025-placeholder');
+  const testFormConfig = createFormConfig(
+    'https://app.smartsheet.com/b/form/q1-2025-placeholder',
+    'q1-2025-placeholder'
+  );
 
   it('should handle empty rows array gracefully', async () => {
-    const result = await runTimesheet([], 'test@example.com', 'password123', testFormConfig);
+    const result = await runTimesheet([], 'test@example.com', 'password123', testFormConfig, undefined, true);
     
     expect(result).toBeDefined();
     expect(result.submitted).toHaveLength(0);
@@ -45,7 +48,7 @@ describe('runTimesheet wrapper function', () => {
       }
     ];
     
-    const result = await runTimesheet(testRows, 'test@example.com', 'password123', testFormConfig);
+    const result = await runTimesheet(testRows, 'test@example.com', 'password123', testFormConfig, undefined, true);
     
     // Should return proper error structure, not throw
     expect(result).toBeDefined();
@@ -68,7 +71,7 @@ describe('runTimesheet wrapper function', () => {
       }
     ];
     
-    const result = await runTimesheet(testRows, '', '', testFormConfig);
+    const result = await runTimesheet(testRows, '', '', testFormConfig, undefined, true);
     
     expect(result).toBeDefined();
     expect(result.ok).toBe(false);
@@ -91,7 +94,7 @@ describe('runTimesheet wrapper function', () => {
       }
     ];
     
-    const result = await runTimesheet(testRows, 'test@example.com', 'password123', testFormConfig);
+    const result = await runTimesheet(testRows, 'test@example.com', 'password123', testFormConfig, undefined, true);
     
     expect(result).toBeDefined();
     expect(result.errors).toBeDefined();

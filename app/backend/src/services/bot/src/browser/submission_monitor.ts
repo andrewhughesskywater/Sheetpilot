@@ -1,4 +1,13 @@
-// submission_monitor.ts
+/**
+ * Submission verification helpers.
+ *
+ * This module is currently **not wired** into `WebformFiller.submit_form()`.
+ * It provides a more robust “did the submit actually succeed?” approach by:
+ * - locating and clicking a submit button via configurable selectors
+ * - observing network responses that match submission URL patterns
+ * - optionally validating response content for common success indicators
+ * - falling back to DOM text indicators when network signals are missing
+ */
 import type { Locator, Page, Response } from 'playwright';
 import * as cfg from '../automation_config';
 import { botLogger } from '@sheetpilot/shared/logger';
@@ -14,6 +23,8 @@ export class SubmissionMonitor {
     const timer = botLogger.startTimer('submit-form');
 
     const successResponses: RecordedResponse[] = [];
+    // Captures all responses during the submit window. This is primarily useful
+    // for post-mortem debugging when submission verification fails.
     const allResponses: RecordedResponseSummary[] = [];
     const submissionIds: string[] = [];
     const submissionTokens: string[] = [];
@@ -86,6 +97,8 @@ export class SubmissionMonitor {
       const status = response.status();
       allResponses.push({ status, url });
 
+      // Consider a response “success-relevant” only when status is 2xx (configurable)
+      // and the URL matches the configured submission patterns.
       const matched =
         status >= cfg.SUBMIT_SUCCESS_MIN_STATUS &&
         status <= cfg.SUBMIT_SUCCESS_MAX_STATUS &&
@@ -246,6 +259,8 @@ export class SubmissionMonitor {
 
   private _matchesAnyUrlPattern(url: string, patterns: string[]): boolean {
     for (const pattern of patterns) {
+      // This is a simple “glob-ish” matcher: it strips '*' and checks substring.
+      // It does not implement full glob semantics.
       const needle = pattern.replace(/\*/g, '');
       if (needle.length === 0) continue;
       if (url.includes(needle)) return true;

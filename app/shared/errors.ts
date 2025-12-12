@@ -90,9 +90,9 @@ export enum ErrorCategory {
  * Base class for all database-related errors
  */
 export abstract class DatabaseError extends AppError {
-    constructor(message: string, code: string, context: Record<string, unknown> = {}) {
-        super(message, code, ErrorCategory.DATABASE, context);
-    }
+  constructor(message: string, code: string, context: Record<string, unknown> = {}) {
+    super(message, code, ErrorCategory.DATABASE, context);
+  }
 }
 
 /**
@@ -100,52 +100,36 @@ export abstract class DatabaseError extends AppError {
  * SOC2: Availability issue
  */
 export class DatabaseConnectionError extends DatabaseError {
-    constructor(context: Record<string, unknown> = {}) {
-        super(
-            'Could not connect to database',
-            'DB_CONNECTION_ERROR',
-            context
-        );
-    }
+  constructor(context: Record<string, unknown> = {}) {
+    super('Could not connect to database', 'DB_CONNECTION_ERROR', context);
+  }
 }
 
 /**
  * Database query failed
  */
 export class DatabaseQueryError extends DatabaseError {
-    constructor(operation: string, context: Record<string, unknown> = {}) {
-        super(
-            `Could not execute database query: ${operation}`,
-            'DB_QUERY_ERROR',
-            { ...context, operation }
-        );
-    }
+  constructor(operation: string, context: Record<string, unknown> = {}) {
+    super(`Could not execute database query: ${operation}`, 'DB_QUERY_ERROR', { ...context, operation });
+  }
 }
 
 /**
  * Database schema initialization failed
  */
 export class DatabaseSchemaError extends DatabaseError {
-    constructor(context: Record<string, unknown> = {}) {
-        super(
-            'Could not initialize database schema',
-            'DB_SCHEMA_ERROR',
-            context
-        );
-    }
+  constructor(context: Record<string, unknown> = {}) {
+    super('Could not initialize database schema', 'DB_SCHEMA_ERROR', context);
+  }
 }
 
 /**
  * Database transaction failed
  */
 export class DatabaseTransactionError extends DatabaseError {
-    constructor(operation: string, context: Record<string, unknown> = {}) {
-        super(
-            `Transaction failed: ${operation}`,
-            'DB_TRANSACTION_ERROR',
-            { ...context, operation }
-        );
-    }
+  constructor(operation: string, context: Record<string, unknown> = {}) {
+    super(`Transaction failed: ${operation}`, 'DB_TRANSACTION_ERROR', { ...context, operation });
+  }
 }
 
 // ============================================================================
@@ -166,13 +150,9 @@ export abstract class CredentialsError extends AppError {
  * Credentials not found for a service
  */
 export class CredentialsNotFoundError extends CredentialsError {
-    constructor(service: string, context: Record<string, unknown> = {}) {
-        super(
-            `Credentials not found for service: ${service}`,
-            'CRED_NOT_FOUND',
-            { ...context, service }
-        );
-    }
+  constructor(service: string, context: Record<string, unknown> = {}) {
+    super(`Credentials not found for service: ${service}`, 'CRED_NOT_FOUND', { ...context, service });
+  }
 }
 
 /**
@@ -180,13 +160,9 @@ export class CredentialsNotFoundError extends CredentialsError {
  * SOC2: Processing integrity issue
  */
 export class CredentialsStorageError extends CredentialsError {
-    constructor(service: string, context: Record<string, unknown> = {}) {
-        super(
-            `Could not store credentials for service: ${service}`,
-            'CRED_STORAGE_ERROR',
-            { ...context, service }
-        );
-    }
+  constructor(service: string, context: Record<string, unknown> = {}) {
+    super(`Could not store credentials for service: ${service}`, 'CRED_STORAGE_ERROR', { ...context, service });
+  }
 }
 
 /**
@@ -227,6 +203,24 @@ export abstract class SubmissionError extends AppError {
     constructor(message: string, code: string, context: Record<string, unknown> = {}) {
         super(message, code, ErrorCategory.SUBMISSION, context);
     }
+}
+
+/**
+ * Submission cancelled by user or system
+ */
+export class SubmissionCancelledError extends SubmissionError {
+  constructor(message: string = 'Submission cancelled', context: Record<string, unknown> = {}) {
+    super(message, 'SUBMISSION_CANCELLED', context);
+  }
+}
+
+/**
+ * Submission timed out
+ */
+export class SubmissionTimeoutError extends SubmissionError {
+  constructor(message: string = 'Submission timed out', context: Record<string, unknown> = {}) {
+    super(message, 'SUBMISSION_TIMEOUT', context);
+  }
 }
 
 /**
@@ -275,10 +269,14 @@ export class NoEntriesToSubmitError extends SubmissionError {
 /**
  * Base class for all validation errors
  */
-export abstract class ValidationError extends AppError {
-    constructor(message: string, code: string, context: Record<string, unknown> = {}) {
-        super(message, code, ErrorCategory.VALIDATION, context);
-    }
+export class ValidationError extends AppError {
+  constructor(message: string, context?: Record<string, unknown>);
+  constructor(message: string, code: string, context?: Record<string, unknown>);
+  constructor(message: string, codeOrContext?: string | Record<string, unknown>, maybeContext?: Record<string, unknown>) {
+    const code = typeof codeOrContext === 'string' ? codeOrContext : 'VALIDATION_ERROR';
+    const context = typeof codeOrContext === 'string' ? (maybeContext ?? {}) : (codeOrContext ?? {});
+    super(message, code, ErrorCategory.VALIDATION, context);
+  }
 }
 
 /**
@@ -340,10 +338,14 @@ export class InvalidFieldValueError extends ValidationError {
 /**
  * Base class for all IPC communication errors
  */
-export abstract class IPCError extends AppError {
-    constructor(message: string, code: string, context: Record<string, unknown> = {}) {
-        super(message, code, ErrorCategory.IPC, context);
-    }
+export class IPCError extends AppError {
+  constructor(message: string, context?: Record<string, unknown>);
+  constructor(message: string, code: string, context?: Record<string, unknown>);
+  constructor(message: string, codeOrContext?: string | Record<string, unknown>, maybeContext?: Record<string, unknown>) {
+    const code = typeof codeOrContext === 'string' ? codeOrContext : 'IPC_ERROR';
+    const context = typeof codeOrContext === 'string' ? (maybeContext ?? {}) : (codeOrContext ?? {});
+    super(message, code, ErrorCategory.IPC, context);
+  }
 }
 
 /**
@@ -373,6 +375,46 @@ export class IPCCommunicationError extends IPCError {
 }
 
 // ============================================================================
+// NETWORK ERRORS
+// ============================================================================
+
+export class NetworkError extends AppError {
+  constructor(message: string = 'Could not complete network operation', context: Record<string, unknown> = {}) {
+    super(message, 'NETWORK_ERROR', ErrorCategory.NETWORK, context);
+  }
+}
+
+// ============================================================================
+// CONFIGURATION ERRORS
+// ============================================================================
+
+export class ConfigurationError extends AppError {
+  constructor(message: string = 'Configuration invalid', context: Record<string, unknown> = {}) {
+    super(message, 'CONFIGURATION_ERROR', ErrorCategory.CONFIGURATION, context);
+  }
+}
+
+// ============================================================================
+// BUSINESS LOGIC ERRORS
+// ============================================================================
+
+export class BusinessLogicError extends AppError {
+  constructor(message: string = 'Business rule violated', context: Record<string, unknown> = {}) {
+    super(message, 'BUSINESS_LOGIC_ERROR', ErrorCategory.BUSINESS_LOGIC, context);
+  }
+}
+
+// ============================================================================
+// SYSTEM ERRORS
+// ============================================================================
+
+export class SystemError extends AppError {
+  constructor(message: string = 'Could not complete system operation', context: Record<string, unknown> = {}) {
+    super(message, 'SYSTEM_ERROR', ErrorCategory.SYSTEM, context);
+  }
+}
+
+// ============================================================================
 // UTILITY FUNCTIONS
 // ============================================================================
 
@@ -390,7 +432,7 @@ export function extractErrorMessage(error: unknown): string {
     if (typeof error === 'string') {
         return error;
     }
-    return 'Unknown error occurred';
+    return 'Unknown error encountered';
 }
 
 /**

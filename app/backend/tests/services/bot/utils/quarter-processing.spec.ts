@@ -141,11 +141,11 @@ describe('quarter-processing', () => {
 
     it('should use mock website configuration when useMockWebsite is true', async () => {
       const entries = [createEntry(1, '2025-01-15')];
-      const originalEnv = process.env.MOCK_WEBSITE_URL;
-      const originalFormId = process.env.MOCK_FORM_ID;
+      const originalEnv = process.env['MOCK_WEBSITE_URL'];
+      const originalFormId = process.env['MOCK_FORM_ID'];
 
-      process.env.MOCK_WEBSITE_URL = 'http://localhost:3000';
-      process.env.MOCK_FORM_ID = 'mock-form-id';
+      process.env['MOCK_WEBSITE_URL'] = 'http://localhost:3000';
+      process.env['MOCK_FORM_ID'] = 'mock-form-id';
 
       vi.mocked(groupEntriesByQuarter).mockReturnValue(
         new Map([['Q1-2025', entries]])
@@ -163,10 +163,10 @@ describe('quarter-processing', () => {
       );
 
       // Restore env
-      if (originalEnv) process.env.MOCK_WEBSITE_URL = originalEnv;
-      else delete process.env.MOCK_WEBSITE_URL;
-      if (originalFormId) process.env.MOCK_FORM_ID = originalFormId;
-      else delete process.env.MOCK_FORM_ID;
+      if (originalEnv) process.env['MOCK_WEBSITE_URL'] = originalEnv;
+      else delete process.env['MOCK_WEBSITE_URL'];
+      if (originalFormId) process.env['MOCK_FORM_ID'] = originalFormId;
+      else delete process.env['MOCK_FORM_ID'];
     });
 
     it('should check abort signal before processing each quarter', async () => {

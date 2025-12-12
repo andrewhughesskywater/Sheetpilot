@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import path from 'path';
-import { ElectronPage } from '../../src/services/bot/src/electron-browser';
+import type { Page, Route } from 'playwright';
 import * as cfg from '../../../src/services/bot/src/automation_config';
 import { WebformFiller } from '../../../src/services/bot/src/webform_flow';
 
 describe('WebformFiller against mock form', () => {
   let filler: WebformFiller;
-  let page: ElectronPage;
+  let page: Page;
 
   beforeAll(async () => {
     // Override config for deterministic headless run using environment variables
@@ -24,7 +24,7 @@ describe('WebformFiller against mock form', () => {
     page = filler.require_page();
 
     // Route the Smartsheet endpoint and return a success JSON matching real API response
-    await page.route('**/*', async (route) => {
+    await page.route('**/*', async (route: Route) => {
       const url = route.request().url();
       if (url.includes('forms.smartsheet.com/api/submit')) {
         // Return complete response structure matching actual Smartsheet API

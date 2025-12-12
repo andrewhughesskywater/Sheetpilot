@@ -12,6 +12,7 @@ import { ipcMain } from 'electron';
 import { ipcLogger } from '../../../shared/logger';
 import { getDb } from '../repositories';
 import { validateSession } from '../repositories';
+import { isTrustedIpcSender } from './handlers/timesheet/main-window';
 
 /**
  * Register all database viewer-related IPC handlers
@@ -19,7 +20,10 @@ import { validateSession } from '../repositories';
 export function registerDatabaseHandlers(): void {
   
   // Handler for getting all timesheet entries (for database viewer) with pagination
-  ipcMain.handle('database:getAllTimesheetEntries', async (_event, token: string, options?: { page?: number; pageSize?: number }) => {
+  ipcMain.handle('database:getAllTimesheetEntries', async (event, token: string, options?: { page?: number; pageSize?: number }) => {
+    if (!isTrustedIpcSender(event)) {
+      return { success: false, error: 'Could not access database: unauthorized request', entries: [], totalCount: 0 };
+    }
     // Validate session
     if (!token) {
       ipcLogger.security('database-access-denied', 'Unauthorized database access attempted', { handler: 'getAllTimesheetEntries' });
@@ -84,24 +88,11 @@ export function registerDatabaseHandlers(): void {
     }
   });
 
-  // Handler for getting all credentials (for database viewer)
-  ipcMain.handle('database:getAllCredentials', async () => {
-    ipcLogger.verbose('Fetching all credentials');
-    try {
-      const db = getDb();
-      const getAll = db.prepare('SELECT id, service, email, created_at, updated_at FROM credentials ORDER BY service');
-      const credentials = getAll.all();
-      ipcLogger.verbose('Credentials retrieved', { count: credentials.length });
-      return { success: true, credentials };
-    } catch (err: unknown) {
-      ipcLogger.error('Could not get credentials', err);
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      return { success: false, error: errorMessage, credentials: [] };
-    }
-  });
-
   // Handler for getting all archive data (timesheet + credentials) in a single call
-  ipcMain.handle('database:getAllArchiveData', async (_event, token: string) => {
+  ipcMain.handle('database:getAllArchiveData', async (event, token: string) => {
+    if (!isTrustedIpcSender(event)) {
+      return { success: false, error: 'Could not access database: unauthorized request' };
+    }
     // Validate session
     if (!token) {
       ipcLogger.security('database-access-denied', 'Unauthorized database access attempted', { handler: 'getAllArchiveData' });
@@ -140,22 +131,6 @@ export function registerDatabaseHandlers(): void {
       };
     } catch (err: unknown) {
       ipcLogger.error('Could not get archive data', err);
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      return { success: false, error: errorMessage };
-    }
-  });
-
-  // Handler for clearing the entire database (dev only)
-  ipcMain.handle('database:clearDatabase', async () => {
-    ipcLogger.audit('clear-database', 'User clearing entire database');
-    try {
-      const db = getDb();
-      db.exec('DELETE FROM timesheet');
-      db.exec('DELETE FROM credentials');
-      ipcLogger.warn('Database cleared - all data removed');
-      return { success: true, message: 'Database cleared successfully' };
-    } catch (err: unknown) {
-      ipcLogger.error('Could not clear database', err);
       const errorMessage = err instanceof Error ? err.message : String(err);
       return { success: false, error: errorMessage };
     }

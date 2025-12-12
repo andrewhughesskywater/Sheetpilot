@@ -64,7 +64,6 @@ describe('preload.ts', () => {
       'credentials',
       expect.objectContaining({
         store: expect.any(Function),
-        get: expect.any(Function),
         list: expect.any(Function),
         delete: expect.any(Function)
       })
@@ -98,9 +97,7 @@ describe('preload.ts', () => {
       'database',
       expect.objectContaining({
         getAllTimesheetEntries: expect.any(Function),
-        getAllCredentials: expect.any(Function),
-        getAllArchiveData: expect.any(Function),
-        clearDatabase: expect.any(Function)
+        getAllArchiveData: expect.any(Function)
       })
     );
   });
@@ -110,7 +107,6 @@ describe('preload.ts', () => {
       'logs',
       expect.objectContaining({
         getLogPath: expect.any(Function),
-        readLogFile: expect.any(Function),
         exportLogs: expect.any(Function)
       })
     );

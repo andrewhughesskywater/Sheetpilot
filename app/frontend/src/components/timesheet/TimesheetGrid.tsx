@@ -90,6 +90,8 @@ import { submitTimesheet } from './timesheet.submit';
 import { batchSaveToDatabase as batchSaveToDatabaseUtil, deleteDraftRows, saveRowToDatabase } from './timesheet.persistence';
 import { SpellcheckEditor } from './SpellcheckEditor';
 import { detectWeekdayPattern, getSmartPlaceholder, incrementDate, formatDateForDisplay } from '../../utils/smartDate';
+import { cancelTimesheetSubmission, loadDraft as loadDraftIpc, resetInProgress as resetInProgressIpc } from '../../services/ipc/timesheet';
+import { logError, logInfo, logWarn, logVerbose } from '../../services/ipc/logger';
 
 // Register all Handsontable modules
 registerAllModules();
@@ -148,7 +150,7 @@ function processCellChange(
     const dateStr = String(newVal);
     isValid = isValidDate(dateStr);
     if (!isValid) {
-      errorMessage = `Invalid date format "${newVal}" (must be MM/DD/YYYY or YYYY-MM-DD)`;
+      errorMessage = `Invalid date format "${String(newVal)}" (must be MM/DD/YYYY or YYYY-MM-DD)`;
       shouldClear = true;
     }
   }
@@ -157,7 +159,7 @@ function processCellChange(
     isValid = isValidTime(String(newVal));
     if (!isValid) {
       const fieldName = propStr === 'timeIn' ? 'start time' : 'end time';
-      errorMessage = `Invalid ${fieldName} "${newVal}" (must be HH:MM in 15-min increments)`;
+      errorMessage = `Invalid ${fieldName} "${String(newVal)}" (must be HH:MM in 15-min increments)`;
       shouldClear = true;
     }
   }
@@ -255,9 +257,8 @@ function validateTimesheetRows(rows: TimesheetRow[]): { hasErrors: boolean; erro
   let hasErrors = false;
   const errorDetails: string[] = [];
   
-  for (let i = 0; i < realRows.length; i++) {
-    const row = realRows[i];
-    const rowNum = i + 1;
+  realRows.forEach((row, idx) => {
+    const rowNum = idx + 1;
     
     // Check required fields
     if (!row.date) {
@@ -305,16 +306,14 @@ function validateTimesheetRows(rows: TimesheetRow[]): { hasErrors: boolean; erro
       errorDetails.push(`Row ${rowNum}: Tool "${row.tool}" requires a charge code`);
       hasErrors = true;
     }
-  }
+  });
 
   // Check for time overlaps
-  for (let i = 0; i < rows.length; i++) {
-    if (hasTimeOverlapWithPreviousEntries(i, rows)) {
-      const row = rows[i];
-      errorDetails.push(`Row ${i + 1}: Time overlap detected on ${row.date}`);
-      hasErrors = true;
-    }
-  }
+  rows.forEach((row, idx) => {
+    if (!hasTimeOverlapWithPreviousEntries(idx, rows)) return;
+    errorDetails.push(`Row ${idx + 1}: Time overlap detected on ${row.date}`);
+    hasErrors = true;
+  });
 
   return { hasErrors, errorDetails };
 }
@@ -440,20 +439,20 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
    * Force layout recalculation after dialog closes to restore scrollbar visibility.
    */
   useEffect(() => {
-    if (!showMacroDialog) {
-      const hotInstance = hotTableRef.current?.hotInstance;
-      if (hotInstance) {
-        const timer = setTimeout(() => {
-          if (document.body.style.overflow === 'hidden') {
-            document.body.style.overflow = '';
-          }
-          window.dispatchEvent(new Event('resize'));
-          hotInstance.render();
-        }, 100);
-        
-        return () => clearTimeout(timer);
+    if (showMacroDialog) return;
+
+    const hotInstance = hotTableRef.current?.hotInstance;
+    if (!hotInstance) return;
+
+    const timer = setTimeout(() => {
+      if (document.body.style.overflow === 'hidden') {
+        document.body.style.overflow = '';
       }
-    }
+      window.dispatchEvent(new Event('resize'));
+      hotInstance.render();
+    }, 100);
+    
+    return () => clearTimeout(timer);
   }, [showMacroDialog]);
   const batchSaveToDatabase = useCallback(async () => {
     await batchSaveToDatabaseUtil(timesheetDraftData);
@@ -685,6 +684,7 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
     const overlapClearedRows: number[] = [];
     for (let i = 0; i < normalized.length; i++) {
       const row = normalized[i];
+      if (!row) continue;
       
       if (row.date && row.timeIn && row.timeOut) {
         const hasOverlap = hasTimeOverlapWithPreviousEntries(i, normalized);
@@ -730,6 +730,7 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
     const timeOutClearedRows: number[] = [];
     for (let i = 0; i < normalized.length; i++) {
       const row = normalized[i];
+      if (!row) continue;
       const timeOutColIdx = hotInstance.propToCol('timeOut');
       
       if (row.timeIn && row.timeOut) {
@@ -822,10 +823,12 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
         if (existingTimer) {
           clearTimeout(existingTimer);
         }
-        const timer = setTimeout(async () => {
-          window.logger?.verbose('[TimesheetGrid] Saving individual row', { rowIdx });
-          await saveAndReloadRow(row, rowIdx);
-          saveTimersRef.current.delete(rowIdx);
+        const timer = setTimeout(() => {
+          void (async () => {
+            window.logger?.verbose('[TimesheetGrid] Saving individual row', { rowIdx });
+            await saveAndReloadRow(row, rowIdx);
+            saveTimersRef.current.delete(rowIdx);
+          })();
         }, DEBOUNCE_DELAY);
         
         saveTimersRef.current.set(rowIdx, timer);
@@ -1022,7 +1025,9 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
     const hotInstance = hotTableRef.current?.hotInstance;
     if (!hotInstance) return;
     
-    const { startRow, startCol } = coords[0];
+    const firstCoord = coords[0];
+    if (!firstCoord) return;
+    const { startRow, startCol } = firstCoord;
     
     // First, manually apply Tool and Charge Code from pasted data
     applyPastedToolAndChargeCode(data, startRow, startCol, hotInstance);
@@ -1111,7 +1116,10 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
     let targetRow = 0;
     const selected = hotInstance.getSelected();
     if (selected && selected.length > 0) {
-      targetRow = selected[0][0]; // First selected row
+      const firstSelection = selected[0];
+      if (firstSelection && typeof firstSelection[0] === 'number') {
+        targetRow = firstSelection[0]; // First selected row
+      }
     } else {
       // Find first empty row
       const sourceData = hotInstance.getSourceData() as TimesheetRow[];
@@ -1181,7 +1189,9 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
       return;
     }
 
-    const selectedRow = selected[0][0];
+    const firstSelection = selected[0];
+    const selectedRow = firstSelection?.[0];
+    if (typeof selectedRow !== 'number') return;
     const rowData = hotInstance.getDataAtRow(selectedRow);
     
     if (!rowData || rowData.every(cell => !cell)) {
@@ -1332,22 +1342,22 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
        * submitted but others failed. Ensures UI reflects actual database state.
        */
       if (!submissionError) {
-        window.logger?.verbose('Refreshing data in finally block');
+        logVerbose('Refreshing data in finally block');
         try {
           await Promise.all([
             refreshTimesheetDraft().catch(err => {
-              window.logger?.error('Could not refresh timesheet data in finally block', { 
+              logError('Could not refresh timesheet data in finally block', { 
                 error: err instanceof Error ? err.message : String(err) 
               });
             }),
             refreshArchiveData().catch(err => {
-              window.logger?.error('Could not refresh archive data in finally block', { 
+              logError('Could not refresh archive data in finally block', { 
                 error: err instanceof Error ? err.message : String(err) 
               });
             })
           ]);
         } catch (err) {
-          window.logger?.error('Error during data refresh in finally block', { 
+          logError('Error during data refresh in finally block', { 
             error: err instanceof Error ? err.message : String(err) 
           });
         }
@@ -1356,25 +1366,24 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
       if (refreshError !== null && !submissionError) {
         const err: Error = refreshError as Error;
         const errorMessage = err.message || String(refreshError);
-        window.logger?.warn('Submission succeeded but data refresh failed', { 
+        logWarn('Submission succeeded but data refresh failed', { 
           error: errorMessage
         });
       }
     }
   };
   const handleStopSubmission = async () => {
-    window.logger?.info('Stop button clicked');
+    logInfo('Stop button clicked');
     
     if (!isProcessingRef.current) {
-      window.logger?.warn('Stop ignored - no submission in progress');
+      logWarn('Stop ignored - no submission in progress');
       return;
     }
 
     try {
-      if (window.timesheet?.cancel) {
-        const result = await window.timesheet.cancel();
-        if (result.success) {
-          window.logger?.info('Submission cancelled successfully');
+      const result = await cancelTimesheetSubmission();
+      if (result.success) {
+          logInfo('Submission cancelled successfully');
           window.alert('⏹️ Submission cancelled. Entries have been reset to pending status.');
           
           // Reset processing state
@@ -1384,16 +1393,12 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
           // Refresh data to show updated status
           await refreshTimesheetDraft();
           await refreshArchiveData();
-        } else {
-          window.logger?.warn('Could not cancel submission', { error: result.error });
-          window.alert(`⚠️ Could not cancel submission: ${result.error || 'Unknown error'}`);
-        }
       } else {
-        window.logger?.warn('Cancel function not available');
-        window.alert('⚠️ Cancel function not available');
+        logWarn('Could not cancel submission', { error: result.error });
+        window.alert(`⚠️ Could not cancel submission: ${result.error || 'Unknown error'}`);
       }
     } catch (error) {
-      window.logger?.error('Unexpected error during cancellation', { error: error instanceof Error ? error.message : String(error) });
+      logError('Unexpected error during cancellation', { error: error instanceof Error ? error.message : String(error) });
       window.alert(`❌ Unexpected error during cancellation: ${error instanceof Error ? error.message : String(error)}`);
     }
   };
@@ -1464,7 +1469,10 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
     const selected = hotInstance.getSelected();
     if (!selected || selected.length === 0) return;
 
-    const [row, col] = selected[0];
+    const firstSelection = selected[0];
+    if (!firstSelection) return;
+    const [row, col] = firstSelection;
+    if (typeof row !== 'number' || typeof col !== 'number') return;
     
     // Only handle date column (column 1, after hidden ID column)
     if (col !== 1) return;
@@ -1826,41 +1834,33 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
             size="medium"
             startIcon={<RefreshIcon />}
             onClick={async () => {
-              window.logger?.info('Refresh button clicked - resetting in-progress entries and reloading table');
+              logInfo('Refresh button clicked - resetting in-progress entries and reloading table');
               try {
                 // First, explicitly reset in-progress entries
-                if (window.timesheet?.resetInProgress) {
-                  const resetResult = await window.timesheet.resetInProgress();
-                  if (resetResult.success) {
-                    window.logger?.info('Reset in-progress entries', { count: resetResult.count || 0 });
-                    if (resetResult.count && resetResult.count > 0) {
-                      window.alert(`✅ Reset ${resetResult.count} in-progress ${resetResult.count === 1 ? 'entry' : 'entries'} to pending status.`);
-                    }
-                  } else {
-                    window.logger?.warn('Could not reset in-progress entries', { error: resetResult.error });
+                const resetResult = await resetInProgressIpc();
+                if (resetResult.success) {
+                  logInfo('Reset in-progress entries', { count: resetResult.count || 0 });
+                  if (resetResult.count && resetResult.count > 0) {
+                    window.alert(`✅ Reset ${resetResult.count} in-progress ${resetResult.count === 1 ? 'entry' : 'entries'} to pending status.`);
                   }
+                } else if (resetResult.error) {
+                  logWarn('Could not reset in-progress entries', { error: resetResult.error });
                 }
                 
                 // Then refresh the table data
-                if (window.timesheet?.loadDraft) {
-                  const response = await window.timesheet.loadDraft();
-                  if (response?.success) {
-                    const draftData = response.entries || [];
-                    const rowsWithBlank = draftData.length > 0 && Object.keys(draftData[0] || {}).length > 0 
-                      ? [...draftData, {}] 
-                      : [{}];
-                    setTimesheetDraftData(rowsWithBlank);
-                    window.logger?.info('Table refreshed successfully', { count: draftData.length });
-                  } else {
-                    window.logger?.warn('Refresh failed', { error: response?.error });
-                    window.alert(`⚠️ Could not load table data: ${response?.error || 'Unknown error'}`);
-                  }
+                const response = await loadDraftIpc();
+                if (response?.success) {
+                  const draftData = response.entries || [];
+                  const rowsWithBlank =
+                    draftData.length > 0 && Object.keys(draftData[0] || {}).length > 0 ? [...draftData, {}] : [{}];
+                  setTimesheetDraftData(rowsWithBlank);
+                  logInfo('Table refreshed successfully', { count: draftData.length });
                 } else {
-                  // Fallback to context refresh
-                  await refreshTimesheetDraft();
+                  logWarn('Refresh failed', { error: response?.error });
+                  window.alert(`⚠️ Could not load table data: ${response?.error || 'Unknown error'}`);
                 }
               } catch (error) {
-                window.logger?.error('Could not refresh table', { error: error instanceof Error ? error.message : String(error) });
+                logError('Could not refresh table', { error: error instanceof Error ? error.message : String(error) });
                 window.alert(`❌ Could not refresh table: ${error instanceof Error ? error.message : String(error)}`);
               }
             }}

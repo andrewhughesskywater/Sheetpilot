@@ -24,7 +24,7 @@ import {
     markTimesheetEntriesAsSubmitted,
     markTimesheetEntriesAsInProgress,
     closeConnection
-} from '../src/services/database';
+} from '../src/repositories';
 
 // Type for database row
 interface DbRow { [key: string]: unknown }
@@ -70,7 +70,7 @@ describe('Submission-Database Integration Tests', () => {
             });
 
             const pendingEntries = getPendingTimesheetEntries();
-            const entryIds = pendingEntries.map((e: DbRow) => e.id as number);
+            const entryIds = pendingEntries.map((e: DbRow) => e['id'] as number);
 
             // SIMULATE: Bot submission succeeds (entries go to Smartsheet)
             // But database update fails (e.g., wrong IDs provided)
@@ -84,7 +84,7 @@ describe('Submission-Database Integration Tests', () => {
             // VERIFY: Original entries are still pending (not lost)
             const stillPending = getPendingTimesheetEntries();
             expect(stillPending).toHaveLength(1);
-            expect(stillPending[0].id).toBe(entryIds[0]);
+            expect((stillPending[0] as DbRow)['id']).toBe(entryIds[0]);
 
             // VERIFY: No entries marked as Complete incorrectly
             const db = openDb();
@@ -107,7 +107,7 @@ describe('Submission-Database Integration Tests', () => {
 
             const pendingEntries = getPendingTimesheetEntries();
             expect(pendingEntries).toHaveLength(3);
-            const entryIds = pendingEntries.map((e: DbRow) => e.id as number);
+            const entryIds = pendingEntries.map((e: DbRow) => e['id'] as number);
 
             // Mark as in_progress (simulating submission start)
             // Use markTimesheetEntriesAsInProgress to properly mark entries
@@ -127,14 +127,14 @@ describe('Submission-Database Integration Tests', () => {
 
             // VERIFY: Failed entry is still in_progress (can be reverted later)
             const inProgressEntry = dbVerify.prepare('SELECT * FROM timesheet WHERE id = ?').get(failedIds[0]);
-            expect((inProgressEntry as DbRow).status as string).toBe('in_progress');
+            expect((inProgressEntry as DbRow)['status'] as string).toBe('in_progress');
 
             dbVerify.close();
 
             // VERIFY: Total count is still 3 (no data loss)
             const dbCount = openDb();
             const totalCount = dbCount.prepare('SELECT COUNT(*) as count FROM timesheet').get();
-            expect((totalCount as DbRow).count as number).toBe(3);
+            expect((totalCount as DbRow)['count'] as number).toBe(3);
             dbCount.close();
         });
 
@@ -149,7 +149,7 @@ describe('Submission-Database Integration Tests', () => {
             });
 
             const pendingEntries = getPendingTimesheetEntries();
-            const realId = pendingEntries[0].id;
+            const realId = (pendingEntries[0] as DbRow)['id'];
 
             // Try to mark with mixed valid and invalid IDs
             const mixedIds = [realId, 99999, 88888];
@@ -162,7 +162,7 @@ describe('Submission-Database Integration Tests', () => {
             // VERIFY: Real entry is NOT marked as Complete (transaction rolled back)
             const db = openDb();
             const entry = db.prepare('SELECT * FROM timesheet WHERE id = ?').get(realId);
-            expect((entry as DbRow).status).toBeNull(); // Still pending
+            expect((entry as DbRow)['status']).toBeNull(); // Still pending
             db.close();
         });
     });
@@ -179,7 +179,7 @@ describe('Submission-Database Integration Tests', () => {
             });
 
             const pendingEntries = getPendingTimesheetEntries();
-            const entryId = pendingEntries[0].id;
+            const entryId = (pendingEntries[0] as DbRow)['id'];
 
             // First attempt with wrong ID (simulating failure)
             expect(() => {
@@ -196,7 +196,7 @@ describe('Submission-Database Integration Tests', () => {
             // Entry should now be Complete
             const db = openDb();
             const entry = db.prepare('SELECT * FROM timesheet WHERE id = ?').get(entryId);
-            expect((entry as DbRow).status as string).toBe('Complete');
+            expect((entry as DbRow)['status'] as string).toBe('Complete');
             db.close();
         });
 
@@ -211,7 +211,7 @@ describe('Submission-Database Integration Tests', () => {
             });
 
             const pendingEntries = getPendingTimesheetEntries();
-            const entryId = pendingEntries[0].id;
+            const entryId = (pendingEntries[0] as DbRow)['id'];
 
             // First update succeeds
             markTimesheetEntriesAsSubmitted([entryId]);
@@ -224,8 +224,8 @@ describe('Submission-Database Integration Tests', () => {
             // Verify entry is still Complete (not corrupted)
             const db = openDb();
             const entry = db.prepare('SELECT * FROM timesheet WHERE id = ?').get(entryId);
-            expect((entry as DbRow).status as string).toBe('Complete');
-            expect((entry as DbRow).submitted_at as string).toBeTruthy();
+            expect((entry as DbRow)['status'] as string).toBe('Complete');
+            expect((entry as DbRow)['submitted_at'] as string).toBeTruthy();
             db.close();
         });
     });
@@ -250,7 +250,7 @@ describe('Submission-Database Integration Tests', () => {
             });
 
             const pendingEntries = getPendingTimesheetEntries();
-            const realIds = pendingEntries.map((e: DbRow) => e.id as number);
+            const realIds = pendingEntries.map((e: DbRow) => e['id'] as number);
 
             // Add fake IDs
             const invalidIds = [...realIds, 99999, 88888];
@@ -280,7 +280,7 @@ describe('Submission-Database Integration Tests', () => {
             }
 
             const pendingEntries = getPendingTimesheetEntries();
-            const entryIds = pendingEntries.map((e: DbRow) => e.id as number);
+            const entryIds = pendingEntries.map((e: DbRow) => e['id'] as number);
 
             // Mark all as submitted
             markTimesheetEntriesAsSubmitted(entryIds);
@@ -288,7 +288,7 @@ describe('Submission-Database Integration Tests', () => {
             // Verify exactly 5 entries were updated
             const db = openDb();
             const completeCount = db.prepare('SELECT COUNT(*) as count FROM timesheet WHERE status = ?').get('Complete');
-            expect((completeCount as DbRow).count as number).toBe(5);
+            expect((completeCount as DbRow)['count'] as number).toBe(5);
             db.close();
         });
 
@@ -303,7 +303,7 @@ describe('Submission-Database Integration Tests', () => {
             });
 
             const pendingEntries = getPendingTimesheetEntries();
-            const entryId = pendingEntries[0].id;
+            const entryId = (pendingEntries[0] as DbRow)['id'];
 
             // Mark as submitted
             markTimesheetEntriesAsSubmitted([entryId]);
@@ -327,7 +327,7 @@ describe('Submission-Database Integration Tests', () => {
             });
 
             const pendingEntries = getPendingTimesheetEntries();
-            const entryId = pendingEntries[0].id;
+            const entryId = (pendingEntries[0] as DbRow)['id'];
 
             markTimesheetEntriesAsSubmitted([entryId]);
 
@@ -339,8 +339,8 @@ describe('Submission-Database Integration Tests', () => {
 
                 const db = openDb();
                 const entry = db.prepare('SELECT * FROM timesheet WHERE id = ?').get(entryId);
-                expect((entry as DbRow).status as string).toBe('Complete');
-                expect((entry as DbRow).submitted_at as string).toBeTruthy();
+                expect((entry as DbRow)['status'] as string).toBe('Complete');
+                expect((entry as DbRow)['submitted_at'] as string).toBeTruthy();
                 db.close();
             }
         });
@@ -356,7 +356,7 @@ describe('Submission-Database Integration Tests', () => {
             });
 
             const pendingEntries = getPendingTimesheetEntries();
-            const entryId = pendingEntries[0].id;
+            const entryId = (pendingEntries[0] as DbRow)['id'];
 
             // Mark as submitted
             markTimesheetEntriesAsSubmitted([entryId]);
@@ -370,8 +370,8 @@ describe('Submission-Database Integration Tests', () => {
             
             // Verify entry data
             const entry = db.prepare('SELECT * FROM timesheet WHERE id = ?').get(entryId);
-            expect((entry as DbRow).status as string).toBe('Complete');
-            expect((entry as DbRow).project as string).toBe('CorruptionTest');
+            expect((entry as DbRow)['status'] as string).toBe('Complete');
+            expect((entry as DbRow)['project'] as string).toBe('CorruptionTest');
             
             db.close();
         });
@@ -395,7 +395,7 @@ describe('Submission-Database Integration Tests', () => {
             const pendingEntries = getPendingTimesheetEntries();
             expect(pendingEntries).toHaveLength(500);
 
-            const entryIds = pendingEntries.map((e: DbRow) => e.id as number);
+            const entryIds = pendingEntries.map((e: DbRow) => e['id'] as number);
 
             // Mark all as submitted
             const updateStart = Date.now();
@@ -405,7 +405,7 @@ describe('Submission-Database Integration Tests', () => {
             // Verify all updated
             const db = openDb();
             const completeCount = db.prepare('SELECT COUNT(*) as count FROM timesheet WHERE status = ?').get('Complete');
-            expect((completeCount as DbRow).count as number).toBe(500);
+            expect((completeCount as DbRow)['count'] as number).toBe(500);
             db.close();
 
             // Performance should be reasonable (< 5 seconds for both operations)
@@ -425,7 +425,7 @@ describe('Submission-Database Integration Tests', () => {
             }
 
             const pendingEntries = getPendingTimesheetEntries();
-            const entryIds = pendingEntries.map((e: DbRow) => e.id as number);
+            const entryIds = pendingEntries.map((e: DbRow) => e['id'] as number);
 
             // Mark in batches of 10
             for (let i = 0; i < 5; i++) {
@@ -441,7 +441,7 @@ describe('Submission-Database Integration Tests', () => {
             // Verify all marked
             const db = openDb();
             const completeCount = db.prepare('SELECT COUNT(*) as count FROM timesheet WHERE status = ?').get('Complete');
-            expect((completeCount as DbRow).count as number).toBe(50);
+            expect((completeCount as DbRow)['count'] as number).toBe(50);
             db.close();
         });
     });

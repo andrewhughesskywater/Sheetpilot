@@ -142,12 +142,6 @@ const mockCredentialsAPI = {
     };
   },
 
-  get: async (service: string): Promise<{ email: string; password: string } | null> => {
-    console.log('[MockAPI] Getting credentials for:', service);
-    const cred = mockCredentials.find(c => c.service === service);
-    return cred ? { email: cred.email, password: '***' } : null;
-  },
-
   list: async (): Promise<{ success: boolean; credentials: Credential[]; error?: string }> => {
     console.log('[MockAPI] Listing credentials');
     return {
@@ -182,24 +176,32 @@ const mockDatabaseAPI = {
     };
   },
 
-  getAllCredentials: async (): Promise<{ success: boolean; credentials?: Credential[]; error?: string }> => {
-    console.log('[MockAPI] Getting all credentials');
+  getAllArchiveData: async (token: string): Promise<{
+    success: boolean;
+    timesheet?: TimesheetEntry[];
+    credentials?: Credential[];
+    error?: string;
+  }> => {
+    console.log('[MockAPI] Getting all archive data');
+    if (!token) {
+      return {
+        success: false,
+        error: 'Session token is required',
+        timesheet: [],
+        credentials: []
+      };
+    }
+
     return {
       success: true,
+      timesheet: mockArchiveData,
       credentials: mockCredentials
-    };
-  },
-
-  clearDatabase: async (): Promise<{ success: boolean; error?: string }> => {
-    console.log('[MockAPI] Clearing database');
-    return {
-      success: true
     };
   }
 };
 
 const mockLogsAPI = {
-  getLogPath: async (): Promise<{ success: boolean; logPath?: string; logFiles?: string[]; error?: string }> => {
+  getLogPath: async (_token: string): Promise<{ success: boolean; logPath?: string; logFiles?: string[]; error?: string }> => {
     console.log('[MockAPI] Getting log path');
     return {
       success: true,
@@ -208,19 +210,7 @@ const mockLogsAPI = {
     };
   },
 
-  readLogFile: async (logPath: string): Promise<{ success: boolean; logs?: Array<{ lineNumber: number; timestamp?: string; level?: string; message?: string; component?: string; sessionId?: string; username?: string; application?: string; version?: string; environment?: string; process?: { pid: number; platform: string; nodeVersion: string; }; data?: unknown; raw?: string; }>; totalLines?: number; error?: string }> => {
-    console.log('[MockAPI] Reading log file:', logPath);
-    return {
-      success: true,
-      logs: [
-        { lineNumber: 1, timestamp: '2024-10-25T10:00:00Z', level: 'info', message: 'Application started' },
-        { lineNumber: 2, timestamp: '2024-10-25T10:01:00Z', level: 'debug', message: 'Database initialized' }
-      ],
-      totalLines: 2
-    };
-  },
-
-  exportLogs: async (logPath: string, format: 'json' | 'txt' = 'txt'): Promise<{ success: boolean; content?: string; filename?: string; mimeType?: string; error?: string }> => {
+  exportLogs: async (_token: string, logPath: string, format: 'json' | 'txt' = 'txt'): Promise<{ success: boolean; content?: string; filename?: string; mimeType?: string; error?: string }> => {
     console.log('[MockAPI] Exporting logs:', logPath, format);
     return {
       success: true,

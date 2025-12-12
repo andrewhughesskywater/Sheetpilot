@@ -30,10 +30,10 @@ import {
   insertTimesheetEntries,
   getPendingTimesheetEntries,
   getSubmittedTimesheetEntriesForExport,
-  updateEntryStatus,
-  deleteTimesheetEntry
+  markTimesheetEntriesAsSubmitted,
+  removeFailedTimesheetEntries
 } from '../../src/repositories/timesheet-repository';
-import { setDbPath, openDb, ensureSchema } from '../../src/services/database';
+import { setDbPath, openDb, ensureSchema, shutdownDatabase } from '../../src/repositories';
 
 // Type for database row
 interface DbRow { [key: string]: unknown }
@@ -51,7 +51,6 @@ describe('Timesheet Repository', () => {
 
   afterEach(() => {
     try {
-      const { shutdownDatabase } = require('../../src/services/database');
       shutdownDatabase();
     } catch {
       // Ignore
@@ -141,16 +140,16 @@ describe('Timesheet Repository', () => {
       // Get the entry ID
       const db = openDb();
       const row = db.prepare('SELECT id FROM timesheet WHERE project = ?').get('Test');
-      const entryId = (row as DbRow).id as number;
+      const entryId = (row as DbRow)['id'] as number;
       db.close();
       
-      // Update status
-      updateEntryStatus(entryId, 'Complete');
+      // Mark as submitted (which sets status)
+      markTimesheetEntriesAsSubmitted([entryId]);
       
       // Verify status updated
       const db2 = openDb();
       const updated = db2.prepare('SELECT status FROM timesheet WHERE id = ?').get(entryId);
-      expect((updated as DbRow).status as string).toBe('Complete');
+      expect((updated as DbRow)['status'] as string).toBe('submitted');
       db2.close();
     });
 
@@ -167,7 +166,7 @@ describe('Timesheet Repository', () => {
       
       const db = openDb();
       const row = db.prepare('SELECT id FROM timesheet WHERE project = ?').get('Delete Test');
-      const entryId = (row as DbRow).id as number;
+      const entryId = (row as DbRow)['id'] as number;
       db.close();
       
       const result = deleteTimesheetEntry(entryId);
@@ -324,8 +323,9 @@ describe('Timesheet Repository', () => {
       const submitted = getSubmittedTimesheetEntriesForExport();
       
       expect(submitted.length).toBe(1);
-      expect(submitted[0].project).toBe('Project A');
-      expect(submitted[0].status).toBe('Complete');
+      const entry = submitted[0] as DbRow;
+      expect(entry['project']).toBe('Project A');
+      expect(entry['status']).toBe('Complete');
     });
 
     it('should return empty array when no pending entries', () => {
@@ -367,11 +367,11 @@ describe('Timesheet Repository', () => {
       db.close();
       
       expect(row).toBeDefined();
-      expect((row as DbRow).date as string).toBe('2025-01-15');
-      expect((row as DbRow).time_in as number).toBe(540);
-      expect((row as DbRow).time_out as number).toBe(1020);
-      expect((row as DbRow).project as string).toBe('Integrity Test');
-      expect((row as DbRow).task_description as string).toBe('Test');
+      expect((row as DbRow)['date'] as string).toBe('2025-01-15');
+      expect((row as DbRow)['time_in'] as number).toBe(540);
+      expect((row as DbRow)['time_out'] as number).toBe(1020);
+      expect((row as DbRow)['project'] as string).toBe('Integrity Test');
+      expect((row as DbRow)['task_description'] as string).toBe('Test');
     });
 
     it('should calculate hours correctly', () => {
@@ -389,7 +389,7 @@ describe('Timesheet Repository', () => {
       const row = db.prepare('SELECT hours FROM timesheet WHERE project = ?').get('Hours Test');
       db.close();
       
-      expect((row as DbRow).hours as number).toBe(8.0);
+      expect((row as DbRow)['hours'] as number).toBe(8.0);
     });
 
     it('should handle NULL values in optional fields', () => {
@@ -409,8 +409,8 @@ describe('Timesheet Repository', () => {
       const row = db.prepare('SELECT tool, detail_charge_code FROM timesheet WHERE project = ?').get('Null Test');
       db.close();
       
-      expect((row as DbRow).tool).toBeNull();
-      expect((row as DbRow).detail_charge_code).toBeNull();
+      expect((row as DbRow)['tool']).toBeNull();
+      expect((row as DbRow)['detail_charge_code']).toBeNull();
     });
   });
 

@@ -21,8 +21,6 @@ Sheetpilot is a time-tracking application that combines a modern Electron UI wit
 - **Database Connection Fixes**: Resolved Node.js compatibility and preload script issues
 - **Improved Error Handling**: Better error messages and fallback mechanisms
 
-For detailed information about recent fixes, see [TIMESHEET_FIXES_DOCUMENTATION.md](TIMESHEET_FIXES_DOCUMENTATION.md).
-
 ## Tech Stack
 
 - **Frontend**: React + TypeScript + Vite
@@ -35,25 +33,22 @@ For detailed information about recent fixes, see [TIMESHEET_FIXES_DOCUMENTATION.
 
 ```text
 Sheetpilot/
-├── src/
-│   ├── main/             # Main process (Electron)
-│   ├── renderer/         # React frontend
-│   │   ├── src/
-│   │   ├── components/
-│   │   └── pages/
-│   ├── services/         # Backend services (database, bot)
-│   ├── shared/           # Shared utilities (logger, etc.)
-│   └── assets/           # Application assets
-├── __tests__/            # Integration and unit tests
+├── app/
+│   ├── backend/          # Electron main process + backend services
+│   ├── frontend/         # React renderer (Vite)
+│   ├── shared/           # Shared types/utilities
+│   └── tests/            # Cross-app tests (e2e/integration/performance/security)
 ├── docs/                 # Documentation
-└── build/                # Build output
+├── scripts/              # Build/validation scripts
+├── build/                # Build resources (icons, entitlements, etc.)
+└── release/              # Packaged outputs (generated)
 ```
 
 ## Development
 
 ### Prerequisites
 
-- Node.js (v16 or higher)
+- Node.js (v18 or higher)
 - npm or yarn
 
 ### Environment Variables
@@ -77,31 +72,31 @@ SHEETPILOT_MASTER_KEY=your_master_encryption_key_here
 ### Installation
 
 ```bash
-# Install root dependencies
-npm install
-
-# Install renderer dependencies
-cd src/renderer
+# Install dependencies (workspaces)
 npm install
 ```
 
 ### Running in Development
 
 ```bash
-# Build and run the application
-npm run build
-npm start
+# Run Vite + Electron in dev mode
+npm run dev
+
+# Run Vite + Electron in dev mode (watch main rebuilds)
+npm run dev:watch
 ```
 
 ### Testing
 
 ```bash
 # Run all tests
-make test
+npm test
 
 # Run specific test suites
-npm test -- --unit
-npm test -- --integration
+npm run test:unit
+npm run test:integration
+npm run test:e2e
+npm run test:renderer
 ```
 
 ## Building

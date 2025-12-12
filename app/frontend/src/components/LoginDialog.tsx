@@ -27,6 +27,9 @@ import CircularProgress from '@mui/material/CircularProgress';
 import Box from '@mui/material/Box';
 import './LoginDialog.css';
 import { autoCompleteEmailDomain } from '../utils/emailAutoComplete';
+import { login as loginIpc } from '../services/ipc/auth';
+import { listCredentials } from '../services/ipc/credentials';
+import { logError, logInfo, logUserAction } from '../services/ipc/logger';
 
 interface LoginDialogProps {
   open: boolean;
@@ -64,24 +67,22 @@ function LoginDialog({ open, onLoginSuccess }: LoginDialogProps) {
 
   // Check if this is a first-time user (no credentials exist) and focus email field
   useEffect(() => {
-    if (open) {
-      checkFirstTime();
-      // Ensure email field gets focus after render
-      const focusTimer = setTimeout(() => {
-        emailInputRef.current?.focus();
-      }, 100);
-      return () => clearTimeout(focusTimer);
-    }
+    if (!open) return;
+
+    void checkFirstTime();
+    // Ensure email field gets focus after render
+    const focusTimer = setTimeout(() => {
+      emailInputRef.current?.focus();
+    }, 100);
+    return () => clearTimeout(focusTimer);
   }, [open]);
 
   const checkFirstTime = async () => {
     try {
-      if (window.credentials?.list) {
-        const response = await window.credentials.list();
-        setIsFirstTime(!response.success || !response.credentials || response.credentials.length === 0);
-      }
+      const response = await listCredentials();
+      setIsFirstTime(!response.success || !response.credentials || response.credentials.length === 0);
     } catch (err) {
-      window.logger?.error('Could not check credentials', { error: err });
+      logError('Could not check credentials', { error: err instanceof Error ? err.message : String(err) });
       setIsFirstTime(true);
     }
   };
@@ -92,20 +93,15 @@ function LoginDialog({ open, onLoginSuccess }: LoginDialogProps) {
       return;
     }
 
-    if (!window.auth?.login) {
-      setError('Authentication API not available');
-      return;
-    }
-
     setIsLoading(true);
     setError('');
 
     try {
-      window.logger?.userAction('login-attempt', { email });
-      const result = await window.auth.login(email, password, stayLoggedIn);
+      logUserAction('login-attempt', { email });
+      const result = await loginIpc(email, password, stayLoggedIn);
 
       if (result.success && result.token) {
-        window.logger?.info('Login successful', { email, isAdmin: result.isAdmin });
+        logInfo('Login successful', { email, isAdmin: result.isAdmin });
         onLoginSuccess(result.token, email, result.isAdmin || false);
         // Reset form
         setEmail('');
@@ -115,12 +111,12 @@ function LoginDialog({ open, onLoginSuccess }: LoginDialogProps) {
       } else {
         const errorMsg = result.error || 'Login failed. Please check your credentials.';
         setError(errorMsg);
-        window.logger?.error('Could not login', { error: errorMsg });
+        logError('Could not login', { error: errorMsg });
       }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Unknown error occurred';
       setError(errorMsg);
-      window.logger?.error('Login error', { error: errorMsg });
+      logError('Login error', { error: errorMsg });
     } finally {
       setIsLoading(false);
     }
@@ -135,7 +131,7 @@ function LoginDialog({ open, onLoginSuccess }: LoginDialogProps) {
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !isLoading) {
-      handleLogin();
+      void handleLogin();
     }
   };
 

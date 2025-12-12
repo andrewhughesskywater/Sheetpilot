@@ -19,6 +19,9 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import { useSession } from './SessionContext';
+import { loadDraft } from '../services/ipc/timesheet';
+import { getAllArchiveData } from '../services/ipc/database';
+import { logError, logInfo, logVerbose, logWarn, logDebug } from '../services/ipc/logger';
 
 // Define data types
 
@@ -195,25 +198,21 @@ export function DataProvider({ children }: DataProviderProps) {
    */
   const loadTimesheetDraftData = useCallback(async () => {
     try {
-      window.logger?.debug('[DataContext] Setting loading true for timesheet draft');
+      logDebug('[DataContext] Setting loading true for timesheet draft');
       setIsTimesheetDraftLoading(true);
       setTimesheetDraftError(null);
       
-      window.logger?.verbose('[DataContext] Loading timesheet draft data...');
+      logVerbose('[DataContext] Loading timesheet draft data...');
       
       // Yield control before making IPC call
       await yieldToMain();
       
-      if (!window.timesheet?.loadDraft) {
-        throw new Error('Timesheet API not available');
-      }
-      
-      const response = await window.timesheet.loadDraft();
+      const response = await loadDraft();
       
       // Yield control after IPC call
       await yieldToMain();
       
-      window.logger?.verbose('[DataContext] Loaded timesheet draft response', response);
+      logVerbose('[DataContext] Loaded timesheet draft response', response);
       
       // Handle new structured response format
       if (response && response.success) {
@@ -230,14 +229,14 @@ export function DataProvider({ children }: DataProviderProps) {
         setTimesheetDraftData([{}]);
       }
     } catch (error) {
-      window.logger?.error('Error loading timesheet draft data', { 
+      logError('Error loading timesheet draft data', { 
         error: error instanceof Error ? error.message : String(error) 
       });
       
       setTimesheetDraftError(error instanceof Error ? error.message : 'Could not load timesheet draft');
       setTimesheetDraftData([{}]); // Fallback to empty row
     } finally {
-      window.logger?.debug('[DataContext] Setting loading false for timesheet draft');
+      logDebug('[DataContext] Setting loading false for timesheet draft');
       setIsTimesheetDraftLoading(false);
     }
   }, []);
@@ -271,20 +270,20 @@ export function DataProvider({ children }: DataProviderProps) {
       
       // Require token for authenticated archive access
       if (!token) {
-        window.logger?.warn('[DataContext] Cannot load archive data: no session token');
+        logWarn('[DataContext] Cannot load archive data: no session token');
         setArchiveDataError('Session token is required. Please log in to view archive data.');
         setArchiveData({ timesheet: [], credentials: [] });
         setIsArchiveDataLoading(false);
         return;
       }
       
-      window.logger?.verbose('[DataContext] Loading archive data...');
+      logVerbose('[DataContext] Loading archive data...');
       
       // Yield control before making IPC call
       await yieldToMain();
       
       // Use batched API to fetch both timesheet and credentials in one call
-      const archiveResponse = await window.database?.getAllArchiveData(token);
+      const archiveResponse = await getAllArchiveData(token);
       
       // Yield control after IPC call
       await yieldToMain();
@@ -300,11 +299,11 @@ export function DataProvider({ children }: DataProviderProps) {
       
       // Yield control for large datasets to prevent blocking
       if (timesheetData.length > 100) {
-        window.logger?.info('[DataContext] Processing large dataset', { count: timesheetData.length });
+        logInfo('[DataContext] Processing large dataset', { count: timesheetData.length });
         await yieldToMain(); // Yield control to prevent blocking
       }
       
-      window.logger?.info('[DataContext] Loaded archive data', {
+      logInfo('[DataContext] Loaded archive data', {
         timesheetCount: timesheetData.length,
         credentialsCount: credentialsData.length
       });
@@ -322,7 +321,7 @@ export function DataProvider({ children }: DataProviderProps) {
         setArchiveDataError(archiveResponse?.error || 'Could not load archive data');
       }
     } catch (error) {
-      window.logger?.error('Error loading archive data', { 
+      logError('Error loading archive data', { 
         error: error instanceof Error ? error.message : String(error) 
       });
       setArchiveDataError(error instanceof Error ? error.message : 'Could not load archive data');
@@ -343,7 +342,7 @@ export function DataProvider({ children }: DataProviderProps) {
    * Wrapped in useCallback to prevent infinite re-renders in effect dependencies.
    */
   const refreshTimesheetDraft = useCallback(async () => {
-    window.logger?.info('[DataContext] Refreshing timesheet draft data');
+    logInfo('[DataContext] Refreshing timesheet draft data');
     await loadTimesheetDraftData();
   }, [loadTimesheetDraftData]);
 
@@ -358,7 +357,7 @@ export function DataProvider({ children }: DataProviderProps) {
    * Automatically respects token dependency for proper auth handling.
    */
   const refreshArchiveData = useCallback(async () => {
-    window.logger?.info('[DataContext] Refreshing archive data');
+    logInfo('[DataContext] Refreshing archive data');
     await loadArchiveData();
   }, [loadArchiveData]);
 
@@ -377,7 +376,7 @@ export function DataProvider({ children }: DataProviderProps) {
    * Trade-off: Slight delay when first viewing each tab, but much faster startup.
    */
   useEffect(() => {
-    window.logger?.info('[DataContext] Skipping startup data loading to prevent performance violations');
+    logInfo('[DataContext] Skipping startup data loading to prevent performance violations');
     
     // Set initial empty state immediately
     setTimesheetDraftData([{}]);

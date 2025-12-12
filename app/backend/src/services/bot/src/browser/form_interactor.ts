@@ -1,4 +1,14 @@
-// form_interactor.ts
+/**
+ * FormInteractor: small helpers for filling fields on a Smartsheet form.
+ *
+ * This module is currently **not wired** into `BotOrchestrator` / `WebformFiller`.
+ * It exists as a more testable/focused alternative to `WebformFiller.inject_field_value`.
+ *
+ * Design intent:
+ * - treat each field fill as an operation with clear preconditions (visible/ready)
+ * - add lightweight heuristics for Smartsheet combobox/dropdown behavior
+ * - optionally observe validation state (without hard-failing on UI variability)
+ */
 import type { Locator, Page } from 'playwright';
 import * as cfg from '../automation_config';
 import { botLogger } from '@sheetpilot/shared/logger';
@@ -15,6 +25,8 @@ export class FormInteractor {
   constructor(private readonly getPage: () => Page) {}
 
   async fillField(spec: FieldSpec, value: string): Promise<void> {
+    // `label` comes from the field spec. It is used only for logs and errors.
+    // If you need key-based logic, pass a separate stable identifier.
     const fieldName = spec.label ?? 'Unknown Field';
     const locatorSel = spec.locator;
     if (!locatorSel) {
@@ -49,6 +61,8 @@ export class FormInteractor {
       await this._handleSmartsheetsDropdown(field, fieldName);
     }
 
+    // NOTE: This list uses internal field keys, but `fieldName` defaults to `spec.label`.
+    // If `spec.label` is a human label like "Project", this check will not run.
     if (['project_code', 'date', 'hours', 'task_description'].includes(fieldName)) {
       await this._checkValidationErrors(field, fieldName);
     }

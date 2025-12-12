@@ -64,7 +64,7 @@ function Archive() {
       }
     };
     
-    loadData();
+    void loadData();
     
     return () => {
       isMounted = false;

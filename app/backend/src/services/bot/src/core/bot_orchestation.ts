@@ -1,19 +1,28 @@
 /**
- * @fileoverview Bot Orchestrator - Main automation controller for timesheet form filling
- * 
- * This module provides the primary interface for automating timesheet submissions.
- * It coordinates between authentication, web form filling, and submission processes.
- * 
- * @author Andrew Hughes
- * @version 1.0.0
- * @since 2025
+ * Bot Orchestrator: coordinates the end-to-end automation workflow.
+ *
+ * This file contains the “business flow” of the bot:
+ * - start Playwright (via `WebformFiller`)
+ * - log in (via `LoginManager`)
+ * - transform each input row into field values
+ * - fill the form, then submit and verify
+ * - recover from transient page issues and support cancellation
+ *
+ * ## Index semantics
+ * The bot reports **row indices** (0-based) relative to the input array passed to
+ * `run_automation`. Callers who need stable IDs should map indices back to IDs
+ * (see `src/utils/quarter-processing.ts` for an example).
+ *
+ * ## Cancellation semantics
+ * `AbortSignal` cancellation throws early (via `checkAborted`) and also triggers
+ * immediate browser cleanup (via `setupAbortHandler`).
  */
 
 import * as Cfg from '../config/automation_config';
 import { WebformFiller } from '../browser/webform_flow';
 import { LoginManager } from '../utils/authentication_flow';
 import { botLogger } from '../../../../../../shared/logger';
-import { getQuarterForDate } from '../config/quarter_config';
+import { getQuarterForDate } from '../quarter_config';
 import { appSettings } from '../../../../../../shared/constants';
 import { checkAborted, setupAbortHandler } from '../utils/abort-utils';
 
@@ -37,13 +46,17 @@ export type AutomationResult = {
 };
 
 /**
- * Main orchestrator class for timesheet automation
- * 
- * Coordinates the entire automation process including browser management,
- * authentication, form filling, and submission. Provides a high-level
- * interface for automating timesheet data entry.
+ * Main orchestrator class for timesheet automation.
+ *
+ * Keep this class focused on workflow decisions (“what happens next”).
+ * Delegate browser details (selectors, waits, submission verification) to the
+ * browser/auth layers so you can change UI tactics without rewriting flow.
  */
 export class BotOrchestrator {
+  /**
+   * Invariant: call `start()` before any method that requires a page/context.
+   * `WebformFiller.require_page()` throws when the browser has not started.
+   */
   /** Configuration object containing automation settings */
   cfg: typeof Cfg;
   /** Whether to run browser in headless mode */
@@ -78,7 +91,7 @@ export class BotOrchestrator {
       throw new Error('formConfig is required. Use createFormConfig() to create a valid form configuration.');
     }
     this.cfg = injected_config;
-    // Use appSettings.browserHeadless when headless is null, otherwise use the provided value
+    // Use the UI-controlled value when `headless` is null; otherwise trust the caller.
     this.headless = headless === null ? appSettings.browserHeadless : Boolean(headless);
     botLogger.debug('BotOrchestrator initialized with headless setting', { 
       headlessParam: headless, 
@@ -105,15 +118,12 @@ export class BotOrchestrator {
   async close(): Promise<void> { await this.webform_filler.close(); }
 
   /**
-   * Executes the main automation process for timesheet data
-   * 
-   * Processes an array of data rows, authenticates, fills forms, and submits entries.
-   * Each row should be an object mapping column labels to values (like { 'Date': '01/15/2024', 'Project': 'MyProject' }).
-   * 
-   * @param df - Array of data rows, each containing column label -> value mappings
-   * @param creds - Tuple containing [email, password] for authentication
-   * @param abortSignal - Optional abort signal for cancellation support
-   * @returns Promise resolving to [success, submitted_indices, errors] tuple
+   * Runs the automation workflow for a batch of rows.
+   *
+   * - `df` is an array of rows, where each row uses column labels as keys
+   *   (example: `{ Date: '01/15/2024', Project: 'OSC-BBB', Hours: 8 }`).
+   * - The return value uses **indices into `df`**, not external IDs.
+   * - The method supports cancellation through `AbortSignal`.
    */
   async run_automation(df: Array<Record<string, unknown>>, creds: [string, string], abortSignal?: AbortSignal): Promise<[boolean, number[], Array<[number,string]>]> {
     const result = await this._run_automation_internal(df, creds, abortSignal);
@@ -227,7 +237,8 @@ export class BotOrchestrator {
     try {
       const dateStr = String(dateValue).trim();
       
-      // Support multiple date formats: mm/dd/yyyy, m/d/yyyy, mm-dd-yyyy, etc.
+      // Support multiple human-entered date formats: mm/dd/yyyy, m/d/yyyy, mm-dd-yyyy, etc.
+      // Quarter routing uses `YYYY-MM-DD`, so we convert.
       const dateMatch = dateStr.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
       if (!dateMatch) {
         return `Invalid date format: ${dateStr}. Expected mm/dd/yyyy`;
@@ -254,6 +265,8 @@ export class BotOrchestrator {
       const quarterDef = getQuarterForDate(isoDate);
       
       if (quarterDef && quarterDef.formId !== this.formConfig.FORM_ID) {
+        // Protect against “wrong quarter form” submissions: a date in Q3 should not
+        // submit to a Q4 form (or vice versa). This check intentionally blocks.
         return `Date ${dateStr} belongs to ${quarterDef.name} but form configured for different quarter`;
       }
       
@@ -264,13 +277,18 @@ export class BotOrchestrator {
         date: dateValue,
         error: dateError instanceof Error ? dateError.message : String(dateError)
       });
-      return `Could not parse date: ${dateValue}`;
+      return `Could not parse date: ${String(dateValue)}`;
     }
   }
 
 
   /**
-   * Processes a single row through the automation workflow
+   * Processes one row through the workflow: validate → fill → (optional) submit.
+   *
+   * Return semantics:
+   * - `[true, null]` means the bot submitted (or completed) the row successfully.
+   * - `[false, null]` means the bot skipped the row (typically “already complete”).
+   * - `[false, string]` means the row did not complete and the string explains why.
    * @private
    * @param row - Row data to process
    * @param rowIndex - Index of the row
@@ -291,7 +309,8 @@ export class BotOrchestrator {
     // Check if aborted before processing each row
     checkAborted(abortSignal, `Automation (row ${rowIndex + 1}/${totalRows})`);
     
-    // Skip completed rows
+    // Skip completed rows: callers can pass a sheet export that already includes
+    // status for prior submissions.
     if (status_col in row && String(row[status_col] ?? '').trim() === complete_val) {
       const progress = this._calculateProgress(rowIndex, totalRows);
       botLogger.verbose('Skipping completed row', { rowIndex: rowIndex + 1, totalRows, progress });
@@ -299,35 +318,45 @@ export class BotOrchestrator {
       return [false, null]; // Not an error, just skipped
     }
 
+    const rowTimer = botLogger.startTimer('row-process');
+    let rowOutcome: 'success' | 'error' | 'skipped' = 'error';
+
+    try {
     const progress = this._calculateProgress(rowIndex, totalRows);
     botLogger.verbose('Processing row', { rowIndex: rowIndex + 1, totalRows, progress });
 
     // Build fields from row
     const fields = this._build_fields_from_row(row);
     
-    // Validate required fields
+    // Validate required fields early to avoid partial UI interactions that can leave
+    // the form in an unexpected state.
     if (!this._validate_required_fields(fields, rowIndex)) {
       botLogger.warn('Row skipped', { rowIndex, reason: 'Missing required fields' });
+      rowOutcome = 'skipped';
       return [false, 'Missing required fields'];
     }
 
-    // Validate quarter match
+    // Validate quarter match before filling: submitting a Q3 entry to a Q4 form is
+    // difficult to detect after the fact.
     if (fields['date']) {
       const quarterError = this._validateQuarterMatch(fields['date'], rowIndex);
       if (quarterError) {
         botLogger.error('Quarter validation failed', { rowIndex, error: quarterError });
+        rowOutcome = 'error';
         return [false, quarterError];
       }
     }
 
-    // Ensure page stability using webform_filler
+    // Ensure the form has loaded and the network has settled before interacting.
     await this.webform_filler.wait_for_form_ready();
 
     // Fill fields
     botLogger.verbose('Filling form fields', { rowIndex });
+    const fillTimer = botLogger.startTimer('row-fill');
     await this._fill_fields(fields);
+    fillTimer.done({ rowIndex });
 
-    // Submit form if configured
+    // Submit is optional: tests and debugging sometimes run in “fill-only” mode.
     if (Cfg.SUBMIT_FORM_AFTER_FILLING) {
       botLogger.verbose('Waiting for form to stabilize before submission', { rowIndex });
       // Wait for form to be stable (no ongoing animations or changes)
@@ -341,15 +370,22 @@ export class BotOrchestrator {
       );
       
       // Submit with retry (Initial + Level 1 + Level 2 = 3 attempts)
+      const submitTimer = botLogger.startTimer('row-submit');
       const submissionSuccess = await this._submitWithRetryWithFields(rowIndex, fields);
+      submitTimer.done({ rowIndex, success: submissionSuccess });
       if (!submissionSuccess) {
+        rowOutcome = 'error';
         return [false, 'Form submission failed after 3 attempts (initial + Level 1 retry + Level 2 retry)'];
       }
     }
 
     botLogger.info('Row completed successfully', { rowIndex });
     this.progress_callback?.(this._calculateProgress(rowIndex, totalRows), `Completed row ${rowIndex + 1}`);
+    rowOutcome = 'success';
     return [true, null];
+    } finally {
+      rowTimer.done({ rowIndex, outcome: rowOutcome });
+    }
   }
 
   /**
@@ -434,7 +470,14 @@ export class BotOrchestrator {
   }
 
   /**
-   * Internal method that executes the core automation logic
+   * Implements the core automation workflow and returns a richer result object.
+   *
+   * Notes:
+   * - The workflow logs into context 0 once, then processes rows sequentially.
+   *   This avoids cross-row state bleed and keeps the UI in a predictable state.
+   * - `AutomationResult.success` currently means “at least one row submitted”.
+   *   A run that skips all rows (already complete) returns `success: false` but
+   *   does not imply a system error.
    * @private
    * @param df - Array of data rows to process
    * @param creds - Authentication credentials [email, password]
@@ -447,7 +490,8 @@ export class BotOrchestrator {
     const failed_rows: Array<[number, string]> = [];
     const total_rows = df.length;
 
-    // Set up abort listener to immediately stop browser when cancelled
+    // Register an abort handler that closes the browser immediately.
+    // This limits “zombie” Chromium processes when a caller cancels mid-run.
     const cleanupAbortHandler = setupAbortHandler(abortSignal, () => this.close(), 'browser');
     
     try {
@@ -459,10 +503,12 @@ export class BotOrchestrator {
         email
       });
       
-      // Login to first context
+      // Log in once (context 0). Row processing relies on the authenticated session.
       botLogger.info('Logging in to primary context', { progress: 10 });
       this.progress_callback?.(10, 'Logging in');
+      const loginTimer = botLogger.startTimer('login');
       await this.login_manager.run_login_steps(email, password, 0);
+      loginTimer.done({ contextIndex: 0 });
       
       // Check if aborted after login
       checkAborted(abortSignal, 'Automation');
@@ -478,7 +524,8 @@ export class BotOrchestrator {
         completeValue: complete_val
       });
 
-      // Process rows sequentially
+      // Process rows sequentially: each row expects a stable form state and
+      // interacts with the same page session.
       for (let i = 0; i < df.length; i++) {
         const idx = i; // Using array index as row identifier
         const row = df[i];
@@ -509,7 +556,8 @@ export class BotOrchestrator {
           
           failed_rows.push([idx, errorMsg]);
           
-          // Attempt recovery using webform_filler
+          // Attempt to recover by returning to the base form URL. This provides
+          // a clean starting point for the next row after transient UI errors.
           try {
             botLogger.info('Attempting recovery', { rowIndex: idx });
             await this.webform_filler.navigate_to_base();
@@ -608,7 +656,7 @@ export class BotOrchestrator {
           }
         }
         
-        let spec = { ...specBase };
+        const spec = { ...specBase };
         
         // Use project-specific locator for tool field if available
         if (field_key === 'tool') {

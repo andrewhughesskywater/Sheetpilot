@@ -86,13 +86,6 @@ export const storeCredentialsSchema = z.object({
 });
 
 /**
- * Schema for credentials:get
- */
-export const getCredentialsSchema = z.object({
-  service: serviceNameSchema
-});
-
-/**
  * Schema for credentials:delete
  */
 export const deleteCredentialsSchema = z.object({
@@ -231,7 +224,6 @@ export const exportLogsSchema = z.object({
 
 // Export TypeScript types derived from schemas
 export type StoreCredentials = z.infer<typeof storeCredentialsSchema>;
-export type GetCredentials = z.infer<typeof getCredentialsSchema>;
 export type DeleteCredentials = z.infer<typeof deleteCredentialsSchema>;
 export type Login = z.infer<typeof loginSchema>;
 export type ValidateSession = z.infer<typeof validateSessionSchema>;

@@ -1,14 +1,23 @@
 /**
- * @fileoverview WebformFiller - Browser automation controller
+ * WebformFiller: Playwright wrapper used by `BotOrchestrator`.
  *
- * This file provides the WebformFiller class used by the BotOrchestrator.
- * It launches the user's Chrome using Playwright, manages contexts/pages,
- * waits for form readiness, injects field values, and submits forms.
+ * This class owns the browser lifecycle and provides low-level primitives:
+ * - launch the browser and create contexts/pages
+ * - navigate to the base form URL and wait for stability
+ * - fill field locators with values
+ * - submit the form (simple implementation)
+ *
+ * ## “Current vs newer building blocks”
+ * The bot currently uses `WebformFiller` directly. The package also contains
+ * newer, more composable helpers (`WebformSessionManager`, `FormInteractor`,
+ * `SubmissionMonitor`), but they are not wired into the orchestrator yet.
+ * Prefer changing `WebformFiller` when you want behavior changes today.
  */
 
-import { chromium, Browser, BrowserContext, Page } from 'playwright';
+import { chromium, type Browser, type BrowserContext, type Page } from 'playwright';
 import * as cfg from '../config/automation_config';
 import { botLogger } from '../../../../../../shared/logger';
+import { SubmissionMonitor } from './submission_monitor';
 
 export class BotNotStartedError extends Error {}
 
@@ -17,6 +26,8 @@ export class WebformFiller {
   headless: boolean;
   browser_kind: string;
   browser: Browser | null = null;
+  // The bot can run multiple browser contexts (e.g., separate auth contexts),
+  // but the current workflow mainly uses index 0.
   contexts: BrowserContext[] = [];
   pages: Page[] = [];
   context: BrowserContext | null = null;
@@ -32,6 +43,9 @@ export class WebformFiller {
     this.cfg = config;
     this.headless = headless;
     this.browser_kind = browser_kind;
+    // Prefer a caller-provided formConfig (quarter routing usually provides it).
+    // Falling back to cfg.* keeps legacy callers/tests working, even though some
+    // of those constants are marked deprecated in `config/automation_config.ts`.
     this.formConfig = formConfig || {
       BASE_URL: cfg.BASE_URL,
       FORM_ID: cfg.FORM_ID,
@@ -46,6 +60,7 @@ export class WebformFiller {
       return;
     }
 
+    const timer = botLogger.startTimer('bot-browser-start');
     botLogger.info('Starting WebformFiller browser');
     await this._launch_browser();
 
@@ -60,9 +75,12 @@ export class WebformFiller {
     }
 
     botLogger.info('WebformFiller started successfully');
+    timer.done({});
   }
 
   private async _launch_browser(): Promise<void> {
+    // Note: `browser/browser_launcher.ts` contains a standalone launcher helper
+    // with richer diagnostics. `WebformFiller` currently launches directly.
     const channel =
       cfg.BROWSER_CHANNEL && cfg.BROWSER_CHANNEL !== 'chromium'
         ? cfg.BROWSER_CHANNEL
@@ -75,18 +93,42 @@ export class WebformFiller {
         headless: this.headless,
         channel,
         args: [
-          '--no-sandbox',
           '--disable-dev-shm-usage',
           '--disable-gpu',
           '--disable-extensions',
           '--disable-blink-features=AutomationControlled'
-        ]
+        ].concat(process.platform === 'win32' ? [] : ['--no-sandbox'])
       });
 
-      botLogger.info('Chrome launched successfully');
+      type BrowserProcessInfo = { spawnfile?: string; spawnargs?: string[] };
+      type BrowserWithProcess = {
+        process?: () => BrowserProcessInfo | null;
+      };
+      const proc = (this.browser as unknown as BrowserWithProcess).process?.();
+      const spawnedExecutablePath =
+        (proc?.spawnfile && typeof proc.spawnfile === 'string' ? proc.spawnfile : null) ??
+        (Array.isArray(proc?.spawnargs) && typeof proc?.spawnargs?.[0] === 'string'
+          ? proc?.spawnargs?.[0]
+          : null);
+      const redactUserHomeFromPath = (input: string | null): string | null => {
+        if (!input) return input;
+        const win = input.replace(/(\\Users\\)([^\\]+)(\\)/i, '$1<redacted>$3');
+        if (win !== input) return win;
+        const mac = input.replace(/(\/Users\/)([^/]+)(\/)/, '$1<redacted>$3');
+        if (mac !== input) return mac;
+        const linux = input.replace(/(\/home\/)([^/]+)(\/)/, '$1<redacted>$3');
+        if (linux !== input) return linux;
+        return input;
+      };
+
+      botLogger.info('Chrome launched successfully', {
+        headless: this.headless,
+        channel,
+        spawnedExecutablePath: redactUserHomeFromPath(spawnedExecutablePath),
+      });
     } catch (err) {
       const e = err instanceof Error ? err.message : String(err);
-      botLogger.error('Failed to launch Chrome', { error: e });
+      botLogger.error('Could not launch Chrome', { error: e });
       throw new Error(`Could not launch Chrome: ${e}`);
     }
   }
@@ -99,7 +141,7 @@ export class WebformFiller {
         width: cfg.BROWSER_VIEWPORT_WIDTH,
         height: cfg.BROWSER_VIEWPORT_HEIGHT
       },
-      ignoreHTTPSErrors: true,
+      ignoreHTTPSErrors: false,
       javaScriptEnabled: true
     });
 
@@ -128,7 +170,7 @@ export class WebformFiller {
   getPage(index: number): Page {
     const page = this.pages[index];
     if (!page) {
-      throw new BotNotStartedError(`Page not available for context index ${index}`);
+      throw new BotNotStartedError(`Page is not available for context index ${index}`);
     }
     return page;
   }
@@ -158,9 +200,18 @@ export class WebformFiller {
 
   async wait_for_form_ready(): Promise<void> {
     const page = this.require_page();
+    // This method is called for every row. Keep it fast and deterministic.
+    // Treat "form ready" as: required field exists, is visible, and is enabled.
+    const projectLocator =
+      cfg.FIELD_DEFINITIONS['project_code']?.locator ?? "input[aria-label='Project']";
 
-    await page.waitForLoadState('domcontentloaded');
-    await cfg.dynamic_wait_for_network_idle(page, 2, cfg.GLOBAL_TIMEOUT, 'wait for form ready');
+    await cfg.dynamic_wait(async () => {
+      const loc = page.locator(projectLocator).first();
+      const visible = await loc.isVisible().catch(() => false);
+      if (!visible) return false;
+      const enabled = await loc.isEnabled().catch(() => false);
+      return enabled;
+    }, cfg.DYNAMIC_WAIT_BASE_TIMEOUT, Math.min(cfg.GLOBAL_TIMEOUT, 2), cfg.DYNAMIC_WAIT_MULTIPLIER, 'form ready');
   }
 
   async inject_field_value(spec: Record<string, unknown>, value: string): Promise<void> {
@@ -171,20 +222,63 @@ export class WebformFiller {
     const ok = await cfg.dynamic_wait_for_element(page, locator, 'visible', 1, cfg.GLOBAL_TIMEOUT);
     if (!ok) throw new Error(`Field ${locator} did not become visible`);
 
-    await field.fill('');
     await field.fill(String(value));
   }
 
   async submit_form(): Promise<boolean> {
     const page = this.require_page();
-    const button = page.locator('button[type="submit"], input[type="submit"]');
+    const timer = botLogger.startTimer('submit-form-total');
 
-    const ok = await cfg.dynamic_wait_for_element(page, 'button[type="submit"], input[type="submit"]', 'visible', 1, cfg.GLOBAL_TIMEOUT);
-    if (!ok) throw new Error('Submit button not found');
+    try {
+      const monitor = new SubmissionMonitor(() => page);
+      const ok = await monitor.submitForm();
+      if (!ok) {
+        timer.done({ success: false, reason: 'monitor returned false' });
+        return false;
+      }
 
-    await button.click();
+      // You confirmed: successful submit clears the form.
+      // Wait for a "form cleared" signal so the next row can start immediately.
+      const projectLocator =
+        cfg.FIELD_DEFINITIONS['project_code']?.locator ?? "input[aria-label='Project']";
+      const dateLocator =
+        cfg.FIELD_DEFINITIONS['date']?.locator ?? "input[placeholder='mm/dd/yyyy']";
+      const hoursLocator =
+        cfg.FIELD_DEFINITIONS['hours']?.locator ?? "input[aria-label='Hours']";
 
-    await page.waitForLoadState('networkidle');
-    return true;
+      const cleared = await cfg.dynamic_wait(
+        async () => {
+          const proj = page.locator(projectLocator).first();
+          const date = page.locator(dateLocator).first();
+          const hours = page.locator(hoursLocator).first();
+
+          const projVisible = await proj.isVisible().catch(() => false);
+          const projEnabled = await proj.isEnabled().catch(() => false);
+          if (!projVisible || !projEnabled) return false;
+
+          const projVal = await proj.inputValue().catch(() => null);
+          const dateVal = await date.inputValue().catch(() => null);
+          const hoursVal = await hours.inputValue().catch(() => null);
+
+          const projEmpty = (projVal ?? '').trim().length === 0;
+          const dateEmpty = (dateVal ?? '').trim().length === 0;
+          const hoursEmpty = (hoursVal ?? '').trim().length === 0;
+
+          // Project is the strongest signal; date/hours help confirm the clear.
+          return projEmpty && (dateEmpty || hoursEmpty);
+        },
+        cfg.DYNAMIC_WAIT_BASE_TIMEOUT,
+        Math.min(cfg.GLOBAL_TIMEOUT, 2),
+        cfg.DYNAMIC_WAIT_MULTIPLIER,
+        'form cleared after submit',
+      );
+
+      timer.done({ success: true, cleared });
+      return true;
+    } catch (err: unknown) {
+      botLogger.warn('Could not submit form', { error: String(err) });
+      timer.done({ success: false, reason: 'exception' });
+      return false;
+    }
   }
 }

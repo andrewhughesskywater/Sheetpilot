@@ -13,7 +13,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { IpcMainInvokeEvent } from 'electron';
 
 // Import the modules we need to test
-import { ensureSchema } from '../../src/services/database';
+import { ensureSchema } from '../../src/repositories';
 import { 
   isValidDate, 
   isValidTime, 
@@ -94,7 +94,7 @@ vi.mock('electron-updater', () => ({
 }));
 
 // Mock database
-vi.mock('../../src/services/database', () => ({
+vi.mock('../../src/repositories', () => ({
   setDbPath: vi.fn(),
   ensureSchema: vi.fn(),
   getDbPath: vi.fn(() => 'C:/tmp/sheetpilot.sqlite'),

@@ -1,12 +1,12 @@
-import { defineConfig } from 'vite'
+import { defineConfig, type PluginOption } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 import fs from 'fs'
 import { visualizer } from 'rollup-plugin-visualizer'
 
 // https://vite.dev/config/
-export default defineConfig(({ mode }) => ({
-  plugins: [
+export default defineConfig(({ mode }) => {
+  const plugins: PluginOption[] = [
     react({
       jsxImportSource: '@emotion/react',
     }),
@@ -21,16 +21,22 @@ export default defineConfig(({ mode }) => ({
         }
       }
     },
-    // Bundle analyzer - only in production build with ANALYZE=true
-    ...(mode === 'production' && process.env.ANALYZE === 'true' ? [
+  ];
+
+  // Bundle analyzer - only in production build with ANALYZE=true
+  if (mode === 'production' && process.env['ANALYZE'] === 'true') {
+    plugins.push(
       visualizer({
         filename: './dist/stats.html',
         open: true,
         gzipSize: true,
         brotliSize: true,
-      })
-    ] : [])
-  ],
+      }) as unknown as PluginOption
+    );
+  }
+
+  return {
+    plugins,
   base: './', // Use relative paths for assets in production builds
   resolve: {
     alias: {
@@ -80,7 +86,8 @@ export default defineConfig(({ mode }) => ({
       // More permissive CSP for development (allows hot reloading)
       'Content-Security-Policy': mode === 'development' 
         ? "default-src 'self' 'unsafe-inline' 'unsafe-eval' ws: wss:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' ws: wss:;"
-        : "default-src 'self' 'unsafe-inline' 'unsafe-eval'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' ws: wss:;"
+        : "default-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' ws: wss:;"
     }
   }
-}))
+  };
+})

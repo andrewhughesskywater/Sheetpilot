@@ -39,7 +39,7 @@ describe('Connection Manager', () => {
 
   afterEach(() => {
     try {
-      const { shutdownDatabase } = require('../../src/services/database');
+      const { shutdownDatabase } = require('../../src/repositories');
       shutdownDatabase();
     } catch {
       // Ignore
@@ -166,7 +166,7 @@ describe('Connection Manager', () => {
       expect(db).toBeDefined();
       
       try {
-        const { shutdownDatabase } = require('../../src/services/database');
+        const { shutdownDatabase } = require('../../src/repositories');
         shutdownDatabase();
         
         // Connection should be closed
@@ -211,7 +211,7 @@ describe('Connection Manager', () => {
 
   describe('Concurrent Operations', () => {
     it('should handle concurrent connection requests', () => {
-      const connections = [];
+      const connections: ReturnType<typeof getDb>[] = [];
       
       for (let i = 0; i < 10; i++) {
         connections.push(getDb());

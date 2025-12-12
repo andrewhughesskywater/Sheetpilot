@@ -23,15 +23,13 @@ const mockTimesheet = {
 
 const mockCredentials = {
   store: vi.fn(),
-  get: vi.fn(),
   list: vi.fn(),
   delete: vi.fn()
 };
 
 const mockDatabase = {
   getAllTimesheetEntries: vi.fn(),
-  getAllCredentials: vi.fn(),
-  clearDatabase: vi.fn()
+  getAllArchiveData: vi.fn()
 };
 
 // Mock Handsontable components
