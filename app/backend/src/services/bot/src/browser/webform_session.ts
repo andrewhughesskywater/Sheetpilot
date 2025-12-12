@@ -1,8 +1,19 @@
 // webform_session.ts
 import type { Browser, BrowserContext, Page } from 'playwright';
-import * as cfg from './automation_config';
+import * as cfg from '../automation_config';
 import { botLogger } from '@sheetpilot/shared/logger';
-import { FormConfig, BrowserSession } from './types';
+
+export type FormConfig = {
+  BASE_URL: string;
+  FORM_ID: string;
+  SUBMISSION_ENDPOINT: string;
+  SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[];
+};
+
+export type BrowserSession = {
+  context: BrowserContext;
+  page: Page;
+};
 
 export class WebformSessionManager {
   private sessions: BrowserSession[] = [];
@@ -47,10 +58,7 @@ export class WebformSessionManager {
   }
 
   getDefaultPage(): Page {
-    if (!this.sessions.length) {
-      throw new Error('No sessions initialized; call initContexts() first');
-    }
-    return this.sessions[this.defaultSessionIndex].page;
+    return this._requireSession(this.defaultSessionIndex).page;
   }
 
   getSession(index: number): BrowserSession {
@@ -61,12 +69,12 @@ export class WebformSessionManager {
         }`,
       );
     }
-    return this.sessions[index];
+    return this._requireSession(index);
   }
 
   async navigateToBase(index?: number): Promise<void> {
     const { page } =
-      index !== undefined ? this.getSession(index) : this.sessions[0];
+      index !== undefined ? this.getSession(index) : this._requireSession(0);
     await page.goto(this.formConfig.BASE_URL, {
       timeout: cfg.GLOBAL_TIMEOUT * 1000,
     });
@@ -74,7 +82,7 @@ export class WebformSessionManager {
 
   async waitForFormReady(index?: number): Promise<void> {
     const { page } =
-      index !== undefined ? this.getSession(index) : this.sessions[0];
+      index !== undefined ? this.getSession(index) : this._requireSession(0);
 
     botLogger.verbose('Waiting for form to be ready', { index });
 
@@ -122,11 +130,19 @@ export class WebformSessionManager {
 
   async closeAll(): Promise<void> {
     for (const s of this.sessions) {
-      await s.context.close().catch(err =>
-        botLogger.warn('Error closing context', { error: String(err) }),
+      await s.context.close().catch((err: unknown) =>
+        botLogger.warn('Could not close context', { error: String(err) }),
       );
     }
     this.sessions = [];
+  }
+
+  private _requireSession(index: number): BrowserSession {
+    const session = this.sessions[index];
+    if (!session) {
+      throw new Error('No sessions initialized; call initContexts() first');
+    }
+    return session;
   }
 
   private async _applyStealthScripts(context: BrowserContext): Promise<void> {

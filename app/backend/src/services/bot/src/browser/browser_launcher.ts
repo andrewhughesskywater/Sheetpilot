@@ -1,6 +1,6 @@
 // browser_launcher.ts
 import { chromium, Browser } from 'playwright';
-import * as cfg from '.config/automation_config.ts';
+import * as cfg from '../automation_config';
 import { botLogger } from '@sheetpilot/shared/logger';
 
 export class BrowserLauncher {
