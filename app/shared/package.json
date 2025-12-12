@@ -1,6 +1,6 @@
 {
   "name": "@sheetpilot/shared",
-  "version": "1.5.3",
+  "version": "1.5.3.1",
   "private": true,
   "description": "Shared TypeScript contracts and utilities for Sheetpilot",
   "main": "./index.ts",
