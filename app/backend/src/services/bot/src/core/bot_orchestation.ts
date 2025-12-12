@@ -9,13 +9,13 @@
  * @since 2025
  */
 
-import * as Cfg from './automation_config';
-import { WebformFiller } from './webform_flow';
-import { LoginManager } from './authentication_flow';
-import { botLogger } from '../../../../../shared/logger';
-import { getQuarterForDate } from './quarter_config';
-import { appSettings } from '../../../../../shared/constants';
-import { checkAborted, setupAbortHandler } from './utils/abort-utils';
+import * as Cfg from '../config/automation_config';
+import { WebformFiller } from '../browser/webform_flow';
+import { LoginManager } from '../utils/authentication_flow';
+import { botLogger } from '../../../../../../shared/logger';
+import { getQuarterForDate } from '../config/quarter_config';
+import { appSettings } from '../../../../../../shared/constants';
+import { checkAborted, setupAbortHandler } from '../utils/abort-utils';
 
 /**
  * Result object returned after automation execution

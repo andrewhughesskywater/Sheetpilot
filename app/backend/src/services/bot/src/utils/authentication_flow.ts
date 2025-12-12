@@ -12,8 +12,8 @@
 import { Page } from 'playwright';
 import * as C from './automation_config';
 import type { LoginStep } from './automation_config';
-import { WebformFiller } from './webform_flow';
-import { authLogger } from '../../../../../shared/logger';
+import { WebformFiller } from '../webform_flow';
+import { authLogger } from '@sheetpilot/shared/logger';
 
 /**
  * Error thrown when navigation to authentication pages fails

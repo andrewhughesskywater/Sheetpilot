@@ -10,7 +10,7 @@
 
 import type { TimesheetEntry } from '../../../../../../shared/contracts/IDataService';
 import type { SubmissionResult } from '../../../../../../shared/contracts/ISubmissionService';
-import { getQuarterForDate, groupEntriesByQuarter } from '../quarter_config';
+import { getQuarterForDate, groupEntriesByQuarter } from '../config/quarter_config';
 import { createFormConfig } from '../automation_config';
 import { botLogger } from '../../../../../../shared/logger';
 import { checkAborted } from './abort-utils';
