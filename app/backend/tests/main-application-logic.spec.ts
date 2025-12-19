@@ -214,7 +214,8 @@ describe('Main Application Logic Tests', () => {
           if (args.length === 0) {
             super(2025, 0, 15); // January 15, 2025
           } else {
-            super(...args);
+            const dateArgs = args as [number, number, number?, number?, number?, number?, number?];
+            super(...dateArgs);
           }
         }
       } as typeof Date;
@@ -287,7 +288,16 @@ describe('Main Application Logic Tests', () => {
   });
 
   describe('Window State Management', () => {
-    const mockFs = fs as unknown as { existsSync: Mock; readFileSync: Mock; writeFileSync: Mock; mkdirSync: Mock };
+    const mockFs = fs as unknown as { 
+      existsSync: Mock; 
+      readFileSync: Mock; 
+      writeFileSync: Mock; 
+      mkdirSync: Mock;
+      promises?: {
+        mkdir: Mock;
+        writeFile: Mock;
+      };
+    };
 
     const getWindowState = (): { width: number; height: number; x?: number; y?: number; isMaximized?: boolean } => {
       const defaultWidth = 1200;
@@ -343,6 +353,10 @@ describe('Main Application Logic Tests', () => {
       return new Promise((resolve) => {
         setTimeout(async () => {
           try {
+            if (!mockFs.promises) {
+              resolve();
+              return;
+            }
             const userDataPath = '/tmp/sheetpilot-userdata';
             await mockFs.promises.mkdir(userDataPath, { recursive: true });
             

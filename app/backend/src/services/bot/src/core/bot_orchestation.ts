@@ -356,12 +356,14 @@ export class BotOrchestrator {
     await this._fill_fields(fields);
     fillTimer.done({ rowIndex });
 
-    // Submit is optional: tests and debugging sometimes run in “fill-only” mode.
+    // NO VALIDATION - Just fill and submit
+
+    // Submit is optional: tests and debugging sometimes run in "fill-only" mode.
     if (Cfg.SUBMIT_FORM_AFTER_FILLING) {
-      botLogger.verbose('Waiting for form to stabilize before submission', { rowIndex });
-      // Wait for form to be stable (no ongoing animations or changes)
+      // Wait for form to stabilize before submission
+      const page = this.webform_filler.require_page();
       await Cfg.wait_for_dom_stability(
-        this.webform_filler.require_page(),
+        page,
         'form',
         'visible',
         Cfg.SUBMIT_DELAY_AFTER_FILLING,
@@ -369,14 +371,65 @@ export class BotOrchestrator {
         'form stabilization before submission'
       );
       
-      // Submit with retry (Initial + Level 1 + Level 2 = 3 attempts)
+      // Wait for network idle to ensure any data loading is complete
+      await Cfg.dynamic_wait_for_network_idle(
+        page,
+        Cfg.DYNAMIC_WAIT_BASE_TIMEOUT,
+        Math.min(Cfg.GLOBAL_TIMEOUT, 2),
+        'network idle before submission'
+      );
+      
+      // Button is actionable - just check if it's visible, then submit immediately
+      botLogger.info('Checking submit button visibility before submission', { rowIndex });
+      const submitButtonVisible = await Cfg.dynamic_wait(
+        async () => {
+          const submitButton = page.locator(Cfg.SUBMIT_BUTTON_LOCATOR).first();
+          const visible = await submitButton.isVisible().catch(() => false);
+          return visible;
+        },
+        Cfg.DYNAMIC_WAIT_BASE_TIMEOUT,
+        Math.min(Cfg.GLOBAL_TIMEOUT, 2),
+        Cfg.DYNAMIC_WAIT_MULTIPLIER,
+        'submit button visible'
+      );
+      
+      if (!submitButtonVisible) {
+        botLogger.warn('Submit button is not visible', { rowIndex, locator: Cfg.SUBMIT_BUTTON_LOCATOR });
+        rowOutcome = 'error';
+        return [false, 'Submit button not visible'];
+      }
+      
+      botLogger.info('Submit button is visible, proceeding with submission', { rowIndex });
+      
+      // Submit with retry
       const submitTimer = botLogger.startTimer('row-submit');
       const submissionSuccess = await this._submitWithRetryWithFields(rowIndex, fields);
       submitTimer.done({ rowIndex, success: submissionSuccess });
       if (!submissionSuccess) {
         rowOutcome = 'error';
-        return [false, 'Form submission failed after 3 attempts (initial + Level 1 retry + Level 2 retry)'];
+        // Check if submit button exists - this helps diagnose the issue
+        const submitButtonExists = await page.locator(Cfg.SUBMIT_BUTTON_LOCATOR).first().isVisible().catch(() => false);
+        const errorMsg = submitButtonExists 
+          ? 'Form submission failed after 3 attempts (submit button found but submission verification failed)'
+          : 'Form submission failed after 3 attempts (submit button not found)';
+        return [false, errorMsg];
       }
+      
+      // Wait for DOM stability after submission before next row
+      await Cfg.wait_for_dom_stability(
+        page,
+        'body',
+        'visible',
+        Cfg.DYNAMIC_WAIT_BASE_TIMEOUT,
+        Math.min(Cfg.GLOBAL_TIMEOUT, 2),
+        'DOM stability after submission'
+      );
+      await Cfg.dynamic_wait_for_network_idle(
+        page,
+        Cfg.DYNAMIC_WAIT_BASE_TIMEOUT,
+        Math.min(Cfg.GLOBAL_TIMEOUT, 2),
+        'network idle after submission'
+      );
     }
 
     botLogger.info('Row completed successfully', { rowIndex });
@@ -389,82 +442,85 @@ export class BotOrchestrator {
   }
 
   /**
-   * Submits form with two-level retry logic:
-   * - Level 1 retry: Quick retry - just click submit again after 1s delay (no form re-fill)
-   * - Level 2 retry: Full retry - re-fill form and submit after 2s delay
-   * 
-   * Flow: Initial → failed → Level 1 retry → failed → Level 2 retry → failed → give up
+   * Submits form with retry logic: initial submit → retry submit once → refill form + submit
    * 
    * @private
    * @param rowIndex - Row index for logging
-   * @param fields - Fields to fill if Level 2 retry is needed
+   * @param fields - Fields to fill if refill is needed
    * @returns Promise resolving to true if submission succeeded, false otherwise
    */
   private async _submitWithRetryWithFields(rowIndex: number, fields: Record<string, unknown>): Promise<boolean> {
+    const failureReasons: string[] = [];
+    
     // Attempt 1: Initial submit
-    botLogger.info('Attempting initial submission', { rowIndex, attempt: 1, retryLevel: 'initial' });
-    let success = await this.webform_filler.submit_form();
-    
-    if (success) {
-      botLogger.info('Initial submission succeeded', { rowIndex, attempt: 1, retryLevel: 'initial', result: 'success' });
-      return true;
+    botLogger.info('=== ATTEMPT 1: Initial submit ===', { rowIndex });
+    try {
+      botLogger.info('Calling webform_filler.submit_form()', { rowIndex });
+      const success = await this.webform_filler.submit_form();
+      botLogger.info('submit_form() returned', { rowIndex, success });
+      if (success) {
+        botLogger.info('Initial submission succeeded', { rowIndex, attempt: 1 });
+        return true;
+      }
+      failureReasons.push('Initial submit returned false');
+      botLogger.warn('Initial submit returned false', { rowIndex, attempt: 1 });
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      failureReasons.push(`Initial submit exception: ${errorMsg}`);
+      botLogger.error('Initial submission threw exception', { rowIndex, attempt: 1, error: errorMsg, stack: err instanceof Error ? err.stack : undefined });
     }
     
-    botLogger.warn('Initial submission failed', { rowIndex, attempt: 1, retryLevel: 'initial', result: 'failed' });
+    botLogger.warn('Initial submission failed, retrying', { rowIndex, attempt: 1, reasons: failureReasons });
     
-    // Attempt 2: Level 1 retry - quick retry, just click submit again (no form re-fill)
-    const level1Delay = Cfg.SUBMIT_CLICK_RETRY_DELAY_S;
-    botLogger.info('Starting Level 1 retry (quick re-click, no form re-fill)', { 
-      rowIndex, 
-      attempt: 2, 
-      retryLevel: 'level-1', 
-      delaySeconds: level1Delay 
-    });
-    await new Promise(resolve => setTimeout(resolve, level1Delay * 1000));
-    
-    botLogger.info('Attempting Level 1 retry submission', { rowIndex, attempt: 2, retryLevel: 'level-1' });
-    success = await this.webform_filler.submit_form();
-    
-    if (success) {
-      botLogger.info('Level 1 retry succeeded', { rowIndex, attempt: 2, retryLevel: 'level-1', result: 'success' });
-      return true;
+    // Attempt 2: Retry submit once
+    await new Promise(resolve => setTimeout(resolve, Cfg.SUBMIT_CLICK_RETRY_DELAY_S * 1000));
+    try {
+      const success = await this.webform_filler.submit_form();
+      if (success) {
+        botLogger.info('Retry submission succeeded', { rowIndex, attempt: 2 });
+        return true;
+      }
+      failureReasons.push('Retry submit returned false');
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      failureReasons.push(`Retry submit exception: ${errorMsg}`);
+      botLogger.warn('Retry submission threw exception', { rowIndex, attempt: 2, error: errorMsg });
     }
     
-    botLogger.warn('Level 1 retry failed', { rowIndex, attempt: 2, retryLevel: 'level-1', result: 'failed' });
+    botLogger.warn('Retry submission failed, refilling form and retrying', { rowIndex, attempt: 2, reasons: failureReasons });
     
-    // Attempt 3: Level 2 retry - re-fill form and submit
-    const level2Delay = Cfg.SUBMIT_RETRY_DELAY;
-    botLogger.info('Starting Level 2 retry (re-fill form and submit)', { 
-      rowIndex, 
-      attempt: 3, 
-      retryLevel: 'level-2', 
-      delaySeconds: level2Delay 
-    });
+    // Attempt 3: Refill form and submit
+    botLogger.info('=== ATTEMPT 3: Refilling form and submitting ===', { rowIndex });
     await Cfg.wait_for_dom_stability(
       this.webform_filler.require_page(),
       'body',
       'visible',
-      level2Delay,
-      level2Delay * 2,
-      'page stabilization before Level 2 retry'
+      Cfg.SUBMIT_RETRY_DELAY,
+      Cfg.SUBMIT_RETRY_DELAY * 2,
+      'page stabilization before refill retry'
     );
     
-    botLogger.verbose('Re-filling form fields for Level 2 retry', { rowIndex, retryLevel: 'level-2' });
+    botLogger.info('Re-filling form fields before final submission attempt', { rowIndex });
     await this._fill_fields(fields);
+    botLogger.info('Form fields re-filled, now attempting submission', { rowIndex });
     
-    botLogger.info('Attempting Level 2 retry submission', { rowIndex, attempt: 3, retryLevel: 'level-2' });
-    success = await this.webform_filler.submit_form();
-    
-    if (success) {
-      botLogger.info('Level 2 retry succeeded', { rowIndex, attempt: 3, retryLevel: 'level-2', result: 'success' });
-      return true;
+    try {
+      const success = await this.webform_filler.submit_form();
+      if (success) {
+        botLogger.info('Refill retry submission succeeded', { rowIndex, attempt: 3 });
+        return true;
+      }
+      failureReasons.push('Refill retry submit returned false');
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      failureReasons.push(`Refill retry submit exception: ${errorMsg}`);
+      botLogger.warn('Refill retry submission threw exception', { rowIndex, attempt: 3, error: errorMsg });
     }
     
     botLogger.error('All submission attempts exhausted', { 
       rowIndex, 
-      totalAttempts: 3, 
-      retryLevels: ['initial', 'level-1', 'level-2'],
-      result: 'failed'
+      totalAttempts: 3,
+      failureReasons: failureReasons.join('; ')
     });
     return false;
   }
@@ -515,6 +571,23 @@ export class BotOrchestrator {
       
       botLogger.info('Login complete', { progress: 20 });
       this.progress_callback?.(20, 'Login complete');
+
+      // Wait for DOM stability after login before processing rows
+      const page = this.webform_filler.require_page();
+      await Cfg.wait_for_dom_stability(
+        page,
+        'body',
+        'visible',
+        Cfg.DYNAMIC_WAIT_BASE_TIMEOUT,
+        Math.min(Cfg.GLOBAL_TIMEOUT, 2),
+        'DOM stability after login'
+      );
+      await Cfg.dynamic_wait_for_network_idle(
+        page,
+        Cfg.DYNAMIC_WAIT_BASE_TIMEOUT,
+        Math.min(Cfg.GLOBAL_TIMEOUT, 2),
+        'network idle after login'
+      );
 
       const status_col = ((this.cfg as Record<string, unknown>)['STATUS_COLUMN_NAME'] as string) ?? 'Status';
       const complete_val = (this.cfg as Record<string, unknown>)['STATUS_COMPLETE'] ?? 'Complete';
@@ -713,6 +786,7 @@ export class BotOrchestrator {
     }
     return true;
   }
+
 }
 
 /**

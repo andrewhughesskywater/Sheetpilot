@@ -47,9 +47,9 @@ describe('plugin-config', () => {
       
       expect(config).toBeDefined();
       expect(config.plugins).toBeDefined();
-      expect(config.plugins.data.active).toBe('sqlite');
-      expect(config.plugins.credentials.active).toBe('sqlite');
-      expect(config.plugins.submission.active).toBe('electron');
+      expect(config.plugins['data'].active).toBe('sqlite');
+      expect(config.plugins['credentials'].active).toBe('sqlite');
+      expect(config.plugins['submission'].active).toBe('electron');
     });
 
     it('should load config from file when path provided', () => {
@@ -70,8 +70,8 @@ describe('plugin-config', () => {
 
       const config = loadPluginConfig('/path/to/config.json');
 
-      expect(config.plugins.data.active).toBe('memory');
-      expect(config.plugins.submission.active).toBe('mock');
+      expect(config.plugins['data'].active).toBe('memory');
+      expect(config.plugins['submission'].active).toBe('mock');
       expect(console.log).toHaveBeenCalledWith(
         expect.stringContaining('Loaded plugin configuration')
       );
@@ -83,7 +83,7 @@ describe('plugin-config', () => {
 
       const config = loadPluginConfig('/path/to/nonexistent.json');
 
-      expect(config.plugins.data.active).toBe('sqlite');
+      expect(config.plugins['data'].active).toBe('sqlite');
     });
 
     it('should handle file read errors gracefully', () => {
@@ -123,16 +123,16 @@ describe('plugin-config', () => {
         featureFlags: {}
       };
 
-      process.env.SHEETPILOT_PLUGIN_CONFIG = JSON.stringify(envConfig);
+      process['env']['SHEETPILOT_PLUGIN_CONFIG'] = JSON.stringify(envConfig);
 
       const config = loadPluginConfig();
 
-      expect(config.plugins.data.active).toBe('memory');
-      expect(config.plugins.submission.active).toBe('mock');
+      expect(config.plugins['data'].active).toBe('memory');
+      expect(config.plugins['submission'].active).toBe('mock');
     });
 
     it('should handle invalid environment variable JSON', () => {
-      process.env.SHEETPILOT_PLUGIN_CONFIG = 'invalid json';
+      process['env']['SHEETPILOT_PLUGIN_CONFIG'] = 'invalid json';
 
       const config = loadPluginConfig();
 
@@ -156,18 +156,18 @@ describe('plugin-config', () => {
 
       const config = loadPluginConfig('/path/to/config.json');
 
-      expect(config.plugins.data.active).toBe('memory');
-      expect(config.plugins.credentials.active).toBe('sqlite'); // From defaults
-      expect(config.plugins.submission.active).toBe('electron'); // From defaults
+      expect(config.plugins['data'].active).toBe('memory');
+      expect(config.plugins['credentials'].active).toBe('sqlite'); // From defaults
+      expect(config.plugins['submission'].active).toBe('electron'); // From defaults
     });
 
     it('should return default config in browser environment', () => {
-      (globalThis as { window: typeof window }).window = {} as Window;
+      (globalThis as { window: typeof window }).window = {} as Window & typeof globalThis;
 
       const config = loadPluginConfig('/path/to/config.json');
 
       expect(config).toBeDefined();
-      expect(config.plugins.data.active).toBe('sqlite');
+      expect(config.plugins['data'].active).toBe('sqlite');
     });
   });
 });

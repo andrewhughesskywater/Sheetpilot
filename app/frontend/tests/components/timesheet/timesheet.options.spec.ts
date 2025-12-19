@@ -60,18 +60,20 @@ describe('Timesheet Options Module', () => {
 
   describe('Project-Tool Relationships', () => {
     it('should identify projects without tools', () => {
-      const expected = ['ERT', 'PTO/RTO', 'SWFL-CHEM/GAS', 'Training'];
+      const expected: string[] = ['ERT', 'PTO/RTO', 'SWFL-CHEM/GAS', 'Training'];
       
-      expected.forEach(project => {
+      expected.forEach((project: string) => {
+        // @ts-expect-error - TypeScript infers literal types from array, but Set accepts string
         expect(projectsWithoutTools.has(project)).toBe(true);
         expect(projectNeedsTools(project)).toBe(false);
       });
     });
 
     it('should identify projects with tools', () => {
-      const expected = ['FL-Carver Techs', 'FL-Carver Tools', 'OSC-BBB', 'SWFL-EQUIP'];
+      const expected: string[] = ['FL-Carver Techs', 'FL-Carver Tools', 'OSC-BBB', 'SWFL-EQUIP'];
       
-      expected.forEach(project => {
+      expected.forEach((project: string) => {
+        // @ts-expect-error - TypeScript infers literal types from array, but Set accepts string
         expect(projectsWithoutTools.has(project)).toBe(false);
         expect(projectNeedsTools(project)).toBe(true);
       });
@@ -89,8 +91,8 @@ describe('Timesheet Options Module', () => {
     });
 
     it('should handle undefined project', () => {
-      expect(projectNeedsTools(undefined)).toBe(false);
-      expect(getToolOptions(undefined)).toEqual([]);
+      expect(projectNeedsTools(undefined as unknown as string)).toBe(false);
+      expect(getToolOptions(undefined as unknown as string)).toEqual([]);
     });
 
     it('should handle invalid project', () => {
@@ -102,30 +104,32 @@ describe('Timesheet Options Module', () => {
 
   describe('Tool-ChargeCode Relationships', () => {
     it('should identify tools without charge codes', () => {
-      const expected = [
+      const expected: string[] = [
         'Internal Meeting', 'DECA Meeting', 'Logistics', 'Meeting',
         'Non Tool Related', 'Admin', 'Training', 'N/A'
       ];
       
-      expected.forEach(tool => {
+      expected.forEach((tool: string) => {
+        // @ts-expect-error - TypeScript infers literal types from array, but Set accepts string
         expect(toolsWithoutCharges.has(tool)).toBe(true);
         expect(toolNeedsChargeCode(tool)).toBe(false);
       });
     });
 
     it('should identify tools with charge codes', () => {
-      const expected = [
+      const expected: string[] = [
         '#1 Rinse and 2D marker', '#2 Sputter', 'AFM101', 'ALD101'
       ];
       
-      expected.forEach(tool => {
+      expected.forEach((tool: string) => {
+        // @ts-expect-error - TypeScript infers literal types from array, but Set accepts string
         expect(toolsWithoutCharges.has(tool)).toBe(false);
         expect(toolNeedsChargeCode(tool)).toBe(true);
       });
     });
 
     it('should handle undefined tool', () => {
-      expect(toolNeedsChargeCode(undefined)).toBe(false);
+      expect(toolNeedsChargeCode(undefined as unknown as string)).toBe(false);
     });
 
     it('should handle empty tool', () => {
@@ -191,9 +195,9 @@ describe('Timesheet Options Module', () => {
     });
 
     it('should have all projects categorized correctly', () => {
-      projects.forEach(project => {
+      [...projects].forEach((project: string) => {
         const needsTools = projectNeedsTools(project);
-        const isInWithoutTools = projectsWithoutTools.has(project);
+        const isInWithoutTools = (projectsWithoutTools as Set<string>).has(project);
         
         expect(needsTools).toBe(!isInWithoutTools);
       });

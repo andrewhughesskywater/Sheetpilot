@@ -208,7 +208,9 @@ export class WebformFiller {
     await cfg.dynamic_wait(async () => {
       const loc = page.locator(projectLocator).first();
       const visible = await loc.isVisible().catch(() => false);
-      if (!visible) return false;
+      if (!visible) {
+        return false;
+      }
       const enabled = await loc.isEnabled().catch(() => false);
       return enabled;
     }, cfg.DYNAMIC_WAIT_BASE_TIMEOUT, Math.min(cfg.GLOBAL_TIMEOUT, 2), cfg.DYNAMIC_WAIT_MULTIPLIER, 'form ready');
@@ -223,16 +225,32 @@ export class WebformFiller {
     if (!ok) throw new Error(`Field ${locator} did not become visible`);
 
     await field.fill(String(value));
+    
+    // Always blur the field to trigger validation and commit the value
+    // This ensures the form runs validation and enables the submit button
+    botLogger.verbose('Blurring field to trigger validation', { locator });
+    try {
+      await field.blur();
+      // Small delay to allow validation to complete
+      await page.waitForTimeout(100);
+    } catch (err) {
+      botLogger.warn('Could not blur field', { locator, error: String(err) });
+    }
   }
 
   async submit_form(): Promise<boolean> {
-    const page = this.require_page();
+    botLogger.info('=== webform_flow.submit_form() CALLED ===');
     const timer = botLogger.startTimer('submit-form-total');
 
     try {
+      const page = this.require_page();
+      botLogger.info('Creating SubmissionMonitor');
       const monitor = new SubmissionMonitor(() => page);
+      botLogger.info('Calling monitor.submitForm()');
       const ok = await monitor.submitForm();
+      botLogger.info('monitor.submitForm() returned', { ok });
       if (!ok) {
+        botLogger.warn('=== SUBMIT FAILED: monitor returned false ===');
         timer.done({ success: false, reason: 'monitor returned false' });
         return false;
       }
@@ -246,6 +264,7 @@ export class WebformFiller {
       const hoursLocator =
         cfg.FIELD_DEFINITIONS['hours']?.locator ?? "input[aria-label='Hours']";
 
+      // Wait for form to be cleared after successful submission
       const cleared = await cfg.dynamic_wait(
         async () => {
           const proj = page.locator(projectLocator).first();
@@ -254,7 +273,9 @@ export class WebformFiller {
 
           const projVisible = await proj.isVisible().catch(() => false);
           const projEnabled = await proj.isEnabled().catch(() => false);
-          if (!projVisible || !projEnabled) return false;
+          if (!projVisible || !projEnabled) {
+            return false;
+          }
 
           const projVal = await proj.inputValue().catch(() => null);
           const dateVal = await date.inputValue().catch(() => null);
@@ -264,7 +285,6 @@ export class WebformFiller {
           const dateEmpty = (dateVal ?? '').trim().length === 0;
           const hoursEmpty = (hoursVal ?? '').trim().length === 0;
 
-          // Project is the strongest signal; date/hours help confirm the clear.
           return projEmpty && (dateEmpty || hoursEmpty);
         },
         cfg.DYNAMIC_WAIT_BASE_TIMEOUT,
@@ -273,11 +293,35 @@ export class WebformFiller {
         'form cleared after submit',
       );
 
+      if (cleared) {
+        // Wait for DOM stability and network idle to ensure form is ready for next row
+        await cfg.wait_for_dom_stability(
+          page,
+          projectLocator,
+          'visible',
+          cfg.DYNAMIC_WAIT_BASE_TIMEOUT,
+          Math.min(cfg.GLOBAL_TIMEOUT, 2),
+          'form components stable after clear'
+        );
+        
+        await cfg.dynamic_wait_for_network_idle(
+          page,
+          cfg.DYNAMIC_WAIT_BASE_TIMEOUT,
+          Math.min(cfg.GLOBAL_TIMEOUT, 2),
+          'network idle after form clear'
+        );
+      }
+
       timer.done({ success: true, cleared });
       return true;
     } catch (err: unknown) {
-      botLogger.warn('Could not submit form', { error: String(err) });
-      timer.done({ success: false, reason: 'exception' });
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      const errorStack = err instanceof Error ? err.stack : undefined;
+      botLogger.error('=== EXCEPTION IN webform_flow.submit_form() ===', {
+        error: errorMsg,
+        stack: errorStack
+      });
+      timer.done({ success: false, reason: 'exception', error: errorMsg });
       return false;
     }
   }

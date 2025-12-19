@@ -157,8 +157,8 @@ describe('TimesheetGrid Phase 1', () => {
     }
     
     // Verify the changes were applied
-    expect(next[0].project).toBe('Test Project');
-    expect(next[0].tool).toBe('Test Tool');
+    expect((next[0] as Record<string, unknown>)['project']).toBe('Test Project');
+    expect((next[0] as Record<string, unknown>)['tool']).toBe('Test Tool');
   });
 
   it('normalizes row data correctly after edit', () => {
@@ -563,13 +563,13 @@ describe('TimesheetGrid Phase 3 - Validation and Normalization', () => {
       const toolsWithoutCharges = ["Internal Meeting", "DECA Meeting", "Logistics", "Meeting", "Non Tool Related", "Admin", "Training"];
       
       // Normalize N/A fields to null
-      if (typeof normalized.project === 'string' && projectsWithoutTools.includes(normalized.project)) {
-        normalized.tool = null;
-        normalized.chargeCode = null;
+      if (typeof normalized['project'] === 'string' && projectsWithoutTools.includes(normalized['project'])) {
+        normalized['tool'] = null;
+        normalized['chargeCode'] = null;
       }
       
-      if (typeof normalized.tool === 'string' && toolsWithoutCharges.includes(normalized.tool)) {
-        normalized.chargeCode = null;
+      if (typeof normalized['tool'] === 'string' && toolsWithoutCharges.includes(normalized['tool'])) {
+        normalized['chargeCode'] = null;
       }
       
       return normalized;
@@ -582,8 +582,8 @@ describe('TimesheetGrid Phase 3 - Validation and Normalization', () => {
       chargeCode: 'EPR1'
     };
     const normalized1 = normalizeRowData(rowWithNoToolsProject);
-    expect(normalized1.tool).toBeNull();
-    expect(normalized1.chargeCode).toBeNull();
+    expect(normalized1['tool']).toBeNull();
+    expect(normalized1['chargeCode']).toBeNull();
     
     // Tool that doesn't need charge codes
     const rowWithNoChargeTool = {
@@ -592,8 +592,8 @@ describe('TimesheetGrid Phase 3 - Validation and Normalization', () => {
       chargeCode: 'EPR1'
     };
     const normalized2 = normalizeRowData(rowWithNoChargeTool);
-    expect(normalized2.tool).toBe('DECA Meeting');
-    expect(normalized2.chargeCode).toBeNull();
+    expect(normalized2['tool']).toBe('DECA Meeting');
+    expect(normalized2['chargeCode']).toBeNull();
     
     // Normal row (no normalization needed)
     const normalRow = {
@@ -602,8 +602,8 @@ describe('TimesheetGrid Phase 3 - Validation and Normalization', () => {
       chargeCode: 'EPR1'
     };
     const normalized3 = normalizeRowData(normalRow);
-    expect(normalized3.tool).toBe('#1 Rinse and 2D marker');
-    expect(normalized3.chargeCode).toBe('EPR1');
+    expect(normalized3['tool']).toBe('#1 Rinse and 2D marker');
+    expect(normalized3['chargeCode']).toBe('EPR1');
   });
 
   it('handles edge cases in validation', () => {
@@ -714,7 +714,7 @@ describe('TimesheetGrid Phase 4 - IPC Integration and Autosave', () => {
 
   it('validates batch save logic for complete rows', () => {
     const shouldSaveToDatabase = (row: Record<string, unknown>) => {
-      return !!(row.date && row.timeIn && row.timeOut && row.project && row.taskDescription);
+      return !!(row['date'] && row['timeIn'] && row['timeOut'] && row['project'] && row['taskDescription']);
     };
     
     // Complete row should be saved to database in batch
@@ -1018,7 +1018,7 @@ describe('TimesheetGrid Phase 5 - Import Flow Integration', () => {
     
     // Test refresh trigger logic
     const shouldRefreshGrid = (result: Record<string, unknown>, activeTab: number) => {
-      return activeTab === 1 && typeof result.inserted === 'number' && result.inserted > 0;
+      return activeTab === 1 && typeof result['inserted'] === 'number' && result['inserted'] > 0;
     };
     
     expect(shouldRefreshGrid(mockImportResults[0], 1)).toBe(true); // Should refresh
@@ -1068,11 +1068,11 @@ describe('TimesheetGrid Phase 5 - Import Flow Integration', () => {
     const validateImportedRow = (row: Record<string, unknown>) => {
       const errors: string[] = [];
       
-      if (!row.date) errors.push('Date is required');
-      if (!row.timeIn) errors.push('Time In is required');
-      if (!row.timeOut) errors.push('Time Out is required');
-      if (!row.project) errors.push('Project is required');
-      if (!row.taskDescription) errors.push('Task Description is required');
+      if (!row['date']) errors.push('Date is required');
+      if (!row['timeIn']) errors.push('Time In is required');
+      if (!row['timeOut']) errors.push('Time Out is required');
+      if (!row['project']) errors.push('Project is required');
+      if (!row['taskDescription']) errors.push('Task Description is required');
       
       return errors;
     };
@@ -1833,6 +1833,7 @@ describe('TimesheetGrid Deferred Save Pattern', () => {
     const oldTab = 0;
     const newTab = 1;
     
+    // @ts-expect-error - TypeScript correctly identifies this comparison as always true, but we're testing the logic pattern
     if (oldTab === 0 && newTab !== 0) {
       await batchSaveMock();
     }
@@ -2846,15 +2847,17 @@ describe('TimesheetGrid Validation Error Feedback', () => {
     expect(hasSelectionChanged).toBe(true);
   });
 
-  it('should delay clearing invalid entries', (done) => {
-    let cellValue = 'invalid';
-    
-    // Simulate delayed clearing
-    setTimeout(() => {
-      cellValue = '';
-      expect(cellValue).toBe('');
-      done();
-    }, 100);
+  it('should delay clearing invalid entries', () => {
+    return new Promise<void>((resolve) => {
+      let cellValue = 'invalid';
+      
+      // Simulate delayed clearing
+      setTimeout(() => {
+        cellValue = '';
+        expect(cellValue).toBe('');
+        resolve();
+      }, 100);
+    });
   });
 
   it('should track cell meta for invalid styling', () => {

@@ -23,7 +23,7 @@ function getLogger() {
  * This should match the version in package.json
  * Updated: 2025-11-04
  */
-export const APP_VERSION = '1.5.4';
+export const APP_VERSION = '1.5.6';
 
 /**
  * Application name

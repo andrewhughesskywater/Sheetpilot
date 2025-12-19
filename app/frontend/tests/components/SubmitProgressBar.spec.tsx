@@ -43,8 +43,10 @@ describe('SubmitProgressBar Component', () => {
 
     it('should be disabled when explicitly disabled', () => {
       const disabled = true;
-      const status = 'ready';
+      const status: 'ready' | 'neutral' | 'warning' = 'ready';
       
+      // Test the logic pattern - disabled takes precedence
+      // @ts-expect-error - TypeScript correctly identifies this comparison as always false, but we're testing the logic pattern
       const isDisabled = disabled || status === 'neutral' || status === 'warning';
       
       expect(isDisabled).toBe(true);
@@ -206,9 +208,9 @@ describe('SubmitProgressBar Component', () => {
     });
 
     it('should not be complete mid-progress', () => {
-      const currentEntry = 5;
-      const totalEntries = 10;
-      const isComplete = currentEntry === totalEntries;
+      const currentEntry: number = 5;
+      const totalEntries: number = 10;
+      const isComplete: boolean = currentEntry === totalEntries;
       
       expect(isComplete).toBe(false);
     });

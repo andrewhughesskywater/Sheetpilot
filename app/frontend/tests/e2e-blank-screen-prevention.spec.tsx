@@ -212,7 +212,13 @@ describe('End-to-End Blank Screen Prevention Tests', () => {
         saveDraft: vi.fn(),
         deleteDraft: vi.fn(),
         submit: vi.fn(),
-        exportToCSV: vi.fn()
+        exportToCSV: vi.fn(),
+        cancel: vi.fn(),
+        devSimulateSuccess: vi.fn(),
+        loadDraftById: vi.fn(),
+        resetInProgress: vi.fn(),
+        onSubmissionProgress: vi.fn(),
+        removeProgressListener: vi.fn()
       };
       window.credentials = {
         store: vi.fn(),
@@ -254,7 +260,13 @@ describe('End-to-End Blank Screen Prevention Tests', () => {
         saveDraft: vi.fn(),
         deleteDraft: vi.fn(),
         submit: vi.fn(),
-        exportToCSV: vi.fn()
+        exportToCSV: vi.fn(),
+        cancel: vi.fn(),
+        devSimulateSuccess: vi.fn(),
+        loadDraftById: vi.fn(),
+        resetInProgress: vi.fn(),
+        onSubmissionProgress: vi.fn(),
+        removeProgressListener: vi.fn()
       };
       window.credentials = {
         store: vi.fn(),
@@ -294,7 +306,13 @@ describe('End-to-End Blank Screen Prevention Tests', () => {
         saveDraft: vi.fn(),
         deleteDraft: vi.fn(),
         submit: vi.fn(),
-        exportToCSV: vi.fn()
+        exportToCSV: vi.fn(),
+        cancel: vi.fn(),
+        devSimulateSuccess: vi.fn(),
+        loadDraftById: vi.fn(),
+        resetInProgress: vi.fn(),
+        onSubmissionProgress: vi.fn(),
+        removeProgressListener: vi.fn()
       };
       window.credentials = {
         store: vi.fn(),

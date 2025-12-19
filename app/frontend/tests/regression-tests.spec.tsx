@@ -45,7 +45,7 @@ describe('Regression Tests for Fixed Files', () => {
 
   beforeEach(() => {
     originalProcess = global.process;
-    delete (global as Record<string, unknown>).process;
+    delete (global as Record<string, unknown>)['process'];
   });
 
   afterEach(() => {
@@ -115,7 +115,9 @@ describe('Regression Tests for Fixed Files', () => {
     
     // Test that accessing process throws an error
     expect(() => {
-      process.env.NODE_ENV; // eslint-disable-line @typescript-eslint/no-unused-expressions
+      const proc = process as unknown as Record<string, unknown>;
+      const env = proc['env'] as Record<string, unknown>;
+      env['NODE_ENV']; // eslint-disable-line @typescript-eslint/no-unused-expressions
     }).toThrow(/Cannot read properties of undefined|process is not defined/);
   });
 

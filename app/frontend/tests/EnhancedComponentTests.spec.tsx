@@ -155,11 +155,11 @@ describe('Enhanced Component Tests', () => {
     it('should validate required fields correctly', () => {
       const validateRequiredFields = (row: Record<string, unknown>) => {
         const errors: string[] = [];
-        if (!row.date) errors.push('Date is required');
-        if (!row.timeIn) errors.push('Start Time is required');
-        if (!row.timeOut) errors.push('End Time is required');
-        if (!row.project) errors.push('Project is required');
-        if (!row.taskDescription) errors.push('What You Did is required');
+        if (!row['date']) errors.push('Date is required');
+        if (!row['timeIn']) errors.push('Start Time is required');
+        if (!row['timeOut']) errors.push('End Time is required');
+        if (!row['project']) errors.push('Project is required');
+        if (!row['taskDescription']) errors.push('What You Did is required');
         return errors;
       };
 
@@ -355,8 +355,8 @@ describe('Enhanced Component Tests', () => {
 
       // Test tool change to one that doesn't need charge codes
       const updatedForMeeting = updateRowForToolChange(initialRow, "Meeting");
-      expect(updatedForMeeting.tool).toBe("Meeting");
-      expect(updatedForMeeting.chargeCode).toBeNull();
+      expect((updatedForMeeting as { tool?: string; chargeCode?: string | null }).tool).toBe("Meeting");
+      expect((updatedForMeeting as { tool?: string; chargeCode?: string | null }).chargeCode).toBeNull();
     });
   });
 
@@ -367,7 +367,7 @@ describe('Enhanced Component Tests', () => {
         changes: 1
       });
 
-      const result = await window.timesheet.saveDraft({
+      const result = await window.timesheet!.saveDraft({
         date: '2025-01-15',
         timeIn: '09:00',
         timeOut: '17:00',
@@ -404,7 +404,7 @@ describe('Enhanced Component Tests', () => {
         entries: mockData
       });
 
-      const result = await window.timesheet.loadDraft();
+      const result = await window.timesheet!.loadDraft();
 
       expect(result.success).toBe(true);
       expect(result.entries).toEqual(mockData);
@@ -425,7 +425,7 @@ describe('Enhanced Component Tests', () => {
         taskDescription: string;
       }) => {
         try {
-          return await window.timesheet.saveDraft(row);
+          return await window.timesheet!.saveDraft(row);
         } catch (error) {
           return {
             success: false,
@@ -455,7 +455,7 @@ describe('Enhanced Component Tests', () => {
         // Find the last non-empty row
         for (let i = rows.length - 1; i >= 0; i--) {
           const row = rows[i];
-          if (row?.date || row?.timeIn || row?.timeOut || row?.project || row?.tool || row?.chargeCode || row?.taskDescription) {
+          if (row?.['date'] || row?.['timeIn'] || row?.['timeOut'] || row?.['project'] || row?.['tool'] || row?.['chargeCode'] || row?.['taskDescription']) {
             lastNonEmptyIndex = i;
             break;
           }
@@ -475,8 +475,8 @@ describe('Enhanced Component Tests', () => {
 
       const normalized = normalizeTrailingBlankRows(testRows);
       expect(normalized).toHaveLength(3); // Should keep one blank row at the end
-      expect(normalized[0].project).toBe('Project 1');
-      expect(normalized[1].project).toBe('Project 2');
+      expect((normalized[0] as Record<string, unknown>)['project']).toBe('Project 1');
+      expect((normalized[1] as Record<string, unknown>)['project']).toBe('Project 2');
       expect(normalized[2]).toEqual({});
     });
 
@@ -488,14 +488,14 @@ describe('Enhanced Component Tests', () => {
         const normalized = { ...row };
         
         // If project doesn't need tools, clear tool and chargeCode
-        if (projectsWithoutTools.includes(normalized.project as string)) {
-          normalized.tool = null;
-          normalized.chargeCode = null;
+        if (projectsWithoutTools.includes(normalized['project'] as string)) {
+          normalized['tool'] = null;
+          normalized['chargeCode'] = null;
         }
         
         // If tool doesn't need charge codes, clear chargeCode
-        if (toolsWithoutCharges.includes(normalized.tool as string)) {
-          normalized.chargeCode = null;
+        if (toolsWithoutCharges.includes(normalized['tool'] as string)) {
+          normalized['chargeCode'] = null;
         }
         
         return normalized;
@@ -508,8 +508,8 @@ describe('Enhanced Component Tests', () => {
         chargeCode: 'EPR1'
       };
       const normalized1 = normalizeRowData(rowWithNoToolsProject);
-      expect(normalized1.tool).toBeNull();
-      expect(normalized1.chargeCode).toBeNull();
+      expect(normalized1['tool']).toBeNull();
+      expect(normalized1['chargeCode']).toBeNull();
 
       // Tool that doesn't need charge codes
       const rowWithNoChargeTool = {
@@ -518,8 +518,8 @@ describe('Enhanced Component Tests', () => {
         chargeCode: 'EPR1'
       };
       const normalized2 = normalizeRowData(rowWithNoChargeTool);
-      expect(normalized2.tool).toBe('DECA Meeting');
-      expect(normalized2.chargeCode).toBeNull();
+      expect(normalized2['tool']).toBe('DECA Meeting');
+      expect(normalized2['chargeCode']).toBeNull();
 
       // Normal row (no normalization needed)
       const normalRow = {
@@ -528,8 +528,8 @@ describe('Enhanced Component Tests', () => {
         chargeCode: 'EPR1'
       };
       const normalized3 = normalizeRowData(normalRow);
-      expect(normalized3.tool).toBe('#1 Rinse and 2D marker');
-      expect(normalized3.chargeCode).toBe('EPR1');
+      expect(normalized3['tool']).toBe('#1 Rinse and 2D marker');
+      expect(normalized3['chargeCode']).toBe('EPR1');
     });
   });
 

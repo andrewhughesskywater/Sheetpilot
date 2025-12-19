@@ -116,7 +116,9 @@ describe('safe-init', () => {
       expect(initFn).not.toHaveBeenCalled();
       
       // Restore window
-      (globalThis as { window: typeof window }).window = savedWindow;
+      if (savedWindow !== undefined) {
+        (globalThis as { window: typeof window }).window = savedWindow;
+      }
     });
 
     it.skip('should not log in production mode', () => {
@@ -157,7 +159,9 @@ describe('safe-init', () => {
       
       expect(isInitialized()).toBe(false);
       
-      (globalThis as { window: typeof window }).window = savedWindow;
+      if (savedWindow !== undefined) {
+        (globalThis as { window: typeof window }).window = savedWindow;
+      }
     });
 
     it('should return false when __appInitialized is false', () => {

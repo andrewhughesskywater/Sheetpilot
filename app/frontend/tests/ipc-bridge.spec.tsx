@@ -60,11 +60,11 @@ describe('IPC Bridge Tests', () => {
     });
 
     expect(window.timesheet).toBeDefined();
-    expect(window.timesheet.submit).toBeDefined();
-    expect(window.timesheet.saveDraft).toBeDefined();
-    expect(window.timesheet.loadDraft).toBeDefined();
-    expect(window.timesheet.deleteDraft).toBeDefined();
-    expect(window.timesheet.exportToCSV).toBeDefined();
+    expect(window.timesheet!.submit).toBeDefined();
+    expect(window.timesheet!.saveDraft).toBeDefined();
+    expect(window.timesheet!.loadDraft).toBeDefined();
+    expect(window.timesheet!.deleteDraft).toBeDefined();
+    expect(window.timesheet!.exportToCSV).toBeDefined();
   });
 
   it('should have credentials IPC bridge available', () => {
@@ -82,9 +82,9 @@ describe('IPC Bridge Tests', () => {
     });
 
     expect(window.credentials).toBeDefined();
-    expect(window.credentials.store).toBeDefined();
-    expect(window.credentials.list).toBeDefined();
-    expect(window.credentials.delete).toBeDefined();
+    expect(window.credentials!.store).toBeDefined();
+    expect(window.credentials!.list).toBeDefined();
+    expect(window.credentials!.delete).toBeDefined();
   });
 
   it('should have logger IPC bridge available', () => {
@@ -105,12 +105,12 @@ describe('IPC Bridge Tests', () => {
     });
 
     expect(window.logger).toBeDefined();
-    expect(window.logger.error).toBeDefined();
-    expect(window.logger.warn).toBeDefined();
-    expect(window.logger.info).toBeDefined();
-    expect(window.logger.verbose).toBeDefined();
-    expect(window.logger.debug).toBeDefined();
-    expect(window.logger.userAction).toBeDefined();
+    expect(window.logger!.error).toBeDefined();
+    expect(window.logger!.warn).toBeDefined();
+    expect(window.logger!.info).toBeDefined();
+    expect(window.logger!.verbose).toBeDefined();
+    expect(window.logger!.debug).toBeDefined();
+    expect(window.logger!.userAction).toBeDefined();
   });
 
   it('should handle missing IPC bridge gracefully', () => {
@@ -183,9 +183,9 @@ describe('IPC Bridge Tests', () => {
 
     // Test IPC bridge usage
   expect(() => {
-      window.timesheet.submit('');
-      window.credentials.store('test', 'test@example.com', 'password');
-      window.logger.info('Test message');
+      window.timesheet!.submit('');
+      window.credentials!.store('test', 'test@example.com', 'password');
+      window.logger!.info('Test message');
     }).not.toThrow();
   });
 });

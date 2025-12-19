@@ -19,17 +19,18 @@ describe('BotOrchestrator small logic', () => {
   it('validate required fields logic', async () => {
     const bot = new BotOrchestrator(Cfg as typeof Cfg, dummyFormConfig, true, 'chromium');
     // @ts-ignore access private for test via any
-    const ok1 = (bot as Record<string, unknown>)._validate_required_fields({ hours: 1, project_code: 'P', date: '01/01/2025' }, 0);
+    const validateMethod = (bot as unknown as Record<string, unknown>)['_validate_required_fields'] as (fields: Record<string, unknown>, index: number) => boolean;
+    const ok1 = validateMethod({ hours: 1, project_code: 'P', date: '01/01/2025' }, 0);
     expect(ok1).toBe(true);
     // missing project_code
-    const ok2 = (bot as Record<string, unknown>)._validate_required_fields({ hours: 1, date: '01/01/2025' }, 0);
+    const ok2 = validateMethod({ hours: 1, date: '01/01/2025' }, 0);
     expect(ok2).toBe(false);
   });
 
   it('project-specific tool locator resolution', async () => {
     const bot = new BotOrchestrator(Cfg as typeof Cfg, dummyFormConfig, true, 'chromium');
     // @ts-ignore private
-    const selKnown = (bot as Record<string, unknown>).get_project_specific_tool_locator('OSC-BBB');
+    const selKnown = (bot as unknown as Record<string, unknown>)['get_project_specific_tool_locator']('OSC-BBB');
     expect(typeof selKnown === 'string' || selKnown === null).toBe(true);
   });
 

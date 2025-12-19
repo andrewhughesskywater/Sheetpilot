@@ -32,12 +32,12 @@ describe('Development Fallback Tests', () => {
       initializeLoggerFallback();
       
       expect(window.logger).toBeDefined();
-      expect(window.logger.error).toBeDefined();
-      expect(window.logger.warn).toBeDefined();
-      expect(window.logger.info).toBeDefined();
-      expect(window.logger.verbose).toBeDefined();
-      expect(window.logger.debug).toBeDefined();
-      expect(window.logger.userAction).toBeDefined();
+      expect(window.logger?.error).toBeDefined();
+      expect(window.logger?.warn).toBeDefined();
+      expect(window.logger?.info).toBeDefined();
+      expect(window.logger?.verbose).toBeDefined();
+      expect(window.logger?.debug).toBeDefined();
+      expect(window.logger?.userAction).toBeDefined();
     });
 
     it('should not override existing logger', async () => {
@@ -71,7 +71,7 @@ describe('Development Fallback Tests', () => {
       
       const consoleSpy = vi.spyOn(console, 'info');
       
-      window.logger.info('Test message', { data: 'test' });
+      window.logger!.info('Test message', { data: 'test' });
       
       expect(consoleSpy).toHaveBeenCalledWith(
         expect.stringContaining('[INFO] Test message | Data: {"data":"test"}')
@@ -97,7 +97,13 @@ describe('Development Fallback Tests', () => {
         saveDraft: vi.fn(),
         deleteDraft: vi.fn(),
         submit: vi.fn(),
-        exportToCSV: vi.fn()
+        exportToCSV: vi.fn(),
+        cancel: vi.fn(),
+        devSimulateSuccess: vi.fn(),
+        loadDraftById: vi.fn(),
+        resetInProgress: vi.fn(),
+        onSubmissionProgress: vi.fn(),
+        removeProgressListener: vi.fn()
       };
       window.timesheet = existingTimesheet;
       
@@ -118,7 +124,7 @@ describe('Development Fallback Tests', () => {
       const { initializeAPIFallback } = await import('../src/utils/api-fallback');
       initializeAPIFallback();
       
-      const result = await window.timesheet.loadDraft();
+      const result = await window.timesheet!.loadDraft();
       
       expect(result.success).toBe(true);
       expect(result.entries).toBeDefined();
@@ -129,7 +135,7 @@ describe('Development Fallback Tests', () => {
       const { initializeAPIFallback } = await import('../src/utils/api-fallback');
       initializeAPIFallback();
       
-      const result = await window.credentials.list();
+      const result = await window.credentials!.list();
       
       expect(result.success).toBe(true);
       expect(result.credentials).toBeDefined();
@@ -141,7 +147,7 @@ describe('Development Fallback Tests', () => {
       initializeAPIFallback();
       
       // getAllTimesheetEntries requires a token parameter
-      const result = await window.database.getAllTimesheetEntries('mock-session-token');
+      const result = await window.database!.getAllTimesheetEntries('mock-session-token');
       
       expect(result.success).toBe(true);
       expect(result.entries).toBeDefined();
@@ -152,7 +158,7 @@ describe('Development Fallback Tests', () => {
       const { initializeAPIFallback } = await import('../src/utils/api-fallback');
       initializeAPIFallback();
       
-      const result = await window.logs.getLogPath();
+      const result = await window.logs!.getLogPath('mock-session-token');
       
       expect(result.success).toBe(true);
       expect(result.logPath).toBeDefined();
@@ -175,8 +181,8 @@ describe('Development Fallback Tests', () => {
       expect(window.logs).toBeDefined();
       
       // Should be able to use them together
-      const result = await window.timesheet.loadDraft();
-      window.logger.info('API call completed', { result });
+      const result = await window.timesheet!.loadDraft();
+      window.logger!.info('API call completed', { result });
       
       expect(result.success).toBe(true);
     });

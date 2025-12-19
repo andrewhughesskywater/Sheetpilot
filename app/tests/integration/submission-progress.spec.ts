@@ -224,7 +224,7 @@ describe('Submission Progress Integration Test', () => {
     // Verify the submission was successful
     expect(result).toBeDefined();
     expect(result).toHaveProperty('submitResult');
-    expect(result.submitResult).toMatchObject({
+    expect((result as { submitResult?: unknown }).submitResult).toMatchObject({
       ok: true,
       successCount: 3,
       totalProcessed: 3,
@@ -354,7 +354,7 @@ describe('Submission Progress Integration Test', () => {
 
     // Verify submission still completes
     expect(result).toBeDefined();
-    expect(result.submitResult).toBeDefined();
+    expect((result as { submitResult?: unknown }).submitResult).toBeDefined();
   });
 
   it('should send progress updates with correct structure', async () => {

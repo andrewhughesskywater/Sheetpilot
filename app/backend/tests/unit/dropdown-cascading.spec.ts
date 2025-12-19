@@ -25,20 +25,22 @@ import { cascadingTestCases } from '../fixtures/timesheet-data';
 describe('Dropdown Cascading Logic Unit Tests', () => {
   describe('Project-Tool Relationships', () => {
     it('should identify projects that do not need tools', () => {
-      const expectedProjectsWithoutTools = ['ERT', 'PTO/RTO', 'SWFL-CHEM/GAS', 'Training'];
+      const expectedProjectsWithoutTools: string[] = ['ERT', 'PTO/RTO', 'SWFL-CHEM/GAS', 'Training'];
       
-      expectedProjectsWithoutTools.forEach(project => {
-        expect(projectsWithoutTools.has(project as string)).toBe(true);
-        expect(projectNeedsTools(project as string)).toBe(false);
+      expectedProjectsWithoutTools.forEach((project: string) => {
+        // @ts-expect-error - TypeScript infers literal types from array, but Set accepts string
+        expect(projectsWithoutTools.has(project)).toBe(true);
+        expect(projectNeedsTools(project)).toBe(false);
       });
     });
 
     it('should identify projects that need tools', () => {
-      const expectedProjectsWithTools = ['FL-Carver Techs', 'FL-Carver Tools', 'OSC-BBB', 'SWFL-EQUIP'];
+      const expectedProjectsWithTools: string[] = ['FL-Carver Techs', 'FL-Carver Tools', 'OSC-BBB', 'SWFL-EQUIP'];
       
-      expectedProjectsWithTools.forEach(project => {
-        expect(projectsWithoutTools.has(project as string)).toBe(false);
-        expect(projectNeedsTools(project as string)).toBe(true);
+      expectedProjectsWithTools.forEach((project: string) => {
+        // @ts-expect-error - TypeScript infers literal types from array, but Set accepts string
+        expect(projectsWithoutTools.has(project)).toBe(false);
+        expect(projectNeedsTools(project)).toBe(true);
       });
     });
 
@@ -87,26 +89,28 @@ describe('Dropdown Cascading Logic Unit Tests', () => {
 
   describe('Tool-ChargeCode Relationships', () => {
     it('should identify tools that do not need charge codes', () => {
-      const expectedToolsWithoutCharges = [
+      const expectedToolsWithoutCharges: string[] = [
         'Internal Meeting', 'DECA Meeting', 'Logistics', 'Meeting',
         'Non Tool Related', 'Admin', 'Training', 'N/A'
       ];
       
-      expectedToolsWithoutCharges.forEach(tool => {
-        expect(toolsWithoutCharges.has(tool as string)).toBe(true);
-        expect(toolNeedsChargeCode(tool as string)).toBe(false);
+      expectedToolsWithoutCharges.forEach((tool: string) => {
+        // @ts-expect-error - TypeScript infers literal types from array, but Set accepts string
+        expect(toolsWithoutCharges.has(tool)).toBe(true);
+        expect(toolNeedsChargeCode(tool)).toBe(false);
       });
     });
 
     it('should identify tools that need charge codes', () => {
-      const expectedToolsWithCharges = [
+      const expectedToolsWithCharges: string[] = [
         '#1 Rinse and 2D marker', '#2 Sputter', '#3 Laminator 300mm',
         'AFM101', 'ALD101', 'ALIGN101', '#1 CSAM101', '#2 BOND Pull Tester'
       ];
       
-      expectedToolsWithCharges.forEach(tool => {
-        expect(toolsWithoutCharges.has(tool as string)).toBe(false);
-        expect(toolNeedsChargeCode(tool as string)).toBe(true);
+      expectedToolsWithCharges.forEach((tool: string) => {
+        // @ts-expect-error - TypeScript infers literal types from array, but Set accepts string
+        expect(toolsWithoutCharges.has(tool)).toBe(false);
+        expect(toolNeedsChargeCode(tool)).toBe(true);
       });
     });
 
@@ -125,9 +129,11 @@ describe('Dropdown Cascading Logic Unit Tests', () => {
         if ('expectedToolOptions' in testCase) {
           const { project, expectedToolOptions, shouldClearTool, shouldClearChargeCode } = testCase;
           
-          const toolOptions = getToolOptions(project);
-          expect(toolOptions).toEqual(expect.arrayContaining(expectedToolOptions));
-          expect(toolOptions.length).toBeGreaterThanOrEqual(expectedToolOptions.length);
+          const toolOptions = getToolOptions(project as string);
+          if (expectedToolOptions) {
+            expect(toolOptions).toEqual(expect.arrayContaining(expectedToolOptions));
+            expect(toolOptions.length).toBeGreaterThanOrEqual(expectedToolOptions.length);
+          }
           
           if (shouldClearTool) {
             expect(toolOptions).toEqual([]);
@@ -135,7 +141,7 @@ describe('Dropdown Cascading Logic Unit Tests', () => {
           
           if (shouldClearChargeCode) {
             // If project doesn't need tools, charge codes should also be cleared
-            expect(projectNeedsTools(project)).toBe(false);
+            expect(projectNeedsTools(project as string)).toBe(false);
           }
         }
       });
@@ -147,9 +153,9 @@ describe('Dropdown Cascading Logic Unit Tests', () => {
           const { tool, shouldClearChargeCode } = testCase;
           
           if (shouldClearChargeCode) {
-            expect(toolNeedsChargeCode(tool)).toBe(false);
+            expect(toolNeedsChargeCode(tool as string)).toBe(false);
           } else {
-            expect(toolNeedsChargeCode(tool)).toBe(true);
+            expect(toolNeedsChargeCode(tool as string)).toBe(true);
           }
         }
       });
@@ -157,7 +163,7 @@ describe('Dropdown Cascading Logic Unit Tests', () => {
 
     it('should handle cascading from project without tools to project with tools', () => {
       // Start with project that doesn't need tools
-      let currentProject: string = 'PTO/RTO';
+      let currentProject = 'PTO/RTO' as string;
       let currentTool: string | null = null;
       let currentChargeCode: string | null = null;
       
@@ -278,11 +284,11 @@ describe('Dropdown Cascading Logic Unit Tests', () => {
     it('should not have overlapping tool categories', () => {
       const toolsWithCharges = Object.values(toolsByProject)
         .flat()
-        .filter(tool => toolNeedsChargeCode(tool));
-      const toolsWithoutChargesList = Array.from(toolsWithoutCharges);
+        .filter((tool: string) => toolNeedsChargeCode(tool));
+      const toolsWithoutChargesList = Array.from(toolsWithoutCharges) as string[];
       
       // No tool should be in both categories
-      const overlap = toolsWithCharges.filter(tool => toolsWithoutChargesList.includes(tool));
+      const overlap = toolsWithCharges.filter((tool: string) => toolsWithoutChargesList.includes(tool));
       expect(overlap).toEqual([]);
     });
   });
@@ -302,13 +308,13 @@ describe('Dropdown Cascading Logic Unit Tests', () => {
 
     it('should handle case sensitivity correctly', () => {
       // Test exact case matching
-      expect(projectsWithoutTools.has('PTO/RTO')).toBe(true);
-      expect(projectsWithoutTools.has('pto/rto')).toBe(false);
-      expect(projectsWithoutTools.has('Pto/Rto')).toBe(false);
+      expect((projectsWithoutTools as Set<string>).has('PTO/RTO')).toBe(true);
+      expect((projectsWithoutTools as Set<string>).has('pto/rto')).toBe(false);
+      expect((projectsWithoutTools as Set<string>).has('Pto/Rto')).toBe(false);
       
-      expect(toolsWithoutCharges.has('Meeting')).toBe(true);
-      expect(toolsWithoutCharges.has('meeting')).toBe(false);
-      expect(toolsWithoutCharges.has('MEETING')).toBe(false);
+      expect((toolsWithoutCharges as Set<string>).has('Meeting')).toBe(true);
+      expect((toolsWithoutCharges as Set<string>).has('meeting')).toBe(false);
+      expect((toolsWithoutCharges as Set<string>).has('MEETING')).toBe(false);
     });
 
     it('should handle special characters in project names', () => {
@@ -376,9 +382,9 @@ describe('Dropdown Cascading Logic Unit Tests', () => {
     it('should enforce correct tool-chargeCode relationships for all tools', () => {
       const allTools = Object.values(toolsByProject).flat();
       
-      allTools.forEach(tool => {
+      allTools.forEach((tool: string) => {
         const needsChargeCode = toolNeedsChargeCode(tool);
-        const isInWithoutCharges = toolsWithoutCharges.has(tool);
+        const isInWithoutCharges = (toolsWithoutCharges as Set<string>).has(tool);
         
         expect(needsChargeCode).toBe(!isInWithoutCharges);
       });
@@ -427,8 +433,8 @@ describe('Dropdown Cascading Logic Unit Tests', () => {
       // Test scenario where project A → tool B → (hypothetically) project A
       // We verify that tools are not valid project names (no circular dependencies)
       const allTools = Object.values(toolsByProject).flat();
-      const uniqueTools = [...new Set(allTools)];
-      const toolsThatAreProjects = uniqueTools.filter(tool => projects.includes(tool));
+      const uniqueTools: string[] = [...new Set(allTools)];
+      const toolsThatAreProjects = uniqueTools.filter((tool: string) => (projects as string[]).includes(tool));
       
       // No tools should also be projects (no circular dependencies)
       expect(toolsThatAreProjects).toEqual([]);

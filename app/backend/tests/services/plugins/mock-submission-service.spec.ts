@@ -163,12 +163,12 @@ describe('MockSubmissionService', () => {
     });
 
     it('should detect missing date', () => {
-      const entry: TimesheetEntry = {
+      const entry = {
         timeIn: '08:00',
         timeOut: '17:00',
         project: 'Test Project',
         taskDescription: 'Test Task'
-      };
+      } as TimesheetEntry;
 
       const result = service.validateEntry(entry);
       expect(result.valid).toBe(false);
@@ -176,12 +176,12 @@ describe('MockSubmissionService', () => {
     });
 
     it('should detect missing timeIn', () => {
-      const entry: TimesheetEntry = {
+      const entry = {
         date: '2025-01-15',
         timeOut: '17:00',
         project: 'Test Project',
         taskDescription: 'Test Task'
-      };
+      } as TimesheetEntry;
 
       const result = service.validateEntry(entry);
       expect(result.valid).toBe(false);

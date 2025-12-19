@@ -17,7 +17,7 @@ describe('SpellcheckEditor', () => {
   let editor: SpellcheckEditor;
 
   beforeEach(() => {
-    editor = new SpellcheckEditor();
+    editor = new SpellcheckEditor({} as unknown as ConstructorParameters<typeof SpellcheckEditor>[0]);
   });
 
   it('should extend TextEditor', () => {
@@ -32,7 +32,7 @@ describe('SpellcheckEditor', () => {
   });
 
   it('should handle missing textarea gracefully', () => {
-    editor.TEXTAREA = null;
+    editor.TEXTAREA = null as unknown as HTMLTextAreaElement;
     
     // Should not throw
     expect(() => editor.createElements()).not.toThrow();

@@ -502,8 +502,11 @@ describe('Help Component', () => {
     });
 
     it('should handle undefined log files', () => {
-      const logFiles = undefined;
-      const hasLogs = logFiles && logFiles.length > 0;
+      const logFiles: string[] | undefined = undefined;
+      let hasLogs = false;
+      if (logFiles) {
+        hasLogs = (logFiles as string[]).length > 0;
+      }
       
       expect(hasLogs).toBeFalsy();
     });

@@ -108,8 +108,8 @@ describe('MacroManagerDialog Component', () => {
       const macro = {
         name: 'PTO Macro',
         project: 'PTO/RTO',
-        tool: null,
-        chargeCode: null,
+        tool: null as string | null,
+        chargeCode: null as string | null,
         taskDescription: 'Time off'
       };
       
@@ -121,7 +121,7 @@ describe('MacroManagerDialog Component', () => {
   describe('Macro Editing', () => {
     it('should update macro on cell change', () => {
       const macros = [...mockMacros];
-      const changes = [[0, 'name', 'Daily Entry', 'Updated Entry']];
+      const changes: Array<[number, string, string, string]> = [[0, 'name', 'Daily Entry', 'Updated Entry']];
       
       for (const [rowIdx, prop, , newVal] of changes) {
         macros[rowIdx] = { ...macros[rowIdx], [prop]: newVal };
@@ -142,7 +142,13 @@ describe('MacroManagerDialog Component', () => {
     });
 
     it('should cascade project changes', () => {
-      let macro = {
+      let macro: {
+        name: string;
+        project: string;
+        tool: string | null;
+        chargeCode: string | null;
+        taskDescription: string;
+      } = {
         name: 'Test',
         project: 'FL-Carver Techs',
         tool: '#1 Rinse and 2D marker',
@@ -163,7 +169,13 @@ describe('MacroManagerDialog Component', () => {
     });
 
     it('should cascade tool changes', () => {
-      let macro = {
+      let macro: {
+        name: string;
+        project: string;
+        tool: string | null;
+        chargeCode: string | null;
+        taskDescription: string;
+      } = {
         name: 'Test',
         project: 'FL-Carver Techs',
         tool: '#1 Rinse and 2D marker',
