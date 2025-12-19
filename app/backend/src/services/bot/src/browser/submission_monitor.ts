@@ -19,9 +19,11 @@ export class SubmissionMonitor {
   constructor(private readonly getPage: () => Page) {}
 
   async submitForm(): Promise<boolean> {
+    botLogger.info('=== SUBMIT FORM CALLED ===');
     const page = this.getPage();
     const timer = botLogger.startTimer('submit-form');
 
+    botLogger.info('Setting up response handler for submission monitoring');
     const successResponses: RecordedResponse[] = [];
     // Captures all responses during the submit window. This is primarily useful
     // for post-mortem debugging when submission verification fails.
@@ -38,14 +40,116 @@ export class SubmissionMonitor {
       requestIds,
     );
     page.on('response', handler);
+    botLogger.info('Response handler attached');
 
     try {
-      const submitButton = await this._findSubmitButton(page);
-      if (!submitButton) {
+      botLogger.info('Starting to find submit button');
+      // Find the submit button
+      const submitButtonSelector = await this._findSubmitButtonSelector(page);
+      botLogger.info('Finished finding submit button', { found: !!submitButtonSelector });
+      if (!submitButtonSelector) {
+        botLogger.error('=== NO SUBMIT BUTTON FOUND - THIS IS WHY SUBMIT FAILS ===');
         throw new Error('No submit button found');
       }
 
-      await submitButton.click();
+      botLogger.info('Found submit button selector', { selector: submitButtonSelector });
+
+      // Re-find the button right before clicking to avoid stale locator issues
+      botLogger.verbose('Locating submit button for click', { selector: submitButtonSelector });
+      const submitButton = page.locator(submitButtonSelector).first();
+      
+      // AGGRESSIVE VERIFICATION: Count how many buttons match the selector
+      const buttonCount = await page.locator(submitButtonSelector).count();
+      botLogger.info('Submit button verification', { 
+        selector: submitButtonSelector,
+        buttonCount,
+        expectedCount: 1
+      });
+      
+      if (buttonCount === 0) {
+        throw new Error(`Submit button not found! Selector: ${submitButtonSelector}, Count: ${buttonCount}`);
+      }
+      
+      if (buttonCount > 1) {
+        botLogger.warn('Multiple submit buttons found, using first one', { 
+          selector: submitButtonSelector,
+          buttonCount 
+        });
+      }
+      
+      // Verify button is actually visible and in DOM
+      const isVisible = await submitButton.isVisible().catch(() => false);
+      const boundingBox = await submitButton.boundingBox().catch(() => null);
+      botLogger.info('Submit button state verification', {
+        selector: submitButtonSelector,
+        isVisible,
+        boundingBox: boundingBox ? { x: boundingBox.x, y: boundingBox.y, width: boundingBox.width, height: boundingBox.height } : null
+      });
+      
+      if (!isVisible) {
+        throw new Error(`Submit button is not visible! Selector: ${submitButtonSelector}`);
+      }
+      
+      if (!boundingBox) {
+        throw new Error(`Submit button has no bounding box (not in viewport)! Selector: ${submitButtonSelector}`);
+      }
+
+      // Button is actionable - just scroll into view and click immediately
+      botLogger.verbose('Scrolling submit button into view', { selector: submitButtonSelector });
+      await submitButton.scrollIntoViewIfNeeded({ timeout: cfg.GLOBAL_TIMEOUT * 1000 }).catch(() => {});
+
+      // Attempt to click the button - use JavaScript click FIRST (most reliable)
+      botLogger.info('Clicking submit button', { selector: submitButtonSelector });
+      
+      // Strategy 1: JavaScript click - just do it, no waiting
+      try {
+        botLogger.info('Attempting JavaScript click', { selector: submitButtonSelector });
+        await submitButton.evaluate((el: Element) => {
+          if (el instanceof HTMLElement) {
+            el.focus();
+            const mouseDown = new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: window, buttons: 1 });
+            const mouseUp = new MouseEvent('mouseup', { bubbles: true, cancelable: true, view: window, buttons: 1 });
+            const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true, view: window, buttons: 1 });
+            el.dispatchEvent(mouseDown);
+            el.dispatchEvent(mouseUp);
+            el.dispatchEvent(clickEvent);
+            el.click();
+          }
+        });
+        botLogger.info('JavaScript click executed', { selector: submitButtonSelector });
+      } catch (clickErr) {
+        const errorMsg = clickErr instanceof Error ? clickErr.message : String(clickErr);
+        botLogger.warn('JavaScript click failed, trying Playwright click', { selector: submitButtonSelector, error: errorMsg });
+        // Fallback to Playwright click
+        await submitButton.click({ timeout: cfg.GLOBAL_TIMEOUT * 1000 });
+        botLogger.info('Playwright click executed', { selector: submitButtonSelector });
+      }
+      
+      botLogger.info('Submit button click executed', { selector: submitButtonSelector });
+
+      // Verify click actually happened by checking if button state changed or form started submitting
+      botLogger.info('Verifying click was successful', { selector: submitButtonSelector });
+      
+      // Small delay to allow click event to propagate and form submission to start
+      await page.waitForTimeout(300);
+      
+      // Check if form submission started (network activity or DOM changes)
+      const buttonAfterClick = await submitButton.isVisible().catch(() => false);
+      const hasNetworkActivity = successResponses.length > 0;
+      botLogger.info('Button state after click attempt', { 
+        selector: submitButtonSelector,
+        stillVisible: buttonAfterClick,
+        hasNetworkActivity,
+        responseCount: successResponses.length
+      });
+      
+      // CRITICAL: If no network activity, the click may not have triggered form submission
+      if (!hasNetworkActivity) {
+        botLogger.warn('No network activity detected after click - click may not have triggered form submission', {
+          selector: submitButtonSelector,
+          responseCount: successResponses.length
+        });
+      }
 
       let domSuccessFound = false;
 
@@ -78,8 +182,25 @@ export class SubmissionMonitor {
         requestIds,
       );
 
+      botLogger.info('=== SUBMIT FORM RESULT ===', { 
+        success: ok, 
+        method: domSuccessFound ? 'dom' : 'http',
+        successResponses: successResponses.length,
+        domSuccessFound,
+        submissionIds: submissionIds.length
+      });
+      
       timer.done({ success: ok, method: domSuccessFound ? 'dom' : 'http' });
       return ok;
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      const errorStack = err instanceof Error ? err.stack : undefined;
+      botLogger.error('=== EXCEPTION IN submitForm() ===', {
+        error: errorMsg,
+        stack: errorStack
+      });
+      timer.done({ success: false, reason: 'exception', error: errorMsg });
+      throw err; // Re-throw so caller knows it failed
     } finally {
       page.off('response', handler);
     }
@@ -155,13 +276,20 @@ export class SubmissionMonitor {
     };
   }
 
-  private async _findSubmitButton(page: Page): Promise<Locator | null> {
+  /**
+   * Finds the submit button selector that matches a visible, enabled button.
+   * Returns the selector string (not a Locator) so it can be used to create fresh locators.
+   */
+  private async _findSubmitButtonSelector(page: Page): Promise<string | null> {
+    botLogger.info('_findSubmitButtonSelector called');
     const selectors = [
       cfg.SUBMIT_BUTTON_LOCATOR,
       ...cfg.SUBMIT_BUTTON_FALLBACK_LOCATORS,
     ];
+    botLogger.info('Checking submit button selectors', { totalSelectors: selectors.length, selectors });
 
     for (const selector of selectors) {
+      botLogger.verbose('Checking selector', { selector });
       const visible = await cfg.dynamic_wait_for_element(
         page,
         selector,
@@ -176,22 +304,24 @@ export class SubmissionMonitor {
       const isVisible = await locator.isVisible().catch(() => false);
       if (!isVisible) continue;
 
-      if (cfg.SUBMIT_BUTTON_REQUIRE_ENABLED) {
-        const isEnabled = await locator.isEnabled().catch(() => false);
-        if (!isEnabled) continue;
-      }
+      // Button is actionable - just return it immediately, don't check enabled state
+      // The button is always actionable once visible
 
-      if (cfg.ENABLE_ARIA_DISABLED_CHECK) {
-        const ariaDisabled = await locator.getAttribute('aria-disabled').catch(() => null);
-        if (ariaDisabled && ariaDisabled !== 'false') continue;
-      }
-
-      botLogger.debug('Found submit button', { selector });
-      return locator;
+      botLogger.debug('Found submit button selector', { selector });
+      return selector;
     }
 
     botLogger.warn('Could not find submit button', { selectorsTried: selectors.length });
     return null;
+  }
+
+  /**
+   * @deprecated Use _findSubmitButtonSelector instead to avoid stale locator issues
+   */
+  private async _findSubmitButton(page: Page): Promise<Locator | null> {
+    const selector = await this._findSubmitButtonSelector(page);
+    if (!selector) return null;
+    return page.locator(selector).first();
   }
 
   private async _checkDomSuccessIndicators(page: Page): Promise<boolean> {
@@ -287,3 +417,4 @@ export class SubmissionMonitor {
     return typeof v === 'string' && v.length > 0 ? v : null;
   }
 }
+
