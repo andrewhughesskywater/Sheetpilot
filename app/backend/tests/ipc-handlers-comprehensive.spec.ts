@@ -853,7 +853,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
           };
         } else {
           // Second call is for the SELECT query - should throw error
-          expect(sql).toContain('SELECT * FROM timesheet');
+          expect(_sql).toContain('SELECT * FROM timesheet');
           return {
             all: vi.fn(() => {
               throw new Error('Database error');
@@ -993,7 +993,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
       const result = await handlers['timesheet:submit']('valid-token') as { submitResult?: { ok: boolean; successCount: number; removedCount: number; totalProcessed: number }; dbPath?: string; error?: string };
       
       expect(result).toBeDefined();
-      expect(result.error).toContain('credentials not found');
+      expect(result.error?.toLowerCase()).toContain('credentials not found');
       expect(mimps.submitTimesheets).not.toHaveBeenCalled();
     });
 
