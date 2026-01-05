@@ -41,36 +41,20 @@ export interface QuarterDefinition {
  */
 export const QUARTER_DEFINITIONS: QuarterDefinition[] = [
   {
-    id: 'Q1-2025',
-    name: 'Q1 2025',
-    startDate: '2025-01-01',
-    endDate: '2025-03-31',
-    formUrl: 'https://app.smartsheet.com/b/form/q1-2025-placeholder',
-    formId: 'q1-2025-placeholder'
-  },
-  {
-    id: 'Q2-2025',
-    name: 'Q2 2025',
-    startDate: '2025-04-01',
-    endDate: '2025-06-30',
-    formUrl: 'https://app.smartsheet.com/b/form/q2-2025-placeholder',
-    formId: 'q2-2025-placeholder'
-  },
-  {
-    id: 'Q3-2025',
-    name: 'Q3 2025',
-    startDate: '2025-07-01',
-    endDate: '2025-09-30',
-    formUrl: 'https://app.smartsheet.com/b/form/0197cbae7daf72bdb96b3395b500d414',
-    formId: '0197cbae7daf72bdb96b3395b500d414'
-  },
-  {
     id: 'Q4-2025',
     name: 'Q4 2025',
     startDate: '2025-10-01',
     endDate: '2025-12-31',
     formUrl: 'https://app.smartsheet.com/b/form/0199fabee6497e60abb6030c48d84585',
     formId: '0199fabee6497e60abb6030c48d84585'
+  },
+  {
+    id: 'Q1-2026',
+    name: 'Q1 2026',
+    startDate: '2026-01-01',
+    endDate: '2026-03-31',
+    formUrl: 'https://app.smartsheet.com/b/form/019b5b17a03a79ac9437e45996f49f4f',
+    formId: '019b5b17a03a79ac9437e45996f49f4f'
   }
 ];
 
