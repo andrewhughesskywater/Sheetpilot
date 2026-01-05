@@ -63,17 +63,18 @@
     "better-sqlite3": "^12.4.1",
     "electron-log": "^5.4.3",
     "electron-updater": "^6.6.2",
-    "tslib": "^2.8.1",
-    "playwright": "^1.56.1"
+    "playwright": "^1.56.1",
+    "tslib": "^2.8.1"
   },
   "devDependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.1",
     "@types/node": "^24.5.2",
     "@typescript-eslint/eslint-plugin": "^8.44.0",
     "@typescript-eslint/parser": "^8.44.0",
     "@vitest/coverage-v8": "^3.2.4",
-    "jsdom": "^27.0.0",
     "concurrently": "^9.2.1",
     "cross-env": "^10.1.0",
     "esbuild": "^0.25.12",
@@ -83,6 +84,7 @@
     "eslint-plugin-react-refresh": "^0.4.24",
     "fontkit": "^2.0.4",
     "glob": "^11.0.3",
+    "jsdom": "^27.0.0",
     "nodemon": "^3.1.9",
     "png-to-ico": "^2.1.8",
     "rimraf": "^6.0.1",
@@ -92,7 +94,7 @@
     "vitest": "^3.2.4",
     "wait-on": "^9.0.1"
   },
-    "build": {
+  "build": {
     "appId": "com.sheetpilot.app",
     "electronLanguages": [
       "en-US"

@@ -11,6 +11,8 @@ vi.mock('../../../src/services/bot/src/automation_config', async () => {
     // Add properties accessed by BotOrchestrator that don't exist in the real config
     STATUS_COLUMN_NAME: undefined,
     STATUS_COMPLETE: undefined,
+    // Ensure tests run submission flow
+    SUBMIT_FORM_AFTER_FILLING: true,
     // Override timing constants for fast tests
     SUBMIT_CLICK_RETRY_DELAY_S: 0.01,
     SUBMIT_RETRY_DELAY: 0.01,

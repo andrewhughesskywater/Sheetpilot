@@ -1,5 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ipcMain } from 'electron';
+
+// Mock main window trust check so the tests focus on session/auth logic
+vi.mock('../../src/ipc/handlers/timesheet/main-window', () => ({
+  isTrustedIpcSender: vi.fn(() => true),
+  setMainWindow: vi.fn(),
+  emitSubmissionProgress: vi.fn()
+}));
+
 import { registerAdminHandlers } from '../../src/ipc/admin-handlers';
 import * as repositories from '../../src/repositories';
 
