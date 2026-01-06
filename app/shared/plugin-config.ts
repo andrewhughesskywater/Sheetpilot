@@ -92,11 +92,11 @@ function mergeWithDefaults(userConfig: Partial<PluginRegistryConfig>): PluginReg
   return {
     plugins: {
       ...DEFAULT_CONFIG.plugins,
-      ...userConfig.plugins
+      ...(userConfig.plugins || {})
     },
     featureFlags: {
       ...DEFAULT_CONFIG.featureFlags,
-      ...userConfig.featureFlags
+      ...(userConfig.featureFlags || {})
     }
   };
 }

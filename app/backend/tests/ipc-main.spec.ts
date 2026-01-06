@@ -27,9 +27,11 @@ vi.mock('electron', () => {
       once: ReturnType<typeof vi.fn>;
       send: ReturnType<typeof vi.fn>;
       executeJavaScript: ReturnType<typeof vi.fn>;
+      id: number;
     };
     constructor(_opts: Record<string, unknown>) {
       this.webContents = {
+        id: 1, // Match the MAIN_WEB_CONTENTS_ID used by mock handlers
         on: vi.fn(),
         once: vi.fn(),
         send: vi.fn(),
@@ -46,12 +48,13 @@ vi.mock('electron', () => {
     isMaximized = vi.fn(() => false);
   }
 
+  const MAIN_WEB_CONTENTS_ID = 1;
   const ipcMain = {
     handle: vi.fn((channel: string, fn: (...args: unknown[]) => unknown) => {
       // Wrap handler to skip the event parameter when called from tests
       (globalThis.__test_handlers as Record<string, (...args: unknown[]) => unknown>)[channel] = async (...args: unknown[]) => {
-        // Call the actual handler with null event and the provided args
-        return fn(null, ...args);
+        // Call the actual handler with a proper event object that has matching sender id
+        return fn({ sender: { id: MAIN_WEB_CONTENTS_ID } }, ...args);
       };
       return undefined;
     }),
@@ -190,6 +193,7 @@ import { registerAllIPCHandlers } from '../src/ipc/index';
 // Re-get typed references to mocked modules for assertions
 import * as repo from '../src/repositories';
 import * as imp from '../src/services/timesheet-importer';
+import { BrowserWindow } from 'electron';
 
 const mimps = imp as unknown as { submitTimesheets: ReturnType<typeof vi.fn> };
 
@@ -207,8 +211,12 @@ describe('Electron IPC Handlers (main.ts)', () => {
   });
 
   beforeAll(() => {
-    // Manually call registerIPCHandlers to set up handlers for testing
-    registerAllIPCHandlers(null);
+    // Create a BrowserWindow with the proper webContents.id to match mock handlers
+    const mockWindow = new BrowserWindow({});
+    (mockWindow.webContents as { id: number }).id = 1; // Match MAIN_WEB_CONTENTS_ID
+    
+    // Manually call registerIPCHandlers with the mock window
+    registerAllIPCHandlers(mockWindow as any);
   });
 
   it('timesheet:submit returns error if credentials missing', async () => {

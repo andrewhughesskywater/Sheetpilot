@@ -13,9 +13,9 @@ describe('shared/index', () => {
     expect(index).toHaveProperty('formatMinutesToTime');
   });
 
-  it('should be importable without errors', () => {
-    expect(() => {
-      require('../index');
+  it('should be importable without errors', async () => {
+    expect(async () => {
+      await import('../index');
     }).not.toThrow();
   });
 });

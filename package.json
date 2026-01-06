@@ -110,6 +110,7 @@
     },
     "files": [
       "build/dist/backend/**/*",
+      "build/dist/shared/**/*",
       "!**/*.map",
       "app/frontend/dist/**/*",
       "package.json",

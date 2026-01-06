@@ -15,7 +15,7 @@ describe('Browser Environment Compatibility', () => {
     originalProcess = global.process;
     
     // Remove process from global scope to simulate browser environment
-    delete (global as Record<string, unknown>).process;
+    delete (global as Record<string, unknown>)['process'];
     
     // Ensure process is truly undefined
     Object.defineProperty(global, 'process', {
@@ -30,7 +30,7 @@ describe('Browser Environment Compatibility', () => {
     if (originalProcess !== undefined) {
       global.process = originalProcess;
     } else {
-      delete (global as Record<string, unknown>).process;
+      delete (global as Record<string, unknown>)['process'];
     }
   });
 

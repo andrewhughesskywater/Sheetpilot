@@ -9,7 +9,7 @@
  * @since 2025
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, beforeAll, vi } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
@@ -853,7 +853,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
           };
         } else {
           // Second call is for the SELECT query - should throw error
-          expect(sql).toContain('SELECT * FROM timesheet');
+          expect(_sql).toContain('SELECT * FROM timesheet');
           return {
             all: vi.fn(() => {
               throw new Error('Database error');

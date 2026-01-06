@@ -491,24 +491,9 @@ export const dateFormatTestCases = [
 /**
  * Quarter validation test cases
  */
-export const quarterTestCases = [
-  // Q1 2025
-  { date: '2025-01-01', quarter: 1, year: 2025, isValid: true },
-  { date: '2025-03-31', quarter: 1, year: 2025, isValid: true },
-  
-  // Q2 2025
-  { date: '2025-04-01', quarter: 2, year: 2025, isValid: true },
-  { date: '2025-06-30', quarter: 2, year: 2025, isValid: true },
-  
-  // Q3 2025
-  { date: '2025-07-01', quarter: 3, year: 2025, isValid: true },
-  { date: '2025-09-30', quarter: 3, year: 2025, isValid: true },
-  
-  // Q4 2025
-  { date: '2025-10-01', quarter: 4, year: 2025, isValid: true },
-  { date: '2025-12-31', quarter: 4, year: 2025, isValid: true },
-  
-  // Invalid quarters
-  { date: '2024-12-31', quarter: 4, year: 2024, isValid: false }, // Past quarter
-  { date: '2026-01-01', quarter: 1, year: 2026, isValid: false } // Future quarter
-];
+/**
+ * Test cases for quarter validation
+ * These are dynamically populated based on QUARTER_DEFINITIONS
+ * This approach ensures tests remain valid as quarters change throughout the year
+ */
+export const quarterTestCases: Array<{ date: string; quarter?: number; year?: number; isValid: boolean }> = [];

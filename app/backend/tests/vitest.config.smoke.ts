@@ -9,6 +9,7 @@ export default defineConfig({
     }
   },
   test: {
+    name: 'backend-smoke',
     environment: 'node',
     root: path.resolve(__dirname, '../../..'),
     include: ['app/backend/tests/smoke/**/*.spec.ts'],

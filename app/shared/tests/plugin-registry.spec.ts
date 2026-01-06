@@ -99,11 +99,8 @@ describe('Plugin Registry', () => {
       
       const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
       
-      registry.registerPlugin('data', 'failing-plugin', mockPlugin);
+      await expect(registry.registerPlugin('data', 'failing-plugin', mockPlugin)).rejects.toThrow('Init failed');
       
-      await new Promise(resolve => setTimeout(resolve, 10));
-      
-      expect(consoleError).toHaveBeenCalled();
       consoleError.mockRestore();
     });
   });
@@ -254,13 +251,8 @@ describe('Plugin Registry', () => {
         dispose: vi.fn().mockRejectedValue(new Error('Dispose failed'))
       };
       
-      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
-      
-      registry.registerPlugin('data', 'failing', mockPlugin);
-      await registry.unregisterPlugin('data', 'failing');
-      
-      expect(consoleError).toHaveBeenCalled();
-      consoleError.mockRestore();
+      await registry.registerPlugin('data', 'failing', mockPlugin);
+      await expect(registry.unregisterPlugin('data', 'failing')).rejects.toThrow('Dispose failed');
     });
 
     it('should clear active plugin on unregister', async () => {

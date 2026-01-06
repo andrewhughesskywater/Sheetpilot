@@ -9,6 +9,7 @@ export default defineConfig({
     }
   },
   test: {
+    name: 'backend-unit',
     environment: 'node',
     root: path.resolve(__dirname, '../../..'),
     include: [

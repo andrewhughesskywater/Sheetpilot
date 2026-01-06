@@ -24,13 +24,13 @@ import {
  * @deprecated Use PROJECTS_WITHOUT_TOOLS from business-config
  * Re-exported for backward compatibility
  */
-export const projectsWithoutTools = new Set(PROJECTS_WITHOUT_TOOLS);
+export const projectsWithoutTools: Set<string> = new Set(PROJECTS_WITHOUT_TOOLS);
 
 /**
  * @deprecated Use TOOLS_WITHOUT_CHARGES from business-config
  * Re-exported for backward compatibility
  */
-export const toolsWithoutCharges = new Set(TOOLS_WITHOUT_CHARGES);
+export const toolsWithoutCharges: Set<string> = new Set(TOOLS_WITHOUT_CHARGES);
 
 /**
  * @deprecated Use PROJECTS from business-config

@@ -36,7 +36,8 @@ export {
     markTimesheetEntriesAsSubmitted,
     removeFailedTimesheetEntries,
     getTimesheetEntriesByIds,
-    getSubmittedTimesheetEntriesForExport
+    getSubmittedTimesheetEntriesForExport,
+    type TimesheetDbRow
 } from './timesheet-repository';
 
 // Credentials Repository

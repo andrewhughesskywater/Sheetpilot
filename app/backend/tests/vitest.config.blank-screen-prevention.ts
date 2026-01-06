@@ -4,6 +4,7 @@ import { MarkdownReporter } from './helpers/markdown-reporter';
 
 export default defineConfig({
   test: {
+    name: 'backend-blank-screen',
     environment: 'node',
     setupFiles: ['./__tests__/setup.ts'],
     globals: true,

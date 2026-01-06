@@ -103,18 +103,51 @@ describe('Quarter Validation Unit Tests', () => {
 
     it('should reject dates outside available quarters (dynamic)', () => {
       // Determine earliest start and latest end across configured quarters
-      const starts = QUARTER_DEFINITIONS.map(q => new Date(q.startDate));
-      const ends = QUARTER_DEFINITIONS.map(q => new Date(q.endDate));
-      const earliest = new Date(Math.min(...starts.map(d => d.getTime())));
-      const latest = new Date(Math.max(...ends.map(d => d.getTime())));
+      // Parse ISO dates properly to avoid timezone issues
+      const parseISODate = (dateStr: string) => {
+        const [year, month, day] = dateStr.split('-').map(Number);
+        return { year, month, day };
+      };
 
-      // One day before earliest, and one day after latest
-      const before = new Date(earliest.getTime() - 24 * 60 * 60 * 1000);
-      const after = new Date(latest.getTime() + 24 * 60 * 60 * 1000);
+      const allStarts = QUARTER_DEFINITIONS.map(q => parseISODate(q.startDate));
+      const allEnds = QUARTER_DEFINITIONS.map(q => parseISODate(q.endDate));
+      
+      const minStart = allStarts.reduce((a, b) => 
+        a.year < b.year || (a.year === b.year && a.month < b.month) || (a.year === b.year && a.month === b.month && a.day < b.day) ? a : b
+      );
+      const maxEnd = allEnds.reduce((a, b) => 
+        a.year > b.year || (a.year === b.year && a.month > b.month) || (a.year === b.year && a.month === b.month && a.day > b.day) ? a : b
+      );
+
+      // One day before earliest
+      let beforeDay = minStart.day - 1;
+      let beforeMonth = minStart.month;
+      let beforeYear = minStart.year;
+      if (beforeDay < 1) {
+        beforeMonth -= 1;
+        if (beforeMonth < 1) {
+          beforeMonth = 12;
+          beforeYear -= 1;
+        }
+        beforeDay = 31; // Simplified - just use 31
+      }
+
+      // One day after latest
+      let afterDay = maxEnd.day + 1;
+      let afterMonth = maxEnd.month;
+      let afterYear = maxEnd.year;
+      if (afterDay > 31) {
+        afterDay = 1;
+        afterMonth += 1;
+        if (afterMonth > 12) {
+          afterMonth = 1;
+          afterYear += 1;
+        }
+      }
 
       const outsideQuarterDates = [
-        `${before.getFullYear()}-${String(before.getMonth() + 1).padStart(2, '0')}-${String(before.getDate()).padStart(2, '0')}`,
-        `${after.getFullYear()}-${String(after.getMonth() + 1).padStart(2, '0')}-${String(after.getDate()).padStart(2, '0')}`
+        `${beforeYear}-${String(beforeMonth).padStart(2, '0')}-${String(beforeDay).padStart(2, '0')}`,
+        `${afterYear}-${String(afterMonth).padStart(2, '0')}-${String(afterDay).padStart(2, '0')}`
       ];
 
       outsideQuarterDates.forEach(date => {
@@ -185,11 +218,32 @@ describe('Quarter Validation Unit Tests', () => {
 
     it('should handle year transitions correctly (dynamic)', () => {
       // Earliest configured start should be valid, and the day before it should be invalid
-      const earliest = new Date(Math.min(...QUARTER_DEFINITIONS.map(q => new Date(q.startDate).getTime())));
-      const before = new Date(earliest.getTime() - 24 * 60 * 60 * 1000);
+      // Parse ISO dates properly to avoid timezone issues
+      const parseISODate = (dateStr: string) => {
+        const [year, month, day] = dateStr.split('-').map(Number);
+        return { year, month, day };
+      };
 
-      const earliestIso = `${earliest.getFullYear()}-${String(earliest.getMonth() + 1).padStart(2,'0')}-${String(earliest.getDate()).padStart(2,'0')}`;
-      const beforeIso = `${before.getFullYear()}-${String(before.getMonth() + 1).padStart(2,'0')}-${String(before.getDate()).padStart(2,'0')}`;
+      const allStarts = QUARTER_DEFINITIONS.map(q => parseISODate(q.startDate));
+      const earliest = allStarts.reduce((a, b) => 
+        a.year < b.year || (a.year === b.year && a.month < b.month) || (a.year === b.year && a.month === b.month && a.day < b.day) ? a : b
+      );
+
+      // One day before earliest
+      let beforeDay = earliest.day - 1;
+      let beforeMonth = earliest.month;
+      let beforeYear = earliest.year;
+      if (beforeDay < 1) {
+        beforeMonth -= 1;
+        if (beforeMonth < 1) {
+          beforeMonth = 12;
+          beforeYear -= 1;
+        }
+        beforeDay = 31; // Simplified - just use 31
+      }
+
+      const earliestIso = `${earliest.year}-${String(earliest.month).padStart(2,'0')}-${String(earliest.day).padStart(2,'0')}`;
+      const beforeIso = `${beforeYear}-${String(beforeMonth).padStart(2,'0')}-${String(beforeDay).padStart(2,'0')}`;
 
       expect(validateQuarterAvailability(earliestIso)).toBeNull();
       expect(validateQuarterAvailability(beforeIso)).toBeTruthy();
@@ -214,8 +268,18 @@ describe('Quarter Validation Unit Tests', () => {
     });
 
     it('should provide clear error messages', () => {
-      // Get actual error messages from the implementation
-      const testDates = ['2024-12-31', '2026-01-01'];
+      // Generate dates that are definitely outside all defined quarters
+      const earliest = new Date(Math.min(...QUARTER_DEFINITIONS.map(q => new Date(q.startDate).getTime())));
+      const latest = new Date(Math.max(...QUARTER_DEFINITIONS.map(q => new Date(q.endDate).getTime())));
+      
+      // Date safely before earliest, and safely after latest
+      const before = new Date(earliest.getTime() - 100 * 24 * 60 * 60 * 1000);
+      const after = new Date(latest.getTime() + 100 * 24 * 60 * 60 * 1000);
+      
+      const testDates = [
+        `${before.getFullYear()}-${String(before.getMonth() + 1).padStart(2, '0')}-${String(before.getDate()).padStart(2, '0')}`,
+        `${after.getFullYear()}-${String(after.getMonth() + 1).padStart(2, '0')}-${String(after.getDate()).padStart(2, '0')}`
+      ];
       
       testDates.forEach(date => {
         const result = validateQuarterAvailability(date);
@@ -325,16 +389,27 @@ describe('Quarter Validation Unit Tests', () => {
       // Pick a structurally valid quarter (end >= start) so tests don't depend on system time
       const quarter = QUARTER_DEFINITIONS.find(q => new Date(q.endDate) >= new Date(q.startDate)) || QUARTER_DEFINITIONS[0];
 
-      const start = new Date(quarter.startDate);
-      const mid = new Date(Math.floor((start.getTime() + new Date(quarter.endDate).getTime()) / 2));
+      // Parse ISO dates properly to avoid timezone issues
+      const parseISODate = (dateStr: string) => {
+        const [year, month, day] = dateStr.split('-').map(Number);
+        return { year, month, day };
+      };
 
+      const startParsed = parseISODate(quarter.startDate);
+      const endParsed = parseISODate(quarter.endDate);
+      
+      // Create valid dates by parsing the ISO strings directly
       const validDates = [
-        `${String(start.getMonth() + 1).padStart(2,'0')}/${String(start.getDate()).padStart(2,'0')}/${start.getFullYear()}`,
-        `${String(mid.getMonth() + 1).padStart(2,'0')}/${String(mid.getDate()).padStart(2,'0')}/${mid.getFullYear()}`
+        `${String(startParsed.month).padStart(2,'0')}/${String(startParsed.day).padStart(2,'0')}/${startParsed.year}`,
+        `${String(Math.floor((startParsed.month + endParsed.month) / 2)).padStart(2,'0')}/15/${startParsed.year}`
       ];
 
       // Determine a clearly invalid date: one day before earliest quarter start
-      const earliest = new Date(Math.min(...QUARTER_DEFINITIONS.map(q => new Date(q.startDate).getTime())));
+      const allStarts = QUARTER_DEFINITIONS.map(q => {
+        const [year, month, day] = q.startDate.split('-').map(Number);
+        return new Date(year, month - 1, day);
+      });
+      const earliest = new Date(Math.min(...allStarts.map(d => d.getTime())));
       const invalidBefore = new Date(earliest.getTime() - 24 * 60 * 60 * 1000);
       const invalidDates = [
         `${String(invalidBefore.getMonth() + 1).padStart(2,'0')}/${String(invalidBefore.getDate()).padStart(2,'0')}/${invalidBefore.getFullYear()}`

@@ -17,7 +17,7 @@ import {
   validateField,
   formatTimeInput
 } from '../../src/logic/timesheet-validation';
-import { validateQuarterAvailability } from '../../src/services/bot/src/quarter_config';
+import { validateQuarterAvailability, QUARTER_DEFINITIONS } from '../../src/services/bot/src/quarter_config';
 import { validTimesheetEntries, invalidTimesheetEntries, edgeCaseEntries } from '../fixtures/timesheet-data';
 import { assertValidTimesheetRow, assertInvalidTimesheetRow } from '../helpers/assertion-helpers';
 
@@ -80,20 +80,63 @@ describe('Validation Rules Unit Tests', () => {
     });
 
     it('should validate quarter availability', () => {
-      // Valid dates in available quarters (Q1-Q4 2025)
-      const validQuarterDates = [
-        '01/01/2025',  // Q1
-        '02/15/2025',  // Q1
-        '03/31/2025',  // Q1
-        '04/01/2025',  // Q2
-        '07/15/2025'   // Q3
-      ];
+      // Generate valid and invalid dates dynamically based on QUARTER_DEFINITIONS
+      // Avoid timezone issues by parsing ISO dates manually
+      const parseISODate = (dateStr: string) => {
+        const [year, month, day] = dateStr.split('-').map(Number);
+        return { year, month, day };
+      };
+
+      const validQuarterDates: string[] = [];
+      const invalidQuarterDates: string[] = [];
+
+      // For each defined quarter, add a valid date from that quarter
+      QUARTER_DEFINITIONS.forEach(quarter => {
+        const start = parseISODate(quarter.startDate);
+        const end = parseISODate(quarter.endDate);
+        // Use day 15 of the quarter as a safe middle ground (or end date if quarter is < 15 days)
+        const testDay = Math.min(15, end.day);
+        validQuarterDates.push(`${String(start.month).padStart(2, '0')}/${String(testDay).padStart(2, '0')}/${start.year}`);
+      });
+
+      // Add invalid dates: before earliest quarter and after latest quarter
+      const allStarts = QUARTER_DEFINITIONS.map(q => parseISODate(q.startDate));
+      const allEnds = QUARTER_DEFINITIONS.map(q => parseISODate(q.endDate));
       
-      // Invalid dates outside available quarters
-      const invalidQuarterDates = [
-        '12/31/2024',  // Before available quarters
-        '01/01/2026'   // After available quarters
-      ];
+      const earliest = allStarts.reduce((a, b) => 
+        a.year < b.year || (a.year === b.year && a.month < b.month) || (a.year === b.year && a.month === b.month && a.day < b.day) ? a : b
+      );
+      const latest = allEnds.reduce((a, b) => 
+        a.year > b.year || (a.year === b.year && a.month > b.month) || (a.year === b.year && a.month === b.month && a.day > b.day) ? a : b
+      );
+      
+      // 100 days before earliest (simplified calculation)
+      let beforeDay = earliest.day - 100;
+      let beforeMonth = earliest.month;
+      let beforeYear = earliest.year;
+      if (beforeDay < 1) {
+        beforeMonth -= 1;
+        if (beforeMonth < 1) {
+          beforeMonth = 12;
+          beforeYear -= 1;
+        }
+        beforeDay += 31; // Simplified
+      }
+      invalidQuarterDates.push(`${beforeMonth.toString().padStart(2, '0')}/${beforeDay.toString().padStart(2, '0')}/${beforeYear}`);
+      
+      // 100 days after latest (simplified calculation)
+      let afterDay = latest.day + 100;
+      let afterMonth = latest.month;
+      let afterYear = latest.year;
+      if (afterDay > 31) {
+        afterDay -= 31;
+        afterMonth += 1;
+        if (afterMonth > 12) {
+          afterMonth = 1;
+          afterYear += 1;
+        }
+      }
+      invalidQuarterDates.push(`${afterMonth.toString().padStart(2, '0')}/${afterDay.toString().padStart(2, '0')}/${afterYear}`);
       
       validQuarterDates.forEach(date => {
         const [month, day, year] = date.split('/').map(Number);
@@ -454,14 +497,23 @@ describe('Validation Rules Unit Tests', () => {
     });
 
     it('should validate quarter availability', () => {
-      // Test with available quarter dates (Q1-Q4 2025)
-      const availableQuarterDates = [
-        '01/01/2025',  // Q1
-        '02/15/2025',  // Q1
-        '03/31/2025',  // Q1
-        '04/01/2025',  // Q2
-        '07/15/2025'   // Q3
-      ];
+      // Generate valid quarter dates dynamically from QUARTER_DEFINITIONS
+      // Avoid timezone issues by parsing ISO dates manually
+      const parseISODate = (dateStr: string) => {
+        const [year, month, day] = dateStr.split('-').map(Number);
+        return { year, month, day };
+      };
+
+      const availableQuarterDates: string[] = [];
+      
+      // For each defined quarter, add a valid date
+      QUARTER_DEFINITIONS.forEach(quarter => {
+        const start = parseISODate(quarter.startDate);
+        const end = parseISODate(quarter.endDate);
+        // Use day 15 of the quarter as a safe middle ground (or end date if quarter is < 15 days)
+        const testDay = Math.min(15, end.day);
+        availableQuarterDates.push(`${String(start.month).padStart(2, '0')}/${String(testDay).padStart(2, '0')}/${start.year}`);
+      });
       
       availableQuarterDates.forEach(date => {
         const [month, day, year] = date.split('/').map(Number);

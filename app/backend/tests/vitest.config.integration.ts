@@ -9,6 +9,7 @@ export default defineConfig({
     }
   },
   test: {
+    name: 'backend-integration',
     environment: 'node',
     root: path.resolve(__dirname, '../../..'),
     include: [

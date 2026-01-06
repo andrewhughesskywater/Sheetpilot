@@ -99,10 +99,26 @@ export function convertDateToISOFormat(dateStr: string): string {
  * normalizeDateToISO("2025-01-15") // returns "2025-01-15"
  */
 export function normalizeDateToISO(dateStr: string): string {
-  if (dateStr.includes('/')) {
-    return convertDateToISOFormat(dateStr);
+  if (!dateStr) {
+    return dateStr;
   }
-  // Already in ISO format or invalid - return as-is (caller should validate)
+  
+  // Check if it's already in ISO format (YYYY-MM-DD)
+  if (dateStr.includes('-') && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    return dateStr;
+  }
+  
+  // Try to convert from US format (MM/DD/YYYY)
+  if (dateStr.includes('/') && /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dateStr)) {
+    try {
+      return convertDateToISOFormat(dateStr);
+    } catch {
+      // If conversion fails, return as-is
+      return dateStr;
+    }
+  }
+  
+  // Return as-is if it doesn't match any recognized format
   return dateStr;
 }
 

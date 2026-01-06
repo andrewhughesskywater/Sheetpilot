@@ -1,3 +1,7 @@
 {
-    "editor.inlineSuggest.enabled": false
+    "editor.inlineSuggest.enabled": false,
+    "vitest.configurationFile": "vitest.config.ts",
+    "vitest.configFile": "vitest.config.ts",
+    "vitest.maximumConfigs": 15,
+    "vitest.enableAutoConfig": false
 }

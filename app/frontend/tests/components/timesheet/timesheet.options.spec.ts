@@ -20,8 +20,8 @@ import {
 } from '@sheetpilot/shared/business-config';
 
 // Convert arrays to Sets for backward compatibility with tests
-const projectsWithoutTools = new Set(PROJECTS_WITHOUT_TOOLS);
-const toolsWithoutCharges = new Set(TOOLS_WITHOUT_CHARGES);
+const projectsWithoutTools: Set<string> = new Set(PROJECTS_WITHOUT_TOOLS);
+const toolsWithoutCharges: Set<string> = new Set(TOOLS_WITHOUT_CHARGES);
 
 describe('Timesheet Options Module', () => {
   describe('Project Options', () => {
@@ -89,8 +89,8 @@ describe('Timesheet Options Module', () => {
     });
 
     it('should handle undefined project', () => {
-      expect(projectNeedsTools(undefined)).toBe(false);
-      expect(getToolOptions(undefined)).toEqual([]);
+      expect(projectNeedsTools(undefined as any)).toBe(false);
+      expect(getToolOptions(undefined as any)).toEqual([]);
     });
 
     it('should handle invalid project', () => {
@@ -125,7 +125,7 @@ describe('Timesheet Options Module', () => {
     });
 
     it('should handle undefined tool', () => {
-      expect(toolNeedsChargeCode(undefined)).toBe(false);
+      expect(toolNeedsChargeCode(undefined as any)).toBe(false);
     });
 
     it('should handle empty tool', () => {

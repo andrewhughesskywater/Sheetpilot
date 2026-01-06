@@ -37,7 +37,7 @@ export function registerCredentialsHandlers(): void {
     // Validate input using Zod schema
     const validation = validateInput(storeCredentialsSchema, { service, email, password }, 'credentials:store');
     if (!validation.success) {
-      return { success: false, message: validation.error, changes: 0 };
+      return { success: false, error: validation.error, changes: 0 };
     }
     
     const validatedData = validation.data!;
@@ -86,7 +86,7 @@ export function registerCredentialsHandlers(): void {
     // Validate input using Zod schema
     const validation = validateInput(deleteCredentialsSchema, { service }, 'credentials:delete');
     if (!validation.success) {
-      return { success: false, message: validation.error, changes: 0 };
+      return { success: false, error: validation.error, changes: 0 };
     }
     
     const validatedData = validation.data!;
