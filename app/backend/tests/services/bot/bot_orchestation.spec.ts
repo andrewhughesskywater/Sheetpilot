@@ -22,7 +22,7 @@ describe('BotOrchestrator small logic', () => {
     const ok1 = (bot as Record<string, unknown>)._validate_required_fields({ hours: 1, project_code: 'P', date: '01/01/2025' }, 0);
     expect(ok1).toBe(true);
     // missing project_code
-    const ok2 = (bot as Record<string, unknown>)._validate_required_fields({ hours: 1, date: '01/01/2025' }, 0);
+    const ok2 = (bot as any)['_validate_required_fields']({ hours: 1, date: '01/01/2025' }, 0);
     expect(ok2).toBe(false);
   });
 

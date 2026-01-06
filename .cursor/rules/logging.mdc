@@ -57,6 +57,13 @@ alwaysApply: true
     - Use structured data for all contextual information
     - Avoid multi-line messages or pretty-printing in logs
 
+11. **Exception: Console Logging in Fatal Error Handlers**
+    - Console.error is acceptable in `app/backend/src/main.ts` fatal error handlers
+    - Only when logger initialization fails or logger is unavailable during pre-bootstrap errors
+    - Must include explanatory comment: "// Logger unavailable - console fallback for critical errors"
+    - Try to use logger first, fall back to console only if logger throws
+    - All other production code must use structured logger exclusively
+
 ## Examples
 
 ### ✅ Correct

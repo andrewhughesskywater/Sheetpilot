@@ -79,7 +79,7 @@ function TestSubmitProgressBar() {
   useEffect(() => {
     if (!window.timesheet?.onSubmissionProgress) return;
 
-    window.timesheet.onSubmissionProgress((progressData) => {
+    window.timesheet.onSubmissionProgress((progressData: any) => {
       setProgress(progressData.percent);
       setCurrentEntry(progressData.current);
       setTotalEntries(progressData.total);

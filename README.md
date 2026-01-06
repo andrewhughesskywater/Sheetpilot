@@ -103,35 +103,34 @@ npm run test:renderer
 
 ### Dependency Validation
 
-Before building, validate that all dependencies are correctly configured:
+Quick validation runs automatically before every build:
+
+- `npm run build` and `npm run build:dir` trigger the `prebuild`/`prebuild:dir` hook, which runs `validate:quick` (type-check + compile main/renderer + bundle sanity check).
+
+Manual checks you can run when needed:
 
 ```bash
-# Validate dependencies manually
+# Rebuild native deps (better-sqlite3) and verify dependency layout
 npm run validate:deps
 ```
-
-This checks:
-- All dependencies exist in correct locations (root/backend/bot service)
-- Native modules (better-sqlite3) are properly rebuilt for Electron
-- Peer dependencies are satisfied
-- Build output structure is correct
-- electron-builder configuration is valid
 
 See [Dependency Validation Guide](docs/DEPENDENCY_VALIDATION.md) for details.
 
 ### Building the Application
 
 ```bash
-# Build the application (automatically runs validation first)
+# Package the app (runs prebuild validation first)
 npm run build
 
-# Build without packaging (faster, for testing)
+# Package without installers (dir-only), still runs prebuild validation
 npm run build:dir
 ```
 
-The built application will be available in the `release` directory.
+Artifacts land in `release/`.
 
-**Note:** `npm run build` automatically validates dependencies via the `prebuild` hook. If validation fails, the build stops with clear error messages.
+Notes:
+- Builds rely on the shared `compile` step (main + renderer); it runs once via `validate:quick` before packaging.
+- If validation fails, packaging is skipped with clear errors.
 
 ## Configuration
 

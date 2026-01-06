@@ -123,7 +123,7 @@ describe('Browser Lifecycle Management', () => {
   }, 45000); // 45 second timeout for DOM-based waits
 
   it('should handle concurrent automation attempts gracefully', async () => {
-    bot = new BotOrchestrator(Cfg as Record<string, unknown>, dummyFormConfig, true, 'chromium');
+    bot = new BotOrchestrator(Cfg as typeof Cfg, dummyFormConfig, true, 'chromium');
     
     await bot.start();
     

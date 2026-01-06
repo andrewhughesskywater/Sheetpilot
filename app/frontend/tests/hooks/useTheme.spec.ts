@@ -227,21 +227,21 @@ describe('useTheme Hook', () => {
 
   describe('Helper Properties', () => {
     it('should provide isLight property', () => {
-      const effectiveTheme = 'light';
+      const effectiveTheme: string = 'light';
       const isLight = effectiveTheme === 'light';
       
       expect(isLight).toBe(true);
     });
 
     it('should provide isDark property', () => {
-      const effectiveTheme = 'dark';
+      const effectiveTheme: string = 'dark';
       const isDark = effectiveTheme === 'dark';
       
       expect(isDark).toBe(true);
     });
 
     it('should have mutually exclusive isLight and isDark', () => {
-      const effectiveTheme = 'light';
+      const effectiveTheme: string = 'light';
       const isLight = effectiveTheme === 'light';
       const isDark = effectiveTheme === 'dark';
       

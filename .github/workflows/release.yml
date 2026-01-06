@@ -1,0 +1,54 @@
+name: Release Please
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          # This should be a personal access token with `repo` scope
+          token: ${{ secrets.GITHUB_TOKEN }}
+          release-type: node
+          package-name: sheetpilot
+          changelog-types: '[{"type":"feat","section":"Features","hidden":false},{"type":"fix","section":"Bug Fixes","hidden":false},{"type":"perf","section":"Performance Improvements","hidden":false},{"type":"revert","section":"Reverts","hidden":false},{"type":"docs","section":"Documentation","hidden":false},{"type":"style","section":"Styles","hidden":true},{"type":"chore","section":"Miscellaneous","hidden":true},{"type":"refactor","section":"Code Refactoring","hidden":false},{"type":"test","section":"Tests","hidden":true},{"type":"build","section":"Build System","hidden":true},{"type":"ci","section":"CI/CD","hidden":true}]'
+
+      # Optional: Build and publish release assets when a release is created
+      # Uncomment and customize if you want to auto-build Electron app on release
+      # - name: Checkout code
+      #   if: ${{ steps.release.outputs.release_created }}
+      #   uses: actions/checkout@v4
+      #
+      # - name: Setup Node.js
+      #   if: ${{ steps.release.outputs.release_created }}
+      #   uses: actions/setup-node@v4
+      #   with:
+      #     node-version: '18'
+      #
+      # - name: Install dependencies
+      #   if: ${{ steps.release.outputs.release_created }}
+      #   run: |
+      #     npm ci
+      #     npm run rebuild
+      #
+      # - name: Build application
+      #   if: ${{ steps.release.outputs.release_created }}
+      #   run: npm run build
+      #
+      # - name: Upload Release Assets
+      #   if: ${{ steps.release.outputs.release_created }}
+      #   uses: actions/upload-release-asset@v1
+      #   with:
+      #     upload_url: ${{ steps.release.outputs.upload_url }}
+      #     asset_path: ./release/*.exe
+      #     asset_name: Sheetpilot-Setup-${{ steps.release.outputs.major }}.${{ steps.release.outputs.minor }}.${{ steps.release.outputs.patch }}.exe
+      #     asset_content_type: application/octet-stream

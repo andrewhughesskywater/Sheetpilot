@@ -137,7 +137,7 @@ describe('plugin-config', () => {
     });
 
     it('should return default config in browser environment', () => {
-      (globalThis as { window: typeof window }).window = {} as Window;
+      (globalThis as any).window = {} as Window;
 
       const config = loadPluginConfig('/path/to/config.json');
 

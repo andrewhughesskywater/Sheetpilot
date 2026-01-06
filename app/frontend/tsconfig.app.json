@@ -8,6 +8,7 @@
     "skipLibCheck": true,
 
     /* Bundler mode */
+    "baseUrl": ".",
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
@@ -17,7 +18,16 @@
     "types": ["vite/client", "vitest"],
     "paths": {
       "@sheetpilot/shared": ["../shared/index.ts"],
-      "@sheetpilot/shared/*": ["../shared/*"]
+      "@sheetpilot/shared/*": ["../shared/*"],
+      "@/components/*": ["src/components/*"],
+      "@/contexts/*": ["src/contexts/*"],
+      "@/hooks/*": ["src/hooks/*"],
+      "@/utils/*": ["src/utils/*"],
+      "@/services/*": ["src/services/*"],
+      "@/contracts/*": ["src/contracts/*"],
+      "@/config/*": ["src/config/*"],
+      "@/styles/*": ["src/styles/*"],
+      "@/assets/*": ["src/assets/*"]
     },
 
     /* Linting */

@@ -496,14 +496,14 @@ describe('Help Component', () => {
   describe('Edge Cases', () => {
     it('should handle empty log files array', () => {
       const logFiles: string[] = [];
-      const hasLogs = logFiles && logFiles.length > 0;
+      const hasLogs = (logFiles ?? []).length > 0;
       
       expect(hasLogs).toBe(false);
     });
 
     it('should handle undefined log files', () => {
-      const logFiles = undefined;
-      const hasLogs = logFiles && logFiles.length > 0;
+      const logFiles: string[] | undefined = undefined;
+      const hasLogs = (logFiles ?? []).length > 0;
       
       expect(hasLogs).toBeFalsy();
     });

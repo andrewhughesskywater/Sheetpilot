@@ -1,6 +1,6 @@
 {
   "name": "@sheetpilot/backend",
-  "version": "1.5.4",
+  "version": "1.5.7",
   "private": true,
   "description": "Sheetpilot Electron main process and backend services",
   "main": "src/main.ts",
@@ -12,6 +12,7 @@
     "postinstall": "playwright install chromium"
   },
   "dependencies": {
+    "@sentry/electron": "^0.37.0",
     "@sheetpilot/shared": "^1.4.0",
     "better-sqlite3": "^12.4.1",
     "electron-log": "^5.4.3",

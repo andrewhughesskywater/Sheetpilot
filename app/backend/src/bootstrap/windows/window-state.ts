@@ -11,6 +11,70 @@ export interface WindowState {
   isMaximized?: boolean;
 }
 
+/**
+ * Validate and coerce WindowState from partial data.
+ * Returns valid state with defaults for missing/invalid fields.
+ * Logs discrepancies instead of throwing to prevent crashes on corrupted state.
+ */
+export function validateWindowState(data: unknown, logger: LoggerLike, defaults: WindowState): WindowState {
+  if (!data || typeof data !== 'object') {
+    logger.debug('Invalid window state (not an object), using defaults', { type: typeof data });
+    return defaults;
+  }
+
+  const partial = data as Record<string, unknown>;
+
+  // Validate width
+  const partialWidth = partial['width'];
+  const width = typeof partialWidth === 'number' && partialWidth > 0
+    ? Math.round(partialWidth)
+    : defaults.width;
+  if (typeof partialWidth !== 'number' || partialWidth <= 0) {
+    logger.debug('Invalid window width, using default', { provided: partialWidth, default: defaults.width });
+  }
+
+  // Validate height
+  const partialHeight = partial['height'];
+  const height = typeof partialHeight === 'number' && partialHeight > 0
+    ? Math.round(partialHeight)
+    : defaults.height;
+  if (typeof partialHeight !== 'number' || partialHeight <= 0) {
+    logger.debug('Invalid window height, using default', { provided: partialHeight, default: defaults.height });
+  }
+
+  // Validate x (optional, must be non-negative)
+  const partialX = partial['x'];
+  const x = (typeof partialX === 'number' && partialX >= 0)
+    ? Math.round(partialX)
+    : undefined;
+  if (typeof partialX === 'number' && partialX < 0) {
+    logger.debug('Invalid window x coordinate, using default', { provided: partialX });
+  }
+
+  // Validate y (optional, must be non-negative)
+  const partialY = partial['y'];
+  const y = (typeof partialY === 'number' && partialY >= 0)
+    ? Math.round(partialY)
+    : undefined;
+  if (typeof partialY === 'number' && partialY < 0) {
+    logger.debug('Invalid window y coordinate, using default', { provided: partialY });
+  }
+
+  // Validate isMaximized (optional, must be boolean)
+  const partialIsMaximized = partial['isMaximized'];
+  const isMaximized = typeof partialIsMaximized === 'boolean'
+    ? partialIsMaximized
+    : defaults.isMaximized;
+
+  return {
+    width,
+    height,
+    ...(x !== undefined ? { x } : {}),
+    ...(y !== undefined ? { y } : {}),
+    ...(isMaximized !== undefined ? { isMaximized } : {})
+  };
+}
+
 export function getDefaultWindowState(): WindowState {
   const defaultWidth = 1200;
   const defaultHeight = Math.round(defaultWidth * 1.618);
@@ -35,7 +99,13 @@ export async function restoreWindowState(params: {
     const windowStatePath = path.join(userDataPath, 'window-state.json');
 
     const data = await fs.promises.readFile(windowStatePath, 'utf8');
-    const savedState = JSON.parse(data) as Partial<WindowState>;
+    const parsed = JSON.parse(data);
+
+    // Get defaults for validation
+    const defaults = getDefaultWindowState();
+
+    // Validate and coerce state from file (handles corrupted JSON gracefully)
+    const savedState = validateWindowState(parsed, params.logger, defaults);
 
     const { width, height, x, y, isMaximized } = savedState;
     const display = params.screen.getPrimaryDisplay();

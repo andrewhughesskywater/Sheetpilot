@@ -163,27 +163,27 @@ describe('MockSubmissionService', () => {
     });
 
     it('should detect missing date', () => {
-      const entry: TimesheetEntry = {
+      const entry: Partial<TimesheetEntry> = {
         timeIn: '08:00',
         timeOut: '17:00',
         project: 'Test Project',
         taskDescription: 'Test Task'
       };
 
-      const result = service.validateEntry(entry);
+      const result = service.validateEntry(entry as TimesheetEntry);
       expect(result.valid).toBe(false);
       expect(result.errors).toContain('Date is required');
     });
 
     it('should detect missing timeIn', () => {
-      const entry: TimesheetEntry = {
+      const entry: Partial<TimesheetEntry> = {
         date: '2025-01-15',
         timeOut: '17:00',
         project: 'Test Project',
         taskDescription: 'Test Task'
       };
 
-      const result = service.validateEntry(entry);
+      const result = service.validateEntry(entry as TimesheetEntry);
       expect(result.valid).toBe(false);
       expect(result.errors).toContain('Start time is required');
     });

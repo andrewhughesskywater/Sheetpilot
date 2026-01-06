@@ -20,6 +20,7 @@ import { preflightResolveCriticalModules } from './bootstrap/preflight/resolve-c
 import { createMainWindow } from './bootstrap/windows/create-main-window';
 import { loadRenderer } from './bootstrap/windows/load-renderer';
 import { createDebouncedWindowStateSaver, getDefaultWindowState, restoreWindowState } from './bootstrap/windows/window-state';
+import { initializeSentry } from './bootstrap/observability/sentry-init';
 
 ensureDevUserDataPath(app);
 
@@ -40,6 +41,10 @@ const dbLogger: LoggerLike = logging.dbLogger;
 
 configureElectronCommandLine(app);
 registerCrashHandlers(app, appLogger);
+
+// === Observability: Initialize Sentry (early in startup sequence) ===
+// Must be initialized before window creation to capture startup errors
+initializeSentry(flags.isDev, flags.isSmoke, flags.packagedLike, appLogger);
 
 let mainWindow: BrowserWindow | null = null;
 const windowStateSaver = createDebouncedWindowStateSaver({
@@ -136,14 +141,24 @@ app
     const errorMsg = err instanceof Error ? err.message : String(err);
     const errorStack = err instanceof Error ? err.stack : undefined;
 
-    console.error('═══════════════════════════════════════════════════════════');
-    console.error('FATAL: Error during app.whenReady()');
-    console.error('═══════════════════════════════════════════════════════════');
-    console.error('Message:', errorMsg);
-    if (errorStack) {
-      console.error('Stack:', errorStack);
+    // Use structured logger for fatal errors when available
+    // If logger initialization failed, this code runs before logger is ready, so console is acceptable
+    try {
+      appLogger.error('Error during app.whenReady()', {
+        message: errorMsg,
+        stack: errorStack,
+      });
+    } catch {
+      // Logger not available - fall back to console (pre-bootstrap failure)
+      console.error('═══════════════════════════════════════════════════════════');
+      console.error('FATAL: Error during app.whenReady()');
+      console.error('═══════════════════════════════════════════════════════════');
+      console.error('Message:', errorMsg);
+      if (errorStack) {
+        console.error('Stack:', errorStack);
+      }
+      console.error('═══════════════════════════════════════════════════════════');
     }
-    console.error('═══════════════════════════════════════════════════════════');
 
     try {
       const { dialog } = require('electron') as typeof import('electron');
@@ -157,7 +172,13 @@ app
         app.exit(1);
       }
     } catch (dialogErr: unknown) {
-      console.error('Could not show error dialog:', dialogErr);
+      const dialogErrorMsg = dialogErr instanceof Error ? dialogErr.message : String(dialogErr);
+      try {
+        appLogger.error('Could not show error dialog', { error: dialogErrorMsg });
+      } catch {
+        // Logger unavailable - console fallback for critical errors only
+        console.error('Could not show error dialog:', dialogErr);
+      }
       app.exit(1);
     }
   });

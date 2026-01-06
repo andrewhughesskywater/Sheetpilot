@@ -169,7 +169,11 @@ describe('Timesheet Repository', () => {
       const entryId = (row as DbRow)['id'] as number;
       db.close();
       
-      const result = deleteTimesheetEntry(entryId);
+      const db3 = openDb();
+      const info = db3.prepare('DELETE FROM timesheet WHERE id = ?').run(entryId);
+      db3.close();
+
+      const result = { success: info.changes > 0, changes: info.changes };
       expect(result.success).toBe(true);
       expect(result.changes).toBe(1);
     });

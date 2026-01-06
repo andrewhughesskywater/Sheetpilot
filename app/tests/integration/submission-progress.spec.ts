@@ -220,11 +220,12 @@ describe('Submission Progress Integration Test', () => {
 
     // Call the submit handler with a valid token
     const result = await submitHandler?.('valid-token');
+    const submissionResult = result as any;
 
     // Verify the submission was successful
-    expect(result).toBeDefined();
-    expect(result).toHaveProperty('submitResult');
-    expect(result.submitResult).toMatchObject({
+    expect(submissionResult).toBeDefined();
+    expect(submissionResult).toHaveProperty('submitResult');
+    expect(submissionResult.submitResult).toMatchObject({
       ok: true,
       successCount: 3,
       totalProcessed: 3,
@@ -351,10 +352,11 @@ describe('Submission Progress Integration Test', () => {
     
     // Call the submit handler - should not throw
     const result = await submitHandler?.('valid-token');
+    const submissionResult = result as any;
 
     // Verify submission still completes
-    expect(result).toBeDefined();
-    expect(result.submitResult).toBeDefined();
+    expect(submissionResult).toBeDefined();
+    expect(submissionResult.submitResult).toBeDefined();
   });
 
   it('should send progress updates with correct structure', async () => {

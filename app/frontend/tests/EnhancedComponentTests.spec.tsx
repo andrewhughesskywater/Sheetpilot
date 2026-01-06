@@ -342,7 +342,7 @@ describe('Enhanced Component Tests', () => {
       };
 
       // Test project change to one that doesn't need tools
-      const initialRow = {
+      const initialRow: any = {
         project: "FL-Carver Techs",
         tool: "DECA Meeting",
         chargeCode: "EPR1"
@@ -356,7 +356,7 @@ describe('Enhanced Component Tests', () => {
       // Test tool change to one that doesn't need charge codes
       const updatedForMeeting = updateRowForToolChange(initialRow, "Meeting");
       expect(updatedForMeeting.tool).toBe("Meeting");
-      expect(updatedForMeeting.chargeCode).toBeNull();
+      expect((updatedForMeeting as any).chargeCode).toBeNull();
     });
   });
 

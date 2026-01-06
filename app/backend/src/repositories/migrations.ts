@@ -18,7 +18,7 @@ import { ensureSchemaInternal } from './connection-manager';
 /**
  * Current schema version - increment when adding new migrations
  */
-export const CURRENT_SCHEMA_VERSION = 1;
+export const CURRENT_SCHEMA_VERSION = 2;
 
 /**
  * Migration definition interface
@@ -46,10 +46,20 @@ const migrations: Migration[] = [
             // Uses ensureSchemaInternal which creates tables if they don't exist
             ensureSchemaInternal(db);
         }
+    },
+    {
+        version: 2,
+        description: 'Add metadata column to schema_info table for extensibility',
+        up: (db: BetterSqlite3.Database) => {
+            // Add optional metadata column to store migration notes, timestamps, or other info
+            // This demonstrates the migration system and provides extension point for future use
+            db.exec('ALTER TABLE schema_info ADD COLUMN metadata TEXT DEFAULT NULL');
+            dbLogger.info('Migration v2: Added metadata column to schema_info table');
+        }
     }
     // Future migrations added here:
     // {
-    //     version: 2,
+    //     version: 3,
     //     description: 'Add new_column to timesheet table',
     //     up: (db) => {
     //         db.exec('ALTER TABLE timesheet ADD COLUMN new_column TEXT');

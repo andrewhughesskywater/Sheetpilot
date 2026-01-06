@@ -1811,7 +1811,7 @@ describe('TimesheetGrid Deferred Save Pattern', () => {
     const dbRows = dbResult?.entries || [];
     
     // Find orphans
-    const orphanedRows = dbRows.filter(row => row.id && !currentIds.has(row.id));
+    const orphanedRows = dbRows.filter((row: any) => row.id && !currentIds.has(row.id));
     
     // Delete orphans
     for (const orphan of orphanedRows) {
@@ -1830,8 +1830,8 @@ describe('TimesheetGrid Deferred Save Pattern', () => {
     const batchSaveMock = vi.fn().mockResolvedValue(undefined);
     
     // Simulate tab change from Timesheet (0) to Archive (1)
-    const oldTab = 0;
-    const newTab = 1;
+    let oldTab = 0;
+    let newTab = 1;
     
     if (oldTab === 0 && newTab !== 0) {
       await batchSaveMock();
@@ -1844,8 +1844,8 @@ describe('TimesheetGrid Deferred Save Pattern', () => {
     const batchSaveMock = vi.fn().mockResolvedValue(undefined);
     
     // Simulate staying on Timesheet tab
-    const oldTab = 0;
-    const newTab = 0;
+    let oldTab = 0;
+    let newTab = 0;
     
     if (oldTab === 0 && newTab !== 0) {
       await batchSaveMock();
@@ -2846,15 +2846,16 @@ describe('TimesheetGrid Validation Error Feedback', () => {
     expect(hasSelectionChanged).toBe(true);
   });
 
-  it('should delay clearing invalid entries', (done) => {
+  it('should delay clearing invalid entries', async () => {
     let cellValue = 'invalid';
     
-    // Simulate delayed clearing
-    setTimeout(() => {
-      cellValue = '';
-      expect(cellValue).toBe('');
-      done();
-    }, 100);
+    await new Promise<void>(resolve => {
+      setTimeout(() => {
+        cellValue = '';
+        expect(cellValue).toBe('');
+        resolve();
+      }, 100);
+    });
   });
 
   it('should track cell meta for invalid styling', () => {

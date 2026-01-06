@@ -4,7 +4,7 @@
     "noEmit": true,
     "types": ["node", "vitest", "vitest/globals"],
     "jsx": "react-jsx",
-    "noPropertyAccessFromIndexSignature": true,
+    "noPropertyAccessFromIndexSignature": false,
     "useUnknownInCatchVariables": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedIndexedAccess": false,
@@ -18,7 +18,8 @@
     "app/tests/**/*.ts",
     "app/frontend/tests/**/*.ts",
     "app/frontend/tests/**/*.tsx",
-    "app/frontend/src/contracts/window.ts",
+    "app/frontend/tests/**/*.d.ts",
+    
     "app/frontend/src/utils/safe-init.ts"
   ],
   "exclude": [

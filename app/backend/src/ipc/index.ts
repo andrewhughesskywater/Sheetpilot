@@ -19,6 +19,7 @@ import { registerDatabaseHandlers } from './database-handlers';
 import { registerLogsHandlers } from './logs-handlers';
 import { registerLoggerHandlers } from './logger-handlers';
 import { registerSettingsHandlers } from './settings-handlers';
+import { registerCSPHandlers } from './csp-handlers';
 
 /**
  * Register all IPC handlers
@@ -68,6 +69,10 @@ export function registerAllIPCHandlers(mainWindow?: BrowserWindow | null): void 
     appLogger.verbose('Registering settings handlers');
     registerSettingsHandlers();
     appLogger.verbose('Settings handlers registered successfully');
+    
+    appLogger.verbose('Registering CSP handlers');
+    registerCSPHandlers();
+    appLogger.verbose('CSP handlers registered successfully');
     
     appLogger.info('All IPC handler modules registered successfully', { 
       modulesRegistered: [

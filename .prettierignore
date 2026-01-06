@@ -1,0 +1,47 @@
+# Build outputs
+build/
+dist/
+release/
+*.log
+*.map
+
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Generated files
+coverage/
+.nyc_output/
+*.tsbuildinfo
+
+# Lock files
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# Database files
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# IDEs
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test results
+test-results/
+
+# Electron builder
+app/backend/src/services/bot/build/
+app/backend/src/services/bot/dist/
+
+# Bundler outputs
+*.bundle.js
+*.bundle.js.map
+
+# CHANGELOG and version bumps handled by release-please
+CHANGELOG.md

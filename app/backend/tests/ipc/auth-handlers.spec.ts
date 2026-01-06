@@ -132,8 +132,8 @@ describe('auth-handlers', () => {
       
       // Clear and setup fresh handler capture
       handleCalls = [];
-      vi.mocked(ipcMain.handle).mockImplementation((channel: string, handler: (...args: unknown[]) => unknown) => {
-        handleCalls.push([channel, handler]);
+      vi.mocked(ipcMain.handle).mockImplementation((channel: string, listener: (event: any, ...args: any[]) => any) => {
+        handleCalls.push([channel, listener]);
         return undefined as never;
       });
       

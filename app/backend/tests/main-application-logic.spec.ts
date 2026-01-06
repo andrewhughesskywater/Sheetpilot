@@ -68,7 +68,11 @@ vi.mock('fs', () => ({
   existsSync: vi.fn(),
   readFileSync: vi.fn(),
   writeFileSync: vi.fn(),
-  mkdirSync: vi.fn()
+  mkdirSync: vi.fn(),
+  promises: {
+    mkdir: vi.fn(),
+    writeFile: vi.fn()
+  }
 }));
 
 describe('Main Application Logic Tests', () => {
@@ -210,11 +214,11 @@ describe('Main Application Logic Tests', () => {
       // Mock the current date to be in Q1 2025
       const originalDate = Date;
       global.Date = class extends Date {
-        constructor(...args: unknown[]) {
+        constructor(...args: any[]) {
           if (args.length === 0) {
             super(2025, 0, 15); // January 15, 2025
           } else {
-            super(...args);
+            super(...(args as ConstructorParameters<typeof Date>));
           }
         }
       } as typeof Date;
@@ -287,7 +291,13 @@ describe('Main Application Logic Tests', () => {
   });
 
   describe('Window State Management', () => {
-    const mockFs = fs as unknown as { existsSync: Mock; readFileSync: Mock; writeFileSync: Mock; mkdirSync: Mock };
+    const mockFs = fs as unknown as {
+      existsSync: Mock;
+      readFileSync: Mock;
+      writeFileSync: Mock;
+      mkdirSync: Mock;
+      promises: { mkdir: Mock; writeFile: Mock };
+    };
 
     const getWindowState = (): { width: number; height: number; x?: number; y?: number; isMaximized?: boolean } => {
       const defaultWidth = 1200;
@@ -362,6 +372,8 @@ describe('Main Application Logic Tests', () => {
       mockFs.readFileSync.mockClear();
       mockFs.writeFileSync.mockClear();
       mockFs.mkdirSync.mockClear();
+      mockFs.promises.mkdir = vi.fn().mockResolvedValue(undefined);
+      mockFs.promises.writeFile = vi.fn().mockResolvedValue(undefined);
     });
 
     it('should return default window state when no saved state exists', () => {

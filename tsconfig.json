@@ -9,7 +9,15 @@
     "moduleResolution": "bundler",
     "paths": {
       "@sheetpilot/shared": ["app/shared/index.ts"],
-      "@sheetpilot/shared/*": ["app/shared/*"]
+      "@sheetpilot/shared/*": ["app/shared/*"],
+      "@/bootstrap/*": ["app/backend/src/bootstrap/*"],
+      "@/ipc/*": ["app/backend/src/ipc/*"],
+      "@/repositories/*": ["app/backend/src/repositories/*"],
+      "@/services/*": ["app/backend/src/services/*"],
+      "@/logic/*": ["app/backend/src/logic/*"],
+      "@/middleware/*": ["app/backend/src/middleware/*"],
+      "@/validation/*": ["app/backend/src/validation/*"],
+      "@/preload/*": ["app/backend/src/preload/*"]
     },
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
