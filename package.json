@@ -42,6 +42,8 @@
     "type-check:tests": "tsc --noEmit --project tsconfig.tests.json",
     "lint": "eslint app/backend/src app/frontend/src app/shared --max-warnings 0 --cache --fix",
     "lint:fix": "eslint app/backend/src app/frontend/src app/shared --max-warnings 0 --cache --fix",
+    "lint:metrics": "eslint app/backend/src app/frontend/src app/shared --max-warnings 0 --cache",
+    "lint:report": "eslint app/backend/src app/frontend/src app/shared -f json -o eslint-report.json",
     "format": "prettier --write \"app/**/*.{ts,tsx,json,md}\" \"*.{json,md}\"",
     "format:check": "prettier --check \"app/**/*.{ts,tsx,json,md}\" \"*.{json,md}\"",
     "typecheck": "npm run type-check",
@@ -64,6 +66,9 @@
     "validate:packaged-deps": "node scripts/validate-packaged-deps.js",
     "validate:quick": "npm run type-check && npm run validate:compile && npm run validate:bundle",
     "validate:full": "npm run validate:deps && npm run build:dir && npm run validate:packaged-deps",
+    "validate:quality": "npm run lint && npm run lint:metrics && npm run depcruise:check",
+    "depcruise:check": "depcruise --config .dependency-cruiser.js --ts-config tsconfig.json --progress false --output-type err app",
+    "depcruise:report": "depcruise --config .dependency-cruiser.js --ts-config tsconfig.json --progress false --output-type html app > dependency-cruise-report.html",
     "build:debug": "cross-env DEBUG=electron-builder npm run build"
   },
   "dependencies": {
@@ -88,6 +93,8 @@
     "cross-env": "^10.1.0",
     "esbuild": "^0.25.12",
     "eslint": "^9.36.0",
+    "eslint-plugin-sonarjs": "^0.25.0",
+    "dependency-cruiser": "^16.10.0",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",

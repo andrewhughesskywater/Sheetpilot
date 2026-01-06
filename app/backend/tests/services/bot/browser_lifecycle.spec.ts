@@ -5,13 +5,44 @@
  * and cleaned up to prevent resource leaks and initialization errors.
  */
 
-import { describe, it, expect, afterEach, vi } from 'vitest';
+import { describe, it, expect, afterEach, vi, beforeEach } from 'vitest';
 import { BotOrchestrator } from '../../../src/services/bot/src/bot_orchestation';
 import * as Cfg from '../../../src/services/bot/src/automation_config';
 import { createFormConfig } from '../../../src/services/bot/src/automation_config';
 
+// Mock WebformFiller to prevent actual browser launches
+vi.mock('../../../src/services/bot/src/browser/webform_flow', () => {
+  return {
+    WebformFiller: class {
+      private started = false;
+      private page = { url: () => 'mock://page', close: vi.fn() };
+      
+      async start() { 
+        this.started = true;
+      }
+      
+      async close() { 
+        this.started = false;
+      }
+      
+      require_page() {
+        if (!this.started) {
+          throw new Error('Page is not available. Call start() first.');
+        }
+        return this.page;
+      }
+      
+      async fill_form_fields() { return true; }
+      async submit_form() { return true; }
+      async wait_for_form_ready() { return; }
+      async navigate_to_base() { return; }
+      async inject_field_value() { return; }
+    }
+  };
+});
+
 // Mock LoginManager to prevent timeouts
-vi.mock('../../../src/services/bot/src/authentication_flow', () => {
+vi.mock('../../../src/services/bot/src/utils/authentication_flow', () => {
   return {
     LoginManager: class {
       async run_login_steps(email: string) {
@@ -25,10 +56,14 @@ vi.mock('../../../src/services/bot/src/authentication_flow', () => {
   };
 });
 
-const dummyFormConfig = createFormConfig('https://app.smartsheet.com/b/form/q1-2025-placeholder', 'q1-2025-placeholder');
+const dummyFormConfig = createFormConfig('https://app.smartsheet.com/b/form/placeholder-q1-2025', 'placeholder-q1-2025');
 
 describe('Browser Lifecycle Management', () => {
   let bot: BotOrchestrator;
+
+  beforeEach(() => {
+    bot = null as unknown as BotOrchestrator;
+  });
 
   afterEach(async () => {
     // Always cleanup after each test
@@ -98,7 +133,7 @@ describe('Browser Lifecycle Management', () => {
     expect(errors.length).toBeGreaterThan(0);
     // Should get "Page is not available" error since browser is closed
     expect(errors[0][1]).toMatch(/Page is not available|start/i);
-  }, 30000); // 30 second timeout for DOM-based waits
+  });
 
   it('should properly cleanup resources on automation error', async () => {
     bot = new BotOrchestrator(Cfg as typeof Cfg, dummyFormConfig, true, 'chromium');
@@ -120,7 +155,7 @@ describe('Browser Lifecycle Management', () => {
     
     // Should still be able to close cleanly
     await expect(bot.close()).resolves.not.toThrow();
-  }, 45000); // 45 second timeout for DOM-based waits
+  });
 
   it('should handle concurrent automation attempts gracefully', async () => {
     bot = new BotOrchestrator(Cfg as typeof Cfg, dummyFormConfig, true, 'chromium');

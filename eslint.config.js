@@ -3,6 +3,7 @@ const typescript = require('@typescript-eslint/eslint-plugin');
 const react = require('eslint-plugin-react');
 const reactHooks = require('eslint-plugin-react-hooks');
 const reactRefresh = require('eslint-plugin-react-refresh');
+const sonarjs = require('eslint-plugin-sonarjs');
 
 const TS_FILES = ['**/*.{ts,tsx,cts,mts}'];
 const TEST_FILES = [
@@ -51,6 +52,7 @@ module.exports = [
   ...typescriptRecommendedPreset,
   {
     files: TS_FILES,
+    plugins: { sonarjs },
     languageOptions: {
       parserOptions: {
         ecmaVersion: 'latest',
@@ -73,7 +75,21 @@ module.exports = [
         'ts-check': false
       }],
 
-      'no-case-declarations': 'error'
+      'no-case-declarations': 'error',
+
+      // Complexity & cognitive limits (industry-standard baselines; ratchet over time)
+      'complexity': ['error', { max: 12 }],
+      'max-depth': ['error', 4],
+      'max-params': ['error', 4],
+      'max-lines-per-function': ['error', { max: 120, skipBlankLines: true, skipComments: true }],
+      'sonarjs/cognitive-complexity': ['error', 20],
+
+      // Useful SonarJS code smell detections
+      'sonarjs/no-identical-functions': 'warn',
+      'sonarjs/no-duplicate-string': ['warn', { threshold: 5 }],
+      'sonarjs/no-collapsible-if': 'warn',
+      'sonarjs/no-nested-switch': 'error',
+      'sonarjs/prefer-immediate-return': 'warn'
     }
   },
 

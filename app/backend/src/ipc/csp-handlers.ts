@@ -23,7 +23,7 @@ interface CSPViolation {
   columnNumber?: number;
 }
 
-interface RateLimitKey {
+interface _RateLimitKey {
   directive: string;
   blockedURI: string;
   sourceFile: string;

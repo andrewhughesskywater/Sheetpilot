@@ -11,8 +11,34 @@ import { describe, it, expect, vi } from 'vitest';
 import { runTimesheet } from '../../../src/services/bot/src/index';
 import { createFormConfig } from '../../../src/services/bot/src/automation_config';
 
+// Mock WebformFiller to prevent actual browser launches
+vi.mock('../../../src/services/bot/src/browser/webform_flow', () => {
+  return {
+    WebformFiller: class {
+      private started = false;
+      private page = { url: () => 'mock://page', close: vi.fn() };
+      
+      async start() { this.started = true; }
+      async close() { this.started = false; }
+      
+      require_page() {
+        if (!this.started) {
+          throw new Error('Page is not available. Call start() first.');
+        }
+        return this.page;
+      }
+      
+      async fill_form_fields() { return true; }
+      async submit_form() { return true; }
+      async wait_for_form_ready() { return; }
+      async navigate_to_base() { return; }
+      async inject_field_value() { return; }
+    }
+  };
+});
+
 // Mock LoginManager to fail authentication immediately to prevent timeouts
-vi.mock('../../../src/services/bot/src/authentication_flow', () => {
+vi.mock('../../../src/services/bot/src/utils/authentication_flow', () => {
   return {
     LoginManager: class {
       async run_login_steps() { throw new Error('Authentication failed (mock)'); }
@@ -23,8 +49,8 @@ vi.mock('../../../src/services/bot/src/authentication_flow', () => {
 
 describe('runTimesheet wrapper function', () => {
   const testFormConfig = createFormConfig(
-    'https://app.smartsheet.com/b/form/q1-2025-placeholder',
-    'q1-2025-placeholder'
+    'https://app.smartsheet.com/b/form/placeholder-q1-2025',
+    'placeholder-q1-2025'
   );
 
   it('should handle empty rows array gracefully', async () => {
@@ -34,7 +60,7 @@ describe('runTimesheet wrapper function', () => {
     expect(result.submitted).toHaveLength(0);
     // Should complete successfully with no rows to process
     expect(result.ok).toBe(true);
-  }, 45000); // 45 second timeout for DOM-based waits
+  });
 
   it('should return proper error structure when authentication fails', async () => {
     // This test verifies that the function returns proper error structure
@@ -59,7 +85,7 @@ describe('runTimesheet wrapper function', () => {
     // Should fail at authentication (expected with test credentials)
     expect(result.ok).toBe(false);
     expect(result.errors.length).toBeGreaterThan(0);
-  }, 45000); // 45 second timeout for DOM-based waits
+  });
 
   it('should handle invalid credentials gracefully', async () => {
     const testRows = [
@@ -76,7 +102,7 @@ describe('runTimesheet wrapper function', () => {
     expect(result).toBeDefined();
     expect(result.ok).toBe(false);
     expect(result.errors.length).toBeGreaterThan(0);
-  }, 45000); // 45 second timeout for DOM-based waits
+  });
 
   it('should process multiple rows and report individual failures', async () => {
     const testRows = [
@@ -105,5 +131,5 @@ describe('runTimesheet wrapper function', () => {
       expect(typeof error[0]).toBe('number');
       expect(typeof error[1]).toBe('string');
     });
-  }, 45000); // 45 second timeout for DOM-based waits
+  });
 });

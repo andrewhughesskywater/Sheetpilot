@@ -1,4 +1,3 @@
-import * as path from 'path';
 import type { App, BrowserWindow } from 'electron';
 import { BrowserWindow as ElectronBrowserWindow } from 'electron';
 import type { LoggerLike } from '../logging/logger-contract';
