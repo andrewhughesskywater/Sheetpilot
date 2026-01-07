@@ -6,9 +6,9 @@
  */
 
 import { describe, it, expect, afterEach, vi, beforeEach } from 'vitest';
-import { BotOrchestrator } from '../../../src/services/bot/src/bot_orchestation';
-import * as Cfg from '../../../src/services/bot/src/automation_config';
-import { createFormConfig } from '../../../src/services/bot/src/automation_config';
+import { BotOrchestrator } from '../../../src/services/bot/src/core/bot_orchestation';
+import * as Cfg from '../../../src/services/bot/src/config/automation_config';
+import { createFormConfig } from '../../../src/services/bot/src/config/automation_config';
 
 // Mock WebformFiller to prevent actual browser launches
 vi.mock('../../../src/services/bot/src/browser/webform_flow', () => {

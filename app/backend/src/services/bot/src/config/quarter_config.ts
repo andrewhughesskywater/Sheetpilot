@@ -38,32 +38,10 @@ export interface QuarterDefinition {
  * 1. Add new QuarterDefinition to this array
  * 2. Specify date range and form URL/ID
  * 3. No other changes needed - routing logic automatically handles new quarters
+ * 
+ * Only the active quarters are allowed to be in this section and will change over the course of the year
  */
 export const QUARTER_DEFINITIONS: QuarterDefinition[] = [
-  {
-    id: 'Q1-2025',
-    name: 'Q1 2025',
-    startDate: '2025-01-01',
-    endDate: '2025-03-31',
-    formUrl: 'https://app.smartsheet.com/b/form/placeholder-q1-2025',
-    formId: 'placeholder-q1-2025'
-  },
-  {
-    id: 'Q2-2025',
-    name: 'Q2 2025',
-    startDate: '2025-04-01',
-    endDate: '2025-06-30',
-    formUrl: 'https://app.smartsheet.com/b/form/placeholder-q2-2025',
-    formId: 'placeholder-q2-2025'
-  },
-  {
-    id: 'Q3-2025',
-    name: 'Q3 2025',
-    startDate: '2025-07-01',
-    endDate: '2025-09-30',
-    formUrl: 'https://app.smartsheet.com/b/form/0197cbae7daf72bdb96b3395b500d414',
-    formId: '0197cbae7daf72bdb96b3395b500d414'
-  },
   {
     id: 'Q4-2025',
     name: 'Q4 2025',
@@ -71,6 +49,14 @@ export const QUARTER_DEFINITIONS: QuarterDefinition[] = [
     endDate: '2025-12-31',
     formUrl: 'https://app.smartsheet.com/b/form/0199fabee6497e60abb6030c48d84585',
     formId: '0199fabee6497e60abb6030c48d84585'
+  },
+  {
+    id: 'Q1-2026',
+    name: 'Q1 2026',
+    startDate: '2026-01-01',
+    endDate: '2026-03-31',
+    formUrl: 'https://app.smartsheet.com/b/form/019b5b17a03a79ac9437e45996f49f4f',
+    formId: '019b5b17a03a79ac9437e45996f49f4f'
   }
 ];
 

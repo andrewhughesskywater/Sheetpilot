@@ -1,10 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
-import * as Cfg from '../../../src/services/bot/src/automation_config';
-import { BotOrchestrator } from '../../../src/services/bot/src/bot_orchestation';
-import { createFormConfig } from '../../../src/services/bot/src/automation_config';
+import * as Cfg from '../../../src/services/bot/src/config/automation_config';
+import { BotOrchestrator } from '../../../src/services/bot/src/core/bot_orchestation';
+import { createFormConfig } from '../../../src/services/bot/src/config/automation_config';
 
 // Mock LoginManager to avoid waiting for URL changes (which causes timeouts)
-vi.mock('../../../src/services/bot/src/authentication_flow', () => {
+vi.mock('../../../src/services/bot/src/utils/authentication_flow', () => {
   return {
     LoginManager: class {
       async run_login_steps() {}

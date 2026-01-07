@@ -8,8 +8,8 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { runTimesheet } from '../../../src/services/bot/src/index';
-import { createFormConfig } from '../../../src/services/bot/src/automation_config';
+import { runTimesheet } from '../../../src/services/bot/src/core/index';
+import { createFormConfig } from '../../../src/services/bot/src/config/automation_config';
 
 // Mock WebformFiller to prevent actual browser launches
 vi.mock('../../../src/services/bot/src/browser/webform_flow', () => {

@@ -20,9 +20,16 @@ const DEFAULT_CONFIG: PluginRegistryConfig = {
     data: { active: 'sqlite', alternatives: ['memory'] },
     credentials: { active: 'sqlite' },
     submission: { active: 'electron', alternatives: ['mock'] },
-    ui: { 
+    ui: {
       active: 'handsontable',
       alternatives: ['simple-table']
+    },
+    // Timesheet-specific namespaces (renderer)
+    'timesheet.ui': {
+      active: 'handsontable'
+    },
+    'timesheet.validation': {
+      active: 'basic'
     }
   },
   featureFlags: {
@@ -107,7 +114,7 @@ function mergeWithDefaults(userConfig: Partial<PluginRegistryConfig>): PluginReg
  * @private
  */
 const FEATURE_FLAG_TO_NAMESPACE_MAP: Record<string, string> = {
-  experimentalGrid: 'ui',
+  experimentalGrid: 'timesheet.ui',
   mockSubmission: 'submission',
   // Add more explicit mappings as needed
 };

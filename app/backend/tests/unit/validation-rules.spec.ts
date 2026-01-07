@@ -17,7 +17,7 @@ import {
   validateField,
   formatTimeInput
 } from '../../src/logic/timesheet-validation';
-import { validateQuarterAvailability, QUARTER_DEFINITIONS } from '../../src/services/bot/src/quarter_config';
+import { validateQuarterAvailability, QUARTER_DEFINITIONS } from '../../src/services/bot/src/config/quarter_config';
 import { validTimesheetEntries, invalidTimesheetEntries, edgeCaseEntries } from '../fixtures/timesheet-data';
 import { assertValidTimesheetRow, assertInvalidTimesheetRow } from '../helpers/assertion-helpers';
 

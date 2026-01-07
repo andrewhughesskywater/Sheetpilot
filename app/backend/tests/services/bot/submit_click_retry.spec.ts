@@ -23,20 +23,20 @@ describe('SUBMIT_CLICK_RETRY_DELAY_S configuration', () => {
   });
 
   it('is exported from automation_config', async () => {
-    const cfg = await import('../../../src/services/bot/src/automation_config');
+    const cfg = await import('../../../src/services/bot/src/config/automation_config');
     expect(cfg).toHaveProperty('SUBMIT_CLICK_RETRY_DELAY_S');
     expect(typeof cfg.SUBMIT_CLICK_RETRY_DELAY_S).toBe('number');
   });
 
   it('defaults to 1.0 second', async () => {
-    const cfg = await import('../../../src/services/bot/src/automation_config');
+    const cfg = await import('../../../src/services/bot/src/config/automation_config');
     expect(cfg.SUBMIT_CLICK_RETRY_DELAY_S).toBe(1.0);
   });
 
   it('can be configured via environment variable', async () => {
     process.env['SUBMIT_CLICK_RETRY_DELAY_S'] = '2.5';
     vi.resetModules();
-    const cfg = await import('../../../src/services/bot/src/automation_config');
+    const cfg = await import('../../../src/services/bot/src/config/automation_config');
     expect(cfg.SUBMIT_CLICK_RETRY_DELAY_S).toBe(2.5);
   });
 });

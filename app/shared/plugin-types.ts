@@ -89,3 +89,35 @@ export interface PluginResolution<T = unknown> {
   isFallback: boolean;
 }
 
+/**
+ * Timesheet UI plugin interface (renderer-side)
+ * Provides grid/table configuration and event hooks for the timesheet.
+ * Types are intentionally generic to avoid renderer-only deps in shared.
+ */
+export interface TimesheetUIPlugin<R = unknown, C = unknown> extends IPlugin {
+  /** Build column definitions for the grid from current rows */
+  buildColumns(rows: R[]): C[] | undefined;
+  /** Provide a cells meta builder compatible with the active grid */
+  buildCellsMeta(): unknown;
+  /** Optional collection of grid event handlers (framework-specific) */
+  handlers?: Record<string, unknown>;
+}
+
+/**
+ * Timesheet validation plugin interface (renderer-side or shared)
+ * Responsible for computing validation errors given rows.
+ */
+export interface TimesheetValidationPlugin<R = unknown, E = unknown> extends IPlugin {
+  /** Validate all rows; returns a flat list of errors */
+  validate(rows: R[]): E[];
+}
+
+/**
+ * Namespaces used for timesheet-related plugins.
+ */
+export const TIMESHEET_PLUGIN_NAMESPACES = {
+  ui: 'timesheet.ui',
+  validation: 'timesheet.validation',
+} as const;
+
+

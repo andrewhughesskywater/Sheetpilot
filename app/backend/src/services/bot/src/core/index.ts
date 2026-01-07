@@ -31,7 +31,7 @@
 // Core automation classes
 export { BotOrchestrator, TimesheetBot, type AutomationResult } from './bot_orchestation';
 import { BotOrchestrator } from './bot_orchestation';
-import * as Cfg from '../automation_config';
+import * as Cfg from '../config/automation_config';
 import { appSettings } from '@sheetpilot/shared/constants';
 import { botLogger } from '@sheetpilot/shared/logger';
 
@@ -39,13 +39,13 @@ import { botLogger } from '@sheetpilot/shared/logger';
 export { LoginManager, BotNavigationError } from '../utils/authentication_flow';
 
 // Browser automation and form interaction
-export { WebformFiller, BotNotStartedError } from '../webform_flow';
+export { WebformFiller, BotNotStartedError } from '../browser/webform_flow';
 
 // Configuration constants and utilities
-export * from '../automation_config';
+export * from '../config/automation_config';
 
 // Quarter configuration and routing
-export * from '../quarter_config';
+export * from '../config/quarter_config';
 
 /**
  * Runs timesheet automation for a batch of rows.

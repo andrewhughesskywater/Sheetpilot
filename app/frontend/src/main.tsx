@@ -8,6 +8,7 @@ import { initializeLoggerFallback } from './utils/logger-fallback'
 import { initializeAPIFallback } from './utils/api-fallback'
 import { runOnce } from './utils/safe-init'
 import { initializeTheme, getCurrentEffectiveTheme, subscribeToThemeChanges } from './utils/theme-manager'
+import { registerDefaultFrontendPlugins } from './plugins/register-default-plugins'
 
 // Initialize logger and API fallbacks for development mode (idempotent with guard)
 runOnce(() => {
@@ -61,6 +62,12 @@ window.addEventListener('DOMContentLoaded', () => {
 
 // Initialize theme system before rendering
 initializeTheme();
+
+// Initialize frontend plugins (non-blocking)
+// Intentionally not awaited to avoid delaying first paint; safe as consumers access lazily
+registerDefaultFrontendPlugins().catch((err) => {
+  window.logger?.warn?.('Could not register frontend plugins', { error: err?.message || String(err) });
+});
 
 // MUI theme is primarily overridden by M3 CSS tokens in m3-mui-overrides.css
 // This theme ensures MUI respects dark mode and doesn't break

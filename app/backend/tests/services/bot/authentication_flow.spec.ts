@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import * as C from '../../../src/services/bot/src/automation_config';
-import { LoginManager } from '../../../src/services/bot/src/authentication_flow';
+import * as C from '../../../src/services/bot/src/config/automation_config';
+import { LoginManager } from '../../../src/services/bot/src/utils/authentication_flow';
 
 class FakeFiller {
   private _url: string;

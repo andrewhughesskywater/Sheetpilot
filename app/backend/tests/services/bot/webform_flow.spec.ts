@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import path from 'path';
 import type { Page, Route } from 'playwright';
-import * as cfg from '../../../src/services/bot/src/automation_config';
-import { WebformFiller } from '../../../src/services/bot/src/webform_flow';
+import * as cfg from '../../../src/services/bot/src/config/automation_config';
+import { WebformFiller } from '../../../src/services/bot/src/browser/webform_flow';
 
 describe('WebformFiller against mock form', () => {
   let filler: WebformFiller;
