@@ -25,7 +25,7 @@ describe('constants', () => {
 
   describe('Constants', () => {
     it('should export APP_VERSION', () => {
-      expect(APP_VERSION).toBe('1.5.4');
+      expect(APP_VERSION).toBe('1.5.7');
       expect(typeof APP_VERSION).toBe('string');
     });
 

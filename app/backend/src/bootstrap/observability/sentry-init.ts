@@ -43,7 +43,7 @@ export function initializeSentry(
 
   try {
     // Dynamic import to avoid hard dependency on @sentry/electron
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+     
     const Sentry = require('@sentry/electron');
 
     const tracesSampleRate = isDev ? 1.0 : 0.05;

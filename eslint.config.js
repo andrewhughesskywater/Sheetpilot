@@ -88,8 +88,8 @@ module.exports = [
       'sonarjs/no-identical-functions': 'warn',
       'sonarjs/no-duplicate-string': ['warn', { threshold: 5 }],
       'sonarjs/no-collapsible-if': 'warn',
-      'sonarjs/no-nested-switch': 'error',
-      'sonarjs/prefer-immediate-return': 'warn'
+      'sonarjs/no-nested-switch': 'error'
+      // Note: prefer-immediate-return disabled due to compatibility with ESLint 9 flat config
     }
   },
 

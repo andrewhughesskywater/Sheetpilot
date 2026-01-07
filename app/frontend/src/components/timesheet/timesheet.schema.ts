@@ -100,46 +100,56 @@ export function normalizeDateFormat(dateStr?: string): string {
   return d;
 }
 
-export function isValidDate(dateStr?: string): boolean {
+/**
+ * Parse a date string into year, month, and day parts.
+ * Supports MM/DD/YYYY and YYYY-MM-DD formats.
+ */
+function parseDateParts(dateStr?: string): { year: number; month: number; day: number } | null {
   const d = dateStr ?? '';
-  if (!d) return false;
-  
-  let month: number;
-  let day: number;
-  let year: number;
-  
-  // Check for MM/DD/YYYY or M/D/YYYY format (slash-separated)
+  if (!d) return null;
+
+  // MM/DD/YYYY or M/D/YYYY
   const usFormatRegex = /^\d{1,2}\/\d{1,2}\/\d{4}$/;
   if (usFormatRegex.test(d)) {
-    const dateParts = d.split('/');
-    if (dateParts.length !== 3) return false;
-    const [monthStr, dayStr, yearStr] = dateParts;
-    month = parseInt(monthStr ?? '', 10);
-    day = parseInt(dayStr ?? '', 10);
-    year = parseInt(yearStr ?? '', 10);
+    const [monthStr, dayStr, yearStr] = d.split('/');
+    const month = parseInt(monthStr ?? '', 10);
+    const day = parseInt(dayStr ?? '', 10);
+    const year = parseInt(yearStr ?? '', 10);
+    return { year, month, day };
   }
-  // Check for YYYY-MM-DD format (ISO format, dash-separated)
-  else {
-    const isoFormatRegex = /^\d{4}-\d{1,2}-\d{1,2}$/;
-    if (!isoFormatRegex.test(d)) return false;
-    const dateParts = d.split('-');
-    if (dateParts.length !== 3) return false;
-    const [yearStr, monthStr, dayStr] = dateParts;
-    month = parseInt(monthStr ?? '', 10);
-    day = parseInt(dayStr ?? '', 10);
-    year = parseInt(yearStr ?? '', 10);
+
+  // YYYY-MM-DD
+  const isoFormatRegex = /^\d{4}-\d{1,2}-\d{1,2}$/;
+  if (isoFormatRegex.test(d)) {
+    const [yearStr, monthStr, dayStr] = d.split('-');
+    const year = parseInt(yearStr ?? '', 10);
+    const month = parseInt(monthStr ?? '', 10);
+    const day = parseInt(dayStr ?? '', 10);
+    return { year, month, day };
   }
-  
-  // Basic range checks
+
+  return null;
+}
+
+/**
+ * Validate parsed date parts are within acceptable ranges and represent a real date.
+ */
+function isValidDateParts(parts: { year: number; month: number; day: number } | null): boolean {
+  if (!parts) return false;
+  const { year, month, day } = parts;
   if (month < 1 || month > 12) return false;
   if (day < 1 || day > 31) return false;
   if (year < 1900 || year > 2100) return false;
-  
-  // Create date object and verify it matches input
   const date = new Date(year, month - 1, day);
-  return date.getFullYear() === year && 
-         date.getMonth() === month - 1 && 
-         date.getDate() === day;
+  return (
+    date.getFullYear() === year &&
+    date.getMonth() === month - 1 &&
+    date.getDate() === day
+  );
+}
+
+export function isValidDate(dateStr?: string): boolean {
+  return isValidDateParts(parseDateParts(dateStr));
 }
 
 export function isValidTime(timeStr?: string): boolean {
@@ -196,40 +206,31 @@ export function timeRangesOverlap(
  * Check if a row's time range overlaps with any previous rows on the same date
  * Returns true if there's an overlap, false otherwise
  */
+function isRowCompleteValid(row?: TimesheetRow): row is Required<Pick<TimesheetRow, 'date' | 'timeIn' | 'timeOut'>> & TimesheetRow {
+  if (!row) return false;
+  const { date, timeIn, timeOut } = row;
+  if (!date || !timeIn || !timeOut) return false;
+  if (!isValidDate(date) || !isValidTime(timeIn) || !isValidTime(timeOut)) return false;
+  return isTimeOutAfterTimeIn(timeIn, timeOut);
+}
+
 export function hasTimeOverlapWithPreviousEntries(
   currentRowIndex: number,
   rows: TimesheetRow[]
 ): boolean {
   const currentRow = rows[currentRowIndex];
-  if (!currentRow) return false;
-  
-  const { date, timeIn, timeOut } = currentRow;
-  
-  // Skip validation if any required field is missing or invalid
-  if (!date || !timeIn || !timeOut) return false;
-  if (!isValidDate(date) || !isValidTime(timeIn) || !isValidTime(timeOut)) return false;
-  if (!isTimeOutAfterTimeIn(timeIn, timeOut)) return false;
-  
-  // Check all previous rows (first-in rule: earlier rows take precedence)
-  for (let i = 0; i < currentRowIndex; i++) {
-    const previousRow = rows[i];
-    if (!previousRow) continue;
-    
-    const { date: prevDate, timeIn: prevTimeIn, timeOut: prevTimeOut } = previousRow;
-    
-    // Skip if previous row doesn't have complete valid data
-    if (!prevDate || !prevTimeIn || !prevTimeOut) continue;
-    if (!isValidDate(prevDate) || !isValidTime(prevTimeIn) || !isValidTime(prevTimeOut)) continue;
-    if (!isTimeOutAfterTimeIn(prevTimeIn, prevTimeOut)) continue;
-    
-    // Only check for overlaps on the same date
-    if (date === prevDate) {
-      if (timeRangesOverlap(timeIn, timeOut, prevTimeIn, prevTimeOut)) {
-        return true;
-      }
+  if (!isRowCompleteValid(currentRow)) return false;
+
+  // Only consider previous rows with the same date and valid complete entries
+  const sameDateValidPrevious = rows
+    .slice(0, currentRowIndex)
+    .filter((r) => isRowCompleteValid(r) && r!.date === currentRow.date);
+
+  for (const prev of sameDateValidPrevious) {
+    if (timeRangesOverlap(currentRow.timeIn!, currentRow.timeOut!, prev.timeIn!, prev.timeOut!)) {
+      return true;
     }
   }
-  
   return false;
 }
 

@@ -8,6 +8,8 @@
  * @version 1.4.0
  */
 
+import { APP_VERSION } from './version';
+
 /**
  * Lazy logger import to avoid circular dependency with logger.ts
  * @private
@@ -19,11 +21,9 @@ function getLogger() {
 }
 
 /**
- * Application version
- * This should match the version in package.json
- * Updated: 2025-11-04
+ * Re-export APP_VERSION for backwards compatibility
  */
-export const APP_VERSION = '1.5.4';
+export { APP_VERSION } from './version';
 
 /**
  * Application name

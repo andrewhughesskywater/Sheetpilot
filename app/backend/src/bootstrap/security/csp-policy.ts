@@ -34,7 +34,7 @@ export interface CspPolicy {
 export function buildCspHeader(policy: CspPolicy): string {
   const lines: string[] = [];
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+   
   const { 'upgrade-insecure-requests': _upgrade, ...directives } = policy.directives;
 
   for (const [key, values] of Object.entries(directives)) {

@@ -23,7 +23,7 @@ import * as path from 'path';
 import * as os from 'os';
 import * as crypto from 'crypto';
 import { app } from 'electron';
-import { APP_VERSION } from './constants';
+import { APP_VERSION } from './version';
 
 // ============================================================================
 // LOGGER CONFIGURATION

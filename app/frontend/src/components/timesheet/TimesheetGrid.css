@@ -29,6 +29,13 @@
   gap: var(--sp-space-3);
 }
 
+/* Footer actions row */
+.timesheet-footer-actions {
+  display: flex;
+  gap: var(--sp-space-2);
+  align-items: center;
+}
+
 .debug-state-display {
   font-size: 10px;
   color: #666;
