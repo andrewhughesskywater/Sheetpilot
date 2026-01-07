@@ -11,7 +11,7 @@
 import { ipcMain, app } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
-import { ipcLogger } from '../../../shared/logger';
+import { ipcLogger } from '@sheetpilot/shared/logger';
 import { validateSession } from '../repositories';
 import { isTrustedIpcSender } from './handlers/timesheet/main-window';
 import { validateInput } from '../validation/validate-ipc-input';

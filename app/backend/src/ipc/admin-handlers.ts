@@ -9,7 +9,7 @@
  */
 
 import { ipcMain } from 'electron';
-import { ipcLogger } from '../../../shared/logger';
+import { ipcLogger } from '@sheetpilot/shared/logger';
 import { isTrustedIpcSender } from './handlers/timesheet/main-window';
 import { 
   validateSession,

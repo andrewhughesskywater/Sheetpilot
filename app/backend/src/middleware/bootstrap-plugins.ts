@@ -16,7 +16,7 @@ import { MemoryDataService } from '../services/plugins/memory-data-service';
 import { SQLiteCredentialService } from '../services/plugins/sqlite-credential-service';
 import { ElectronBotService } from '../services/plugins/electron-bot-service';
 import { MockSubmissionService } from '../services/plugins/mock-submission-service';
-import { appLogger } from '../../../shared/logger';
+import { appLogger } from '@sheetpilot/shared/logger';
 import * as path from 'path';
 
 /**

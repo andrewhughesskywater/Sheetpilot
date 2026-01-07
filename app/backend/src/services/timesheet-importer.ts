@@ -18,7 +18,7 @@ import {
     getTimesheetEntriesByIds,
     resetInProgressTimesheetEntries
 } from '../repositories';
-import { botLogger } from '../../../shared/logger';
+import { botLogger } from '@sheetpilot/shared/logger';
 import { getSubmissionService } from '../middleware/bootstrap-plugins';
 import type { TimesheetEntry } from '../../../shared/contracts/IDataService';
 import type { Credentials } from '../../../shared/contracts/ICredentialService';

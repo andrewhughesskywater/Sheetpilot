@@ -12,7 +12,7 @@ export default defineConfig({
     name: 'backend-smoke',
     environment: 'node',
     root: path.resolve(__dirname, '../../..'),
-    include: ['app/backend/tests/smoke/**/*.spec.ts'],
+    include: ['app/tests/system/smoke/**/*.spec.ts'],
     passWithNoTests: false,
     globals: true,
     setupFiles: [path.resolve(__dirname, 'setup.ts')],

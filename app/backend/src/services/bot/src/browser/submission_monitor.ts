@@ -9,7 +9,7 @@
  * - falling back to DOM text indicators when network signals are missing
  */
 import type { Locator, Page, Response } from 'playwright';
-import * as cfg from '../automation_config';
+import * as cfg from '../config/automation_config';
 import { botLogger } from '@sheetpilot/shared/logger';
 
 type RecordedResponse = { status: number; url: string; body?: string };

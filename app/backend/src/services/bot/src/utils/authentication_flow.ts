@@ -16,9 +16,9 @@
  */
 
 import type { Page } from 'playwright';
-import * as C from '../automation_config';
-import type { LoginStep } from '../automation_config';
-import type { WebformFiller } from '../webform_flow';
+import * as C from '../config/automation_config';
+import type { LoginStep } from '../config/automation_config';
+import type { WebformFiller } from '../browser/webform_flow';
 import { authLogger } from '@sheetpilot/shared/logger';
 
 /**

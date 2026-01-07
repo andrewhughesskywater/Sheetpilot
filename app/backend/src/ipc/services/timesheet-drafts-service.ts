@@ -1,8 +1,8 @@
-import { ipcLogger } from '../../../shared/logger';
-import { formatMinutesToTime, parseTimeToMinutes } from '../../../shared/utils/format-conversions';
-import { getDb, resetInProgressTimesheetEntries } from '../repositories';
-import { validateInput } from '../validation/validate-ipc-input';
-import { deleteDraftSchema, saveDraftSchema } from '../validation/ipc-schemas';
+import { ipcLogger } from '@sheetpilot/shared/logger';
+import { formatMinutesToTime, parseTimeToMinutes } from '@sheetpilot/shared/utils/format-conversions';
+import { getDb, resetInProgressTimesheetEntries } from '../../repositories';
+import { validateInput } from '../../validation/validate-ipc-input';
+import { deleteDraftSchema, saveDraftSchema } from '../../validation/ipc-schemas';
 
 export type SaveDraftInput = {
   id?: number;

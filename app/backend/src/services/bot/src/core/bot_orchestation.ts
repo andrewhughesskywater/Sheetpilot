@@ -21,9 +21,9 @@
 import * as Cfg from '../config/automation_config';
 import { WebformFiller } from '../browser/webform_flow';
 import { LoginManager } from '../utils/authentication_flow';
-import { botLogger } from '../../../../../../shared/logger';
-import { getQuarterForDate } from '../quarter_config';
-import { appSettings } from '../../../../../../shared/constants';
+import { botLogger } from '@sheetpilot/shared/logger';
+import { getQuarterForDate } from '../config/quarter_config';
+import { appSettings } from '@sheetpilot/shared/constants';
 import { checkAborted, setupAbortHandler } from '../utils/abort-utils';
 
 /**

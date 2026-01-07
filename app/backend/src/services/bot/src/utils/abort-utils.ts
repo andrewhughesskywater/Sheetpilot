@@ -8,7 +8,7 @@
  * @since 2025
  */
 
-import { botLogger } from '../../../../../../shared/logger';
+import { botLogger } from '@sheetpilot/shared/logger';
 
 /**
  * Checks if an abort signal is already aborted and throws if so

@@ -2,15 +2,15 @@
   "name": "sheetpilot-bot",
   "version": "1.5.0",
   "description": "Timesheet automation bot for Sheetpilot",
-  "main": "dist/index.js",
+  "main": "../../../../../build/bot/index.js",
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "start": "node ../../../build/bot/index.js",
+    "start": "node ../../../../../build/bot/index.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "clean": "rimraf ../../../build/bot",
+    "clean": "rimraf ../../../../../build/bot",
     "lint": "eslint . --ext .ts,.tsx"
   },
   "keywords": [

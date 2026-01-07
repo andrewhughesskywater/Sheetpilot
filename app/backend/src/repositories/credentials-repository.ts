@@ -10,7 +10,7 @@
 
 import * as crypto from 'crypto';
 import * as os from 'os';
-import { dbLogger } from '../../../shared/logger';
+import { dbLogger } from '@sheetpilot/shared/logger';
 import { getDb } from './connection-manager';
 
 /**

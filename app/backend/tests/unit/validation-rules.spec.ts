@@ -323,8 +323,26 @@ describe('Validation Rules Unit Tests', () => {
       });
     });
 
+    function randomDateInCurrentQuarter(): string {
+      const now = new Date();
+      const year = now.getFullYear();
+      const q = Math.floor(now.getMonth() / 3);
+      const startMonth = q * 3;
+      const endMonth = startMonth + 2;
+      const start = new Date(year, startMonth, 1);
+      const end = new Date(year, endMonth + 1, 0);
+      const startTime = start.getTime();
+      const endTime = end.getTime();
+      const randTime = startTime + Math.floor(Math.random() * (endTime - startTime + 1));
+      const d = new Date(randTime);
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      const yyyy = d.getFullYear();
+      return `${mm}/${dd}/${yyyy}`;
+    }
+
     it('should validate date field', () => {
-      const validDate = validateField('01/15/2025', 0, 'date', mockRows, projects, chargeCodes);
+      const validDate = validateField(randomDateInCurrentQuarter(), 0, 'date', mockRows, projects, chargeCodes);
       expect(validDate).toBeNull();
       
       const invalidDate = validateField('2025-01-15', 0, 'date', mockRows, projects, chargeCodes);

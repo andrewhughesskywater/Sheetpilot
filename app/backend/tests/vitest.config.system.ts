@@ -9,29 +9,27 @@ export default defineConfig({
     }
   },
   test: {
-    name: 'backend-integration',
+    name: 'system-tests',
     environment: 'node',
     root: path.resolve(__dirname, '../../..'),
     include: [
-      'app/backend/tests/integration/**/*.spec.ts',
-      'app/tests/integration/**/*.spec.ts'
+      'app/tests/system/**/*.spec.ts'
     ],
     passWithNoTests: false,
     globals: true,
     setupFiles: [path.resolve(__dirname, 'setup.ts')],
-    testTimeout: 120000, // 2 minutes for integration tests
-    // Allow parallel execution for integration tests
-    pool: 'threads',
+    testTimeout: 30000, // 30 seconds for system tests
+    // Run tests in sequence for system tests to ensure stability
+    pool: 'forks',
     poolOptions: {
-      threads: {
-        maxThreads: 4,
-        minThreads: 1
+      forks: {
+        singleFork: true
       }
     },
     reporters: [
       'default',
       new MarkdownReporter({ 
-        outputFile: 'integration-test-results.md',
+        outputFile: 'system-test-results.md',
         outputDir: path.resolve(__dirname, '../../..', 'test-results')
       })
     ]

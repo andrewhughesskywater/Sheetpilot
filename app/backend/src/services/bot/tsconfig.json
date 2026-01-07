@@ -3,6 +3,11 @@
     "target": "ES2022",
     "module": "CommonJS",
     "moduleResolution": "Node",
+    "baseUrl": "../../../../",
+    "paths": {
+      "@sheetpilot/shared": ["app/shared/index.ts"],
+      "@sheetpilot/shared/*": ["app/shared/*"]
+    },
     "lib": ["ES2022", "DOM"],
     "outDir": "../../../../../build/bot",
     "strict": true,
@@ -37,8 +42,7 @@
     "tsBuildInfoFile": "../../../../../build/bot/.tsbuildinfo"
   },
   "include": [
-    "src/**/*",
-    "../../shared/logger.ts"
+    "src/**/*"
   ],
   "exclude": [
     "node_modules",

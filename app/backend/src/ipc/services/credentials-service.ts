@@ -1,8 +1,8 @@
-import { ipcLogger } from '../../../shared/logger';
-import { CredentialsStorageError } from '../../../shared/errors';
-import { deleteCredentials, listCredentials, storeCredentials } from '../repositories';
-import { validateInput } from '../validation/validate-ipc-input';
-import { deleteCredentialsSchema, storeCredentialsSchema } from '../validation/ipc-schemas';
+import { ipcLogger } from '@sheetpilot/shared/logger';
+import { CredentialsStorageError } from '@sheetpilot/shared/errors';
+import { deleteCredentials, listCredentials, storeCredentials } from '../../repositories';
+import { validateInput } from '../../validation/validate-ipc-input';
+import { deleteCredentialsSchema, storeCredentialsSchema } from '../../validation/ipc-schemas';
 
 export type CredentialsStoreResult = { success: boolean; message?: string; error?: unknown; changes: number };
 export type CredentialsListResult = { success: boolean; error?: string; credentials: Array<{ service: string; email: string }> };

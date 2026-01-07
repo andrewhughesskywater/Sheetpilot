@@ -12,7 +12,7 @@
 import type BetterSqlite3 from 'better-sqlite3';
 import * as fs from 'fs';
 import * as path from 'path';
-import { dbLogger } from '../../../shared/logger';
+import { dbLogger } from '@sheetpilot/shared/logger';
 import { ensureSchemaInternal } from './connection-manager';
 
 /**

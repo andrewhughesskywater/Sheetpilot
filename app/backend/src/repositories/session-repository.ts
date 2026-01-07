@@ -8,7 +8,7 @@
  * @since 2025
  */
 
-import { dbLogger } from '../../../shared/logger';
+import { dbLogger } from '@sheetpilot/shared/logger';
 import { getDb } from './connection-manager';
 
 /**

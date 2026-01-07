@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron';
-import { ipcLogger } from '../../../../../shared/logger';
+import { ipcLogger } from '@sheetpilot/shared/logger';
 import { resetInProgressTimesheetEntries } from '../../../repositories';
 import { isTrustedIpcSender } from './main-window';
 

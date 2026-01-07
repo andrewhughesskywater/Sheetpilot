@@ -40,6 +40,8 @@ export interface QuarterDefinition {
  * 3. No other changes needed - routing logic automatically handles new quarters
  * 
  * Only the active quarters are allowed to be in this section and will change over the course of the year
+ * 
+ * ON PAIN OF DEATH, DO NOT CHANEGE THE QUARTER DEFINITIONS
  */
 export const QUARTER_DEFINITIONS: QuarterDefinition[] = [
   {
@@ -67,62 +69,25 @@ export const QUARTER_DEFINITIONS: QuarterDefinition[] = [
  * @returns Quarter definition if date falls within a quarter, null otherwise
  */
 export function getQuarterForDate(dateStr: string): QuarterDefinition | null {
-  if (!dateStr || typeof dateStr !== 'string') {
-    return null;
-  }
-  
-  // Validate date format
-  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-  if (!dateRegex.test(dateStr)) {
-    return null;
-  }
-  
-  // Parse date components and validate
-  const [yearStr, monthStr, dayStr] = dateStr.split('-');
-  const year = parseInt(yearStr!, 10);
-  const month = parseInt(monthStr!, 10);
-  const day = parseInt(dayStr!, 10);
-  
-  // Validate parsed values
-  if (isNaN(year) || isNaN(month) || isNaN(day)) {
-    return null;
-  }
-  
-  const targetDate = new Date(year, month - 1, day);
-  
-  // Check if the date is valid by comparing with original components
-  if (targetDate.getFullYear() !== year || 
-      targetDate.getMonth() !== month - 1 || 
-      targetDate.getDate() !== day) {
-    return null;
-  }
-  
-  // Check each quarter definition
+  // Validate format (YYYY-MM-DD)
+  const iso = /^\d{4}-\d{2}-\d{2}$/;
+  if (!iso.test(dateStr)) return null;
+
+  // Validate actual calendar date using UTC to avoid timezone offsets
+  const year = Number(dateStr.slice(0, 4));
+  const monthIndex = Number(dateStr.slice(5, 7)) - 1; // 0-based
+  const day = Number(dateStr.slice(8, 10));
+  const dt = new Date(Date.UTC(year, monthIndex, day));
+  const isValidDate =
+    dt.getUTCFullYear() === year &&
+    dt.getUTCMonth() === monthIndex &&
+    dt.getUTCDate() === day;
+  if (!isValidDate) return null;
+
+  // ISO date strings are lexicographically sortable; compare as strings
   for (const quarter of QUARTER_DEFINITIONS) {
-    const [startYearStr, startMonthStr, startDayStr] = quarter.startDate.split('-');
-    const [endYearStr, endMonthStr, endDayStr] = quarter.endDate.split('-');
-    
-    const startYear = parseInt(startYearStr!, 10);
-    const startMonth = parseInt(startMonthStr!, 10);
-    const startDay = parseInt(startDayStr!, 10);
-    const endYear = parseInt(endYearStr!, 10);
-    const endMonth = parseInt(endMonthStr!, 10);
-    const endDay = parseInt(endDayStr!, 10);
-    
-    // Validate parsed values
-    if (isNaN(startYear) || isNaN(startMonth) || isNaN(startDay) || 
-        isNaN(endYear) || isNaN(endMonth) || isNaN(endDay)) {
-      continue;
-    }
-    
-    const startDate = new Date(startYear, startMonth - 1, startDay);
-    const endDate = new Date(endYear, endMonth - 1, endDay);
-    
-    if (targetDate >= startDate && targetDate <= endDate) {
-      return quarter;
-    }
+    if (dateStr >= quarter.startDate && dateStr <= quarter.endDate) return quarter;
   }
-  
   return null;
 }
 

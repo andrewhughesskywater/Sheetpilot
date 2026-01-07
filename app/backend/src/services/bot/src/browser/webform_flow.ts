@@ -16,7 +16,7 @@
 
 import { chromium, type Browser, type BrowserContext, type Page } from 'playwright';
 import * as cfg from '../config/automation_config';
-import { botLogger } from '../../../../../../shared/logger';
+import { botLogger } from '@sheetpilot/shared/logger';
 import { SubmissionMonitor } from './submission_monitor';
 
 export class BotNotStartedError extends Error {}
@@ -159,7 +159,7 @@ export class WebformFiller {
   }
 
   require_page(): Page {
-    if (!this.page) throw new BotNotStartedError('Page not available');
+    if (!this.page) throw new BotNotStartedError('Page is not available');
     return this.page;
   }
 

@@ -13,13 +13,7 @@ export default defineConfig({
     environment: 'node',
     root: path.resolve(__dirname, '../../..'),
     include: [
-      'app/backend/tests/unit/**/*.spec.ts',
-      'app/backend/tests/contracts/**/*.spec.ts',
-      'app/backend/tests/ipc/**/*.spec.ts',
-      'app/backend/tests/middleware/**/*.spec.ts',
-      'app/backend/tests/services/**/*.spec.ts',
-      'app/backend/tests/logic/**/*.spec.ts',
-      'app/backend/tests/preload.spec.ts'
+      'app/backend/tests/unit/**/*.spec.ts'
     ],
     passWithNoTests: false,
     globals: true,

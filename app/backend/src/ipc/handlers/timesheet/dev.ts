@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron';
-import { ipcLogger } from '../../../../../shared/logger';
+import { ipcLogger } from '@sheetpilot/shared/logger';
 import { getDb } from '../../../repositories';
 import { isTrustedIpcSender } from './main-window';
 
