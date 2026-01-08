@@ -367,8 +367,9 @@ describe('IPC Input Validation Utility', () => {
       expect(validateInput(numSchema, 0, 'test').success).toBe(true);
       expect(validateInput(numSchema, -1, 'test').success).toBe(true);
       expect(validateInput(numSchema, 1.5, 'test').success).toBe(true);
-      expect(validateInput(numSchema, Infinity, 'test').success).toBe(true);
-      expect(validateInput(numSchema, -Infinity, 'test').success).toBe(true);
+      // Zod rejects Infinity and NaN by default
+      expect(validateInput(numSchema, Infinity, 'test').success).toBe(false);
+      expect(validateInput(numSchema, -Infinity, 'test').success).toBe(false);
       expect(validateInput(numSchema, NaN, 'test').success).toBe(false);
     });
 

@@ -15,6 +15,22 @@ import { botLogger } from '@sheetpilot/shared/logger';
 type RecordedResponse = { status: number; url: string; body?: string };
 type RecordedResponseSummary = { status: number; url: string };
 
+interface ResponseHandlerConfig {
+  successResponses: RecordedResponse[];
+  allResponses: RecordedResponseSummary[];
+  submissionIds: string[];
+  submissionTokens: string[];
+  requestIds: string[];
+}
+
+interface ValidateSubmissionSuccessConfig {
+  successResponses: RecordedResponse[];
+  domSuccessFound: boolean;
+  submissionIds: string[];
+  submissionTokens: string[];
+  requestIds: string[];
+}
+
 export class SubmissionMonitor {
   constructor(private readonly getPage: () => Page) {}
 
@@ -83,14 +99,6 @@ export class SubmissionMonitor {
     } finally {
       page.off('response', handler);
     }
-  }
-
-  interface ResponseHandlerConfig {
-    successResponses: RecordedResponse[];
-    allResponses: RecordedResponseSummary[];
-    submissionIds: string[];
-    submissionTokens: string[];
-    requestIds: string[];
   }
 
   private _createResponseHandler(config: ResponseHandlerConfig): (response: Response) => Promise<void> {
@@ -210,14 +218,6 @@ export class SubmissionMonitor {
       }
     }
     return false;
-  }
-
-  interface ValidateSubmissionSuccessConfig {
-    successResponses: RecordedResponse[];
-    domSuccessFound: boolean;
-    submissionIds: string[];
-    submissionTokens: string[];
-    requestIds: string[];
   }
 
   private _validateSubmissionSuccess(config: ValidateSubmissionSuccessConfig): boolean {

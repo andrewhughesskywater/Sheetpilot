@@ -26,6 +26,14 @@ import { authLogger } from '@sheetpilot/shared/logger';
  */
 export class BotNavigationError extends Error {}
 
+interface HandleInputActionConfig {
+  page: import('playwright').Page;
+  step: LoginStep;
+  email: string;
+  password: string;
+  contextIndex?: number;
+}
+
 /**
  * Manages authentication and login processes for the automation system
  * 
@@ -98,14 +106,6 @@ export class LoginManager {
    * @param password - User password
    * @param contextIndex - Optional context index for logging
    */
-  interface HandleInputActionConfig {
-    page: import('playwright').Page;
-    step: LoginStep;
-    email: string;
-    password: string;
-    contextIndex?: number;
-  }
-
   private async _handleInputAction(config: HandleInputActionConfig): Promise<void> {
     const { page, step, email, password, contextIndex } = config;
     const locator = page.locator(step['locator'] as string);

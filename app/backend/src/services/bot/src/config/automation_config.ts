@@ -511,8 +511,7 @@ export async function sleep(ms: number): Promise<void> {
     condition_funcOrConfig: (() => boolean | Promise<boolean>) | DynamicWaitConfig,
     base_timeout?: number,
     max_timeout?: number,
-    multiplier?: number,
-    _operation_name?: string
+    multiplier?: number
   ): Promise<boolean> {
     // New signature: object parameter
     if (typeof condition_funcOrConfig === 'object' && condition_funcOrConfig !== null && 'condition_func' in condition_funcOrConfig) {
@@ -553,9 +552,7 @@ export async function sleep(ms: number): Promise<void> {
     pageOrConfig: import('playwright').Page | DynamicWaitForElementConfig,
     selector?: string,
     state: 'visible' | 'hidden' | 'attached' = 'visible',
-    base_timeout = DYNAMIC_WAIT_BASE_TIMEOUT,
-    max_timeout = DYNAMIC_WAIT_MAX_TIMEOUT,
-    _operation_name = 'element',
+    base_timeout = DYNAMIC_WAIT_BASE_TIMEOUT
   ): Promise<boolean> {
     // Support both new object parameter and legacy multiple parameters
     let page: import('playwright').Page;
@@ -563,7 +560,6 @@ export async function sleep(ms: number): Promise<void> {
     let actualState: 'visible' | 'hidden' | 'attached';
     let actualBaseTimeout: number;
     let actualMaxTimeout: number;
-    let actualOperationName: string;
 
     if (typeof pageOrConfig === 'object' && pageOrConfig !== null && 'page' in pageOrConfig) {
       // New signature: object parameter
@@ -573,15 +569,13 @@ export async function sleep(ms: number): Promise<void> {
       actualState = config.state ?? 'visible';
       actualBaseTimeout = config.base_timeout ?? DYNAMIC_WAIT_BASE_TIMEOUT;
       actualMaxTimeout = config.max_timeout ?? DYNAMIC_WAIT_MAX_TIMEOUT;
-      actualOperationName = config.operation_name ?? 'element';
     } else {
       // Legacy signature: multiple parameters
       page = pageOrConfig as import('playwright').Page;
       actualSelector = selector!;
       actualState = state;
       actualBaseTimeout = base_timeout;
-      actualMaxTimeout = max_timeout;
-      actualOperationName = _operation_name;
+      actualMaxTimeout = DYNAMIC_WAIT_MAX_TIMEOUT;
     }
 
     return dynamic_wait(async () => {
@@ -597,7 +591,7 @@ export async function sleep(ms: number): Promise<void> {
       } catch {
         return false;
       }
-    }, actualBaseTimeout, actualMaxTimeout, DYNAMIC_WAIT_MULTIPLIER, `element (${actualSelector})`);
+    }, actualBaseTimeout, actualMaxTimeout, DYNAMIC_WAIT_MULTIPLIER);
   }
   
   /**
@@ -661,6 +655,37 @@ export async function sleep(ms: number): Promise<void> {
     }, base_timeout, max_timeout);
   }
 
+  interface WaitForDomStabilityConfig {
+    page: import('playwright').Page;
+    selector: string;
+    state?: 'visible' | 'hidden' | 'attached' | 'detached';
+    base_timeout?: number;
+    max_timeout?: number;
+    operation_name?: string;
+  }
+
+  async function checkElementStateMatch(
+    element: import('playwright').Locator,
+    targetState: 'visible' | 'hidden' | 'attached' | 'detached'
+  ): Promise<boolean> {
+    try {
+      switch (targetState) {
+        case 'visible':
+          return await element.isVisible();
+        case 'hidden':
+          return await element.isHidden();
+        case 'attached':
+          return await element.isAttached();
+        case 'detached':
+          return !(await element.isAttached());
+        default:
+          return true;
+      }
+    } catch {
+      return false;
+    }
+  }
+
   /**
    * Wait for DOM element to appear and become stable, with fallback to proceed if no activity
    * 
@@ -676,9 +701,7 @@ export async function sleep(ms: number): Promise<void> {
     pageOrConfig: import('playwright').Page | WaitForDomStabilityConfig,
     selector?: string,
     state: 'visible' | 'hidden' | 'attached' | 'detached' = 'visible',
-    base_timeout = DYNAMIC_WAIT_BASE_TIMEOUT,
-    max_timeout = DYNAMIC_WAIT_MAX_TIMEOUT,
-    operation_name = 'DOM stability'
+    base_timeout = DYNAMIC_WAIT_BASE_TIMEOUT
   ): Promise<boolean> {
     // Support both new object parameter and legacy multiple parameters
     let page: import('playwright').Page;
@@ -686,7 +709,6 @@ export async function sleep(ms: number): Promise<void> {
     let actualState: 'visible' | 'hidden' | 'attached' | 'detached';
     let actualBaseTimeout: number;
     let actualMaxTimeout: number;
-    let actualOperationName: string;
 
     if (typeof pageOrConfig === 'object' && pageOrConfig !== null && 'page' in pageOrConfig) {
       // New signature: object parameter
@@ -696,88 +718,52 @@ export async function sleep(ms: number): Promise<void> {
       actualState = config.state ?? 'visible';
       actualBaseTimeout = config.base_timeout ?? DYNAMIC_WAIT_BASE_TIMEOUT;
       actualMaxTimeout = config.max_timeout ?? DYNAMIC_WAIT_MAX_TIMEOUT;
-      actualOperationName = config.operation_name ?? 'DOM stability';
     } else {
       // Legacy signature: multiple parameters
       page = pageOrConfig as import('playwright').Page;
       actualSelector = selector!;
       actualState = state;
       actualBaseTimeout = base_timeout;
-      actualMaxTimeout = max_timeout;
-      actualOperationName = operation_name;
+      actualMaxTimeout = DYNAMIC_WAIT_MAX_TIMEOUT;
     }
     return dynamic_wait(async () => {
       try {
         const element = page.locator(actualSelector);
         
         // Quick check if element exists and is in desired state
-        // Capture state in closure since evaluate doesn't accept parameters for this use case
-        const targetState = actualState;
-        const isInState = await element.evaluate((el: HTMLElement | SVGElement) => {
-          if (!el) return false;
-          
-          // Use type guard to check if element is HTMLElement
-          const htmlEl = el as HTMLElement & { offsetWidth?: number; offsetHeight?: number };
-          
-          // Use DOM APIs to check element state
-          // Note: targetState is captured from closure
-          const stateToCheck = (targetState as string);
-          switch (stateToCheck) {
-            case 'visible': 
-              // For HTMLElement, check offsetWidth/offsetHeight
-              // For SVGElement, we'll use a fallback - check if it's in the DOM and has dimensions
-              if (htmlEl.offsetWidth !== undefined && htmlEl.offsetHeight !== undefined) {
-                return htmlEl.offsetWidth > 0 && htmlEl.offsetHeight > 0;
-              }
-              // Fallback for SVG or other element types: check if element is in document
-              return el.ownerDocument !== null && el.parentNode !== null;
-            case 'hidden': 
-              if (htmlEl.offsetWidth !== undefined && htmlEl.offsetHeight !== undefined) {
-                return htmlEl.offsetWidth === 0 || htmlEl.offsetHeight === 0;
-              }
-              // Fallback: assume not hidden if in document
-              return el.ownerDocument === null || el.parentNode === null;
-            case 'attached': 
-              return el.parentNode !== null;
-            case 'detached': 
-              return el.parentNode === null;
-            default: 
-              // Default to visible check
-              if (htmlEl.offsetWidth !== undefined && htmlEl.offsetHeight !== undefined) {
-                return htmlEl.offsetWidth > 0 && htmlEl.offsetHeight > 0;
-              }
-              return el.ownerDocument !== null && el.parentNode !== null;
-          }
-        }).catch(() => false);
+        const count = await element.count();
+        if (count === 0) return false;
         
-        if (isInState) {
-          // Element is already in desired state, check for stability
-          const initialRect = await element.boundingBox().catch(() => null);
-          if (initialRect) {
-            // Wait a short moment and check if element is still in same position
-            await page.waitForTimeout(BRIEF_POLL_INTERVAL_MS);
-            const finalRect = await element.boundingBox().catch(() => null);
-            
-            // Consider stable if position hasn't changed significantly
-            if (finalRect && 
-                Math.abs(initialRect.x - finalRect.x) < 1 &&
-                Math.abs(initialRect.y - finalRect.y) < 1) {
-              return true;
-            }
+        // Check if element matches desired state
+        const stateMatches = await checkElementStateMatch(element.first(), actualState);
+        if (!stateMatches) return false;
+        
+        // Element is in desired state - verify it's stable by checking position
+        const initialRect = await element.boundingBox().catch(() => null);
+        if (initialRect) {
+          await page.waitForTimeout(BRIEF_POLL_INTERVAL_MS);
+          const finalRect = await element.boundingBox().catch(() => null);
+          
+          if (finalRect && 
+              Math.abs(initialRect.x - finalRect.x) < 1 &&
+              Math.abs(initialRect.y - finalRect.y) < 1) {
+            return true;
           }
-          return true; // If we can't check position but element is in state, proceed
         }
-        
-        // Element not in desired state, but don't wait too long
-        await element.waitFor({ state: actualState, timeout: Math.min(actualBaseTimeout * 500, 2000) });
-        return true;
+        return true; // Element is in state, proceed
       } catch {
         // If we can't find the element or it's not in the expected state,
         // proceed anyway after a short delay to avoid hanging
         await page.waitForTimeout(MEDIUM_DELAY_MS);
         return true;
       }
-    }, Math.min(actualBaseTimeout, 1.0), Math.min(actualMaxTimeout, 2.0), DYNAMIC_WAIT_MULTIPLIER, actualOperationName);
+    }, Math.min(actualBaseTimeout, 1.0), Math.min(actualMaxTimeout, 2.0), DYNAMIC_WAIT_MULTIPLIER);
+  }
+
+  async function checkOptionVisibility(optionLocator: import('playwright').Locator): Promise<boolean> {
+    const count = await optionLocator.count();
+    if (count === 0) return false;
+    return await optionLocator.first().isVisible().catch(() => false);
   }
 
   /**
@@ -812,13 +798,8 @@ export async function sleep(ms: number): Promise<void> {
         for (const optionSelector of optionSelectors) {
           try {
             const options = page.locator(optionSelector);
-            const count = await options.count();
-            if (count > 0) {
-              // Check if at least one option is visible
-              const firstOption = options.first();
-              if (await firstOption.isVisible().catch(() => false)) {
-                return true;
-              }
+            if (await checkOptionVisibility(options)) {
+              return true;
             }
           } catch {
             continue;
@@ -974,19 +955,50 @@ export async function sleep(ms: number): Promise<void> {
     operation_name?: string;
   }
 
+  async function checkDOMActivity(page: import('playwright').Page): Promise<boolean> {
+    try {
+      const elements = Array.from(await page.evaluate(() => {
+        return document.querySelectorAll('*');
+      }));
+      return elements.some(el => 
+        el.classList.length > 0 || 
+        el.getAttribute('style') || 
+        el.getAttribute('data-state')
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  async function updateActivityCounter(
+    hasActivity: boolean,
+    counter: number,
+    maxConsecutiveNoActivity: number,
+    page: import('playwright').Page
+  ): Promise<{ counter: number; shouldReturn: boolean }> {
+    if (!hasActivity) {
+      counter++;
+      if (counter >= maxConsecutiveNoActivity) {
+        await page.waitForTimeout(BRIEF_POLL_INTERVAL_MS);
+        return { counter, shouldReturn: true };
+      }
+    } else {
+      counter = 0;
+    }
+    return { counter, shouldReturn: false };
+  }
+
   export async function smart_wait_or_proceed(
     pageOrConfig: import('playwright').Page | SmartWaitOrProceedConfig,
     condition_func?: () => boolean | Promise<boolean>,
     max_wait_time = 1.0,
-    check_interval = 100,
-    _operation_name = 'smart wait'
+    check_interval = 100
   ): Promise<boolean> {
     // Support both new object parameter and legacy multiple parameters
     let page: import('playwright').Page;
     let actualConditionFunc: () => boolean | Promise<boolean>;
     let actualMaxWaitTime: number;
     let actualCheckInterval: number;
-    let actualOperationName: string;
 
     if (typeof pageOrConfig === 'object' && pageOrConfig !== null && 'page' in pageOrConfig) {
       // New signature: object parameter
@@ -995,14 +1007,12 @@ export async function sleep(ms: number): Promise<void> {
       actualConditionFunc = config.condition_func;
       actualMaxWaitTime = config.max_wait_time ?? 1.0;
       actualCheckInterval = config.check_interval ?? 100;
-      actualOperationName = config.operation_name ?? 'smart wait';
     } else {
       // Legacy signature: multiple parameters
       page = pageOrConfig as import('playwright').Page;
       actualConditionFunc = condition_func!;
       actualMaxWaitTime = max_wait_time;
       actualCheckInterval = check_interval;
-      actualOperationName = _operation_name;
     }
     const startTime = Date.now();
     const maxWaitMs = actualMaxWaitTime * 1000;
@@ -1011,41 +1021,20 @@ export async function sleep(ms: number): Promise<void> {
     
     while (Date.now() - startTime < maxWaitMs) {
       try {
-        // Check if condition is met
-        const conditionMet = await actualConditionFunc();
-        if (conditionMet) {
+        if (await actualConditionFunc()) {
           return true;
         }
         
-        // Check for any DOM activity (element changes, new elements, etc.)
-        const hasActivity = await page.evaluate(() => {
-          // Simple heuristic: check if any elements have changed classes or attributes recently
-          const elements = document.querySelectorAll('*');
-          let activityDetected = false;
-          
-          // Convert NodeList to Array for iteration
-          const elementArray = Array.from(elements);
-          for (const el of elementArray) {
-            // Check for recent changes in common dynamic attributes
-            if (el.classList.length > 0 || el.getAttribute('style') || el.getAttribute('data-state')) {
-              activityDetected = true;
-              break;
-            }
-          }
-          
-          return activityDetected;
-        }).catch(() => false);
-        
-        if (hasActivity) {
-          consecutiveNoActivity = 0;
-        } else {
-          consecutiveNoActivity++;
-          
-          // If no activity detected for multiple consecutive checks, proceed
-          if (consecutiveNoActivity >= maxConsecutiveNoActivity) {
-            await page.waitForTimeout(BRIEF_POLL_INTERVAL_MS); // Brief pause before proceeding
-            return true; // Proceed anyway
-          }
+        const hasActivity = await checkDOMActivity(page);
+        const { counter: newCounter, shouldReturn } = await updateActivityCounter(
+          hasActivity,
+          consecutiveNoActivity,
+          maxConsecutiveNoActivity,
+          page
+        );
+        consecutiveNoActivity = newCounter;
+        if (shouldReturn) {
+          return true;
         }
         
         await page.waitForTimeout(actualCheckInterval);

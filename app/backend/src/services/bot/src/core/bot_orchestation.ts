@@ -25,6 +25,7 @@ import { botLogger } from '@sheetpilot/shared/logger';
 import { getQuarterForDate } from '../config/quarter_config';
 import { appSettings } from '@sheetpilot/shared/constants';
 import { checkAborted, setupAbortHandler } from '../utils/abort-utils';
+import { FieldProcessor, type FieldProcessingContext } from './field-processor';
 
 /**
  * Result object returned after automation execution
@@ -93,59 +94,25 @@ export class BotOrchestrator {
    * Creates a new BotOrchestrator instance
    * @param config - Configuration object containing all parameters
    */
-  constructor(config: BotOrchestratorConfig);
-  /**
-   * Creates a new BotOrchestrator instance (legacy signature for backward compatibility)
-   * @param injected_config - Configuration object for automation settings
-   * @param formConfig - Dynamic form configuration (required)
-   * @param headless - Whether to run browser in headless mode (default: null = use appSettings.browserHeadless)
-   * @param browser - Browser type to use (must be 'chromium')
-   * @param progress_callback - Optional callback for progress updates
-   */
-  constructor(
-    injected_configOrConfig: typeof Cfg | BotOrchestratorConfig,
-    formConfig?: { BASE_URL: string; FORM_ID: string; SUBMISSION_ENDPOINT: string; SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[] },
-    headless?: boolean | null,
-    browser?: string | null,
-    progress_callback?: (pct: number, msg: string) => void
-  ) {
-    // Support both new object parameter and legacy multiple parameters
-    let injected_config: typeof Cfg;
-    let actualFormConfig: { BASE_URL: string; FORM_ID: string; SUBMISSION_ENDPOINT: string; SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[] };
-    let actualHeadless: boolean | null;
-    let actualBrowser: string | null;
-    let actualProgressCallback: ((pct: number, msg: string) => void) | undefined;
-    
-    if (formConfig === undefined) {
-      // New signature: object parameter
-      const config = injected_configOrConfig as BotOrchestratorConfig;
-      injected_config = config.injected_config;
-      actualFormConfig = config.formConfig;
-      actualHeadless = config.headless ?? null;
-      actualBrowser = config.browser ?? null;
-      actualProgressCallback = config.progress_callback;
-    } else {
-      // Legacy signature: multiple parameters
-      injected_config = injected_configOrConfig as typeof Cfg;
-      actualFormConfig = formConfig;
-      actualHeadless = headless ?? null;
-      actualBrowser = browser ?? null;
-      actualProgressCallback = progress_callback;
-    }
-    if (!actualFormConfig) {
+  constructor(config: BotOrchestratorConfig) {
+    if (!config.formConfig) {
       throw new Error('formConfig is required. Use createFormConfig() to create a valid form configuration.');
     }
-    this.cfg = injected_config;
+
+    this.cfg = config.injected_config;
+
     // Use the UI-controlled value when `headless` is null; otherwise trust the caller.
+    const actualHeadless = config.headless ?? null;
     this.headless = actualHeadless === null ? appSettings.browserHeadless : Boolean(actualHeadless);
-    botLogger.debug('BotOrchestrator initialized with headless setting', { 
+    botLogger.debug('BotOrchestrator initialized with headless setting', {
       headlessParam: actualHeadless,
       resolvedHeadless: this.headless,
       appSettingsBrowserHeadless: appSettings.browserHeadless
     });
-    this.browser_kind = actualBrowser ?? (this.cfg as Record<string, unknown>)['BROWSER'] as string ?? 'chromium';
-    this.progress_callback = actualProgressCallback;
-    this.formConfig = actualFormConfig;
+
+    this.browser_kind = config.browser ?? (this.cfg as Record<string, unknown>)['BROWSER'] as string ?? 'chromium';
+    this.progress_callback = config.progress_callback;
+    this.formConfig = config.formConfig;
     this.webform_filler = new WebformFiller(this.cfg, this.headless, this.browser_kind, this.formConfig);
     this.login_manager = new LoginManager(this.cfg, this.webform_filler);
   }
@@ -281,40 +248,22 @@ export class BotOrchestrator {
 
     try {
       const dateStr = String(dateValue).trim();
-      
-      // Support multiple human-entered date formats: mm/dd/yyyy, m/d/yyyy, mm-dd-yyyy, etc.
-      // Quarter routing uses `YYYY-MM-DD`, so we convert.
-      const dateMatch = dateStr.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
-      if (!dateMatch) {
+      const parsed = this._parseUserDate(dateStr);
+
+      if (!parsed) {
         return `Invalid date format: ${dateStr}. Expected mm/dd/yyyy`;
       }
-      
-      const [, monthStr, dayStr, yearStr] = dateMatch;
-      if (!monthStr || !dayStr || !yearStr) {
-        return `Invalid date format: ${dateStr}. Expected mm/dd/yyyy`;
+
+      const rangeError = this._validateDateRange(parsed);
+      if (rangeError) {
+        return rangeError;
       }
-      
-      const month = parseInt(monthStr, 10);
-      const day = parseInt(dayStr, 10);
-      const year = parseInt(yearStr, 10);
-      
-      // Validate date ranges
-      if (isNaN(month) || isNaN(day) || isNaN(year) || 
-          month < 1 || month > 12 || 
-          day < 1 || day > 31 || 
-          year < 1900 || year > 2100) {
-        return `Invalid date values: ${dateStr}`;
-      }
-      
-      const isoDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      const quarterDef = getQuarterForDate(isoDate);
-      
+
+      const quarterDef = getQuarterForDate(parsed.isoDate);
       if (quarterDef && quarterDef.formId !== this.formConfig.FORM_ID) {
-        // Protect against “wrong quarter form” submissions: a date in Q3 should not
-        // submit to a Q4 form (or vice versa). This check intentionally blocks.
         return `Date ${dateStr} belongs to ${quarterDef.name} but form configured for different quarter`;
       }
-      
+
       return null;
     } catch (dateError) {
       botLogger.error('Error parsing date', { 
@@ -324,6 +273,38 @@ export class BotOrchestrator {
       });
       return `Could not parse date: ${String(dateValue)}`;
     }
+  }
+
+  private _parseUserDate(dateStr: string): { month: number; day: number; year: number; isoDate: string } | null {
+    const dateMatch = dateStr.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+    if (!dateMatch) {
+      return null;
+    }
+
+    const [, monthStr, dayStr, yearStr] = dateMatch;
+    const month = parseInt(monthStr, 10);
+    const day = parseInt(dayStr, 10);
+    const year = parseInt(yearStr, 10);
+
+    if (isNaN(month) || isNaN(day) || isNaN(year)) {
+      return null;
+    }
+
+    const isoDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    return { month, day, year, isoDate };
+  }
+
+  private _validateDateRange(parsed: { month: number; day: number; year: number }): string | null {
+    if (parsed.month < 1 || parsed.month > 12) {
+      return `Invalid month: ${parsed.month}`;
+    }
+    if (parsed.day < 1 || parsed.day > 31) {
+      return `Invalid day: ${parsed.day}`;
+    }
+    if (parsed.year < 1900 || parsed.year > 2100) {
+      return `Invalid year: ${parsed.year}`;
+    }
+    return null;
   }
 
 
@@ -509,6 +490,67 @@ export class BotOrchestrator {
   }
 
   /**
+   * Processes a batch of rows, handling errors and recovery
+   * @private
+   * @param config - Configuration object containing df, statusCol, completeVal, totalRows, and optional abortSignal
+   * @returns Promise resolving to [submitted indices, failed rows]
+   */
+  private async _processRowBatch(
+    config: {
+      df: Array<Record<string, unknown>>;
+      statusCol: string;
+      completeVal: unknown;
+      totalRows: number;
+      abortSignal?: AbortSignal;
+    }
+  ): Promise<[number[], Array<[number, string]>]> {
+    const { df, statusCol, completeVal, totalRows, abortSignal } = config;
+    const submitted: number[] = [];
+    const failed_rows: Array<[number, string]> = [];
+
+    for (let i = 0; i < df.length; i++) {
+      const idx = i;
+      const row = df[i];
+      if (!row) continue;
+
+      try {
+        const [success, errorMessage] = await this._processRow({
+          row,
+          rowIndex: idx,
+          totalRows,
+          status_col: statusCol,
+          complete_val: completeVal,
+          abortSignal
+        });
+
+        if (!success) {
+          if (errorMessage) {
+            failed_rows.push([idx, errorMessage]);
+          }
+          continue;
+        }
+
+        submitted.push(idx);
+      } catch (e: unknown) {
+        const errorMsg = String((e as Error)?.message ?? e);
+        botLogger.error('Row processing encountered error', { rowIndex: idx, error: errorMsg });
+        failed_rows.push([idx, errorMsg]);
+
+        try {
+          await this.webform_filler.goto_base_url();
+        } catch (recoveryError) {
+          botLogger.warn('Recovery navigation failed', {
+            rowIndex: idx,
+            error: String(recoveryError)
+          });
+        }
+      }
+    }
+
+    return [submitted, failed_rows];
+  }
+
+  /**
    * Implements the core automation workflow and returns a richer result object.
    *
    * Notes:
@@ -565,46 +607,9 @@ export class BotOrchestrator {
 
       // Process rows sequentially: each row expects a stable form state and
       // interacts with the same page session.
-      for (let i = 0; i < df.length; i++) {
-        const idx = i; // Using array index as row identifier
-        const row = df[i];
-        if (!row) continue;
-        
-        try {
-          const [success, errorMessage] = await this._processRow({
-            row,
-            rowIndex: idx,
-            totalRows: total_rows,
-            status_col,
-            complete_val,
-            abortSignal
-          });
-          
-          if (!success) {
-            if (errorMessage) {
-              failed_rows.push([idx, errorMessage]);
-            }
-            // If errorMessage is null, the row was skipped (e.g., completed), which is not an error
-            continue;
-          }
-
-          submitted.push(idx);
-        } catch (e: unknown) {
-          const errorMsg = String((e as Error)?.message ?? e);
-          botLogger.error('Row processing encountered error', { rowIndex: idx, error: errorMsg });
-          
-          failed_rows.push([idx, errorMsg]);
-          
-          // Attempt to recover by returning to the base form URL. This provides
-          // a clean starting point for the next row after transient UI errors.
-          try {
-            botLogger.info('Attempting recovery', { rowIndex: idx });
-            await this.webform_filler.navigate_to_base();
-          } catch (recoveryError) {
-            botLogger.error('Could not recover from page error', { rowIndex: idx, recoveryError: String(recoveryError) });
-          }
-        }
-      }
+      const [submitted_batch, failed_rows_batch] = await this._processRowBatch({ df, statusCol: status_col, completeVal: complete_val, totalRows: total_rows, abortSignal });
+      submitted.push(...submitted_batch);
+      failed_rows.push(...failed_rows_batch);
 
       // Log final results
       const success_count = submitted.length;
@@ -667,71 +672,22 @@ export class BotOrchestrator {
    * @returns Promise that resolves when all fields are filled
    */
   private async _fill_fields(fields: Record<string, unknown>): Promise<void> {
-    botLogger.verbose('Processing fields for form filling', { fieldCount: Object.keys(fields).length, fields });
-    
+    botLogger.verbose('Processing fields for form filling', {
+      fieldCount: Object.keys(fields).length,
+      fields
+    });
+
     for (const [field_key, value] of Object.entries(fields)) {
-      let specBase: Record<string, unknown> | undefined;
-      try {
-        botLogger.debug('Processing field', { fieldKey: field_key, value });
-        
-        specBase = Cfg.FIELD_DEFINITIONS[field_key] as unknown as Record<string, unknown>;
-        if (!specBase) {
-          botLogger.debug('Skipping field', { fieldKey: field_key, reason: 'No specification found' });
-          continue;
-        }
-        
-        // Skip empty values
-        if (!this._should_process_field(field_key, fields)) {
-          botLogger.debug('Skipping field', { fieldKey: field_key, reason: 'Empty/invalid value', value: String(value) });
-          continue;
-        }
-        
-        // Check if project needs tool/detail code fields
-        if (field_key === 'tool' || field_key === 'detail_code') {
-          const project_name = String(fields['project_code'] ?? 'Unknown');
-          if (!this._should_process_field(field_key, fields)) {
-            botLogger.debug('Skipping field', { fieldKey: field_key, reason: 'Not required for project', projectName: project_name });
-            continue;
-          }
-        }
-        
-        const spec = { ...specBase };
-        
-        // Use project-specific locator for tool field if available
-        if (field_key === 'tool') {
-          const project_name = String(fields['project_code'] ?? 'Unknown');
-          const project_specific_locator = this.get_project_specific_tool_locator(project_name);
-          if (project_specific_locator) {
-            spec['locator'] = project_specific_locator;
-            botLogger.debug('Using project-specific locator', { 
-              fieldKey: field_key, 
-              projectName: project_name, 
-              locator: project_specific_locator 
-            });
-          }
-        }
-        
-        // Log field specification details
-        botLogger.debug('Field specification', { 
-          fieldKey: field_key,
-          label: spec['label'] || 'No label',
-          type: spec['type'] || 'text',
-          locator: spec['locator'] || 'No locator'
-        });
-        
-        // Inject the field value
-        botLogger.debug('Injecting field value', { fieldKey: field_key, value: String(value) });
-        await this.webform_filler.inject_field_value(spec, String(value));
-        
-      } catch (error) {
-        botLogger.error('Could not process field', { 
-          fieldKey: field_key, 
-          value, 
-          fieldSpec: specBase ? JSON.stringify(specBase) : 'Not available',
-          error: String(error) 
-        });
-        throw error;
-      }
+      const context: FieldProcessingContext = {
+        webformFiller: this.webform_filler,
+        fieldKey: field_key,
+        value,
+        allFields: fields,
+        shouldProcessField: this._should_process_field.bind(this),
+        getProjectSpecificToolLocator: this.get_project_specific_tool_locator.bind(this)
+      };
+
+      await FieldProcessor.processField(context);
     }
   }
 

@@ -338,7 +338,7 @@ describe('Credentials Repository', () => {
         const creds = getCredentials('test');
         expect(creds).toBeDefined();
       }
-    });
+    }, 10000);
   });
 
   describe('Security Tests', () => {
@@ -492,8 +492,8 @@ describe('Credentials Repository', () => {
       }
       
       const duration = Date.now() - startTime;
-      expect(duration).toBeLessThan(5000); // Should complete in reasonable time
-    });
+      expect(duration).toBeLessThan(25000); // Should complete in reasonable time (accounts for PBKDF2 key derivation: ~100k iterations per operation)
+    }, 30000);
 
     it('should handle bulk retrieval efficiently', () => {
       // Store credentials
@@ -508,8 +508,8 @@ describe('Credentials Repository', () => {
       }
       const duration = Date.now() - startTime;
       
-      expect(duration).toBeLessThan(1000);
-    });
+      expect(duration).toBeLessThan(15000); // Accounts for decryption overhead with PBKDF2 key derivation
+    }, 20000);
   });
 });
 

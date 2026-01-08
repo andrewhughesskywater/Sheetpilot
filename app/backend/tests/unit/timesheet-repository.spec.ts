@@ -267,29 +267,37 @@ describe('Timesheet Repository', () => {
     it('should handle large batch operations', () => {
       const entries = [];
       
-      // Use multiples of 15 to satisfy time constraints and keep within valid range
+      // Generate 500 unique entries with valid 15-minute increments
+      // Spread across multiple days to ensure we don't exceed valid time range
       for (let i = 0; i < 500; i++) {
-        const timeIn = 480 + (i * 5); // Start at 8:00, increment by 5 minutes
+        const dayOffset = Math.floor(i / 60); // ~60 entries per day
+        const timeIndex = i % 60;
+        const timeIn = 480 + (timeIndex * 15); // Start at 8:00, increment by 15 minutes
         const timeOut = timeIn + 60; // 1 hour duration
-        // Round to nearest 15-minute increment
-        const roundedTimeIn = Math.floor(timeIn / 15) * 15;
-        const roundedTimeOut = Math.floor(timeOut / 15) * 15;
         
-        entries.push({
-          date: '2025-01-15',
-          timeIn: roundedTimeIn,
-          timeOut: roundedTimeOut,
-          project: `Project ${i}`,
-          taskDescription: `Task ${i}`
-        });
+        // Only add if timeOut is valid (< 1440)
+        if (timeOut <= 1440) {
+          entries.push({
+            date: `2025-01-${String(15 + dayOffset).padStart(2, '0')}`,
+            timeIn: timeIn,
+            timeOut: timeOut,
+            project: `Project ${i}`,
+            taskDescription: `Task ${i}`
+          });
+        }
       }
       
       const startTime = Date.now();
       const result = insertTimesheetEntries(entries);
       const duration = Date.now() - startTime;
       
+      // Debug output if test fails
+      if (!result.success) {
+        console.log('Large batch insert failed:', result);
+      }
+      
       expect(result.success).toBe(true);
-      expect(result.inserted).toBe(500);
+      expect(result.inserted).toBe(entries.length);
       expect(duration).toBeLessThan(5000); // Should be reasonably fast
     });
   });

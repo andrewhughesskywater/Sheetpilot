@@ -80,7 +80,13 @@ export async function runTimesheet(config: RunTimesheetConfig): Promise<{
     appSettingsBrowserHeadless: appSettings.browserHeadless,
     hasProgressCallback: !!progressCallback 
   });
-  const bot = new BotOrchestrator(Cfg, formConfig, useHeadless, null, progressCallback);
+  const bot = new BotOrchestrator({
+    injected_config: Cfg,
+    formConfig,
+    headless: useHeadless,
+    browser: null,
+    progress_callback: progressCallback
+  });
   
   try {
     // Check if aborted before starting

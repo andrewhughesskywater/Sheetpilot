@@ -113,22 +113,28 @@ vi.mock('electron', () => {
   };
 });
 
-// Create mockDb in module scope so we can access it
-const createMockDb = () => ({
-  prepare: vi.fn((_sql?: string) => ({ all: vi.fn(() => []), run: vi.fn(() => ({ changes: 1 })), get: vi.fn(() => ({})) })),
-  exec: vi.fn(),
-  close: vi.fn(),
-  transaction: vi.fn((callback) => {
-    // Return a function that executes the callback when called (matches better-sqlite3 API)
-    return () => callback();
-  })
-});
+// Helper function to create mock DB - using function declaration so it's hoisted
+function createMockDb() {
+  return {
+    prepare: vi.fn((_sql?: string) => ({ all: vi.fn(() => []), run: vi.fn(() => ({ changes: 1 })), get: vi.fn(() => ({})) })),
+    exec: vi.fn(),
+    close: vi.fn(),
+    transaction: vi.fn((callback) => {
+      // Return a function that executes the callback when called (matches better-sqlite3 API)
+      return () => callback();
+    })
+  };
+}
 
-// Store reference to the mock DB that will be returned by openDb
-let mockDbInstance = createMockDb();
+// Declare module-scoped variable that will be initialized in the factory
+let mockDbInstance: ReturnType<typeof createMockDb>;
 
 // Mock repositories module (single source of truth)
+// Create mockDb instance inside the factory to avoid hoisting issues
 vi.mock('../src/repositories', () => {
+  // Initialize mockDbInstance here so it's available both in factory and in tests
+  mockDbInstance = createMockDb();
+  
   const resetInProgressTimesheetEntries = vi.fn(() => {
     const db = mockDbInstance;
     const resetStatus = db.prepare(`UPDATE timesheet SET status = NULL WHERE status = 'in_progress'`);

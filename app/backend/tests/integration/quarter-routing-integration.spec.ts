@@ -10,14 +10,14 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { BotOrchestrator } from '../src/services/bot/src/core/bot_orchestation';
-import { WebformFiller as _WebformFiller } from '../src/services/bot/src/browser/webform_flow';
-import { createFormConfig } from '../src/services/bot/src/config/automation_config';
-import * as Cfg from '../src/services/bot/src/config/automation_config';
-import { QUARTER_DEFINITIONS } from '../src/services/bot/src/config/quarter_config';
+import { BotOrchestrator } from '../../src/services/bot/src/core/bot_orchestation';
+import { WebformFiller as _WebformFiller } from '../../src/services/bot/src/browser/webform_flow';
+import { createFormConfig } from '../../src/services/bot/src/config/automation_config';
+import * as Cfg from '../../src/services/bot/src/config/automation_config';
+import { QUARTER_DEFINITIONS } from '../../src/services/bot/src/config/quarter_config';
 
 // Mock the logger
-vi.mock('../src/shared/logger', () => ({
+vi.mock('../../shared/logger', () => ({
   botLogger: {
     info: vi.fn(),
     error: vi.fn(),
@@ -109,31 +109,31 @@ describe('Quarter Routing Integration', () => {
     it('should require formConfig parameter (no longer optional)', () => {
       expect(() => {
         // @ts-expect-error - Testing that formConfig is required
-        new BotOrchestrator(Cfg, undefined as unknown, false, null, undefined);
+        new BotOrchestrator({ injected_config: Cfg, formConfig: undefined as unknown });
       }).toThrow('formConfig is required');
     });
 
     it('should throw error if formConfig is missing', () => {
       expect(() => {
         // @ts-expect-error - Testing that formConfig is required
-        new BotOrchestrator(Cfg, undefined as unknown, false, null, undefined);
+        new BotOrchestrator({ injected_config: Cfg, formConfig: undefined as unknown });
       }).toThrow('formConfig is required');
     });
 
     it('should accept valid formConfig for Q3', () => {
-      const orchestrator = new BotOrchestrator(Cfg, q3FormConfig, false, null, undefined);
+      const orchestrator = new BotOrchestrator({ injected_config: Cfg, formConfig: q3FormConfig, headless: false });
       expect(orchestrator.formConfig.BASE_URL).toBe(QUARTER_DEFINITIONS[0].formUrl);
       expect(orchestrator.formConfig.FORM_ID).toBe(QUARTER_DEFINITIONS[0].formId);
     });
 
     it('should accept valid formConfig for Q4', () => {
-      const orchestrator = new BotOrchestrator(Cfg, q4FormConfig, false, null, undefined);
+      const orchestrator = new BotOrchestrator({ injected_config: Cfg, formConfig: q4FormConfig, headless: false });
       expect(orchestrator.formConfig.BASE_URL).toBe(QUARTER_DEFINITIONS[1].formUrl);
       expect(orchestrator.formConfig.FORM_ID).toBe(QUARTER_DEFINITIONS[1].formId);
     });
 
     it('should pass formConfig to WebformFiller', () => {
-      const orchestrator = new BotOrchestrator(Cfg, q3FormConfig, false, null, undefined);
+      const orchestrator = new BotOrchestrator({ injected_config: Cfg, formConfig: q3FormConfig, headless: false });
       
       // Verify that the WebformFiller instance was created and has the config
       // Note: Since we are using a class mock, we can't easily spy on the constructor call itself
@@ -150,7 +150,7 @@ describe('Quarter Routing Integration', () => {
         QUARTER_DEFINITIONS[0].formId
       );
 
-      const orchestrator = new BotOrchestrator(Cfg, q3FormConfig, false, null, undefined);
+      const orchestrator = new BotOrchestrator({ injected_config: Cfg, formConfig: q3FormConfig, headless: false });
       const loginManager = orchestrator.login_manager;
 
       // LoginManager should have access to formConfig through WebformFiller
@@ -163,7 +163,7 @@ describe('Quarter Routing Integration', () => {
         QUARTER_DEFINITIONS[0].formId
       );
 
-      const orchestrator = new BotOrchestrator(Cfg, q3Config, false, null, undefined);
+      const orchestrator = new BotOrchestrator({ injected_config: Cfg, formConfig: q3Config, headless: false });
       
       // Mock the page.goto method to verify it's called with correct URL
       const mockGoto = vi.fn(() => Promise.resolve());
@@ -180,7 +180,7 @@ describe('Quarter Routing Integration', () => {
         QUARTER_DEFINITIONS[1].formId
       );
 
-      const orchestrator = new BotOrchestrator(Cfg, q4Config, false, null, undefined);
+      const orchestrator = new BotOrchestrator({ injected_config: Cfg, formConfig: q4Config, headless: false });
       
       expect(orchestrator.formConfig.BASE_URL).toBe(QUARTER_DEFINITIONS[1].formUrl);
     });
@@ -233,7 +233,7 @@ describe('Quarter Routing Integration', () => {
         QUARTER_DEFINITIONS[0].formId
       );
 
-      const orchestrator = new BotOrchestrator(Cfg, q3Config, false, null, undefined);
+      const orchestrator = new BotOrchestrator({ injected_config: Cfg, formConfig: q3Config, headless: false });
 
       // Q3 dates should be valid with Q3 form config
       expect(orchestrator.formConfig.FORM_ID).toBe(QUARTER_DEFINITIONS[0].formId);
@@ -245,7 +245,7 @@ describe('Quarter Routing Integration', () => {
         QUARTER_DEFINITIONS[1].formId
       );
 
-      const orchestrator = new BotOrchestrator(Cfg, q4Config, false, null, undefined);
+      const orchestrator = new BotOrchestrator({ injected_config: Cfg, formConfig: q4Config, headless: false });
 
       // Q4 dates should be valid with Q4 form config
       expect(orchestrator.formConfig.FORM_ID).toBe(QUARTER_DEFINITIONS[1].formId);
@@ -259,7 +259,7 @@ describe('Quarter Routing Integration', () => {
         QUARTER_DEFINITIONS[1].formId
       );
 
-      const orchestrator = new BotOrchestrator(Cfg, q4Config, false, null, undefined);
+      const orchestrator = new BotOrchestrator({ injected_config: Cfg, formConfig: q4Config, headless: false });
 
       // The validation happens in _run_automation_internal
       // We expect Q4 config to reject Q3 dates
@@ -272,7 +272,7 @@ describe('Quarter Routing Integration', () => {
         QUARTER_DEFINITIONS[0].formId
       );
 
-      const orchestrator = new BotOrchestrator(Cfg, q3Config, false, null, undefined);
+      const orchestrator = new BotOrchestrator({ injected_config: Cfg, formConfig: q3Config, headless: false });
 
       // The validation happens in _run_automation_internal
       // We expect Q3 config to reject Q4 dates
