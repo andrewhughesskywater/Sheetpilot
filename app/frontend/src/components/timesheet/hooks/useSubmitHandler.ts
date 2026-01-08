@@ -35,20 +35,19 @@ export function useSubmitHandler() {
     []
   );
 
+  interface SubmitHandlerConfig {
+    timesheetDraftData: TimesheetRow[];
+    validationErrors: Array<{ rowIdx: number; field: string; message: string }>;
+    userRole: string;
+    setSubmitting: (state: boolean) => void;
+    onSubmitSuccess?: () => void;
+    onSubmitError?: (error: string) => void;
+  }
+
   const handleSubmitTimesheet = useCallback(
-    async (
-      timesheetDraftData: TimesheetRow[],
-      validationErrors: Array<{ rowIdx: number; field: string; message: string }>,
-      userRole: string,
-      setSubmitting: (state: boolean) => void,
-      onSubmitSuccess?: () => void,
-      onSubmitError?: (error: string) => void
-    ): Promise<void> => {
-      const { isValid, errors: validationMsgs } = validateSubmit(
-        timesheetDraftData,
-        validationErrors,
-        userRole
-      );
+    async (config: SubmitHandlerConfig): Promise<void> => {
+      const { timesheetDraftData, validationErrors, userRole, setSubmitting, onSubmitSuccess, onSubmitError } = config;
+      const { isValid, errors: validationMsgs } = validateSubmit(timesheetDraftData, validationErrors, userRole);
 
       if (!isValid) {
         const errorMsg = validationMsgs.join('; ');

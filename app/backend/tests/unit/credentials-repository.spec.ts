@@ -21,6 +21,7 @@ vi.mock('../../../shared/logger', () => ({
     warn: vi.fn(),
     error: vi.fn(),
     verbose: vi.fn(),
+    audit: vi.fn(),
     startTimer: vi.fn(() => ({ done: vi.fn() }))
   }
 }));
@@ -441,24 +442,26 @@ describe('Credentials Repository', () => {
       expect(creds!.password).toBe('password2');
     });
 
-    it('should track update timestamps', () => {
+    it('should track update timestamps', async () => {
       storeCredentials('smartsheet', 'user@test.com', 'password1');
       
       const db = openDb();
-      const before = db.prepare('SELECT updated_at FROM credentials WHERE service = ?').get('smartsheet');
+      const before = db.prepare('SELECT updated_at FROM credentials WHERE service = ?').get('smartsheet') as DbRow;
       db.close();
       
-      // Wait a bit
-      setTimeout(() => {
-        storeCredentials('smartsheet', 'user@test.com', 'password2');
-        
-        const db2 = openDb();
-        const after = db2.prepare('SELECT updated_at FROM credentials WHERE service = ?').get('smartsheet');
-        db2.close();
-        
-        // updated_at should change
-        expect((after as DbRow)['updated_at'] as string).not.toBe((before as DbRow)['updated_at'] as string);
-      }, 100);
+      // Wait a bit to ensure timestamp difference
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      storeCredentials('smartsheet', 'user@test.com', 'password2');
+      
+      const db2 = openDb();
+      const after = db2.prepare('SELECT updated_at FROM credentials WHERE service = ?').get('smartsheet') as DbRow;
+      db2.close();
+      
+      // updated_at should change
+      expect(before['updated_at']).toBeDefined();
+      expect(after['updated_at']).toBeDefined();
+      expect(after['updated_at'] as string).not.toBe(before['updated_at'] as string);
     });
 
     it('should maintain creation timestamp on update', () => {

@@ -9,13 +9,13 @@ interface ChangeProcessor {
 }
 
 export function useAfterChangeProcessing(): ChangeProcessor {
-  const processChangesList = useCallback((changes: HandsontableChange[], rows: TimesheetRow[]): Record<number, Record<string, unknown>> => {
+  const processChangesList = useCallback((changes: HandsontableChange[], _rows: TimesheetRow[]): Record<number, Record<string, unknown>> => {
     const result: Record<number, Record<string, unknown>> = {};
 
     for (const change of changes) {
       if (!change) continue;
 
-      const [rowIdx, prop, oldValue, newValue] = change;
+      const [rowIdx, prop, _oldValue, newValue] = change;
       if (rowIdx === null || rowIdx === undefined || prop === null) continue;
 
       if (!result[rowIdx]) {

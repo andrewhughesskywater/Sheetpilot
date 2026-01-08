@@ -56,6 +56,14 @@ export function validateSession(token: string): { valid: boolean; email?: string
     try {
         dbLogger.verbose('Validating session', { token: token.substring(0, 8) + '...' });
         
+        // Validate token format (should be a UUID)
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(token)) {
+            dbLogger.verbose('Invalid session token format');
+            timer.done({ valid: false, reason: 'invalid-format' });
+            return { valid: false };
+        }
+        
         const getSession = db.prepare(`
             SELECT email, expires_at, is_admin
             FROM sessions

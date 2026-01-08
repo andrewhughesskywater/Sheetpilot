@@ -23,15 +23,15 @@ export interface QuarterProcessingConfig {
   /** Function to convert entries to bot row format */
   toBotRow: (entry: TimesheetEntry) => Record<string, string | number | null | undefined>;
   /** Function to run the bot automation */
-  runBot: (
-    botRows: Array<Record<string, unknown>>,
-    email: string,
-    password: string,
-    formConfig: { BASE_URL: string; FORM_ID: string; SUBMISSION_ENDPOINT: string; SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[] },
-    progressCallback?: (percent: number, message: string) => void,
-    headless?: boolean,
-    abortSignal?: AbortSignal
-  ) => Promise<{ ok: boolean; submitted: number[]; errors: Array<[number, string]> }>;
+  runBot: (config: {
+    rows: Array<Record<string, unknown>>;
+    email: string;
+    password: string;
+    formConfig: { BASE_URL: string; FORM_ID: string; SUBMISSION_ENDPOINT: string; SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[] };
+    progressCallback?: (percent: number, message: string) => void;
+    headless?: boolean;
+    abortSignal?: AbortSignal;
+  }) => Promise<{ ok: boolean; submitted: number[]; errors: Array<[number, string]> }>;
   /** Email for authentication */
   email: string;
   /** Password for authentication */
@@ -136,15 +136,15 @@ export async function processEntriesByQuarter(
       throw new Error('Submission was cancelled');
     }
     
-        const { ok, submitted, errors } = await config.runBot(
-          botRows,
-          config.email,
-          config.password,
+        const { ok, submitted, errors } = await config.runBot({
+          rows: botRows,
+          email: config.email,
+          password: config.password,
           formConfig,
-          config.progressCallback ?? undefined,
-          undefined,
-          config.abortSignal ?? undefined
-        );
+          progressCallback: config.progressCallback ?? undefined,
+          headless: undefined,
+          abortSignal: config.abortSignal ?? undefined
+        });
     botLogger.info('Bot automation completed', { 
       ok, 
       submittedCount: submitted.length, 

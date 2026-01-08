@@ -1,11 +1,13 @@
 import { useCallback } from 'react';
+import type { RefObject } from 'react';
+import type { HotTableRef } from '@handsontable/react-wrapper';
 import type { TimesheetRow } from '../timesheet.schema';
 import { normalizePastedRows, validatePastedData } from '../utils/pasteNormalizer';
 
 export function usePasteHandler() {
   const setTempDropdownValue = useCallback(
     (
-      hotRef: React.RefObject<any>,
+      hotRef: RefObject<HotTableRef | null>,
       rowIdx: number,
       columnIndex: number,
       value: string | undefined
@@ -25,7 +27,7 @@ export function usePasteHandler() {
       timesheetDraftData: TimesheetRow[],
       startRowIdx: number,
       pastedRowCount: number,
-      hotRef: React.RefObject<any>,
+      hotRef: RefObject<HotTableRef | null>,
       getChargeCodesForProject?: (project: string, tool: string) => string[]
     ): void => {
       for (let i = 0; i < pastedRowCount; i++) {
@@ -59,7 +61,7 @@ export function usePasteHandler() {
       pastedData: unknown[][],
       timesheetDraftData: TimesheetRow[],
       setTimesheetDraftData: (rows: TimesheetRow[]) => void,
-      hotRef: React.RefObject<any>,
+      hotRef: RefObject<HotTableRef | null>,
       getChargeCodesForProject?: (project: string, tool: string) => string[],
       onChange?: (rows: TimesheetRow[]) => void
     ): boolean => {

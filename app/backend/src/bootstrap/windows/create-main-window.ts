@@ -128,18 +128,23 @@ export function createMainWindow(params: {
   });
 
   // === Debugging: Console Logging (Deduplicated) ===
-  window.webContents.on('console-message', (_e, level, message, line, sourceId) => {
+  const handleConsoleMessage = (level: number, message: string, line: number, sourceId: string): void => {
     const filter = consoleLoggerManager.getFilter(window.webContents.id);
+    const consoleData = { level, message, line, sourceId };
 
     // Skip if dedup filter says this is a duplicate
-    if (!filter.filter(level, message, line, sourceId)) {
+    if (!filter.filter(consoleData.level, consoleData.message, consoleData.line, consoleData.sourceId)) {
       return;
     }
 
     // Log the first occurrence
-    const context: ConsoleMessageContext = { line, sourceId, webContentsId: window.webContents.id };
-    const levelName = ConsoleLoggerManager.getLevelName(level);
-    params.logger[levelName](`[Renderer] ${message}`, context);
+    const context: ConsoleMessageContext = { line: consoleData.line, sourceId: consoleData.sourceId, webContentsId: window.webContents.id };
+    const levelName = ConsoleLoggerManager.getLevelName(consoleData.level);
+    params.logger[levelName](`[Renderer] ${consoleData.message}`, context);
+  };
+  
+  window.webContents.on('console-message', (_e, level, message, line, sourceId) => {
+    handleConsoleMessage(level, message, line, sourceId);
   });
 
   if (params.isSmoke) {
@@ -170,25 +175,30 @@ export function createMainWindow(params: {
   });
 
   // === Error Handling: Renderer Load Failures ===
-  window.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+  const handleLoadFailure = (errorCode: number, errorDescription: string, validatedURL: string, isMainFrame: boolean): void => {
+    const loadError = { errorCode, errorDescription, validatedURL, isMainFrame };
     params.logger.error('Could not load renderer', {
-      errorCode,
-      errorDescription,
-      validatedURL,
-      isMainFrame,
+      errorCode: loadError.errorCode,
+      errorDescription: loadError.errorDescription,
+      validatedURL: loadError.validatedURL,
+      isMainFrame: loadError.isMainFrame,
       webContentsId: window.webContents.id
     });
 
-    if (isMainFrame) {
+    if (loadError.isMainFrame) {
       void showErrorDialog({
         app: params.app,
         logger: params.logger,
-        error: new Error(`${errorCode}: ${errorDescription}`),
+        error: new Error(`${loadError.errorCode}: ${loadError.errorDescription}`),
         title: 'Failed to Load Application',
-        message: `Could not load the application interface:\n\nError ${errorCode}: ${errorDescription}\n\nURL: ${validatedURL}\n\nPlease check the log file for more details.`,
+        message: `Could not load the application interface:\n\nError ${loadError.errorCode}: ${loadError.errorDescription}\n\nURL: ${loadError.validatedURL}\n\nPlease check the log file for more details.`,
         exitCode: 1
       });
     }
+  };
+  
+  window.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+    handleLoadFailure(errorCode, errorDescription, validatedURL, isMainFrame);
   });
 
   window.webContents.on('did-finish-load', () => {

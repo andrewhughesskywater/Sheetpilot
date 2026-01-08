@@ -1,4 +1,6 @@
 import { useCallback } from 'react';
+import type { RefObject } from 'react';
+import type { HotTableRef } from '@handsontable/react-wrapper';
 import type { TimesheetRow } from '../timesheet.schema';
 
 export function useBeforeKeyDownHandler() {
@@ -7,7 +9,7 @@ export function useBeforeKeyDownHandler() {
       beforeKeyEvent: KeyboardEvent,
       timesheetDraftData: TimesheetRow[],
       selectedRows: Set<number>,
-      hotRef: React.RefObject<any>
+      hotRef: RefObject<HotTableRef | null>
     ): void => {
       if (!beforeKeyEvent.shiftKey) return;
 
@@ -21,13 +23,12 @@ export function useBeforeKeyDownHandler() {
       const referenceDate = new Date(referenceRow.date);
       const adjustedDate = new Date(referenceDate);
       adjustedDate.setDate(adjustedDate.getDate() + 1);
-      const newDateStr = adjustedDate.toISOString().split('T')[0];
 
       const hotInstance = hotRef.current?.hotInstance;
       if (!hotInstance) return;
 
       // Populate date column for all selected rows with incremented dates
-      let currentDate = new Date(referenceDate);
+      const currentDate = new Date(referenceDate);
       for (const rowIdx of selectedRowArray) {
         currentDate.setDate(currentDate.getDate() + 1);
         const dateStr = currentDate.toISOString().split('T')[0];
@@ -47,7 +48,7 @@ export function useBeforeKeyDownHandler() {
       event: KeyboardEvent,
       timesheetDraftData: TimesheetRow[],
       selectedRows: Set<number>,
-      hotRef: React.RefObject<any>,
+      hotRef: RefObject<HotTableRef | null>,
       handleMacroKeyDown: (event: KeyboardEvent) => boolean
     ): boolean => {
       if (event.shiftKey && event.key === 'ArrowDown') {

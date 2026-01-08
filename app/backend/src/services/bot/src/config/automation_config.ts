@@ -471,13 +471,23 @@ export async function sleep(ms: number): Promise<void> {
    * @param _operation_name - Name of operation for logging (unused)
    * @returns Promise resolving to true if condition met, false if timeout
    */
-  export async function dynamic_wait(
-    condition_func: () => boolean | Promise<boolean>,
-    base_timeout = DYNAMIC_WAIT_BASE_TIMEOUT,
-    max_timeout = DYNAMIC_WAIT_MAX_TIMEOUT,
-    multiplier = DYNAMIC_WAIT_MULTIPLIER,
-    _operation_name = "operation",
-  ): Promise<boolean> {
+  interface DynamicWaitConfig {
+    condition_func: () => boolean | Promise<boolean>;
+    base_timeout?: number;
+    max_timeout?: number;
+    multiplier?: number;
+    operation_name?: string;
+  }
+
+  async function dynamicWaitInternal(config: DynamicWaitConfig): Promise<boolean> {
+    const {
+      condition_func,
+      base_timeout = DYNAMIC_WAIT_BASE_TIMEOUT,
+      max_timeout = DYNAMIC_WAIT_MAX_TIMEOUT,
+      multiplier = DYNAMIC_WAIT_MULTIPLIER,
+      operation_name: _operation_name = "operation"
+    } = config;
+
     if (!DYNAMIC_WAIT_ENABLED) {
       await sleep(base_timeout * 1000);
       return Boolean(await condition_func());
@@ -492,6 +502,32 @@ export async function sleep(ms: number): Promise<void> {
     }
     return false;
   }
+
+  /**
+   * Waits for a condition to become true using dynamic wait strategy
+   * Supports both object parameter and legacy multiple parameters
+   */
+  export async function dynamic_wait(
+    condition_funcOrConfig: (() => boolean | Promise<boolean>) | DynamicWaitConfig,
+    base_timeout?: number,
+    max_timeout?: number,
+    multiplier?: number,
+    _operation_name?: string
+  ): Promise<boolean> {
+    // New signature: object parameter
+    if (typeof condition_funcOrConfig === 'object' && condition_funcOrConfig !== null && 'condition_func' in condition_funcOrConfig) {
+      return dynamicWaitInternal(condition_funcOrConfig as DynamicWaitConfig);
+    }
+    
+    // Legacy signature: multiple parameters
+    return dynamicWaitInternal({
+      condition_func: condition_funcOrConfig as () => boolean | Promise<boolean>,
+      base_timeout: base_timeout ?? DYNAMIC_WAIT_BASE_TIMEOUT,
+      max_timeout: max_timeout ?? DYNAMIC_WAIT_MAX_TIMEOUT,
+      multiplier: multiplier ?? DYNAMIC_WAIT_MULTIPLIER,
+      operation_name: _operation_name ?? "operation"
+    });
+  }
   
   /**
    * Waits for an element to reach the specified state using dynamic wait
@@ -504,28 +540,64 @@ export async function sleep(ms: number): Promise<void> {
    * @param _operation_name - Name of operation for logging (unused)
    * @returns Promise resolving to true if element reaches state, false if timeout
    */
+  interface DynamicWaitForElementConfig {
+    page: import('playwright').Page;
+    selector: string;
+    state?: 'visible' | 'hidden' | 'attached';
+    base_timeout?: number;
+    max_timeout?: number;
+    operation_name?: string;
+  }
+
   export async function dynamic_wait_for_element(
-    page: import('playwright').Page,
-    selector: string,
+    pageOrConfig: import('playwright').Page | DynamicWaitForElementConfig,
+    selector?: string,
     state: 'visible' | 'hidden' | 'attached' = 'visible',
     base_timeout = DYNAMIC_WAIT_BASE_TIMEOUT,
     max_timeout = DYNAMIC_WAIT_MAX_TIMEOUT,
     _operation_name = 'element',
   ): Promise<boolean> {
+    // Support both new object parameter and legacy multiple parameters
+    let page: import('playwright').Page;
+    let actualSelector: string;
+    let actualState: 'visible' | 'hidden' | 'attached';
+    let actualBaseTimeout: number;
+    let actualMaxTimeout: number;
+    let actualOperationName: string;
+
+    if (typeof pageOrConfig === 'object' && pageOrConfig !== null && 'page' in pageOrConfig) {
+      // New signature: object parameter
+      const config = pageOrConfig as DynamicWaitForElementConfig;
+      page = config.page;
+      actualSelector = config.selector;
+      actualState = config.state ?? 'visible';
+      actualBaseTimeout = config.base_timeout ?? DYNAMIC_WAIT_BASE_TIMEOUT;
+      actualMaxTimeout = config.max_timeout ?? DYNAMIC_WAIT_MAX_TIMEOUT;
+      actualOperationName = config.operation_name ?? 'element';
+    } else {
+      // Legacy signature: multiple parameters
+      page = pageOrConfig as import('playwright').Page;
+      actualSelector = selector!;
+      actualState = state;
+      actualBaseTimeout = base_timeout;
+      actualMaxTimeout = max_timeout;
+      actualOperationName = _operation_name;
+    }
+
     return dynamic_wait(async () => {
       try {
-        const locator = page.locator(selector);
+        const locator = page.locator(actualSelector);
         const count = await locator.count();
         if (count === 0) return false;
         const first = locator.first();
-        if (state === 'visible') return await first.isVisible();
-        if (state === 'hidden') return !(await first.isVisible());
-        if (state === 'attached') return await first.isEnabled().catch(() => false);
+        if (actualState === 'visible') return await first.isVisible();
+        if (actualState === 'hidden') return !(await first.isVisible());
+        if (actualState === 'attached') return await first.isEnabled().catch(() => false);
         return false;
       } catch {
         return false;
       }
-    }, base_timeout, max_timeout, DYNAMIC_WAIT_MULTIPLIER, `element (${selector})`);
+    }, actualBaseTimeout, actualMaxTimeout, DYNAMIC_WAIT_MULTIPLIER, `element (${actualSelector})`);
   }
   
   /**
@@ -592,29 +664,55 @@ export async function sleep(ms: number): Promise<void> {
   /**
    * Wait for DOM element to appear and become stable, with fallback to proceed if no activity
    * 
-   * @param page - Playwright Page instance
-   * @param selector - CSS selector to wait for
-   * @param state - Element state to wait for ('visible', 'hidden', 'attached', 'detached')
-   * @param base_timeout - Initial timeout in seconds
-   * @param max_timeout - Maximum total timeout in seconds
-   * @param operation_name - Name of operation for logging
+   * @param pageOrConfig - Playwright Page instance or configuration object
+   * @param selector - CSS selector to wait for (legacy parameter)
+   * @param state - Element state to wait for ('visible', 'hidden', 'attached', 'detached') (legacy parameter)
+   * @param base_timeout - Initial timeout in seconds (legacy parameter)
+   * @param max_timeout - Maximum total timeout in seconds (legacy parameter)
+   * @param operation_name - Name of operation for logging (legacy parameter)
    * @returns Promise resolving to true if element becomes stable or if no activity detected
    */
   export async function wait_for_dom_stability(
-    page: import('playwright').Page,
-    selector: string,
+    pageOrConfig: import('playwright').Page | WaitForDomStabilityConfig,
+    selector?: string,
     state: 'visible' | 'hidden' | 'attached' | 'detached' = 'visible',
     base_timeout = DYNAMIC_WAIT_BASE_TIMEOUT,
     max_timeout = DYNAMIC_WAIT_MAX_TIMEOUT,
     operation_name = 'DOM stability'
   ): Promise<boolean> {
+    // Support both new object parameter and legacy multiple parameters
+    let page: import('playwright').Page;
+    let actualSelector: string;
+    let actualState: 'visible' | 'hidden' | 'attached' | 'detached';
+    let actualBaseTimeout: number;
+    let actualMaxTimeout: number;
+    let actualOperationName: string;
+
+    if (typeof pageOrConfig === 'object' && pageOrConfig !== null && 'page' in pageOrConfig) {
+      // New signature: object parameter
+      const config = pageOrConfig as WaitForDomStabilityConfig;
+      page = config.page;
+      actualSelector = config.selector;
+      actualState = config.state ?? 'visible';
+      actualBaseTimeout = config.base_timeout ?? DYNAMIC_WAIT_BASE_TIMEOUT;
+      actualMaxTimeout = config.max_timeout ?? DYNAMIC_WAIT_MAX_TIMEOUT;
+      actualOperationName = config.operation_name ?? 'DOM stability';
+    } else {
+      // Legacy signature: multiple parameters
+      page = pageOrConfig as import('playwright').Page;
+      actualSelector = selector!;
+      actualState = state;
+      actualBaseTimeout = base_timeout;
+      actualMaxTimeout = max_timeout;
+      actualOperationName = operation_name;
+    }
     return dynamic_wait(async () => {
       try {
-        const element = page.locator(selector);
+        const element = page.locator(actualSelector);
         
         // Quick check if element exists and is in desired state
         // Capture state in closure since evaluate doesn't accept parameters for this use case
-        const targetState = state;
+        const targetState = actualState;
         const isInState = await element.evaluate((el: HTMLElement | SVGElement) => {
           if (!el) return false;
           
@@ -671,7 +769,7 @@ export async function sleep(ms: number): Promise<void> {
         }
         
         // Element not in desired state, but don't wait too long
-        await element.waitFor({ state, timeout: Math.min(base_timeout * 500, 2000) });
+        await element.waitFor({ state: actualState, timeout: Math.min(actualBaseTimeout * 500, 2000) });
         return true;
       } catch {
         // If we can't find the element or it's not in the expected state,
@@ -679,7 +777,7 @@ export async function sleep(ms: number): Promise<void> {
         await page.waitForTimeout(MEDIUM_DELAY_MS);
         return true;
       }
-    }, Math.min(base_timeout, 1.0), Math.min(max_timeout, 2.0), DYNAMIC_WAIT_MULTIPLIER, operation_name);
+    }, Math.min(actualBaseTimeout, 1.0), Math.min(actualMaxTimeout, 2.0), DYNAMIC_WAIT_MULTIPLIER, actualOperationName);
   }
 
   /**
@@ -868,22 +966,53 @@ export async function sleep(ms: number): Promise<void> {
    * @param operation_name - Name of operation for logging
    * @returns Promise resolving to true if condition met or if no activity detected
    */
+  interface SmartWaitOrProceedConfig {
+    page: import('playwright').Page;
+    condition_func: () => boolean | Promise<boolean>;
+    max_wait_time?: number;
+    check_interval?: number;
+    operation_name?: string;
+  }
+
   export async function smart_wait_or_proceed(
-    page: import('playwright').Page,
-    condition_func: () => boolean | Promise<boolean>,
+    pageOrConfig: import('playwright').Page | SmartWaitOrProceedConfig,
+    condition_func?: () => boolean | Promise<boolean>,
     max_wait_time = 1.0,
     check_interval = 100,
     _operation_name = 'smart wait'
   ): Promise<boolean> {
+    // Support both new object parameter and legacy multiple parameters
+    let page: import('playwright').Page;
+    let actualConditionFunc: () => boolean | Promise<boolean>;
+    let actualMaxWaitTime: number;
+    let actualCheckInterval: number;
+    let actualOperationName: string;
+
+    if (typeof pageOrConfig === 'object' && pageOrConfig !== null && 'page' in pageOrConfig) {
+      // New signature: object parameter
+      const config = pageOrConfig as SmartWaitOrProceedConfig;
+      page = config.page;
+      actualConditionFunc = config.condition_func;
+      actualMaxWaitTime = config.max_wait_time ?? 1.0;
+      actualCheckInterval = config.check_interval ?? 100;
+      actualOperationName = config.operation_name ?? 'smart wait';
+    } else {
+      // Legacy signature: multiple parameters
+      page = pageOrConfig as import('playwright').Page;
+      actualConditionFunc = condition_func!;
+      actualMaxWaitTime = max_wait_time;
+      actualCheckInterval = check_interval;
+      actualOperationName = _operation_name;
+    }
     const startTime = Date.now();
-    const maxWaitMs = max_wait_time * 1000;
+    const maxWaitMs = actualMaxWaitTime * 1000;
     let consecutiveNoActivity = 0;
     const maxConsecutiveNoActivity = 3; // Proceed if no activity for 3 consecutive checks
     
     while (Date.now() - startTime < maxWaitMs) {
       try {
         // Check if condition is met
-        const conditionMet = await condition_func();
+        const conditionMet = await actualConditionFunc();
         if (conditionMet) {
           return true;
         }
@@ -919,7 +1048,7 @@ export async function sleep(ms: number): Promise<void> {
           }
         }
         
-        await page.waitForTimeout(check_interval);
+        await page.waitForTimeout(actualCheckInterval);
       } catch {
         // If there's any error, proceed anyway to avoid hanging
         await page.waitForTimeout(BRIEF_POLL_INTERVAL_MS);

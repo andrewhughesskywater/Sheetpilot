@@ -1,19 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { MacroRow } from '../../../utils/macroStorage';
 import { loadMacros } from '../../../utils/macroStorage';
 
 export function useMacroSystem() {
-  const [macros, setMacros] = useState<MacroRow[]>([]);
-  const [showMacroDialog, setShowMacroDialog] = useState(false);
-
-  useEffect(() => {
+  // Use lazy initializer to load macros on first render without causing effect cascades
+  const [macros, setMacros] = useState<MacroRow[]>(() => {
     try {
-      const loaded = loadMacros();
-      setMacros(loaded);
+      return loadMacros();
     } catch {
-      setMacros([]);
+      return [];
     }
-  }, []);
+  });
+  const [showMacroDialog, setShowMacroDialog] = useState(false);
 
   const applyMacro = (_index: number) => {
     // Integrate real macro apply in future

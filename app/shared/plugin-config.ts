@@ -162,12 +162,10 @@ export function resolvePluginVariant(namespace: string, config: PluginRegistryCo
   // Check feature flags that might override the active plugin
   if (config.featureFlags) {
     for (const [flagName, flag] of Object.entries(config.featureFlags)) {
-      if (flag.enabled && flag.variant && doesFeatureFlagApplyToNamespace(flagName, namespace)) {
+      if (flag.enabled && flag.variant && doesFeatureFlagApplyToNamespace(flagName, namespace) && shouldEnableForUser(flag)) {
         // Feature flag is enabled and specifies a variant
-        if (shouldEnableForUser(flag)) {
-          console.log(`Feature flag ${flagName} enabled, using variant: ${flag.variant}`);
-          return flag.variant;
-        }
+        console.log(`Feature flag ${flagName} enabled, using variant: ${flag.variant}`);
+        return flag.variant;
       }
     }
   }
@@ -188,20 +186,17 @@ function shouldEnableForUser(flag: FeatureFlag): boolean {
   const userId = getCurrentUserId();
   
   // Check deny list first (highest priority)
-  if (flag.denyList && flag.denyList.length > 0) {
-    if (userId && flag.denyList.includes(userId)) {
-      return false;
-    }
+  if (flag.denyList && flag.denyList.length > 0 && userId && flag.denyList.includes(userId)) {
+    return false;
   }
   
   // Check allow list (second priority)
-  if (flag.allowList && flag.allowList.length > 0) {
-    if (userId && flag.allowList.includes(userId)) {
-      return true;
-    }
-    // If allow list exists but user not in it, don't enable unless rollout says so
-    // Continue to rollout check below
+  if (flag.allowList && flag.allowList.length > 0 && userId && flag.allowList.includes(userId)) {
+    return true;
   }
+  
+  // If allow list exists but user not in it, don't enable unless rollout says so
+  // Continue to rollout check below
   
   // Check rollout percentage (third priority)
   if (flag.rolloutPercentage !== undefined) {

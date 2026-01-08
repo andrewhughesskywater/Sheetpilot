@@ -63,24 +63,53 @@ export class ElectronBotService implements ISubmissionService {
   /**
    * Submit timesheet entries using browser automation
    */
-  public async submit(entries: TimesheetEntry[], credentials: Credentials, progressCallback?: (percent: number, message: string) => void, abortSignal?: AbortSignal, useMockWebsite?: boolean): Promise<SubmissionResult> {
+  public async submit(
+    entriesOrConfig: TimesheetEntry[] | SubmitConfig,
+    credentials?: Credentials,
+    progressCallback?: (percent: number, message: string) => void,
+    abortSignal?: AbortSignal,
+    useMockWebsite?: boolean
+  ): Promise<SubmissionResult> {
+    // Support both new object parameter and legacy multiple parameters
+    let entries: TimesheetEntry[];
+    let actualCredentials: Credentials;
+    let actualProgressCallback: ((percent: number, message: string) => void) | undefined;
+    let actualAbortSignal: AbortSignal | undefined;
+    let actualUseMockWebsite: boolean | undefined;
+
+    if (typeof entriesOrConfig === 'object' && entriesOrConfig !== null && 'entries' in entriesOrConfig) {
+      // New signature: object parameter
+      const config = entriesOrConfig as SubmitConfig;
+      entries = config.entries;
+      actualCredentials = config.credentials;
+      actualProgressCallback = config.progressCallback;
+      actualAbortSignal = config.abortSignal;
+      actualUseMockWebsite = config.useMockWebsite;
+    } else {
+      // Legacy signature: multiple parameters
+      entries = entriesOrConfig as TimesheetEntry[];
+      actualCredentials = credentials!;
+      actualProgressCallback = progressCallback;
+      actualAbortSignal = abortSignal;
+      actualUseMockWebsite = useMockWebsite;
+    }
     botLogger.info('Starting Electron submission', { entryCount: entries.length });
     
     try {
       // Check if aborted before starting
       try {
-        checkAborted(abortSignal, 'Submission');
+        checkAborted(actualAbortSignal, 'Submission');
       } catch {
         return createCancelledResult(entries.length);
       }
       const result = await processEntriesByQuarter(entries, {
         toBotRow: (entry) => this.toBotRow(entry),
         runBot: runTimesheet,
-        email: credentials.email,
-        password: credentials.password,
-        progressCallback,
-        abortSignal,
-        useMockWebsite
+        email: actualCredentials.email,
+        password: actualCredentials.password,
+        progressCallback: actualProgressCallback,
+        abortSignal: actualAbortSignal,
+        useMockWebsite: actualUseMockWebsite
       });
       
       botLogger.info('Electron submission completed', result);
@@ -170,3 +199,10 @@ export class ElectronBotService implements ISubmissionService {
   }
 }
 
+interface SubmitConfig {
+  entries: TimesheetEntry[];
+  credentials: Credentials;
+  progressCallback?: (percent: number, message: string) => void;
+  abortSignal?: AbortSignal;
+  useMockWebsite?: boolean;
+}

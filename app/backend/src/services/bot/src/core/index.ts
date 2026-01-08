@@ -47,6 +47,16 @@ export * from '../config/automation_config';
 // Quarter configuration and routing
 export * from '../config/quarter_config';
 
+interface RunTimesheetConfig {
+  rows: Array<Record<string, unknown>>;
+  email: string;
+  password: string;
+  formConfig: { BASE_URL: string; FORM_ID: string; SUBMISSION_ENDPOINT: string; SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[] };
+  progressCallback?: (percent: number, message: string) => void;
+  headless?: boolean;
+  abortSignal?: AbortSignal;
+}
+
 /**
  * Runs timesheet automation for a batch of rows.
  *
@@ -55,19 +65,12 @@ export * from '../config/quarter_config';
  *
  * `formConfig` must match the form you expect to submit to (usually quarter-based).
  */
-export async function runTimesheet(
-  rows: Array<Record<string, unknown>>, 
-  email: string, 
-  password: string,
-  formConfig: { BASE_URL: string; FORM_ID: string; SUBMISSION_ENDPOINT: string; SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[] },
-  progressCallback?: (percent: number, message: string) => void,
-  headless?: boolean,
-  abortSignal?: AbortSignal
-): Promise<{
+export async function runTimesheet(config: RunTimesheetConfig): Promise<{
   ok: boolean;
   submitted: number[];
   errors: Array<[number, string]>;
 }> {
+  const { rows, email, password, formConfig, progressCallback, headless, abortSignal } = config;
   // Prefer the explicit parameter, otherwise use the UI-controlled setting.
   // `appSettings.browserHeadless` updates at runtime when a user changes Settings.
   const useHeadless = headless !== undefined ? headless : appSettings.browserHeadless;

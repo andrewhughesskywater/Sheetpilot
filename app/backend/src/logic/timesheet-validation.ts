@@ -65,82 +65,108 @@ export function isValidDate(dateStr?: string): boolean {
 }
 
 /**
+ * Check if time string has invalid characters
+ */
+function hasInvalidTimeCharacters(timeStr: string): boolean {
+  return timeStr.includes('-') || // Negative values
+         timeStr.includes('.') || // Decimal notation
+         timeStr.includes('e') || timeStr.includes('E') || // Scientific notation
+         timeStr.length > 5; // Too long (likely invalid)
+}
+
+/**
+ * Normalize time string in HH:MM format
+ */
+function normalizeTimeFormat(timeStr: string): string | null {
+  const parts = timeStr.split(':');
+  if (parts.length !== 2) return null;
+  
+  const [hours, minutes] = parts;
+  if (!hours || minutes === undefined) return null;
+  
+  const hoursNum = parseInt(hours, 10);
+  const minutesNum = parseInt(minutes, 10);
+  if (isNaN(hoursNum) || isNaN(minutesNum) || hoursNum >= 24 || minutesNum >= 60) {
+    return null;
+  }
+  
+  const normalizedHours = hours.padStart(2, '0');
+  const normalizedMinutes = minutes.padStart(2, '0');
+  return `${normalizedHours}:${normalizedMinutes}`;
+}
+
+/**
+ * Format 3-digit numeric input (800 -> 08:00)
+ */
+function formatThreeDigitTime(numericOnly: string): string {
+  const hours = numericOnly.substring(0, 1);
+  const minutes = numericOnly.substring(1, 3);
+  return `${hours.padStart(2, '0')}:${minutes}`;
+}
+
+/**
+ * Format 4-digit numeric input (1430 -> 14:30)
+ */
+function formatFourDigitTime(numericOnly: string, original: string): string {
+  const hours = numericOnly.substring(0, 2);
+  const minutes = numericOnly.substring(2, 4);
+  const hoursNum = parseInt(hours, 10);
+  const minutesNum = parseInt(minutes, 10);
+  
+  if (hoursNum >= 24 || minutesNum >= 60) {
+    return original; // Invalid time, return original
+  }
+  return `${hours}:${minutes}`;
+}
+
+/**
+ * Format numeric-only time input based on length
+ */
+function formatNumericTime(numericOnly: string, original: string): string {
+  if (numericOnly.length === 3) {
+    return formatThreeDigitTime(numericOnly);
+  }
+  if (numericOnly.length === 4) {
+    return formatFourDigitTime(numericOnly, original);
+  }
+  if (numericOnly.length === 2) {
+    const hoursNum = parseInt(numericOnly, 10);
+    if (hoursNum >= 24) return original;
+    return `${numericOnly}:00`;
+  }
+  if (numericOnly.length === 1) {
+    return `${numericOnly.padStart(2, '0')}:00`;
+  }
+  return original;
+}
+
+/**
  * Format numeric time input (e.g., 800 -> 08:00, 1430 -> 14:30)
  */
 export function formatTimeInput(timeStr: unknown): string {
   // Convert numbers to strings first
-  if (typeof timeStr === 'number') {
-    timeStr = String(timeStr);
-  }
+  const timeString = typeof timeStr === 'number' ? String(timeStr) : timeStr;
   
-  if (typeof timeStr !== 'string') return String(timeStr || '');
+  if (typeof timeString !== 'string') return String(timeString || '');
   
   // Handle special edge cases - return original for invalid inputs
-  if (timeStr.includes('-') || // Negative values
-      timeStr.includes('.') || // Decimal notation
-      timeStr.includes('e') || timeStr.includes('E') || // Scientific notation
-      timeStr.length > 5) { // Too long (likely invalid)
-    return timeStr;
+  if (hasInvalidTimeCharacters(timeString)) {
+    return timeString;
   }
   
   // If already in HH:MM format, normalize it to ensure proper padding
-  if (timeStr.includes(':')) {
-    const parts = timeStr.split(':');
-    if (parts.length === 2) {
-      const [hours, minutes] = parts;
-      if (hours && minutes !== undefined) {
-        // Validate that hours and minutes are numeric and within valid range
-        const hoursNum = parseInt(hours, 10);
-        const minutesNum = parseInt(minutes, 10);
-        if (isNaN(hoursNum) || isNaN(minutesNum) || hoursNum >= 24 || minutesNum >= 60) {
-          return timeStr;
-        }
-        const normalizedHours = hours.padStart(2, '0');
-        const normalizedMinutes = minutes.padStart(2, '0');
-        return `${normalizedHours}:${normalizedMinutes}`;
-      }
-    }
-    // For invalid formats like HH:MM:SS, return original input
-    return timeStr;
+  if (timeString.includes(':')) {
+    const normalized = normalizeTimeFormat(timeString);
+    return normalized || timeString;
   }
   
   // Remove any non-numeric characters for pure numeric input
-  const numericOnly = timeStr.replace(/\D/g, '');
+  const numericOnly = timeString.replace(/\D/g, '');
   
   // If no numeric content, return original
-  if (!numericOnly) return timeStr;
+  if (!numericOnly) return timeString;
   
-  // Handle different numeric input formats
-  if (numericOnly.length === 3) {
-    // 800 -> 08:00
-    const hours = numericOnly.substring(0, 1);
-    const minutes = numericOnly.substring(1, 3);
-    return `${hours.padStart(2, '0')}:${minutes}`;
-  } else if (numericOnly.length === 4) {
-    // 1430 -> 14:30
-    const hours = numericOnly.substring(0, 2);
-    const minutes = numericOnly.substring(2, 4);
-    // Validate hours and minutes are within range
-    const hoursNum = parseInt(hours, 10);
-    const minutesNum = parseInt(minutes, 10);
-    if (hoursNum >= 24 || minutesNum >= 60) {
-      return timeStr; // Invalid time, return original
-    }
-    return `${hours}:${minutes}`;
-  } else if (numericOnly.length === 2) {
-    // Two-digit input: treat as hours (08 -> 08:00, 12 -> 12:00)
-    const hoursNum = parseInt(numericOnly, 10);
-    if (hoursNum >= 24) {
-      return timeStr; // Invalid hour, return original
-    }
-    return `${numericOnly}:00`;
-  } else if (numericOnly.length === 1) {
-    // 8 -> 08:00
-    return `${numericOnly.padStart(2, '0')}:00`;
-  }
-  
-  // Return original if it doesn't match expected patterns
-  return timeStr;
+  return formatNumericTime(numericOnly, timeString);
 }
 
 /**
@@ -184,7 +210,134 @@ export function isTimeOutAfterTimeIn(timeIn?: string, timeOut?: string): boolean
 }
 
 /**
+ * Configuration for field validation
+ */
+interface ValidateFieldConfig {
+  value: unknown;
+  row: number;
+  prop: string | number;
+  rows: TimesheetRow[];
+  projects: string[];
+  chargeCodes: string[];
+}
+
+/**
+ * Validate date field
+ */
+function validateDateField(value: unknown): string | null {
+  if (!value) return 'Date is required - please enter a date';
+  if (!isValidDate(String(value))) return 'Date must be like 01/15/2024 or 2024-01-15';
+  
+  // Convert mm/dd/yyyy to yyyy-mm-dd for quarter validation
+  const dateStr = String(value);
+  const [month, day, year] = dateStr.split('/');
+  if (!month || !day || !year) return 'Date must be like 01/15/2024';
+  const isoDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  
+  // Validate quarter availability
+  const quarterError = validateQuarterAvailability(isoDate);
+  return quarterError || null;
+}
+
+/**
+ * Validate timeIn field
+ */
+function validateTimeInField(value: unknown): string | null {
+  if (!value) return 'Start time is required - please enter start time';
+  if (!isValidTime(String(value))) return 'Time must be like 09:00, 800, or 1430 and in 15 minute steps';
+  return null;
+}
+
+/**
+ * Validate timeOut field
+ */
+function validateTimeOutField(value: unknown, timeIn?: string): string | null {
+  if (!value) return 'End time is required - please enter end time';
+  if (!isValidTime(String(value))) return 'Time must be like 17:00, 1700, or 530 and in 15 minute steps';
+  if (!isTimeOutAfterTimeIn(timeIn, String(value))) return 'End time must be after start time';
+  return null;
+}
+
+/**
+ * Validate project field
+ */
+function validateProjectField(value: unknown, projects: string[]): string | null {
+  if (!value) return 'Project is required - please pick a project';
+  if (!projects.includes(String(value))) return 'Please pick from the list';
+  return null;
+}
+
+/**
+ * Validate tool field
+ */
+function validateToolField(value: unknown, project?: string): string | null {
+  if (!projectNeedsTools(project)) {
+    // Tool is N/A for this project, normalize to null
+    return null;
+  }
+  if (!value) return 'Please pick a tool for this project';
+  // Tool validation against valid list is handled by dropdown
+  return null;
+}
+
+/**
+ * Validate chargeCode field
+ */
+function validateChargeCodeField(value: unknown, tool: string | null | undefined, chargeCodes: string[]): string | null {
+  if (!toolNeedsChargeCode(tool || undefined)) {
+    // Charge code is N/A for this tool, normalize to null
+    return null;
+  }
+  if (!value) return 'Please pick a charge code for this tool';
+  if (!chargeCodes.includes(String(value))) return 'Please pick from the list';
+  return null;
+}
+
+/**
+ * Validate taskDescription field
+ */
+function validateTaskDescriptionField(value: unknown): string | null {
+  if (!value) return 'Task description is required - please describe what you did';
+  return null;
+}
+
+/**
  * Validate a specific field in a timesheet row
+ */
+function validateFieldInternal(config: ValidateFieldConfig): string | null {
+  const { value, row, prop, rows, projects, chargeCodes } = config;
+  const rowData = rows[row];
+  
+  switch (prop) {
+    case 'date':
+      return validateDateField(value);
+      
+    case 'timeIn':
+      return validateTimeInField(value);
+      
+    case 'timeOut':
+      return validateTimeOutField(value, rowData?.timeIn);
+      
+    case 'project':
+      return validateProjectField(value, projects);
+      
+    case 'tool':
+      return validateToolField(value, rowData?.project);
+      
+    case 'chargeCode':
+      return validateChargeCodeField(value, rowData?.tool, chargeCodes);
+      
+    case 'taskDescription':
+      return validateTaskDescriptionField(value);
+      
+    default:
+      return null;
+  }
+}
+
+/**
+ * Validate a specific field in a timesheet row
+ * @deprecated Use validateField with ValidateFieldConfig object instead
  */
 export function validateField(
   value: unknown,
@@ -193,73 +346,33 @@ export function validateField(
   rows: TimesheetRow[],
   projects: string[],
   chargeCodes: string[]
+): string | null;
+export function validateField(config: ValidateFieldConfig): string | null;
+export function validateField(
+  valueOrConfig: unknown | ValidateFieldConfig,
+  row?: number,
+  prop?: string | number,
+  rows?: TimesheetRow[],
+  projects?: string[],
+  chargeCodes?: string[]
 ): string | null {
-  const rowData = rows[row];
-  
-  switch (prop) {
-    case 'date': {
-      if (!value) return 'Date is required - please enter a date';
-      if (!isValidDate(String(value))) return 'Date must be like 01/15/2024 or 2024-01-15';
-      
-      // Convert mm/dd/yyyy to yyyy-mm-dd for quarter validation
-      const dateStr = String(value);
-      const [month, day, year] = dateStr.split('/');
-      if (!month || !day || !year) return 'Date must be like 01/15/2024';
-      const isoDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-      
-      // Validate quarter availability
-      const quarterError = validateQuarterAvailability(isoDate);
-      if (quarterError) return quarterError;
-      
-      return null;
-    }
-      
-    case 'timeIn': {
-      if (!value) return 'Start time is required - please enter start time';
-      if (!isValidTime(String(value))) return 'Time must be like 09:00, 800, or 1430 and in 15 minute steps';
-      return null;
-    }
-      
-    case 'timeOut': {
-      if (!value) return 'End time is required - please enter end time';
-      if (!isValidTime(String(value))) return 'Time must be like 17:00, 1700, or 530 and in 15 minute steps';
-      if (!isTimeOutAfterTimeIn(rowData?.timeIn, String(value))) return 'End time must be after start time';
-      return null;
-    }
-      
-    case 'project':
-      if (!value) return 'Project is required - please pick a project';
-      if (!projects.includes(String(value))) return 'Please pick from the list';
-      return null;
-      
-    case 'tool': {
-      const project = rowData?.project;
-      if (!projectNeedsTools(project)) {
-        // Tool is N/A for this project, normalize to null
-        return null;
-      }
-      if (!value) return 'Please pick a tool for this project';
-      // Tool validation against valid list is handled by dropdown
-      return null;
-    }
-      
-    case 'chargeCode': {
-      const tool = rowData?.tool;
-      if (!toolNeedsChargeCode(tool || undefined)) {
-        // Charge code is N/A for this tool, normalize to null
-        return null;
-      }
-      if (!value) return 'Please pick a charge code for this tool';
-      if (!chargeCodes.includes(String(value))) return 'Please pick from the list';
-      return null;
-    }
-      
-    case 'taskDescription':
-      if (!value) return 'Task description is required - please describe what you did';
-      return null;
-      
-    default:
-      return null;
+  // New signature: object parameter
+  if (arguments.length === 1 && typeof valueOrConfig === 'object' && valueOrConfig !== null && 'value' in valueOrConfig) {
+    return validateFieldInternal(valueOrConfig as ValidateFieldConfig);
   }
+  
+  // Old signature: multiple parameters (for backward compatibility with tests)
+  if (row !== undefined && prop !== undefined && rows !== undefined && projects !== undefined && chargeCodes !== undefined) {
+    return validateFieldInternal({
+      value: valueOrConfig,
+      row,
+      prop,
+      rows,
+      projects,
+      chargeCodes
+    });
+  }
+  
+  throw new Error('Invalid arguments to validateField');
 }
 

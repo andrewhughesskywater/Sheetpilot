@@ -275,6 +275,114 @@ export function ensureSchemaInternal(db: BetterSqlite3.Database) {
 }
 
 /**
+ * Reset closed connection instance
+ */
+function resetClosedConnection(): void {
+    if (connectionInstance !== null && !connectionInstance.open) {
+        connectionInstance = null;
+        schemaInitialized = false;
+    }
+}
+
+/**
+ * Acquire initialization lock and return unlock function
+ */
+function acquireInitializationLock(): (() => void) {
+    isInitializing = true;
+    let unlockFunction: (() => void) = () => {};
+    const currentLock = connectionLock.then(() => {
+        return new Promise<void>((resolve) => {
+            unlockFunction = resolve;
+        });
+    });
+    connectionLock = currentLock;
+    return unlockFunction;
+}
+
+/**
+ * Create and configure database instance
+ */
+function createDatabaseInstance(): BetterSqlite3.Database {
+    // Ensure the database directory exists
+    const dbDir = path.dirname(DB_PATH);
+    fs.mkdirSync(dbDir, { recursive: true });
+    
+    dbLogger.verbose('Opening persistent database connection', { dbPath: DB_PATH });
+    
+    const mod = loadBetterSqlite3() as unknown;
+    // Support both ES module default export and CommonJS direct export
+    const DatabaseCtor = (mod as { default?: unknown })?.default ?? (mod as { Database?: unknown })?.Database ?? mod;
+    const db = new (DatabaseCtor as new (path: string, opts?: BetterSqlite3.Options) => BetterSqlite3.Database)(DB_PATH);
+    
+    // Configure WAL mode for better concurrency
+    db.pragma('journal_mode = WAL');
+    db.pragma('synchronous = NORMAL');
+    db.pragma('cache_size = -32768'); // 32MB cache
+    
+    return db;
+}
+
+/**
+ * Initialize database schema if not already initialized
+ */
+function initializeSchemaIfNeeded(db: BetterSqlite3.Database, unlockFunction: () => void): void {
+    if (schemaInitialized) return;
+    
+    const timer = dbLogger.startTimer('schema-init');
+    try {
+        ensureSchemaInternal(db);
+        schemaInitialized = true;
+        dbLogger.info('Database schema initialized', { dbPath: DB_PATH });
+    } catch (error) {
+        isInitializing = false;
+        unlockFunction();
+        throw new DatabaseSchemaError({
+            dbPath: DB_PATH,
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined
+        });
+    } finally {
+        timer.done();
+    }
+}
+
+/**
+ * Initialize new database connection
+ */
+function initializeConnection(unlockFunction: () => void): void {
+    try {
+        // Double-check after acquiring lock - another thread might have initialized
+        if (isConnectionHealthy()) {
+            isInitializing = false;
+            unlockFunction();
+            return;
+        }
+        
+        const db = createDatabaseInstance();
+        initializeSchemaIfNeeded(db, unlockFunction);
+        
+        connectionInstance = db;
+        isInitializing = false;
+        dbLogger.info('Persistent database connection established', { dbPath: DB_PATH });
+    } catch (error) {
+        isInitializing = false;
+        dbLogger.error('Could not establish database connection', error);
+        unlockFunction();
+        throw new DatabaseConnectionError({
+            dbPath: DB_PATH,
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined
+        });
+    } finally {
+        // Ensure unlock is called and flag is reset even if something unexpected happens
+        if (isInitializing) {
+            isInitializing = false;
+        }
+        unlockFunction();
+    }
+}
+
+/**
  * Gets or creates the singleton database connection
  */
 function getDbConnection(): BetterSqlite3.Database {
@@ -291,91 +399,13 @@ function getDbConnection(): BetterSqlite3.Database {
         });
     }
     
-    // Note: Since getDbConnection is synchronous, we can't await promises here
-    // If initialization is in progress, we'll proceed with the lock check below
-    
     // Reset connection instance if it was closed
-    // (isConnectionHealthy may have reset it, but ensure we handle it here too)
-    if (connectionInstance !== null && !connectionInstance.open) {
-        connectionInstance = null;
-        schemaInitialized = false;
-    }
+    resetClosedConnection();
     
     // If another thread is initializing, wait for it and check again
     if (connectionInstance === null && !isInitializing) {
-        // Lock initialization to prevent race conditions
-        isInitializing = true;
-        let unlockFunction: (() => void) = () => {};
-        const currentLock = connectionLock.then(() => {
-            return new Promise<void>((resolve) => {
-                unlockFunction = resolve;
-            });
-        });
-        connectionLock = currentLock;
-        
-        try {
-            // Double-check after acquiring lock - another thread might have initialized
-            if (isConnectionHealthy()) {
-                isInitializing = false;
-                unlockFunction();
-                return connectionInstance!;
-            }
-            
-            // Ensure the database directory exists
-            const dbDir = path.dirname(DB_PATH);
-            fs.mkdirSync(dbDir, { recursive: true });
-            
-            dbLogger.verbose('Opening persistent database connection', { dbPath: DB_PATH });
-            
-            const mod = loadBetterSqlite3() as unknown;
-            // Support both ES module default export and CommonJS direct export
-            const DatabaseCtor = (mod as { default?: unknown })?.default ?? (mod as { Database?: unknown })?.Database ?? mod;
-            const db = new (DatabaseCtor as new (path: string, opts?: BetterSqlite3.Options) => BetterSqlite3.Database)(DB_PATH);
-            
-            // Configure WAL mode for better concurrency
-            db.pragma('journal_mode = WAL');
-            db.pragma('synchronous = NORMAL');
-            db.pragma('cache_size = -32768'); // 32MB cache
-            
-            // Schema initialization (thread-safe - only first call succeeds)
-            if (!schemaInitialized) {
-                const timer = dbLogger.startTimer('schema-init');
-                try {
-                    ensureSchemaInternal(db);
-                    schemaInitialized = true;
-                    dbLogger.info('Database schema initialized', { dbPath: DB_PATH });
-                } catch (error) {
-                    isInitializing = false;
-                    unlockFunction();
-                    throw new DatabaseSchemaError({
-                        dbPath: DB_PATH,
-                        error: error instanceof Error ? error.message : String(error),
-                        stack: error instanceof Error ? error.stack : undefined
-                    });
-                } finally {
-                    timer.done();
-                }
-            }
-            
-            connectionInstance = db;
-            isInitializing = false;
-            dbLogger.info('Persistent database connection established', { dbPath: DB_PATH });
-        } catch (error) {
-            isInitializing = false;
-            dbLogger.error('Could not establish database connection', error);
-            unlockFunction();
-            throw new DatabaseConnectionError({
-                dbPath: DB_PATH,
-                error: error instanceof Error ? error.message : String(error),
-                stack: error instanceof Error ? error.stack : undefined
-            });
-        } finally {
-            // Ensure unlock is called and flag is reset even if something unexpected happens
-            if (isInitializing) {
-                isInitializing = false;
-            }
-            unlockFunction();
-        }
+        const unlockFunction = acquireInitializationLock();
+        initializeConnection(unlockFunction);
     }
     
     // If we still don't have a connection after waiting, something went wrong

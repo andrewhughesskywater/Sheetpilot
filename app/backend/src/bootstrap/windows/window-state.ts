@@ -12,6 +12,46 @@ export interface WindowState {
 }
 
 /**
+ * Validate a positive number field
+ */
+function validatePositiveNumber(
+  value: unknown,
+  fieldName: string,
+  defaultValue: number,
+  logger: LoggerLike
+): number {
+  if (typeof value === 'number' && value > 0) {
+    return Math.round(value);
+  }
+  logger.debug(`Invalid window ${fieldName}, using default`, { provided: value, default: defaultValue });
+  return defaultValue;
+}
+
+/**
+ * Validate an optional non-negative number field
+ */
+function validateOptionalNonNegativeNumber(
+  value: unknown,
+  fieldName: string,
+  logger: LoggerLike
+): number | undefined {
+  if (typeof value === 'number' && value >= 0) {
+    return Math.round(value);
+  }
+  if (typeof value === 'number' && value < 0) {
+    logger.debug(`Invalid window ${fieldName} coordinate, using default`, { provided: value });
+  }
+  return undefined;
+}
+
+/**
+ * Validate a boolean field
+ */
+function validateBoolean(value: unknown, defaultValue: boolean | undefined): boolean | undefined {
+  return typeof value === 'boolean' ? value : defaultValue;
+}
+
+/**
  * Validate and coerce WindowState from partial data.
  * Returns valid state with defaults for missing/invalid fields.
  * Logs discrepancies instead of throwing to prevent crashes on corrupted state.
@@ -24,47 +64,11 @@ export function validateWindowState(data: unknown, logger: LoggerLike, defaults:
 
   const partial = data as Record<string, unknown>;
 
-  // Validate width
-  const partialWidth = partial['width'];
-  const width = typeof partialWidth === 'number' && partialWidth > 0
-    ? Math.round(partialWidth)
-    : defaults.width;
-  if (typeof partialWidth !== 'number' || partialWidth <= 0) {
-    logger.debug('Invalid window width, using default', { provided: partialWidth, default: defaults.width });
-  }
-
-  // Validate height
-  const partialHeight = partial['height'];
-  const height = typeof partialHeight === 'number' && partialHeight > 0
-    ? Math.round(partialHeight)
-    : defaults.height;
-  if (typeof partialHeight !== 'number' || partialHeight <= 0) {
-    logger.debug('Invalid window height, using default', { provided: partialHeight, default: defaults.height });
-  }
-
-  // Validate x (optional, must be non-negative)
-  const partialX = partial['x'];
-  const x = (typeof partialX === 'number' && partialX >= 0)
-    ? Math.round(partialX)
-    : undefined;
-  if (typeof partialX === 'number' && partialX < 0) {
-    logger.debug('Invalid window x coordinate, using default', { provided: partialX });
-  }
-
-  // Validate y (optional, must be non-negative)
-  const partialY = partial['y'];
-  const y = (typeof partialY === 'number' && partialY >= 0)
-    ? Math.round(partialY)
-    : undefined;
-  if (typeof partialY === 'number' && partialY < 0) {
-    logger.debug('Invalid window y coordinate, using default', { provided: partialY });
-  }
-
-  // Validate isMaximized (optional, must be boolean)
-  const partialIsMaximized = partial['isMaximized'];
-  const isMaximized = typeof partialIsMaximized === 'boolean'
-    ? partialIsMaximized
-    : defaults.isMaximized;
+  const width = validatePositiveNumber(partial['width'], 'width', defaults.width, logger);
+  const height = validatePositiveNumber(partial['height'], 'height', defaults.height, logger);
+  const x = validateOptionalNonNegativeNumber(partial['x'], 'x', logger);
+  const y = validateOptionalNonNegativeNumber(partial['y'], 'y', logger);
+  const isMaximized = validateBoolean(partial['isMaximized'], defaults.isMaximized);
 
   return {
     width,

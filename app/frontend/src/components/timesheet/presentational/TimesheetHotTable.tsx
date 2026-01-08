@@ -2,19 +2,29 @@ import { forwardRef } from 'react';
 import { HotTable } from '@handsontable/react-wrapper';
 import type { HotTableRef } from '@handsontable/react-wrapper';
 
+// Handsontable event handler types
+type BeforeRemoveRowHandler = (index: number, amount: number) => void;
+type AfterChangeHandler = (changes: Array<[number, string | number, unknown, unknown]> | null, source: string) => void;
+type AfterRemoveRowHandler = (index: number, amount: number) => void;
+type BeforePasteHandler = (data: unknown[][], coords: unknown[]) => boolean | void;
+type AfterPasteHandler = (data: unknown[][], coords: unknown[]) => void;
+type AfterBeginEditingHandler = (row: number, col: number) => void;
+type BeforeKeyDownHandler = (event: KeyboardEvent) => boolean | void;
+type AfterSelectionHandler = (row: number, col: number, row2: number, col2: number) => void;
+
 interface TimesheetHotTableProps {
   data: unknown[];
-  columns: any;
-  cells: any;
+  columns: Array<Record<string, unknown>>;
+  cells: (row: number, col: number) => Record<string, unknown> | void;
   handlers: {
-    beforeRemoveRow?: any;
-    afterChange?: any;
-    afterRemoveRow?: any;
-    beforePaste?: any;
-    afterPaste?: any;
-    afterBeginEditing?: any;
-    beforeKeyDown?: any;
-    afterSelection?: any;
+    beforeRemoveRow?: BeforeRemoveRowHandler;
+    afterChange?: AfterChangeHandler;
+    afterRemoveRow?: AfterRemoveRowHandler;
+    beforePaste?: BeforePasteHandler;
+    afterPaste?: AfterPasteHandler;
+    afterBeginEditing?: AfterBeginEditingHandler;
+    beforeKeyDown?: BeforeKeyDownHandler;
+    afterSelection?: AfterSelectionHandler;
   };
 }
 

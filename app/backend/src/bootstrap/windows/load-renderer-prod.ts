@@ -190,7 +190,7 @@ function logPathDiagnostics(params: RendererLoadParams, paths: PathInfo): void {
   });
 }
 
-
+type FileStats = {
   size?: number;
   readable?: boolean;
   error?: string;
@@ -214,4 +214,3 @@ type PathInfo = {
     exists: boolean;
   };
 };
-+  };

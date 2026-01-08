@@ -1,4 +1,4 @@
-import type { TimesheetRow, ValidationError } from '../timesheet.schema';
+import type { TimesheetRow } from '../timesheet.schema';
 import { isValidDate, isValidTime, isTimeOutAfterTimeIn } from '../timesheet.schema';
 
 export function useRowValidation() {

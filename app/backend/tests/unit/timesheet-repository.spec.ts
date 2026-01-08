@@ -21,6 +21,7 @@ vi.mock('../../../shared/logger', () => ({
     warn: vi.fn(),
     error: vi.fn(),
     verbose: vi.fn(),
+    audit: vi.fn(),
     startTimer: vi.fn(() => ({ done: vi.fn() }))
   }
 }));
@@ -149,7 +150,7 @@ describe('Timesheet Repository', () => {
       // Verify status updated
       const db2 = openDb();
       const updated = db2.prepare('SELECT status FROM timesheet WHERE id = ?').get(entryId);
-      expect((updated as DbRow)['status'] as string).toBe('submitted');
+      expect((updated as DbRow)['status'] as string).toBe('Complete');
       db2.close();
     });
 
@@ -266,11 +267,18 @@ describe('Timesheet Repository', () => {
     it('should handle large batch operations', () => {
       const entries = [];
       
+      // Use multiples of 15 to satisfy time constraints and keep within valid range
       for (let i = 0; i < 500; i++) {
+        const timeIn = 480 + (i * 5); // Start at 8:00, increment by 5 minutes
+        const timeOut = timeIn + 60; // 1 hour duration
+        // Round to nearest 15-minute increment
+        const roundedTimeIn = Math.floor(timeIn / 15) * 15;
+        const roundedTimeOut = Math.floor(timeOut / 15) * 15;
+        
         entries.push({
           date: '2025-01-15',
-          timeIn: 540 + i,
-          timeOut: 600 + i,
+          timeIn: roundedTimeIn,
+          timeOut: roundedTimeOut,
           project: `Project ${i}`,
           taskDescription: `Task ${i}`
         });
@@ -421,11 +429,19 @@ describe('Timesheet Repository', () => {
   describe('Performance', () => {
     it('should query pending entries efficiently', () => {
       // Insert many entries
+      // Use multiples of 15 to satisfy time_in and time_out constraints
+      // Keep timeOut within valid range (max 1440 minutes = 24:00)
       for (let i = 0; i < 100; i++) {
+        const timeIn = 480 + (i * 5); // Start at 8:00, increment by 5 minutes
+        const timeOut = timeIn + 60; // 1 hour duration
+        // Round to nearest 15-minute increment
+        const roundedTimeIn = Math.floor(timeIn / 15) * 15;
+        const roundedTimeOut = Math.floor(timeOut / 15) * 15;
+        
         insertTimesheetEntry({
           date: '2025-01-15',
-          timeIn: 540 + i,
-          timeOut: 600 + i,
+          timeIn: roundedTimeIn,
+          timeOut: roundedTimeOut,
           project: `Project ${i}`,
           taskDescription: `Task ${i}`
         });

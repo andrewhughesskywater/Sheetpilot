@@ -222,7 +222,7 @@ export function deleteCredentials(service: string) {
         timer.done({ changes: result.changes });
         
         return {
-            success: true,
+            success: result.changes > 0,
             message: result.changes > 0 ? 'Credentials deleted successfully' : 'No credentials found',
             changes: result.changes
         };

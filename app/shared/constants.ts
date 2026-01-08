@@ -8,8 +8,6 @@
  * @version 1.4.0
  */
 
-import { APP_VERSION } from './version';
-
 /**
  * Lazy logger import to avoid circular dependency with logger.ts
  * @private

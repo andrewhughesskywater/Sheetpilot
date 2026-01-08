@@ -23,7 +23,7 @@ export function useSaveAndReload(
     );
   };
 
-  const applySavedEntry = (
+  const applySavedEntry = useCallback((
     currentData: TimesheetRow[],
     currentRowIdx: number,
     savedEntry: TimesheetRow
@@ -39,7 +39,7 @@ export function useSaveAndReload(
       return true;
     }
     return false;
-  };
+  }, [onChange, setTimesheetDraftData]);
 
   const saveAndReloadRow = useCallback(async (row: TimesheetRow, rowIdx: number) => {
     const existingController = inFlightSavesRef.current.get(rowIdx);
@@ -67,7 +67,11 @@ export function useSaveAndReload(
         } else {
           window.logger?.debug('Row values changed during save (race condition)', { rowIdx, saved: savedEntry, current: row });
         }
-        const hotInstance = (window as any).hotTableRef?.current?.hotInstance;
+        // Access hotTableRef from window (set during component initialization)
+        interface WindowWithHotTableRef extends Window {
+          hotTableRef?: { current?: { hotInstance?: { getSourceData: () => unknown[] } } };
+        }
+        const hotInstance = (window as WindowWithHotTableRef).hotTableRef?.current?.hotInstance;
         if (hotInstance) {
           const currentData = hotInstance.getSourceData() as TimesheetRow[];
           const updated = applySavedEntry(currentData, rowIdx, savedEntry);
@@ -92,7 +96,7 @@ export function useSaveAndReload(
       inFlightSavesRef.current.delete(rowIdx);
       updateSaveButtonState?.();
     }
-  }, [onChange, setTimesheetDraftData, updateSaveButtonState]);
+  }, [applySavedEntry, updateSaveButtonState]);
 
   return {
     saveAndReloadRow,

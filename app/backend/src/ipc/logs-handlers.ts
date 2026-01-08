@@ -18,6 +18,39 @@ import { validateInput } from '../validation/validate-ipc-input';
 import { exportLogsSchema } from '../validation/ipc-schemas';
 
 /**
+ * Export logs as formatted JSON
+ */
+function exportLogsAsJson(logContent: string): { success: true; content: string; filename: string; mimeType: string } {
+  const lines = logContent.split('\n').filter((line: string) => line.trim() !== '');
+  const parsedLogs = lines.map((line: string) => {
+    try {
+      return JSON.parse(line);
+    } catch {
+      return { raw: line };
+    }
+  });
+  
+  return {
+    success: true,
+    content: JSON.stringify(parsedLogs, null, 2),
+    filename: `sheetpilot_logs_${new Date().toISOString().split('T')[0]}.json`,
+    mimeType: 'application/json'
+  };
+}
+
+/**
+ * Export logs as plain text
+ */
+function exportLogsAsText(logContent: string): { success: true; content: string; filename: string; mimeType: string } {
+  return {
+    success: true,
+    content: logContent,
+    filename: `sheetpilot_logs_${new Date().toISOString().split('T')[0]}.txt`,
+    mimeType: 'text/plain'
+  };
+}
+
+/**
  * Register all logs-related IPC handlers
  */
 export function registerLogsHandlers(): void {
@@ -101,30 +134,9 @@ export function registerLogsHandlers(): void {
       const logContent = await fs.promises.readFile(validatedData.logPath, 'utf8');
       
       if (validatedData.exportFormat === 'json') {
-        // Export as formatted JSON
-        const lines = logContent.split('\n').filter((line: string) => line.trim() !== '');
-        const parsedLogs = lines.map((line: string) => {
-          try {
-            return JSON.parse(line);
-          } catch {
-            return { raw: line };
-          }
-        });
-        
-        return {
-          success: true,
-          content: JSON.stringify(parsedLogs, null, 2),
-          filename: `sheetpilot_logs_${new Date().toISOString().split('T')[0]}.json`,
-          mimeType: 'application/json'
-        };
+        return exportLogsAsJson(logContent);
       } else {
-        // Export as plain text
-        return {
-          success: true,
-          content: logContent,
-          filename: `sheetpilot_logs_${new Date().toISOString().split('T')[0]}.txt`,
-          mimeType: 'text/plain'
-        };
+        return exportLogsAsText(logContent);
       }
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : String(err);

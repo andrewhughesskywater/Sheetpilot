@@ -22,6 +22,7 @@ vi.mock('../../../shared/logger', () => ({
     error: vi.fn(),
     verbose: vi.fn(),
     debug: vi.fn(),
+    audit: vi.fn(),
     startTimer: vi.fn(() => ({ done: vi.fn() }))
   }
 }));
@@ -140,6 +141,10 @@ describe('Database Migrations', () => {
       ensureSchema();
       db.close();
       
+      // Create an actual file for the in-memory database mock to recognize
+      // Write some content so the file is not empty
+      fs.writeFileSync(testDbPath, 'SQLite format 3\0'); // SQLite file header
+      
       const backupPath = createBackup(testDbPath);
       
       expect(backupPath).not.toBeNull();
@@ -154,6 +159,10 @@ describe('Database Migrations', () => {
       
       db.exec(`INSERT INTO credentials (service, email, password) VALUES ('test', 'test@example.com', 'encrypted')`);
       db.close();
+      
+      // Create an actual file for the in-memory database mock to recognize
+      // Write some content so the file is not empty
+      fs.writeFileSync(testDbPath, 'SQLite format 3\0'); // SQLite file header
       
       const backupPath = createBackup(testDbPath);
       expect(backupPath).not.toBeNull();

@@ -1,26 +1,45 @@
 import { useMemo, useRef } from 'react';
 import type { MutableRefObject } from 'react';
+import type { HotTableRef } from '@handsontable/react-wrapper';
 import type { ValidationError } from '../utils/timesheetGridUtils';
 import { PluginRegistry } from '../../../../../shared/plugin-registry';
 import type { TimesheetUIPlugin } from '../../../../../shared/plugin-types';
 import { TIMESHEET_PLUGIN_NAMESPACES } from '../../../../../shared/plugin-types';
 
-export function useTableHandlers<T>(
-  _timesheetDraftData: T[],
-  _setTimesheetDraftData: (rows: T[]) => void,
-  _onChange: ((rows: T[]) => void) | undefined,
-  _hotTableRef: MutableRefObject<any>,
-  _validationErrors: ValidationError[],
-  _setValidationErrors: (v: ValidationError[]) => void,
-  _saveButtonState: 'neutral' | 'saving' | 'saved',
-  _setSaveButtonState: (s: 'neutral' | 'saving' | 'saved') => void,
-  _unsavedRowsRef: MutableRefObject<Set<number>>,
-  _pendingSaveRef: MutableRefObject<Map<number, unknown>>,
-  _saveTimersRef: MutableRefObject<Map<number, any>>,
-  _inFlightSavesRef: MutableRefObject<Map<number, AbortController>>,
-  _saveAndReloadRow: (rowIndex: number) => Promise<void>,
-  _updateSaveButtonState: (s: 'neutral' | 'saving' | 'saved') => void,
-) {
+interface TableHandlersConfig<T> {
+  timesheetDraftData: T[];
+  setTimesheetDraftData: (rows: T[]) => void;
+  onChange: ((rows: T[]) => void) | undefined;
+  hotTableRef: MutableRefObject<HotTableRef | null>;
+  validationErrors: ValidationError[];
+  setValidationErrors: (v: ValidationError[]) => void;
+  saveButtonState: 'neutral' | 'saving' | 'saved';
+  setSaveButtonState: (s: 'neutral' | 'saving' | 'saved') => void;
+  unsavedRowsRef: MutableRefObject<Set<number>>;
+  pendingSaveRef: MutableRefObject<Map<number, unknown>>;
+  saveTimersRef: MutableRefObject<Map<number, ReturnType<typeof setTimeout>>>;
+  inFlightSavesRef: MutableRefObject<Map<number, AbortController>>;
+  saveAndReloadRow: (rowIndex: number) => Promise<void>;
+  updateSaveButtonState: (s: 'neutral' | 'saving' | 'saved') => void;
+}
+
+export function useTableHandlers<T>(config: TableHandlersConfig<T>) {
+  const {
+    timesheetDraftData: _timesheetDraftData,
+    setTimesheetDraftData: _setTimesheetDraftData,
+    onChange: _onChange,
+    hotTableRef: _hotTableRef,
+    validationErrors: _validationErrors,
+    setValidationErrors: _setValidationErrors,
+    saveButtonState: _saveButtonState,
+    setSaveButtonState: _setSaveButtonState,
+    unsavedRowsRef: _unsavedRowsRef,
+    pendingSaveRef: _pendingSaveRef,
+    saveTimersRef: _saveTimersRef,
+    inFlightSavesRef: _inFlightSavesRef,
+    saveAndReloadRow: _saveAndReloadRow,
+    updateSaveButtonState: _updateSaveButtonState
+  } = config;
   const weekdayPatternRef = useRef<string | null>(null);
   const previousSelectionRef = useRef<[number, number, number, number] | null>(null);
 
@@ -49,10 +68,10 @@ export function useTableHandlers<T>(
 
   const columnDefinitions = useMemo(() => {
     if (uiPlugin?.buildColumns) {
-      return uiPlugin.buildColumns(_timesheetDraftData) as unknown as any[];
+      return uiPlugin.buildColumns(_timesheetDraftData) as Array<Record<string, unknown>>;
     }
     // Let Handsontable infer columns from data by returning undefined
-    return undefined as unknown as any[];
+    return undefined as Array<Record<string, unknown>> | undefined;
   }, [uiPlugin, _timesheetDraftData]);
 
   return {

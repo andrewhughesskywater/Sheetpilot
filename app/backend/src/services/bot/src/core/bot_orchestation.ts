@@ -45,6 +45,23 @@ export type AutomationResult = {
   failure_count: number;
 };
 
+interface BotOrchestratorConfig {
+  injected_config: typeof Cfg;
+  formConfig: { BASE_URL: string; FORM_ID: string; SUBMISSION_ENDPOINT: string; SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[] };
+  headless?: boolean | null;
+  browser?: string | null;
+  progress_callback?: (pct: number, msg: string) => void;
+}
+
+interface ProcessRowConfig {
+  row: Record<string, unknown>;
+  rowIndex: number;
+  totalRows: number;
+  status_col: string;
+  complete_val: unknown;
+  abortSignal?: AbortSignal;
+}
+
 /**
  * Main orchestrator class for timesheet automation.
  *
@@ -74,6 +91,11 @@ export class BotOrchestrator {
 
   /**
    * Creates a new BotOrchestrator instance
+   * @param config - Configuration object containing all parameters
+   */
+  constructor(config: BotOrchestratorConfig);
+  /**
+   * Creates a new BotOrchestrator instance (legacy signature for backward compatibility)
    * @param injected_config - Configuration object for automation settings
    * @param formConfig - Dynamic form configuration (required)
    * @param headless - Whether to run browser in headless mode (default: null = use appSettings.browserHeadless)
@@ -81,26 +103,49 @@ export class BotOrchestrator {
    * @param progress_callback - Optional callback for progress updates
    */
   constructor(
-    injected_config: typeof Cfg,
-    formConfig: { BASE_URL: string; FORM_ID: string; SUBMISSION_ENDPOINT: string; SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[] },
-    headless: boolean | null = null,
-    browser: string | null = null,
+    injected_configOrConfig: typeof Cfg | BotOrchestratorConfig,
+    formConfig?: { BASE_URL: string; FORM_ID: string; SUBMISSION_ENDPOINT: string; SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[] },
+    headless?: boolean | null,
+    browser?: string | null,
     progress_callback?: (pct: number, msg: string) => void
   ) {
-    if (!formConfig) {
+    // Support both new object parameter and legacy multiple parameters
+    let injected_config: typeof Cfg;
+    let actualFormConfig: { BASE_URL: string; FORM_ID: string; SUBMISSION_ENDPOINT: string; SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[] };
+    let actualHeadless: boolean | null;
+    let actualBrowser: string | null;
+    let actualProgressCallback: ((pct: number, msg: string) => void) | undefined;
+    
+    if (formConfig === undefined) {
+      // New signature: object parameter
+      const config = injected_configOrConfig as BotOrchestratorConfig;
+      injected_config = config.injected_config;
+      actualFormConfig = config.formConfig;
+      actualHeadless = config.headless ?? null;
+      actualBrowser = config.browser ?? null;
+      actualProgressCallback = config.progress_callback;
+    } else {
+      // Legacy signature: multiple parameters
+      injected_config = injected_configOrConfig as typeof Cfg;
+      actualFormConfig = formConfig;
+      actualHeadless = headless ?? null;
+      actualBrowser = browser ?? null;
+      actualProgressCallback = progress_callback;
+    }
+    if (!actualFormConfig) {
       throw new Error('formConfig is required. Use createFormConfig() to create a valid form configuration.');
     }
     this.cfg = injected_config;
     // Use the UI-controlled value when `headless` is null; otherwise trust the caller.
-    this.headless = headless === null ? appSettings.browserHeadless : Boolean(headless);
+    this.headless = actualHeadless === null ? appSettings.browserHeadless : Boolean(actualHeadless);
     botLogger.debug('BotOrchestrator initialized with headless setting', { 
-      headlessParam: headless, 
+      headlessParam: actualHeadless,
       resolvedHeadless: this.headless,
       appSettingsBrowserHeadless: appSettings.browserHeadless
     });
-    this.browser_kind = browser ?? (this.cfg as Record<string, unknown>)['BROWSER'] as string ?? 'chromium';
-    this.progress_callback = progress_callback;
-    this.formConfig = formConfig;
+    this.browser_kind = actualBrowser ?? (this.cfg as Record<string, unknown>)['BROWSER'] as string ?? 'chromium';
+    this.progress_callback = actualProgressCallback;
+    this.formConfig = actualFormConfig;
     this.webform_filler = new WebformFiller(this.cfg, this.headless, this.browser_kind, this.formConfig);
     this.login_manager = new LoginManager(this.cfg, this.webform_filler);
   }
@@ -298,14 +343,8 @@ export class BotOrchestrator {
    * @param abortSignal - Optional abort signal
    * @returns Tuple of [success: boolean, errorMessage: string | null]
    */
-  private async _processRow(
-    row: Record<string, unknown>,
-    rowIndex: number,
-    totalRows: number,
-    status_col: string,
-    complete_val: unknown,
-    abortSignal?: AbortSignal
-  ): Promise<[boolean, string | null]> {
+  private async _processRow(config: ProcessRowConfig): Promise<[boolean, string | null]> {
+    const { row, rowIndex, totalRows, status_col, complete_val, abortSignal } = config;
     // Check if aborted before processing each row
     checkAborted(abortSignal, `Automation (row ${rowIndex + 1}/${totalRows})`);
     
@@ -532,14 +571,14 @@ export class BotOrchestrator {
         if (!row) continue;
         
         try {
-          const [success, errorMessage] = await this._processRow(
+          const [success, errorMessage] = await this._processRow({
             row,
-            idx,
-            total_rows,
+            rowIndex: idx,
+            totalRows: total_rows,
             status_col,
             complete_val,
             abortSignal
-          );
+          });
           
           if (!success) {
             if (errorMessage) {

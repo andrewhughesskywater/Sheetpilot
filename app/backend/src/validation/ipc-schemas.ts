@@ -18,9 +18,10 @@ import { z } from 'zod';
 /**
  * Email validation schema
  * Ensures valid email format and reasonable length
+ * Uses regex to accept formats like 'a@b.c' that Zod's .email() might reject
  */
 export const emailSchema = z.string()
-  .email('Invalid email format')
+  .regex(/^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\.\-]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]+$/, 'Invalid email format')
   .min(3, 'Email must be at least 3 characters')
   .max(255, 'Email must not exceed 255 characters');
 
@@ -53,10 +54,11 @@ export const dateSchema = z.string()
   .regex(/^(\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}\/\d{4})$/, 'Invalid date format. Use YYYY-MM-DD or MM/DD/YYYY');
 
 /**
- * Time validation schema (HH:MM)
+ * Time validation schema (HH:MM or H:MM or HH:M or H:M)
+ * Accepts flexible formats: 9:5, 9:05, 09:5, 09:05
  */
 export const timeSchema = z.string()
-  .regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Invalid time format. Use HH:MM');
+  .regex(/^([0-1]?[0-9]|2[0-3]):[0-5]?[0-9]$/, 'Invalid time format. Use HH:MM');
 
 /**
  * Project name validation schema
@@ -142,6 +144,15 @@ export const saveDraftSchema = z.object({
   tool: z.string().max(500).nullable().optional(),
   chargeCode: z.string().max(100).nullable().optional(),
   taskDescription: z.string().max(5000).optional()
+}).refine((data) => {
+  // If any core field is provided, all core fields must be provided
+  const hasAnyCoreField = !!(data.date || data.timeIn || data.timeOut || data.project || data.taskDescription);
+  if (hasAnyCoreField) {
+    return !!(data.date && data.timeIn && data.timeOut && data.project && data.taskDescription);
+  }
+  return true; // Empty draft is allowed
+}, {
+  message: 'All core fields (date, timeIn, timeOut, project, taskDescription) must be provided together'
 }).refine((data) => {
   // Only validate timeOut > timeIn if both are present
   if (data.timeIn && data.timeOut) {

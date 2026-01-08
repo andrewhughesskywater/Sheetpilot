@@ -1,8 +1,10 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import type { MutableRefObject } from 'react';
 import type { HotTableRef } from '@handsontable/react-wrapper';
 import { useData } from '../../../contexts/DataContext';
 import { useSession } from '../../../contexts/SessionContext';
 import type { TimesheetRow } from '../timesheet.schema';
+import type { MacroRow } from '../../../utils/macroStorage';
 import { useTimesheetSubmission } from './useTimesheetSubmission';
 import { useMacroSystem } from './useMacroSystem';
 import { useValidationState } from './useValidationState';
@@ -14,9 +16,20 @@ import { useScrollbarFix } from './useScrollbarFix';
 import { useCleanupOnUnmount } from './useCleanupOnUnmount';
 import { useKeyboardShortcuts } from './useKeyboardShortcuts';
 import { createRefreshHandler } from '../utils/refreshHelpers';
+import type { ValidationError } from '../utils/timesheetGridUtils';
+
+// Handsontable event handler types
+type BeforeRemoveRowHandler = (index: number, amount: number) => void;
+type AfterChangeHandler = (changes: Array<[number, string | number, unknown, unknown]> | null, source: string) => void;
+type AfterRemoveRowHandler = (index: number, amount: number) => void;
+type BeforePasteHandler = (data: unknown[][], coords: unknown[]) => boolean | void;
+type AfterPasteHandler = (data: unknown[][], coords: unknown[]) => void;
+type AfterBeginEditingHandler = (row: number, col: number) => void;
+type BeforeKeyDownHandler = (event: KeyboardEvent) => boolean | void;
+type AfterSelectionHandler = (row: number, col: number, row2: number, col2: number) => void;
 
 export interface TimesheetOrchestratorModel {
-  hotTableRef: React.MutableRefObject<HotTableRef | null>;
+  hotTableRef: MutableRefObject<HotTableRef | null>;
   timesheetDraftData: TimesheetRow[];
   isTimesheetDraftLoading: boolean;
   timesheetDraftError: string | null | undefined;
@@ -28,26 +41,26 @@ export interface TimesheetOrchestratorModel {
   isAdmin: boolean;
 
   // macros
-  macros: any[];
+  macros: MacroRow[];
   showMacroDialog: boolean;
   setShowMacroDialog: (open: boolean) => void;
   applyMacro: (index: number) => void;
   duplicateSelectedRow: () => void;
 
   // table
-  columnDefinitions: any;
-  cellsFunction: any;
-  handleBeforeRemoveRow: any;
-  handleAfterChange: any;
-  handleAfterRemoveRow: any;
-  handleBeforePaste: any;
-  handleAfterPaste: any;
-  handleAfterBeginEditing: any;
-  handleBeforeKeyDown: any;
-  handleAfterSelection: any;
+  columnDefinitions: Array<Record<string, unknown>> | undefined;
+  cellsFunction: (row: number, col: number) => Record<string, unknown> | void;
+  handleBeforeRemoveRow: BeforeRemoveRowHandler;
+  handleAfterChange: AfterChangeHandler;
+  handleAfterRemoveRow: AfterRemoveRowHandler;
+  handleBeforePaste: BeforePasteHandler;
+  handleAfterPaste: AfterPasteHandler;
+  handleAfterBeginEditing: AfterBeginEditingHandler;
+  handleBeforeKeyDown: BeforeKeyDownHandler;
+  handleAfterSelection: AfterSelectionHandler;
 
   // footer
-  validationErrors: any[];
+  validationErrors: ValidationError[];
   showErrorDialog: boolean;
   setShowErrorDialog: (open: boolean) => void;
   onRefresh: () => Promise<void>;
@@ -57,7 +70,7 @@ export interface TimesheetOrchestratorModel {
   buttonStatus: 'neutral' | 'ready' | 'warning';
 
   // dialogs
-  setMacros: (macros: any[]) => void;
+  setMacros: (macros: MacroRow[]) => void;
   showShortcutsHint: boolean;
   setShowShortcutsHint: (open: boolean) => void;
 }
@@ -87,7 +100,7 @@ export function useTimesheetOrchestrator(onChange?: (rows: TimesheetRow[]) => vo
     hotTableRef
   );
 
-  const { weekdayPatternRef, /* previousSelectionRef */ handleAfterChange, handleAfterRemoveRow, handleBeforeRemoveRow, handleBeforePaste, handleAfterPaste, handleAfterBeginEditing, handleBeforeKeyDown, handleAfterSelection, cellsFunction, columnDefinitions } = useTableHandlers(
+  const { weekdayPatternRef, /* previousSelectionRef */ handleAfterChange, handleAfterRemoveRow, handleBeforeRemoveRow, handleBeforePaste, handleAfterPaste, handleAfterBeginEditing, handleBeforeKeyDown, handleAfterSelection, cellsFunction, columnDefinitions } = useTableHandlers({
     timesheetDraftData,
     setTimesheetDraftData,
     onChange,
@@ -102,7 +115,7 @@ export function useTimesheetOrchestrator(onChange?: (rows: TimesheetRow[]) => vo
     inFlightSavesRef,
     saveAndReloadRow,
     updateSaveButtonState
-  );
+  });
 
   const onRefresh = useMemo(() => createRefreshHandler(setTimesheetDraftData), [setTimesheetDraftData]);
 

@@ -30,13 +30,13 @@ export class SubmissionMonitor {
     const submissionTokens: string[] = [];
     const requestIds: string[] = [];
 
-    const handler = this._createResponseHandler(
+    const handler = this._createResponseHandler({
       successResponses,
       allResponses,
       submissionIds,
       submissionTokens,
-      requestIds,
-    );
+      requestIds
+    });
     page.on('response', handler);
 
     try {
@@ -70,13 +70,13 @@ export class SubmissionMonitor {
         botLogger.warn('Submission verification timed out', { error: String(e) });
       }
 
-      const ok = this._validateSubmissionSuccess(
+      const ok = this._validateSubmissionSuccess({
         successResponses,
         domSuccessFound,
         submissionIds,
         submissionTokens,
-        requestIds,
-      );
+        requestIds
+      });
 
       timer.done({ success: ok, method: domSuccessFound ? 'dom' : 'http' });
       return ok;
@@ -85,13 +85,16 @@ export class SubmissionMonitor {
     }
   }
 
-  private _createResponseHandler(
-    successResponses: RecordedResponse[],
-    allResponses: RecordedResponseSummary[],
-    submissionIds: string[],
-    submissionTokens: string[],
-    requestIds: string[],
-  ): (response: Response) => Promise<void> {
+  interface ResponseHandlerConfig {
+    successResponses: RecordedResponse[];
+    allResponses: RecordedResponseSummary[];
+    submissionIds: string[];
+    submissionTokens: string[];
+    requestIds: string[];
+  }
+
+  private _createResponseHandler(config: ResponseHandlerConfig): (response: Response) => Promise<void> {
+    const { successResponses, allResponses, submissionIds, submissionTokens, requestIds } = config;
     return async (response: Response): Promise<void> => {
       const url = response.url();
       const status = response.status();
@@ -209,13 +212,16 @@ export class SubmissionMonitor {
     return false;
   }
 
-  private _validateSubmissionSuccess(
-    successResponses: RecordedResponse[],
-    domSuccessFound: boolean,
-    submissionIds: string[],
-    submissionTokens: string[],
-    requestIds: string[],
-  ): boolean {
+  interface ValidateSubmissionSuccessConfig {
+    successResponses: RecordedResponse[];
+    domSuccessFound: boolean;
+    submissionIds: string[];
+    submissionTokens: string[];
+    requestIds: string[];
+  }
+
+  private _validateSubmissionSuccess(config: ValidateSubmissionSuccessConfig): boolean {
+    const { successResponses, domSuccessFound, submissionIds, submissionTokens, requestIds } = config;
     if (domSuccessFound) {
       botLogger.info('Submission verified via DOM indicators', {
         requestIdCount: requestIds.length,

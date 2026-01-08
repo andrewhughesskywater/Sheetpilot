@@ -59,7 +59,7 @@ describe('Database Migration Rollback', () => {
       )
     `);
 
-    db.exec(`INSERT INTO schema_info (id, version) VALUES (1, 1)`);
+    db.exec(`INSERT OR REPLACE INTO schema_info (id, version) VALUES (1, 1)`);
 
     // Insert test data
     db.exec(`INSERT INTO timesheet (date, hours) VALUES ('2026-01-01', 8.0)`);

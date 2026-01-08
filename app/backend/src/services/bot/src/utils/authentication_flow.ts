@@ -98,13 +98,16 @@ export class LoginManager {
    * @param password - User password
    * @param contextIndex - Optional context index for logging
    */
-  private async _handleInputAction(
-    page: import('playwright').Page,
-    step: LoginStep,
-    email: string,
-    password: string,
-    contextIndex?: number
-  ): Promise<void> {
+  interface HandleInputActionConfig {
+    page: import('playwright').Page;
+    step: LoginStep;
+    email: string;
+    password: string;
+    contextIndex?: number;
+  }
+
+  private async _handleInputAction(config: HandleInputActionConfig): Promise<void> {
+    const { page, step, email, password, contextIndex } = config;
     const locator = page.locator(step['locator'] as string);
     const valueKey = step['value_key'] as string;
     const isSensitive = step['sensitive'] as boolean | undefined;
@@ -224,7 +227,7 @@ export class LoginManager {
           await this._handleWaitAction(page, step, contextIndex);
           break;
         case 'input':
-          await this._handleInputAction(page, step, email, password, contextIndex);
+          await this._handleInputAction({ page, step, email, password, contextIndex });
           break;
         case 'click':
           await this._handleClickAction(page, step, contextIndex);

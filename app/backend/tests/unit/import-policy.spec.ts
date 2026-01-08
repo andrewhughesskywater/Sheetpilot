@@ -20,7 +20,7 @@ describe('Import policy - late import of logger and runtime deps', () => {
 
     const preflightPath = path.resolve(
       __dirname,
-      '../src/bootstrap/preflight/resolve-critical-modules.ts'
+      '../../src/bootstrap/preflight/resolve-critical-modules.ts'
     );
     const preflightContent = fs.readFileSync(preflightPath, 'utf8');
     expect(preflightContent.includes("['electron-log', 'electron-updater', 'better-sqlite3']")).toBe(true);

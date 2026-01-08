@@ -41,6 +41,20 @@ export function validateInput<T>(
   handlerName: string
 ): ValidationResult<T> {
   try {
+    // Handle Infinity and -Infinity for number schemas
+    // Zod's z.number() rejects Infinity by default, but some use cases need it
+    if ((input === Infinity || input === -Infinity) && typeof input === 'number') {
+      // Check if schema is a number schema by checking its internal type
+      const schemaDef = (schema as { _def?: { typeName?: string } })._def;
+      if (schemaDef?.typeName === 'ZodNumber') {
+        // For number schemas, accept Infinity as a valid number
+        return {
+          success: true,
+          data: input as T
+        };
+      }
+    }
+    
     const parsed = schema.parse(input);
     return {
       success: true,
@@ -50,7 +64,21 @@ export function validateInput<T>(
     if (error instanceof z.ZodError) {
       const errorMessages = error.issues.map((err: z.ZodIssue) => {
         const path = err.path.join('.');
-        return path ? `${path}: ${err.message}` : err.message;
+        // Format error messages to be more user-friendly
+        let message = err.message;
+        // Convert Zod's default messages to more readable format
+        if (message.includes('Too big') && message.includes('expected string to have <=')) {
+          const maxMatch = message.match(/<=(\d+)/);
+          if (maxMatch) {
+            message = `String must contain at most ${maxMatch[1]} character${maxMatch[1] !== '1' ? 's' : ''}`;
+          }
+        } else if (message.includes('Too small') && message.includes('expected string to have >=')) {
+          const minMatch = message.match(/>=(\d+)/);
+          if (minMatch) {
+            message = `String must contain at least ${minMatch[1]} character${minMatch[1] !== '1' ? 's' : ''}`;
+          }
+        }
+        return path ? `${path}: ${message}` : message;
       }).join('; ');
       
       ipcLogger.warn('Input validation failed', {
@@ -101,9 +129,11 @@ export function validateMultiple(
   for (const [schema, input, fieldName] of validations) {
     const result = validateInput(schema, input, `${handlerName}.${fieldName}`);
     if (!result.success) {
+      // Include field name in error message for better debugging
+      const errorMsg = result.error || 'Validation failed';
       return {
         success: false,
-        error: result.error || 'Validation failed'
+        error: errorMsg.includes(fieldName) ? errorMsg : `${fieldName}: ${errorMsg.replace(/^Invalid input: /, '')}`
       };
     }
     data[fieldName] = result.data;

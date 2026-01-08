@@ -224,8 +224,12 @@ class InMemoryDatabase {
   private executeStatement(sql: string, args: unknown[], operation: 'run' | 'get' | 'all'): { changes: number; lastInsertRowid?: number } | DatabaseRow[] | DatabaseRow | null {
     const normalizedSQL = sql.trim().replace(/\s+/g, ' ').toUpperCase();
 
+    // INSERT OR REPLACE
+    if (normalizedSQL.startsWith('INSERT OR REPLACE INTO')) {
+      return this.handleInsertOrReplace(sql, args);
+    }
     // INSERT
-    if (normalizedSQL.startsWith('INSERT INTO')) {
+    else if (normalizedSQL.startsWith('INSERT INTO')) {
       return this.handleInsert(sql, args);
     }
     // SELECT
@@ -254,6 +258,97 @@ class InMemoryDatabase {
     if (operation === 'get') return null;
     if (operation === 'all') return [];
     return { changes: 0 };
+  }
+
+  private handleInsertOrReplace(sql: string, args: unknown[]): { changes: number; lastInsertRowid?: number } {
+    // Parse table name
+    const tableMatch = sql.match(/INSERT OR REPLACE INTO\s+(\w+)/i);
+    if (!tableMatch) return { changes: 0 };
+    const tableName = tableMatch[1]?.toLowerCase();
+    if (!tableName || !this.tables.has(tableName)) return { changes: 0 };
+
+    const table = this.tables.get(tableName)!;
+    const schema = this.schemas.get(tableName);
+    
+    // Extract column names from INSERT statement  
+    const insertColMatch = sql.match(/INSERT OR REPLACE INTO\s+\w+\s*\(([^)]+)\)/i);
+    if (!insertColMatch) return { changes: 0 };
+    const columns = insertColMatch[1]?.split(',').map(c => c.trim().toLowerCase()) || [];
+
+    // Extract VALUES clause to handle hardcoded values and parameters
+    const valuesMatch = sql.match(/VALUES\s*\(([^)]+)\)/i);
+    if (!valuesMatch) return { changes: 0 };
+    const values = valuesMatch[1]?.split(',').map(v => v.trim()) || [];
+
+    // Create row
+    const row: DatabaseRow = {};
+    let argIndex = 0;
+    columns.forEach((col, index) => {
+      const valueStr = values[index];
+      if (valueStr === '?') {
+        // Parameter placeholder
+        if (args[argIndex] !== undefined) {
+          row[col] = args[argIndex];
+        } else {
+          row[col] = null;
+        }
+        argIndex++;
+      } else if (valueStr?.toLowerCase().includes('datetime') || valueStr?.toLowerCase().includes('current_timestamp')) {
+        // Function call - use current timestamp
+        row[col] = new Date().toISOString();
+      } else if (valueStr && !isNaN(Number(valueStr))) {
+        // Hardcoded number
+        row[col] = Number(valueStr);
+      } else if (valueStr) {
+        // Hardcoded string (remove quotes)
+        row[col] = valueStr.replace(/^['"]|['"]$/g, '');
+      } else {
+        row[col] = null;
+      }
+    });
+
+    // Check if a row with the same primary key exists
+    // For schema_info, the primary key is 'id' and it must be 1 (CHECK constraint)
+    // For other tables, check by 'id' column
+    const idColumn = 'id';
+    if (row[idColumn] !== undefined && row[idColumn] !== null) {
+      const existingIndex = table.findIndex(r => r[idColumn] === row[idColumn]);
+      if (existingIndex !== -1) {
+        // Replace existing row
+        table[existingIndex] = row;
+        return { changes: 1, lastInsertRowid: row[idColumn] as number };
+      }
+    } else if (tableName === 'schema_info') {
+      // For schema_info, if id is not provided but table has a row, replace it
+      // (schema_info should only have one row with id=1)
+      if (table.length > 0) {
+        // Update the existing row (should be id=1)
+        const existingRow = table[0];
+        // Merge new values into existing row
+        Object.assign(existingRow, row);
+        // Ensure id is still 1
+        existingRow['id'] = 1;
+        return { changes: 1, lastInsertRowid: 1 };
+      }
+    }
+
+    // No existing row, insert new one
+    // Handle auto-increment ID if not provided
+    if (!row['id'] && schema?.columns.some(c => c.name === 'id' && c.type === 'INTEGER')) {
+      const nextId = this.nextRowId.get(tableName) || 1;
+      row['id'] = nextId;
+      this.nextRowId.set(tableName, nextId + 1);
+    }
+
+    // Calculate hours if time_in and time_out exist
+    if (row['time_in'] !== undefined && row['time_out'] !== undefined) {
+      const timeIn = Number(row['time_in']) || 0;
+      const timeOut = Number(row['time_out']) || 0;
+      row['hours'] = (timeOut - timeIn) / 60.0;
+    }
+
+    table.push(row);
+    return { changes: 1, lastInsertRowid: row['id'] as number };
   }
 
   private handleInsert(sql: string, args: unknown[]): { changes: number; lastInsertRowid?: number } {
@@ -296,14 +391,46 @@ class InMemoryDatabase {
     if (!insertColMatch) return { changes: 0 };
     const columns = insertColMatch[1]?.split(',').map(c => c.trim().toLowerCase()) || [];
 
+    // Extract VALUES clause to handle hardcoded values and parameters
+    const valuesMatch = sql.match(/VALUES\s*\(([^)]+)\)/i);
+    const values = valuesMatch ? valuesMatch[1]?.split(',').map(v => v.trim()) || [] : [];
+
     // Create row
     const row: DatabaseRow = {};
+    let argIndex = 0;
     columns.forEach((col, index) => {
-      // Store the value even if it's null/undefined - normalize undefined to null
-      if (args[index] !== undefined) {
-        row[col] = args[index];
+      if (values.length > 0 && index < values.length) {
+        // We have VALUES clause - parse it
+        const valueStr = values[index];
+        if (valueStr === '?') {
+          // Parameter placeholder
+          if (args[argIndex] !== undefined) {
+            row[col] = args[argIndex];
+          } else {
+            row[col] = null;
+          }
+          argIndex++;
+        } else if (valueStr?.toLowerCase().includes('datetime') || valueStr?.toLowerCase().includes('current_timestamp')) {
+          // Function call - use current timestamp
+          row[col] = new Date().toISOString();
+        } else if (valueStr?.toUpperCase() === 'NULL') {
+          row[col] = null;
+        } else if (valueStr && !isNaN(Number(valueStr))) {
+          // Hardcoded number
+          row[col] = Number(valueStr);
+        } else if (valueStr) {
+          // Hardcoded string (remove quotes)
+          row[col] = valueStr.replace(/^['"]|['"]$/g, '');
+        } else {
+          row[col] = null;
+        }
       } else {
-        row[col] = null;
+        // Fallback: map by argument index (for backwards compatibility)
+        if (args[index] !== undefined) {
+          row[col] = args[index];
+        } else {
+          row[col] = null;
+        }
       }
     });
 
@@ -324,9 +451,9 @@ class InMemoryDatabase {
       }
       
       if (timeOut !== undefined) {
-        // CHECK(time_out between 1 and 1400)
-        if (timeOut < 1 || timeOut > 1400) {
-          throw new Error('CHECK constraint failed: time_out must be between 1 and 1400');
+        // CHECK(time_out between 1 and 1440)
+        if (timeOut < 1 || timeOut > 1440) {
+          throw new Error('CHECK constraint failed: time_out must be between 1 and 1440');
         }
         // CHECK(time_out % 15 = 0)
         if (timeOut % 15 !== 0) {
@@ -499,10 +626,24 @@ class InMemoryDatabase {
         results.push({ name: tableName, type: 'table', sql: tableSql });
       }
       
-      // Filter by name if specified
-      if (normalizedSql.includes("name='timesheet'") || normalizedSql.includes('name="timesheet"')) {
-        const filtered = results.filter(r => r['name'] === 'timesheet');
-        return operation === 'get' ? (filtered[0] || null) : filtered;
+      // Apply WHERE clause filtering if present
+      if (sql.includes('WHERE')) {
+        const whereMatch = sql.match(/WHERE\s+(.+?)(?:\s+ORDER|\s+GROUP|$)/i);
+        if (whereMatch) {
+          const whereClause = whereMatch[1];
+          if (whereClause) {
+            // Parse WHERE clause to filter by name if specified
+            const nameMatch = whereClause.match(/name\s*=\s*['"]([^'"]+)['"]/i);
+            if (nameMatch) {
+              const targetName = nameMatch[1].toLowerCase();
+              const filtered = results.filter(r => r['name'] === targetName);
+              return operation === 'get' ? (filtered[0] || null) : filtered;
+            }
+            // Use general WHERE matching for other conditions
+            const filtered = results.filter(row => this.matchesWhere(row, whereClause, []));
+            return operation === 'get' ? (filtered[0] || null) : filtered;
+          }
+        }
       }
     }
     
