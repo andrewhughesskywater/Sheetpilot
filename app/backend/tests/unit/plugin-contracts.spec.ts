@@ -16,7 +16,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { assertPluginInterface } from '../helpers/assertion-helpers';
 
 // Mock the plugin implementations using classes to ensure they are constructable
-vi.mock('../../src/services/plugins/sqlite-data-service', () => ({
+vi.mock('@/services/plugins/sqlite-data-service', () => ({
   SQLiteDataService: class {
     saveDraft = vi.fn();
     loadDraft = vi.fn();
@@ -30,7 +30,7 @@ vi.mock('../../src/services/plugins/sqlite-data-service', () => ({
   }
 }));
 
-vi.mock('../../src/services/plugins/memory-data-service', () => ({
+vi.mock('@/services/plugins/memory-data-service', () => ({
   MemoryDataService: class {
     saveDraft = vi.fn();
     loadDraft = vi.fn();
@@ -44,7 +44,7 @@ vi.mock('../../src/services/plugins/memory-data-service', () => ({
   }
 }));
 
-vi.mock('../../src/services/plugins/electron-bot-service', () => ({
+vi.mock('@/services/plugins/electron-bot-service', () => ({
   ElectronBotService: class {
     submit = vi.fn();
     validateEntry = vi.fn();
@@ -56,7 +56,7 @@ vi.mock('../../src/services/plugins/electron-bot-service', () => ({
   }
 }));
 
-vi.mock('../../src/services/plugins/mock-submission-service', () => ({
+vi.mock('@/services/plugins/mock-submission-service', () => ({
   MockSubmissionService: class {
     submit = vi.fn();
     validateEntry = vi.fn();
@@ -68,7 +68,7 @@ vi.mock('../../src/services/plugins/mock-submission-service', () => ({
   }
 }));
 
-vi.mock('../../src/services/plugins/sqlite-credential-service', () => ({
+vi.mock('@/services/plugins/sqlite-credential-service', () => ({
   SQLiteCredentialService: class {
     store = vi.fn();
     get = vi.fn();
@@ -311,7 +311,7 @@ describe('Plugin Contract Validation', () => {
         removedCount: 0
       });
       
-      const result = await service.submit(mockEntries, mockCredentials);
+      const result = await service.submit({ entries: mockEntries, credentials: mockCredentials });
       
       expect(result).toHaveProperty('ok');
       expect(result).toHaveProperty('submittedIds');
@@ -587,7 +587,7 @@ describe('Plugin Contract Validation', () => {
         error: 'Could not connect to submission service'
       });
       
-      const result = await service.submit([], { email: 'test@example.com', password: 'password' });
+      const result = await service.submit({ entries: [], credentials: { email: 'test@example.com', password: 'password' } });
       
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if ('error' in result && typeof (result as any).error === 'string') {

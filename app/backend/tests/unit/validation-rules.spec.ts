@@ -16,8 +16,8 @@ import {
   isTimeOutAfterTimeIn,
   validateField,
   formatTimeInput
-} from '../../src/logic/timesheet-validation';
-import { validateQuarterAvailability, QUARTER_DEFINITIONS } from '../../src/services/bot/src/config/quarter_config';
+} from '@/logic/timesheet-validation';
+import { validateQuarterAvailability, QUARTER_DEFINITIONS } from '@/services/bot/src/config/quarter_config';
 import { validTimesheetEntries, invalidTimesheetEntries, edgeCaseEntries } from '../fixtures/timesheet-data';
 import { assertValidTimesheetRow, assertInvalidTimesheetRow } from '../helpers/assertion-helpers';
 
@@ -317,7 +317,7 @@ describe('Validation Rules Unit Tests', () => {
       const requiredFields = ['date', 'timeIn', 'timeOut', 'project', 'taskDescription'];
       
       requiredFields.forEach(field => {
-        const error = validateField('', 0, field, mockRows, projects, chargeCodes);
+        const error = validateField({ value: '', row: 0, prop: field, rows: mockRows, projects, chargeCodes });
         expect(error).toBeTruthy();
         expect(error).toContain('required');
       });
@@ -342,44 +342,44 @@ describe('Validation Rules Unit Tests', () => {
     }
 
     it('should validate date field', () => {
-      const validDate = validateField(randomDateInCurrentQuarter(), 0, 'date', mockRows, projects, chargeCodes);
+      const validDate = validateField({ value: randomDateInCurrentQuarter(), row: 0, prop: 'date', rows: mockRows, projects, chargeCodes });
       expect(validDate).toBeNull();
       
-      const invalidDate = validateField('2025-01-15', 0, 'date', mockRows, projects, chargeCodes);
+      const invalidDate = validateField({ value: '2025-01-15', row: 0, prop: 'date', rows: mockRows, projects, chargeCodes });
       expect(invalidDate).toBeTruthy();
       expect(invalidDate).toContain('like 01/15/2024');
     });
 
     it('should validate timeIn field', () => {
-      const validTime = validateField('09:00', 0, 'timeIn', mockRows, projects, chargeCodes);
+      const validTime = validateField({ value: '09:00', row: 0, prop: 'timeIn', rows: mockRows, projects, chargeCodes });
       expect(validTime).toBeNull();
       
-      const invalidTime = validateField('09:01', 0, 'timeIn', mockRows, projects, chargeCodes);
+      const invalidTime = validateField({ value: '09:01', row: 0, prop: 'timeIn', rows: mockRows, projects, chargeCodes });
       expect(invalidTime).toBeTruthy();
       expect(invalidTime).toContain('15 minute steps');
     });
 
     it('should validate timeOut field', () => {
-      const validTime = validateField('17:00', 0, 'timeOut', mockRows, projects, chargeCodes);
+      const validTime = validateField({ value: '17:00', row: 0, prop: 'timeOut', rows: mockRows, projects, chargeCodes });
       expect(validTime).toBeNull();
       
-      const invalidTime = validateField('08:00', 0, 'timeOut', mockRows, projects, chargeCodes);
+      const invalidTime = validateField({ value: '08:00', row: 0, prop: 'timeOut', rows: mockRows, projects, chargeCodes });
       expect(invalidTime).toBeTruthy();
       expect(invalidTime).toContain('after start time');
     });
 
     it('should validate project field', () => {
-      const validProject = validateField('FL-Carver Techs', 0, 'project', mockRows, projects, chargeCodes);
+      const validProject = validateField({ value: 'FL-Carver Techs', row: 0, prop: 'project', rows: mockRows, projects, chargeCodes });
       expect(validProject).toBeNull();
       
-      const invalidProject = validateField('Invalid Project', 0, 'project', mockRows, projects, chargeCodes);
+      const invalidProject = validateField({ value: 'Invalid Project', row: 0, prop: 'project', rows: mockRows, projects, chargeCodes });
       expect(invalidProject).toBeTruthy();
       expect(invalidProject).toContain('from the list');
     });
 
     it('should validate tool field based on project', () => {
       // Project that needs tools
-      const validTool = validateField('#1 Rinse and 2D marker', 0, 'tool', mockRows, projects, chargeCodes);
+      const validTool = validateField({ value: '#1 Rinse and 2D marker', row: 0, prop: 'tool', rows: mockRows, projects, chargeCodes });
       expect(validTool).toBeNull();
       
       // Project that doesn't need tools
@@ -387,13 +387,13 @@ describe('Validation Rules Unit Tests', () => {
         ...mockRows[0],
         project: 'PTO/RTO'
       }];
-      const toolForPTO = validateField('', 0, 'tool', rowsWithPTO, projects, chargeCodes);
+        const toolForPTO = validateField({ value: '', row: 0, prop: 'tool', rows: rowsWithPTO, projects, chargeCodes });
       expect(toolForPTO).toBeNull(); // Should be null (N/A)
     });
 
     it('should validate chargeCode field based on tool', () => {
       // Tool that needs charge code
-      const validChargeCode = validateField('EPR1', 0, 'chargeCode', mockRows, projects, chargeCodes);
+      const validChargeCode = validateField({ value: 'EPR1', row: 0, prop: 'chargeCode', rows: mockRows, projects, chargeCodes });
       expect(validChargeCode).toBeNull();
       
       // Tool that doesn't need charge code
@@ -401,15 +401,15 @@ describe('Validation Rules Unit Tests', () => {
         ...mockRows[0],
         tool: 'Meeting'
       }];
-      const chargeCodeForMeeting = validateField('', 0, 'chargeCode', rowsWithMeeting, projects, chargeCodes);
+        const chargeCodeForMeeting = validateField({ value: '', row: 0, prop: 'chargeCode', rows: rowsWithMeeting, projects, chargeCodes });
       expect(chargeCodeForMeeting).toBeNull(); // Should be null (N/A)
     });
 
     it('should validate taskDescription field', () => {
-      const validDescription = validateField('Test task description', 0, 'taskDescription', mockRows, projects, chargeCodes);
+      const validDescription = validateField({ value: 'Test task description', row: 0, prop: 'taskDescription', rows: mockRows, projects, chargeCodes });
       expect(validDescription).toBeNull();
       
-      const invalidDescription = validateField('', 0, 'taskDescription', mockRows, projects, chargeCodes);
+      const invalidDescription = validateField({ value: '', row: 0, prop: 'taskDescription', rows: mockRows, projects, chargeCodes });
       expect(invalidDescription).toBeTruthy();
       expect(invalidDescription).toContain('describe what you did');
     });
@@ -486,7 +486,7 @@ describe('Validation Rules Unit Tests', () => {
         }];
         
         // Tool should be null for these projects
-        const toolValidation = validateField('', 0, 'tool', rows, ['FL-Carver Techs', ...projectsWithoutTools], ['EPR1']);
+        const toolValidation = validateField({ value: '', row: 0, prop: 'tool', rows, projects: ['FL-Carver Techs', ...projectsWithoutTools], chargeCodes: ['EPR1'] });
         expect(toolValidation).toBeNull(); // Should be null (N/A)
       });
     });
@@ -509,7 +509,7 @@ describe('Validation Rules Unit Tests', () => {
         }];
         
         // Charge code should be null for these tools
-        const chargeCodeValidation = validateField('', 0, 'chargeCode', rows, ['FL-Carver Techs'], ['EPR1']);
+        const chargeCodeValidation = validateField({ value: '', row: 0, prop: 'chargeCode', rows, projects: ['FL-Carver Techs'], chargeCodes: ['EPR1'] });
         expect(chargeCodeValidation).toBeNull(); // Should be null (N/A)
       });
     });
@@ -715,7 +715,7 @@ describe('Validation Rules Unit Tests', () => {
         taskDescription: 'Test task with émojis 🚀 and üñïçödé'
       }];
       
-      const result = validateField('Test task with émojis 🚀 and üñïçödé', 0, 'taskDescription', mockRows, ['FL-Carver Techs'], ['EPR1']);
+      const result = validateField({ value: 'Test task with émojis 🚀 and üñïçödé', row: 0, prop: 'taskDescription', rows: mockRows, projects: ['FL-Carver Techs'], chargeCodes: ['EPR1'] });
       expect(result).toBeNull(); // Should accept unicode
     });
 
@@ -753,7 +753,7 @@ describe('Validation Rules Unit Tests', () => {
       }];
       
       specialCharacters.forEach(description => {
-        const result = validateField(description, 0, 'taskDescription', mockRows, ['FL-Carver Techs'], ['EPR1']);
+        const result = validateField({ value: description, row: 0, prop: 'taskDescription', rows: mockRows, projects: ['FL-Carver Techs'], chargeCodes: ['EPR1'] });
         expect(result).toBeNull(); // Should accept special characters
       });
     });
@@ -769,7 +769,7 @@ describe('Validation Rules Unit Tests', () => {
         taskDescription: 'Line 1\nLine 2\nLine 3'
       }];
       
-      const result = validateField('Line 1\nLine 2\nLine 3', 0, 'taskDescription', mockRows, ['FL-Carver Techs'], ['EPR1']);
+      const result = validateField({ value: 'Line 1\nLine 2\nLine 3', row: 0, prop: 'taskDescription', rows: mockRows, projects: ['FL-Carver Techs'], chargeCodes: ['EPR1'] });
       expect(result).toBeNull(); // Should accept multiline text
     });
 
@@ -785,7 +785,7 @@ describe('Validation Rules Unit Tests', () => {
         taskDescription: longText
       }];
       
-      const result = validateField(longText, 0, 'taskDescription', mockRows, ['FL-Carver Techs'], ['EPR1']);
+      const result = validateField({ value: longText, row: 0, prop: 'taskDescription', rows: mockRows, projects: ['FL-Carver Techs'], chargeCodes: ['EPR1'] });
       expect(result).toBeNull(); // Should accept long text (database will handle limits)
     });
   });
@@ -821,7 +821,7 @@ describe('Validation Rules Unit Tests', () => {
       sqlInjectionAttempts.forEach(attempt => {
         // Validation should still pass (we treat it as text)
         // The database layer should handle parameterization
-        const result = validateField(attempt, 0, 'taskDescription', mockRows, ['FL-Carver Techs'], ['EPR1']);
+        const result = validateField({ value: attempt, row: 0, prop: 'taskDescription', rows: mockRows, projects: ['FL-Carver Techs'], chargeCodes: ['EPR1'] });
         expect(result).toBeNull(); // Validation treats it as regular text
       });
     });
@@ -844,7 +844,7 @@ describe('Validation Rules Unit Tests', () => {
       
       // These should fail validation because they're not in the project list
       sqlInjectionProjects.forEach(project => {
-        const result = validateField(project, 0, 'project', mockRows, ['FL-Carver Techs'], ['EPR1']);
+        const result = validateField({ value: project, row: 0, prop: 'project', rows: mockRows, projects: ['FL-Carver Techs'], chargeCodes: ['EPR1'] });
         expect(result).toBeTruthy(); // Should fail - not in allowed list
         expect(result).toContain('from the list');
       });
@@ -872,7 +872,7 @@ describe('Validation Rules Unit Tests', () => {
       xssAttempts.forEach(attempt => {
         // Validation should pass (we treat it as text)
         // The rendering layer should handle escaping
-        const result = validateField(attempt, 0, 'taskDescription', mockRows, ['FL-Carver Techs'], ['EPR1']);
+        const result = validateField({ value: attempt, row: 0, prop: 'taskDescription', rows: mockRows, projects: ['FL-Carver Techs'], chargeCodes: ['EPR1'] });
         expect(result).toBeNull(); // Validation treats it as regular text
       });
     });

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import Navigation from '../../src/components/Navigation';
+import Navigation from '@/components/Navigation';
 
 describe('Navigation', () => {
   it('should render all tabs', () => {

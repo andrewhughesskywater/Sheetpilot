@@ -16,8 +16,8 @@
  */
 
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
-import { logout as logoutIpc, validateSession as validateSessionIpc } from '../services/ipc/auth';
-import { logError, logInfo, logVerbose } from '../services/ipc/logger';
+import { logout as logoutIpc, validateSession as validateSessionIpc } from '@/services/ipc/auth';
+import { logError, logInfo, logVerbose } from '@/services/ipc/logger';
 
 /**
  * Session context interface providing authentication state and actions

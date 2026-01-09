@@ -38,11 +38,16 @@ export async function devSimulateSuccess(): Promise<{ success: boolean; count?: 
   return window.timesheet.devSimulateSuccess();
 }
 
-export async function saveDraft(row: TimesheetRow): Promise<{ success: boolean; entry?: TimesheetRow; error?: string }> {
-  if (!window.timesheet?.saveDraft) {
-    return { success: false, error: TIMESHEET_API_UNAVAILABLE_ERROR };
-  }
-  // Build payload with only present fields to support partial draft saves.
+function buildDraftPayload(row: TimesheetRow): {
+  id?: number;
+  date?: string;
+  timeIn?: string;
+  timeOut?: string;
+  project?: string;
+  tool?: string | null;
+  chargeCode?: string | null;
+  taskDescription?: string;
+} {
   const payload: {
     id?: number;
     date?: string;
@@ -63,7 +68,17 @@ export async function saveDraft(row: TimesheetRow): Promise<{ success: boolean; 
   if (row.chargeCode !== undefined) payload.chargeCode = row.chargeCode ?? null;
   if (row.taskDescription) payload.taskDescription = row.taskDescription;
 
+  return payload;
+}
+
+export async function saveDraft(row: TimesheetRow): Promise<{ success: boolean; entry?: TimesheetRow; error?: string }> {
+  if (!window.timesheet?.saveDraft) {
+    return { success: false, error: TIMESHEET_API_UNAVAILABLE_ERROR };
+  }
+  
+  const payload = buildDraftPayload(row);
   const res = await window.timesheet.saveDraft(payload);
+  
   if (res.success && res.entry) {
     return { success: true, entry: res.entry };
   }

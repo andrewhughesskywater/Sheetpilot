@@ -1,25 +1,25 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { BrowserWindow } from 'electron';
-import { registerAllIPCHandlers } from '../../src/ipc/index';
-import { registerAuthHandlers } from '../../src/ipc/auth-handlers';
-import { registerCredentialsHandlers } from '../../src/ipc/credentials-handlers';
-import { registerTimesheetHandlers, setMainWindow } from '../../src/ipc/timesheet-handlers';
-import { registerAdminHandlers } from '../../src/ipc/admin-handlers';
-import { registerDatabaseHandlers } from '../../src/ipc/database-handlers';
-import { registerLogsHandlers } from '../../src/ipc/logs-handlers';
-import { registerLoggerHandlers } from '../../src/ipc/logger-handlers';
-import { registerSettingsHandlers } from '../../src/ipc/settings-handlers';
-import { appLogger } from '../../../shared/logger';
+import { registerAllIPCHandlers } from '@/ipc/index';
+import { registerAuthHandlers } from '@/ipc/auth-handlers';
+import { registerCredentialsHandlers } from '@/ipc/credentials-handlers';
+import { registerTimesheetHandlers, setMainWindow } from '@/ipc/timesheet-handlers';
+import { registerAdminHandlers } from '@/ipc/admin-handlers';
+import { registerDatabaseHandlers } from '@/ipc/database-handlers';
+import { registerLogsHandlers } from '@/ipc/logs-handlers';
+import { registerLoggerHandlers } from '@/ipc/logger-handlers';
+import { registerSettingsHandlers } from '@/ipc/settings-handlers';
+import { appLogger } from '@sheetpilot/shared/logger';
 
 // Mock all handler modules
-vi.mock('../../src/ipc/auth-handlers');
-vi.mock('../../src/ipc/credentials-handlers');
-vi.mock('../../src/ipc/timesheet-handlers');
-vi.mock('../../src/ipc/admin-handlers');
-vi.mock('../../src/ipc/database-handlers');
-vi.mock('../../src/ipc/logs-handlers');
-vi.mock('../../src/ipc/logger-handlers');
-vi.mock('../../src/ipc/settings-handlers');
+vi.mock('@/ipc/auth-handlers');
+vi.mock('@/ipc/credentials-handlers');
+vi.mock('@/ipc/timesheet-handlers');
+vi.mock('@/ipc/admin-handlers');
+vi.mock('@/ipc/database-handlers');
+vi.mock('@/ipc/logs-handlers');
+vi.mock('@/ipc/logger-handlers');
+vi.mock('@/ipc/settings-handlers');
 vi.mock('../../../shared/logger');
 
 describe('ipc/index', () => {

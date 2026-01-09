@@ -8,7 +8,7 @@
 
 import type { TimesheetRow } from './timesheet.schema';
 import { isValidDate, isValidTime, isTimeOutAfterTimeIn, hasTimeOverlapWithPreviousEntries } from './timesheet.schema';
-import { doesProjectNeedTools, doesToolNeedChargeCode } from '../../../../shared/business-config';
+import { doesProjectNeedTools, doesToolNeedChargeCode } from '@sheetpilot/shared/business-config';
 import { isDateInAllowedRange } from '../../utils/smartDate';
 
 /**

@@ -9,7 +9,7 @@ import {
   setThemeMode as setThemeModeUtil,
   getStoredTheme,
   getEffectiveTheme
-} from '../utils/theme-manager';
+} from '@/utils/theme-manager';
 
 export function useTheme() {
   const [themeMode, setThemeModeState] = useState<ThemeMode>(() => {

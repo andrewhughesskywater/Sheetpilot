@@ -10,7 +10,7 @@
 
 import * as crypto from 'crypto';
 import * as os from 'os';
-import { dbLogger } from '@sheetpilot/shared/logger';
+import { dbLogger } from './utils/logger';
 import { getDb } from './connection-manager';
 
 /**
@@ -179,17 +179,17 @@ export function getCredentials(service: string): { email: string; password: stri
 /**
  * Lists all stored credentials (without passwords)
  */
-export function listCredentials() {
+export function listCredentials(): Array<{ service: string; email: string }> {
     const db = getDb();
     
     try {
         const listCreds = db.prepare(`
-            SELECT id, service, email, created_at, updated_at 
+            SELECT service, email
             FROM credentials 
             ORDER BY service
         `);
         
-        return listCreds.all();
+        return listCreds.all() as Array<{ service: string; email: string }>;
     } catch (error) {
         dbLogger.error('Error listing credentials', error);
         return [];

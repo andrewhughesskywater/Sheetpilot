@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import React from 'react';
 
 // Mock the DataContext to provide test data
-vi.mock('../src/contexts/DataContext', () => ({
+vi.mock('@/contexts/DataContext', () => ({
   useData: () => ({
     archiveData: {
       timesheet: [],
@@ -25,7 +25,7 @@ vi.mock('@handsontable/react-wrapper', () => ({
     }, 'Mocked Handsontable')
 }));
 
-import Archive from '../src/components/archive/DatabaseViewer';
+import Archive from '@/components/archive/DatabaseViewer';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 

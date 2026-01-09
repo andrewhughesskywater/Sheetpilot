@@ -31,8 +31,8 @@ import {
   validateSession,
   clearSession,
   clearUserSessions
-} from '../../src/repositories/session-repository';
-import { setDbPath, openDb, ensureSchema, shutdownDatabase } from '../../src/repositories';
+} from '@/repositories'/session-repository';
+import { setDbPath, openDb, ensureSchema, shutdownDatabase } from '@/repositories'';
 
 // Type for database row
 interface DbRow { [key: string]: unknown }

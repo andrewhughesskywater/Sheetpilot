@@ -8,7 +8,7 @@
 
 import * as Cfg from '../config/automation_config';
 import type { WebformFiller } from '../browser/webform_flow';
-import { botLogger } from '@sheetpilot/shared/logger';
+import { botLogger } from '../../utils/logger';
 
 export interface FieldProcessingContext {
   webformFiller: WebformFiller;

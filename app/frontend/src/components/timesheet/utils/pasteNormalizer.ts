@@ -21,24 +21,57 @@ function detectPasteMetadata(pastedData: unknown[][]): PasteMetadata {
   return { rowCount, columnCount, hasHeaders };
 }
 
+function mapFieldValue(rawData: unknown[], index: number, columnCount: number): string | undefined {
+  if (columnCount <= index) return undefined;
+  const value = String(rawData[index] ?? '').trim();
+  return value || undefined;
+}
+
 function mapPastedRow(rawData: unknown[], columnCount: number): Partial<TimesheetRow> {
   const result: Partial<TimesheetRow> = { id: uuidv4() };
 
-  if (columnCount >= 1) result.date = String(rawData[0] ?? '').trim();
-  if (columnCount >= 2) result.timeIn = String(rawData[1] ?? '').trim();
-  if (columnCount >= 3) result.timeOut = String(rawData[2] ?? '').trim();
-  if (columnCount >= 4) result.project = String(rawData[3] ?? '').trim();
-  if (columnCount >= 5) result.tool = String(rawData[4] ?? '').trim() || undefined;
-  if (columnCount >= 6) result.chargeCode = String(rawData[5] ?? '').trim() || undefined;
-  if (columnCount >= 7) result.taskDescription = String(rawData[6] ?? '').trim();
+  const date = mapFieldValue(rawData, 0, columnCount);
+  if (date) result.date = date;
+  
+  const timeIn = mapFieldValue(rawData, 1, columnCount);
+  if (timeIn) result.timeIn = timeIn;
+  
+  const timeOut = mapFieldValue(rawData, 2, columnCount);
+  if (timeOut) result.timeOut = timeOut;
+  
+  const project = mapFieldValue(rawData, 3, columnCount);
+  if (project) result.project = project;
+  
+  result.tool = mapFieldValue(rawData, 4, columnCount);
+  result.chargeCode = mapFieldValue(rawData, 5, columnCount);
+  
+  const taskDescription = mapFieldValue(rawData, 6, columnCount);
+  if (taskDescription) result.taskDescription = taskDescription;
 
   return result;
 }
 
-export function normalizePastedRows(pastedData: unknown[][], existingRows: TimesheetRow[]): TimesheetRow[] {
-  if (!pastedData || pastedData.length === 0) return existingRows;
+function isRowEmpty(partial: Partial<TimesheetRow>): boolean {
+  return !partial.date && !partial.timeIn && !partial.timeOut;
+}
 
-  const metadata = detectPasteMetadata(pastedData);
+function createTimesheetRow(partial: Partial<TimesheetRow>): TimesheetRow {
+  return {
+    id: partial.id || uuidv4(),
+    date: partial.date || '',
+    timeIn: partial.timeIn || '',
+    timeOut: partial.timeOut || '',
+    project: partial.project || '',
+    tool: partial.tool,
+    chargeCode: partial.chargeCode,
+    taskDescription: partial.taskDescription || '',
+    receipt: undefined,
+    submitted: false,
+    receiptVerificationRequired: false
+  };
+}
+
+function processPastedRows(pastedData: unknown[][], metadata: PasteMetadata): TimesheetRow[] {
   const startIdx = metadata.hasHeaders ? 1 : 0;
   const normalized: TimesheetRow[] = [];
 
@@ -47,24 +80,19 @@ export function normalizePastedRows(pastedData: unknown[][], existingRows: Times
     if (!Array.isArray(raw) || raw.length === 0) continue;
 
     const partial = mapPastedRow(raw, metadata.columnCount);
-    if (!partial.date && !partial.timeIn && !partial.timeOut) continue; // Skip empty rows
+    if (isRowEmpty(partial)) continue;
 
-    const row: TimesheetRow = {
-      id: partial.id || uuidv4(),
-      date: partial.date || '',
-      timeIn: partial.timeIn || '',
-      timeOut: partial.timeOut || '',
-      project: partial.project || '',
-      tool: partial.tool,
-      chargeCode: partial.chargeCode,
-      taskDescription: partial.taskDescription || '',
-      receipt: undefined,
-      submitted: false,
-      receiptVerificationRequired: false
-    };
-
-    normalized.push(row);
+    normalized.push(createTimesheetRow(partial));
   }
+
+  return normalized;
+}
+
+export function normalizePastedRows(pastedData: unknown[][], existingRows: TimesheetRow[]): TimesheetRow[] {
+  if (!pastedData || pastedData.length === 0) return existingRows;
+
+  const metadata = detectPasteMetadata(pastedData);
+  const normalized = processPastedRows(pastedData, metadata);
 
   return [...existingRows, ...normalized];
 }

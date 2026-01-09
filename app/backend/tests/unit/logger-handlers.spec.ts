@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ipcMain } from 'electron';
-import { registerLoggerHandlers } from '../../src/ipc/logger-handlers';
-import { ipcLogger } from '../../../shared/logger';
+import { registerLoggerHandlers } from '@/ipc/logger-handlers';
+import { ipcLogger } from '@sheetpilot/shared/logger';
 
 // Mock electron
 vi.mock('electron', () => ({
@@ -10,7 +10,7 @@ vi.mock('electron', () => ({
   }
 }));
 
-vi.mock('../../src/ipc/handlers/timesheet/main-window', () => ({
+vi.mock('@/ipc/handlers/timesheet/main-window', () => ({
   isTrustedIpcSender: vi.fn(() => true)
 }));
 

@@ -17,13 +17,13 @@ import type {
   DeleteResult,
   ArchiveResult,
   DbTimesheetEntry
-} from '../../../../shared/contracts/IDataService';
-import type { PluginMetadata } from '../../../../shared/plugin-types';
+} from '@sheetpilot/shared/contracts/IDataService';
+import type { PluginMetadata } from '@sheetpilot/shared/plugin-types';
 import { getDb } from '../../repositories';
 import {
   parseTimeToMinutes,
   formatMinutesToTime
-} from '../../../../shared/utils/format-conversions';
+} from '@sheetpilot/shared/utils/format-conversions';
 
 /**
  * SQLite implementation of the data service
@@ -37,34 +37,54 @@ export class SQLiteDataService implements IDataService {
   };
 
 
+  private validateDraftEntry(entry: TimesheetEntry): { valid: boolean; error?: string } {
+    if (!entry.date) {
+      return { valid: false, error: 'Date is required' };
+    }
+    if (!entry.project) {
+      return { valid: false, error: 'Project is required' };
+    }
+    if (!entry.taskDescription) {
+      return { valid: false, error: 'Task description is required' };
+    }
+    return { valid: true };
+  }
+
+  private validateTimes(timeIn: string | undefined, timeOut: string | undefined): { valid: boolean; timeInMinutes?: number; timeOutMinutes?: number; error?: string } {
+    if (!timeIn || !timeOut) {
+      return { valid: false, error: 'Time In and Time Out are required' };
+    }
+    const timeInMinutes = parseTimeToMinutes(timeIn);
+    const timeOutMinutes = parseTimeToMinutes(timeOut);
+    
+    if (timeInMinutes % 15 !== 0 || timeOutMinutes % 15 !== 0) {
+      return { valid: false, error: 'Times must be in 15-minute increments' };
+    }
+    
+    if (timeOutMinutes <= timeInMinutes) {
+      return { valid: false, error: 'Time Out must be after Time In' };
+    }
+
+    return { valid: true, timeInMinutes, timeOutMinutes };
+  }
+
   /**
    * Save a draft timesheet entry
    */
   public async saveDraft(entry: TimesheetEntry): Promise<SaveResult> {
     try {
-      // Validate required fields
-      if (!entry.date) {
-        return { success: false, error: 'Date is required' };
+      const fieldValidation = this.validateDraftEntry(entry);
+      if (!fieldValidation.valid) {
+        return { success: false, error: fieldValidation.error! };
       }
-      if (!entry.project) {
-        return { success: false, error: 'Project is required' };
+
+      const timeValidation = this.validateTimes(entry.timeIn, entry.timeOut);
+      if (!timeValidation.valid) {
+        return { success: false, error: timeValidation.error! };
       }
-      if (!entry.taskDescription) {
-        return { success: false, error: 'Task description is required' };
-      }
-      
-      // Convert time strings to minutes
-      const timeInMinutes = parseTimeToMinutes(entry.timeIn);
-      const timeOutMinutes = parseTimeToMinutes(entry.timeOut);
-      
-      // Validate times
-      if (timeInMinutes % 15 !== 0 || timeOutMinutes % 15 !== 0) {
-        return { success: false, error: 'Times must be in 15-minute increments' };
-      }
-      
-      if (timeOutMinutes <= timeInMinutes) {
-        return { success: false, error: 'Time Out must be after Time In' };
-      }
+
+      const timeInMinutes = timeValidation.timeInMinutes!;
+      const timeOutMinutes = timeValidation.timeOutMinutes!;
       
       const db = getDb();
       let result;

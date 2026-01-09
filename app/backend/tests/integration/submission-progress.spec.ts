@@ -88,7 +88,7 @@ vi.mock('electron-updater', () => ({
 }));
 
 // Mock the database module
-vi.mock('../../src/repositories', () => ({
+vi.mock('@/repositories', () => ({
   ensureSchema: vi.fn(),
   getDb: vi.fn(() => ({
     prepare: vi.fn(() => ({
@@ -217,8 +217,9 @@ const createMockSubmissionService = () => {
 };
 
 // Mock the timesheet-importer service
-vi.mock('../../src/services/timesheet-importer', () => ({
-  submitTimesheets: vi.fn(async (email: string, password: string, progressCallback?: (percent: number, message: string) => void) => {
+vi.mock('@/services/timesheet-importer', () => ({
+  submitTimesheets: vi.fn(async (config: { email: string; password: string; progressCallback?: (percent: number, message: string) => void }) => {
+    const { progressCallback } = config;
     // Simulate progress updates
     progressCallback?.(10, 'Logging in');
     await new Promise(resolve => setTimeout(resolve, 50));
@@ -250,7 +251,7 @@ vi.mock('../../src/services/timesheet-importer', () => ({
 }));
 
 // Mock the plugin system
-vi.mock('../../../app/backend/src/middleware/bootstrap-plugins', () => ({
+vi.mock('@/middleware/bootstrap-plugins', () => ({
   getSubmissionService: vi.fn(() => createMockSubmissionService()),
   registerDefaultPlugins: vi.fn(),
 }));
@@ -271,7 +272,7 @@ describe('Submission Progress Integration Test', () => {
 
   it('should send progress updates during submission', async () => {
     // Import and register handlers after mocks are set up
-    const { registerTimesheetHandlers, setMainWindow } = await import('../../src/ipc/timesheet-handlers');
+    const { registerTimesheetHandlers, setMainWindow } = await import('@/ipc/timesheet-handlers');
     
     // Set main window reference
     setMainWindow(mockMainWindow as BrowserWindow);
@@ -341,7 +342,7 @@ describe('Submission Progress Integration Test', () => {
 
   it('should calculate current/total from progress percentage', async () => {
     // Import and register handlers
-    const { registerTimesheetHandlers, setMainWindow } = await import('../../src/ipc/timesheet-handlers');
+    const { registerTimesheetHandlers, setMainWindow } = await import('@/ipc/timesheet-handlers');
     setMainWindow(mockMainWindow as BrowserWindow);
     registerTimesheetHandlers();
 
@@ -380,7 +381,7 @@ describe('Submission Progress Integration Test', () => {
     vi.mocked(mockMainWindow.isDestroyed as any).mockReturnValueOnce(true);
 
     // Import and register handlers
-    const { registerTimesheetHandlers, setMainWindow } = await import('../../src/ipc/timesheet-handlers');
+    const { registerTimesheetHandlers, setMainWindow } = await import('@/ipc/timesheet-handlers');
     setMainWindow(mockMainWindow as BrowserWindow);
     registerTimesheetHandlers();
 
@@ -401,7 +402,7 @@ describe('Submission Progress Integration Test', () => {
 
   it('should send progress updates with correct structure', async () => {
     // Import and register handlers
-    const { registerTimesheetHandlers, setMainWindow } = await import('../../src/ipc/timesheet-handlers');
+    const { registerTimesheetHandlers, setMainWindow } = await import('@/ipc/timesheet-handlers');
     setMainWindow(mockMainWindow as BrowserWindow);
     registerTimesheetHandlers();
 
@@ -432,7 +433,7 @@ describe('Submission Progress Integration Test', () => {
 
   it('should handle progress updates in sequential order', async () => {
     // Import and register handlers
-    const { registerTimesheetHandlers, setMainWindow } = await import('../../src/ipc/timesheet-handlers');
+    const { registerTimesheetHandlers, setMainWindow } = await import('@/ipc/timesheet-handlers');
     setMainWindow(mockMainWindow as BrowserWindow);
     registerTimesheetHandlers();
 
@@ -453,7 +454,7 @@ describe('Submission Progress Integration Test', () => {
 
   it('should match progress bar component expectations', async () => {
     // Import and register handlers
-    const { registerTimesheetHandlers, setMainWindow } = await import('../../src/ipc/timesheet-handlers');
+    const { registerTimesheetHandlers, setMainWindow } = await import('@/ipc/timesheet-handlers');
     setMainWindow(mockMainWindow as BrowserWindow);
     registerTimesheetHandlers();
 

@@ -17,7 +17,7 @@ import {
   getAvailableQuarterIds,
   getQuarterById,
   getCurrentQuarter
-} from '../../src/services/bot/src/config/quarter_config';
+} from '@/services/bot/src/config/quarter_config';
 
 describe('Quarter Configuration', () => {
   describe('Quarter Definitions', () => {

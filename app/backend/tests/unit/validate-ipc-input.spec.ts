@@ -11,7 +11,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { z } from 'zod';
-import { validateInput, validateMultiple } from '../../src/validation/validate-ipc-input';
+import { validateInput, validateMultiple } from '@/validation/validate-ipc-input';
 
 // Mock logger
 vi.mock('../../../shared/logger', () => ({

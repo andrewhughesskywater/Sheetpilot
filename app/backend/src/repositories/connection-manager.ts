@@ -12,7 +12,7 @@ import type BetterSqlite3 from 'better-sqlite3';
 import Database from 'better-sqlite3';
 import * as path from 'path';
 import * as fs from 'fs';
-import { dbLogger } from '@sheetpilot/shared/logger';
+import { dbLogger } from './utils/logger';
 import {
     DatabaseConnectionError,
     DatabaseSchemaError

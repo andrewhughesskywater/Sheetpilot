@@ -1,5 +1,5 @@
-import type { TimesheetUIPlugin } from '../../../shared/plugin-types';
-import type { TimesheetRow } from '../components/timesheet/timesheet.schema';
+import type { TimesheetUIPlugin } from '@sheetpilot/shared/plugin-types';
+import type { TimesheetRow } from '@/components/timesheet/timesheet.schema';
 
 /**
  * Default Handsontable-based Timesheet UI plugin

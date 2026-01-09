@@ -19,9 +19,9 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import { useSession } from './SessionContext';
-import { loadDraft } from '../services/ipc/timesheet';
-import { getAllArchiveData } from '../services/ipc/database';
-import { logError, logInfo, logVerbose, logWarn, logDebug } from '../services/ipc/logger';
+import { loadDraft } from '@/services/ipc/timesheet';
+import { getAllArchiveData } from '@/services/ipc/database';
+import { logError, logInfo, logVerbose, logWarn, logDebug } from '@/services/ipc/logger';
 
 // Define data types
 
@@ -148,6 +148,21 @@ interface DataProviderProps {
   children: ReactNode;
 }
 
+function useInitializeDataContext(
+  setTimesheetDraftData: (data: TimesheetRow[]) => void,
+  setArchiveData: (data: DatabaseData) => void,
+  setIsTimesheetDraftLoading: (loading: boolean) => void,
+  setIsArchiveDataLoading: (loading: boolean) => void
+) {
+  useEffect(() => {
+    logInfo('[DataContext] Skipping startup data loading to prevent performance violations');
+    setTimesheetDraftData([{}]);
+    setArchiveData({ timesheet: [], credentials: [] });
+    setIsTimesheetDraftLoading(false);
+    setIsArchiveDataLoading(false);
+  }, [setTimesheetDraftData, setArchiveData, setIsTimesheetDraftLoading, setIsArchiveDataLoading]);
+}
+
 export function DataProvider({ children }: DataProviderProps) {
   // Get session token for authenticated API calls
   const { token } = useSession();
@@ -171,30 +186,43 @@ export function DataProvider({ children }: DataProviderProps) {
    * 
    * @returns Promise that resolves after yielding
    */
-  const yieldToMain = () => {
+  const yieldToMain = useCallback(() => {
     return new Promise(resolve => {
       setTimeout(resolve, 0);
     });
-  };
+  }, []);
+
+  const prepareRowsWithBlank = useCallback((draftData: TimesheetRow[]): TimesheetRow[] => {
+    if (draftData.length > 0 && Object.keys(draftData[0] || {}).length > 0) {
+      return [...draftData, {}];
+    }
+    return [{}];
+  }, []);
+
+  const handleDraftLoadSuccess = useCallback((response: { success: boolean; entries?: TimesheetRow[]; error?: string }) => {
+    if (response && response.success) {
+      const draftData = response.entries || [];
+      setTimesheetDraftData(prepareRowsWithBlank(draftData));
+    } else {
+      const errorMsg = response?.error || 'Could not load timesheet draft';
+      setTimesheetDraftError(errorMsg);
+      setTimesheetDraftData([{}]);
+    }
+  }, [prepareRowsWithBlank, setTimesheetDraftData, setTimesheetDraftError]);
+
+  const handleDraftLoadError = useCallback((error: unknown) => {
+    logError('Error loading timesheet draft data', { 
+      error: error instanceof Error ? error.message : String(error) 
+    });
+    setTimesheetDraftError(error instanceof Error ? error.message : 'Could not load timesheet draft');
+    setTimesheetDraftData([{}]);
+  }, [setTimesheetDraftError, setTimesheetDraftData]);
 
   /**
    * Load timesheet draft data from database
    * 
    * Fetches pending timesheet entries and prepares them for editing.
    * Implements yielding strategy to prevent blocking UI thread.
-   * 
-   * Data flow:
-   * 1. Set loading state
-   * 2. Yield to main thread
-   * 3. Fetch draft entries via IPC
-   * 4. Yield after IPC call
-   * 5. Add blank row for data entry
-   * 6. Update state and clear loading
-   * 
-   * Error handling:
-   * - Sets error state on failure
-   * - Always provides fallback empty row
-   * - Logs errors for troubleshooting
    */
   const loadTimesheetDraftData = useCallback(async () => {
     try {
@@ -203,43 +231,20 @@ export function DataProvider({ children }: DataProviderProps) {
       setTimesheetDraftError(null);
       
       logVerbose('[DataContext] Loading timesheet draft data...');
-      
-      // Yield control before making IPC call
       await yieldToMain();
       
       const response = await loadDraft();
-      
-      // Yield control after IPC call
       await yieldToMain();
       
       logVerbose('[DataContext] Loaded timesheet draft response', response);
-      
-      // Handle new structured response format
-      if (response && response.success) {
-        const draftData = response.entries || [];
-        // Add one blank row at the end if we have data
-        const rowsWithBlank = draftData.length > 0 && Object.keys(draftData[0] || {}).length > 0 
-          ? [...draftData, {}] 
-          : [{}];
-        setTimesheetDraftData(rowsWithBlank);
-      } else {
-        // Handle old format or error
-        const errorMsg = response?.error || 'Could not load timesheet draft';
-        setTimesheetDraftError(errorMsg);
-        setTimesheetDraftData([{}]);
-      }
+      handleDraftLoadSuccess(response);
     } catch (error) {
-      logError('Error loading timesheet draft data', { 
-        error: error instanceof Error ? error.message : String(error) 
-      });
-      
-      setTimesheetDraftError(error instanceof Error ? error.message : 'Could not load timesheet draft');
-      setTimesheetDraftData([{}]); // Fallback to empty row
+      handleDraftLoadError(error);
     } finally {
       logDebug('[DataContext] Setting loading false for timesheet draft');
       setIsTimesheetDraftLoading(false);
     }
-  }, []);
+  }, [yieldToMain, handleDraftLoadSuccess, handleDraftLoadError]);
 
   /**
    * Load archive data (submitted timesheet entries and credentials)
@@ -263,12 +268,26 @@ export function DataProvider({ children }: DataProviderProps) {
    * 
    * @throws Sets error state if token missing or fetch fails
    */
+  const handleArchiveLoadError = useCallback((error: unknown) => {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logError('[DataContext] Could not load archive data', error);
+    setArchiveDataError(errorMessage);
+    setArchiveData({ timesheet: [], credentials: [] });
+    setIsArchiveDataLoading(false);
+  }, []);
+
+  const parseArchiveResponse = useCallback((archiveResponse: unknown): { timesheet: TimesheetEntry[]; credentials: Credential[] } => {
+    const response = archiveResponse as { success?: boolean; timesheet?: TimesheetEntry[]; credentials?: Credential[] };
+    const timesheetData: TimesheetEntry[] = response?.success ? (response.timesheet ?? []) : [];
+    const credentialsData: Credential[] = response?.success ? (response.credentials ?? []) : [];
+    return { timesheet: timesheetData, credentials: credentialsData };
+  }, []);
+
   const loadArchiveData = useCallback(async () => {
     try {
       setIsArchiveDataLoading(true);
       setArchiveDataError(null);
       
-      // Require token for authenticated archive access
       if (!token) {
         logWarn('[DataContext] Cannot load archive data: no session token');
         setArchiveDataError('Session token is required. Please log in to view archive data.');
@@ -278,29 +297,16 @@ export function DataProvider({ children }: DataProviderProps) {
       }
       
       logVerbose('[DataContext] Loading archive data...');
-      
-      // Yield control before making IPC call
       await yieldToMain();
       
-      // Use batched API to fetch both timesheet and credentials in one call
       const archiveResponse = await getAllArchiveData(token);
-      
-      // Yield control after IPC call
       await yieldToMain();
       
-      // Parse batched response
-      const timesheetData: TimesheetEntry[] = archiveResponse?.success 
-        ? (archiveResponse.timesheet ?? [])
-        : [];
-
-      const credentialsData: Credential[] = archiveResponse?.success
-        ? (archiveResponse.credentials ?? [])
-        : [];
+      const { timesheet: timesheetData, credentials: credentialsData } = parseArchiveResponse(archiveResponse);
       
-      // Yield control for large datasets to prevent blocking
       if (timesheetData.length > 100) {
         logInfo('[DataContext] Processing large dataset', { count: timesheetData.length });
-        await yieldToMain(); // Yield control to prevent blocking
+        await yieldToMain();
       }
       
       logInfo('[DataContext] Loaded archive data', {
@@ -321,15 +327,9 @@ export function DataProvider({ children }: DataProviderProps) {
         setArchiveDataError(archiveResponse?.error || 'Could not load archive data');
       }
     } catch (error) {
-      logError('Error loading archive data', { 
-        error: error instanceof Error ? error.message : String(error) 
-      });
-      setArchiveDataError(error instanceof Error ? error.message : 'Could not load archive data');
-      setArchiveData({ timesheet: [], credentials: [] }); // Fallback to empty data
-    } finally {
-      setIsArchiveDataLoading(false);
+      handleArchiveLoadError(error);
     }
-  }, [token]);
+  }, [token, yieldToMain, parseArchiveResponse, handleArchiveLoadError]);
 
   /**
    * Force refresh timesheet draft data
@@ -361,31 +361,12 @@ export function DataProvider({ children }: DataProviderProps) {
     await loadArchiveData();
   }, [loadArchiveData]);
 
-  /**
-   * Initialize context state on mount
-   * 
-   * WHY: Intentionally skips data loading during startup to meet performance budgets.
-   * Loading data on mount violates long task performance targets (>50ms) and blocks
-   * initial render. Instead, data loads on-demand when user navigates to tabs.
-   * 
-   * This architecture decision improves:
-   * - Time to Interactive (TTI)
-   * - First Contentful Paint (FCP)
-   * - Cumulative Layout Shift (CLS)
-   * 
-   * Trade-off: Slight delay when first viewing each tab, but much faster startup.
-   */
-  useEffect(() => {
-    logInfo('[DataContext] Skipping startup data loading to prevent performance violations');
-    
-    // Set initial empty state immediately
-    setTimesheetDraftData([{}]);
-    setArchiveData({ timesheet: [], credentials: [] });
-    
-    // Mark as not loading since we're not loading anything
-    setIsTimesheetDraftLoading(false);
-    setIsArchiveDataLoading(false);
-  }, []);
+  useInitializeDataContext(
+    setTimesheetDraftData,
+    setArchiveData,
+    setIsTimesheetDraftLoading,
+    setIsArchiveDataLoading
+  );
 
   const value: DataContextType = useMemo(() => ({
     timesheetDraftData,

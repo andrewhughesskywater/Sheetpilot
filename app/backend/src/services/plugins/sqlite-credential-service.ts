@@ -14,8 +14,8 @@ import type {
   CredentialResult,
   CredentialListResult,
   CredentialGetResult
-} from '../../../../shared/contracts/ICredentialService';
-import type { PluginMetadata } from '../../../../shared/plugin-types';
+} from '@sheetpilot/shared/contracts/ICredentialService';
+import type { PluginMetadata } from '@sheetpilot/shared/plugin-types';
 import {
   storeCredentials,
   getCredentials,

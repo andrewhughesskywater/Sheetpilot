@@ -1,31 +1,34 @@
 import { app, screen, type BrowserWindow } from 'electron';
 import { createRequire } from 'module';
-import { APP_VERSION } from '../../shared/constants';
-import { getRuntimeFlags } from './bootstrap/env';
-import { registerCrashHandlers } from './bootstrap/crash-handlers/register-crash-handlers';
-import { configureElectronCommandLine } from './bootstrap/electron/configure-commandline';
-import { setIpcMainWindow } from './bootstrap/ipc/register-ipc';
-import { initializeLoggingOrExit } from './bootstrap/logging/init-logging';
-import type { LoggerLike } from './bootstrap/logging/logger-contract';
-import { loadLoggingModule } from './bootstrap/logging/load-logging-module';
-import { createShimLogger } from './bootstrap/logging/shim-logger';
-import { writeStartupLog } from './bootstrap/logging/startup-log';
-import { fixDesktopShortcutIcon } from './bootstrap/os/fix-shortcut-icon';
-import { setAppUserModelId } from './bootstrap/os/set-app-user-model-id';
-import { registerDefaultPluginsBootstrap } from './bootstrap/plugins/register-default-plugins';
-import { configureBackendNodeModuleResolution } from './bootstrap/preflight/configure-module-resolution';
-import { ensureDevUserDataPath } from './bootstrap/preflight/ensure-dev-userdata-path';
-import { preflightResolveCriticalModules } from './bootstrap/preflight/resolve-critical-modules';
-import { initializeSentry } from './bootstrap/observability/sentry-init';
-import { createMainWindow } from './bootstrap/windows/create-main-window';
-import { loadRenderer } from './bootstrap/windows/load-renderer';
-import { bootstrapDatabaseOrExit, registerIpcHandlersOrExit } from './bootstrap/startup/startup-guards';
-import { createDebouncedWindowStateSaver, getDefaultWindowState, restoreWindowState } from './bootstrap/windows/window-state';
+import { getRuntimeFlags } from '@/bootstrap/env';
+import { registerCrashHandlers } from '@/bootstrap/crash-handlers/register-crash-handlers';
+import { configureElectronCommandLine } from '@/bootstrap/electron/configure-commandline';
+import { setIpcMainWindow } from '@/bootstrap/ipc/register-ipc';
+import { initializeLoggingOrExit } from '@/bootstrap/logging/init-logging';
+import type { LoggerLike } from '@/bootstrap/logging/logger-contract';
+import { loadLoggingModule } from '@/bootstrap/logging/load-logging-module';
+import { createShimLogger } from '@/bootstrap/logging/shim-logger';
+import { writeStartupLog } from '@/bootstrap/logging/startup-log';
+import { fixDesktopShortcutIcon } from '@/bootstrap/os/fix-shortcut-icon';
+import { setAppUserModelId } from '@/bootstrap/os/set-app-user-model-id';
+import { registerDefaultPluginsBootstrap } from '@/bootstrap/plugins/register-default-plugins';
+import { configureBackendNodeModuleResolution } from '@/bootstrap/preflight/configure-module-resolution';
+import { ensureDevUserDataPath } from '@/bootstrap/preflight/ensure-dev-userdata-path';
+import { preflightResolveCriticalModules } from '@/bootstrap/preflight/resolve-critical-modules';
+import { initializeSentry } from '@/bootstrap/observability/sentry-init';
+import { createMainWindow } from '@/bootstrap/windows/create-main-window';
+import { loadRenderer } from '@/bootstrap/windows/load-renderer';
+import { bootstrapDatabaseOrExit, registerIpcHandlersOrExit } from '@/bootstrap/startup/startup-guards';
+import { createDebouncedWindowStateSaver, getDefaultWindowState, restoreWindowState } from '@/bootstrap/windows/window-state';
 
 ensureDevUserDataPath(app);
 
 const flags = getRuntimeFlags(app);
 configureBackendNodeModuleResolution({ packagedLike: flags.packagedLike, isSmoke: flags.isSmoke, backendDirname: __dirname });
+
+// Import shared constants after module resolution is configured
+// This ensures the module resolution override can redirect to compiled output
+const { APP_VERSION } = require('@sheetpilot/shared/constants');
 
 const shimAppLogger = createShimLogger('Application');
 const shimDbLogger = createShimLogger('Database');
@@ -94,7 +97,7 @@ async function onReady(): Promise<void> {
     backendDirname: __dirname,
     windowState,
     scheduleWindowStateSave: windowStateSaver.scheduleSave,
-    restoreWindowStateAsync: (window) =>
+    restoreWindowStateAsync: (window: BrowserWindow) =>
       restoreWindowState({ app, screen, window, logger: appLogger })
   });
 

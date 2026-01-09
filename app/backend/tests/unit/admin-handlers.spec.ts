@@ -2,14 +2,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ipcMain } from 'electron';
 
 // Mock main window trust check so the tests focus on session/auth logic
-vi.mock('../../src/ipc/handlers/timesheet/main-window', () => ({
+vi.mock('@/ipc/handlers/timesheet/main-window', () => ({
   isTrustedIpcSender: vi.fn(() => true),
   setMainWindow: vi.fn(),
   emitSubmissionProgress: vi.fn()
 }));
 
-import { registerAdminHandlers } from '../../src/ipc/admin-handlers';
-import * as repositories from '../../src/repositories';
+import { registerAdminHandlers } from '@/ipc/admin-handlers';
+import * as repositories from '@/repositories'';
 
 // Mock electron
 vi.mock('electron', () => ({
@@ -19,7 +19,7 @@ vi.mock('electron', () => ({
 }));
 
 // Mock repositories
-vi.mock('../../src/repositories', () => ({
+vi.mock('@/repositories', () => ({
   validateSession: vi.fn(),
   clearAllCredentials: vi.fn(),
   rebuildDatabase: vi.fn()
@@ -36,7 +36,7 @@ vi.mock('../../../shared/logger', () => ({
 }));
 
 // Mock validation
-vi.mock('../../src/validation/validate-ipc-input', () => ({
+vi.mock('@/validation/validate-ipc-input', () => ({
   validateInput: vi.fn((schema, data) => ({ success: true, data }))
 }));
 

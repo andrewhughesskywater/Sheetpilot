@@ -1,5 +1,5 @@
-import type { TimesheetValidationPlugin } from '../../../shared/plugin-types';
-import type { TimesheetRow } from '../components/timesheet/timesheet.schema';
+import type { TimesheetValidationPlugin } from '@sheetpilot/shared/plugin-types';
+import type { TimesheetRow } from '@/components/timesheet/timesheet.schema';
 
 /**
  * Basic timesheet validation plugin

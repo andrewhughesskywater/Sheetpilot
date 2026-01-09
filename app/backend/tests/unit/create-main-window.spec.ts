@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { App, BrowserWindow } from 'electron';
-import type { LoggerLike } from '../../src/bootstrap/logging/logger-contract';
-import { createMainWindow } from '../../src/bootstrap/windows/create-main-window';
-import type { WindowState } from '../../src/bootstrap/windows/window-state';
-import { PerWindowConsoleFilter, ConsoleLoggerManager } from '../../src/bootstrap/windows/console-logger';
-import { resolveCspPolicy, buildCspHeader, createProductionCspPolicy, createDevelopmentCspPolicy } from '../../src/bootstrap/security/csp-policy';
-import { resolvePreloadPath, resolveIconPathSync, validateIconPathAsync, resolveAppPathsSync } from '../../src/bootstrap/utils/resolve-app-paths';
-import { validateWindowState } from '../../src/bootstrap/windows/window-state';
+import type { LoggerLike } from '@/bootstrap/logging/logger-contract';
+import { createMainWindow } from '@/bootstrap/windows/create-main-window';
+import type { WindowState } from '@/bootstrap/windows/window-state';
+import { PerWindowConsoleFilter, ConsoleLoggerManager } from '@/bootstrap/windows/console-logger';
+import { resolveCspPolicy, buildCspHeader, createProductionCspPolicy, createDevelopmentCspPolicy } from '@/bootstrap/security/csp-policy';
+import { resolvePreloadPath, resolveIconPathSync, validateIconPathAsync, resolveAppPathsSync } from '@/bootstrap/utils/resolve-app-paths';
+import { validateWindowState } from '@/bootstrap/windows/window-state';
 
 describe('CSP Policy Module', () => {
   describe('buildCspHeader', () => {

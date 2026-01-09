@@ -10,7 +10,7 @@
  */
 import type { Locator, Page, Response } from 'playwright';
 import * as cfg from '../config/automation_config';
-import { botLogger } from '@sheetpilot/shared/logger';
+import { botLogger } from '../../utils/logger';
 
 type RecordedResponse = { status: number; url: string; body?: string };
 type RecordedResponseSummary = { status: number; url: string };
@@ -71,17 +71,17 @@ export class SubmissionMonitor {
           cfg.GLOBAL_TIMEOUT,
         );
 
-        await cfg.dynamic_wait(
-          async () => {
+        await cfg.dynamic_wait({
+          condition_func: async () => {
             if (successResponses.length > 0) return true;
             domSuccessFound = await this._checkDomSuccessIndicators(page);
             return domSuccessFound;
           },
-          cfg.DYNAMIC_WAIT_BASE_TIMEOUT * cfg.HALF_TIMEOUT_MULTIPLIER,
-          verifyTimeout,
-          cfg.DYNAMIC_WAIT_MULTIPLIER,
-          'form submission verification',
-        );
+          base_timeout: cfg.DYNAMIC_WAIT_BASE_TIMEOUT * cfg.HALF_TIMEOUT_MULTIPLIER,
+          max_timeout: verifyTimeout,
+          multiplier: cfg.DYNAMIC_WAIT_MULTIPLIER,
+          operation_name: 'form submission verification',
+        });
       } catch (e) {
         botLogger.warn('Submission verification timed out', { error: String(e) });
       }

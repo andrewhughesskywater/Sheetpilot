@@ -100,7 +100,7 @@ vi.mock('electron', () => {
 });
 
 // Mock repositories module used by IPC handlers and startup code
-vi.mock('../src/repositories', () => {
+vi.mock('@/repositories', () => {
   const mockDb = {
     prepare: vi.fn(() => ({ all: vi.fn(() => []), get: vi.fn(() => ({})), run: vi.fn(() => ({ changes: 1 })) })),
     exec: vi.fn(),
@@ -156,7 +156,7 @@ vi.mock('../src/repositories', () => {
   };
 });
 
-vi.mock('../src/services/timesheet-importer', () => {
+vi.mock('@/services/timesheet-importer', () => {
   return {
     submitTimesheets: vi.fn(async () => ({ ok: true, submittedIds: [1], removedIds: [], totalProcessed: 1, successCount: 1, removedCount: 0 }))
   };
@@ -188,11 +188,11 @@ vi.mock('../../shared/logger', () => {
 });
 
 // Import main.ts AFTER mocks so its side-effects (handler registration) use our stubs
-import { registerAllIPCHandlers } from '../src/ipc/index';
+import { registerAllIPCHandlers } from '@/ipc/index';
 
 // Re-get typed references to mocked modules for assertions
-import * as repo from '../src/repositories';
-import * as imp from '../src/services/timesheet-importer';
+import * as repo from '@/repositories';
+import * as imp from '@/services/timesheet-importer';
 import { BrowserWindow } from 'electron';
 
 const mimps = imp as unknown as { submitTimesheets: ReturnType<typeof vi.fn> };

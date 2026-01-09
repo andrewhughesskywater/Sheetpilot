@@ -10,9 +10,9 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import * as Cfg from '../../src/services/bot/src/config/automation_config';
-import { createFormConfig } from '../../src/services/bot/src/config/automation_config';
-import { QUARTER_DEFINITIONS } from '../../src/services/bot/src/config/quarter_config';
+import * as Cfg from '@/services/bot/src/config/automation_config';
+import { createFormConfig } from '@/services/bot/src/config/automation_config';
+import { QUARTER_DEFINITIONS } from '@/services/bot/src/config/quarter_config';
 
 describe('Deprecated Constants', () => {
   describe('Deprecated constant values', () => {

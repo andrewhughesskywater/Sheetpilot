@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ipcMain } from 'electron';
-import { registerCredentialsHandlers } from '../../src/ipc/credentials-handlers';
-import * as repositories from '../../src/repositories';
-import { CredentialsNotFoundError as _CredentialsNotFoundError, CredentialsStorageError } from '../../../shared/errors';
+import { registerCredentialsHandlers } from '@/ipc/credentials-handlers';
+import * as repositories from '@/repositories'';
+import { CredentialsNotFoundError as _CredentialsNotFoundError, CredentialsStorageError } from '@sheetpilot/shared/errors';
 
 // Mock electron
 vi.mock('electron', () => ({
@@ -11,12 +11,12 @@ vi.mock('electron', () => ({
   }
 }));
 
-vi.mock('../../src/ipc/handlers/timesheet/main-window', () => ({
+vi.mock('@/ipc/handlers/timesheet/main-window', () => ({
   isTrustedIpcSender: vi.fn(() => true)
 }));
 
 // Mock repositories
-vi.mock('../../src/repositories', () => ({
+vi.mock('@/repositories', () => ({
   storeCredentials: vi.fn(),
   listCredentials: vi.fn(),
   deleteCredentials: vi.fn()
@@ -33,7 +33,7 @@ vi.mock('../../../shared/logger', () => ({
 }));
 
 // Mock validation
-vi.mock('../../src/validation/validate-ipc-input', () => ({
+vi.mock('@/validation/validate-ipc-input', () => ({
   validateInput: vi.fn((schema, data) => ({ success: true, data }))
 }));
 

@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 
-export function useTimesheetSubmission(
-  _token: string | undefined,
-  _isAdmin: boolean | undefined,
-  _timesheetDraftData: unknown[],
-  _refreshTimesheetDraft: () => Promise<void> | void,
-  _refreshArchiveData: () => Promise<void> | void
-) {
+interface UseTimesheetSubmissionConfig {
+  token: string | undefined;
+  isAdmin: boolean | undefined;
+  timesheetDraftData: unknown[];
+  refreshTimesheetDraft: () => Promise<void> | void;
+  refreshArchiveData: () => Promise<void> | void;
+}
+
+export function useTimesheetSubmission(_config: UseTimesheetSubmissionConfig) {
   const [isProcessing, setIsProcessing] = useState(false);
   const isProcessingRef = useRef(isProcessing);
   useEffect(() => {

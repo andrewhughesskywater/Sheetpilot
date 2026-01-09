@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron';
 import { isTrustedIpcSender } from './main-window';
-import { ipcLogger } from '@sheetpilot/shared/logger';
+import { ipcLogger } from '../../utils/logger';
 import {
   deleteDraftRequest,
   loadDraftByIdRequest,

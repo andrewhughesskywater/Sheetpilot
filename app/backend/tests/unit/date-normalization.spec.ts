@@ -11,7 +11,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { dateFormatTestCases } from '../fixtures/timesheet-data';
-import { isValidDate } from '../../src/logic/timesheet-validation';
+import { isValidDate } from '@/logic/timesheet-validation';
 
 describe('Date Normalization Unit Tests', () => {
   describe('Date Format Conversion', () => {

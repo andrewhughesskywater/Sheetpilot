@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { timeRangesOverlap, hasTimeOverlapWithPreviousEntries } from '../src/components/timesheet/timesheet.schema';
-import { validateField } from '../src/components/timesheet/timesheet.validation';
-import type { TimesheetRow } from '../src/components/timesheet/timesheet.schema';
+import { timeRangesOverlap, hasTimeOverlapWithPreviousEntries } from '@/components/timesheet/timesheet.schema';
+import { validateField } from '@/components/timesheet/timesheet.validation';
+import type { TimesheetRow } from '@/components/timesheet/timesheet.schema';
 
 describe('timeRangesOverlap', () => {
   it('should detect overlapping time ranges', () => {

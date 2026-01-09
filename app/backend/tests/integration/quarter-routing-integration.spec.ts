@@ -10,11 +10,11 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { BotOrchestrator } from '../../src/services/bot/src/core/bot_orchestation';
-import { WebformFiller as _WebformFiller } from '../../src/services/bot/src/browser/webform_flow';
-import { createFormConfig } from '../../src/services/bot/src/config/automation_config';
-import * as Cfg from '../../src/services/bot/src/config/automation_config';
-import { QUARTER_DEFINITIONS } from '../../src/services/bot/src/config/quarter_config';
+import { BotOrchestrator } from '@/services/bot/src/core/bot_orchestation';
+import { WebformFiller as _WebformFiller } from '@/services/bot/src/browser/webform_flow';
+import { createFormConfig } from '@/services/bot/src/config/automation_config';
+import * as Cfg from '@/services/bot/src/config/automation_config';
+import { QUARTER_DEFINITIONS } from '@/services/bot/src/config/quarter_config';
 
 // Mock the logger
 vi.mock('../../shared/logger', () => ({
@@ -38,7 +38,7 @@ vi.mock('../../shared/logger', () => ({
 }));
 
 // Mock WebformFiller
-vi.mock('../src/services/bot/src/browser/webform_flow', () => ({
+vi.mock('@/services/bot/src/browser/webform_flow', () => ({
   WebformFiller: class {
     start = vi.fn(() => Promise.resolve());
     close = vi.fn(() => Promise.resolve());
@@ -67,7 +67,7 @@ vi.mock('../src/services/bot/src/browser/webform_flow', () => ({
 }));
 
 // Mock Electron browser
-vi.mock('../src/services/bot/src/electron-browser', () => ({
+vi.mock('@/services/bot/src/electron-browser', () => ({
   chromium: vi.fn(() => ({
     launch: vi.fn(() => Promise.resolve({
       newContext: vi.fn(() => Promise.resolve({

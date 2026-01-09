@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { loadPluginConfig } from '../plugin-config';
-import type { PluginRegistryConfig } from '../plugin-types';
+import { loadPluginConfig } from '@/plugin-config';
+import type { PluginRegistryConfig } from '@/plugin-types';
 
 vi.mock('fs', () => ({
   existsSync: vi.fn(),

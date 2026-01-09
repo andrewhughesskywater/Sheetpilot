@@ -11,7 +11,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
-import { SubmitProgressBar } from '../../src/components/SubmitProgressBar';
+import { SubmitProgressBar } from '@/components/SubmitProgressBar';
 import { useState, useEffect } from 'react';
 
 // Mock window.timesheet API

@@ -17,8 +17,8 @@ import type {
   DeleteResult,
   ArchiveResult,
   DbTimesheetEntry
-} from '../../../../shared/contracts/IDataService';
-import type { PluginMetadata } from '../../../../shared/plugin-types';
+} from '@sheetpilot/shared/contracts/IDataService';
+import type { PluginMetadata } from '@sheetpilot/shared/plugin-types';
 
 /**
  * In-memory implementation of the data service
@@ -118,6 +118,30 @@ export class MemoryDataService implements IDataService {
     }
   }
 
+  private validateArchiveEntry(entry: TimesheetEntry | undefined): { valid: boolean; error?: string } {
+    if (!entry || !entry.id || !entry.date || !entry.timeIn || !entry.timeOut || 
+        !entry.project || !entry.taskDescription) {
+      return { valid: false, error: 'Entry missing required fields' };
+    }
+    return { valid: true };
+  }
+
+  private convertToDbEntry(entry: TimesheetEntry): DbTimesheetEntry {
+    return {
+      id: entry.id!,
+      date: entry.date,
+      time_in: this.parseTimeToMinutes(entry.timeIn),
+      time_out: this.parseTimeToMinutes(entry.timeOut),
+      hours: this.calculateHours(entry.timeIn, entry.timeOut),
+      project: entry.project,
+      tool: entry.tool || null,
+      detail_charge_code: entry.chargeCode || null,
+      task_description: entry.taskDescription,
+      status: 'submitted',
+      submitted_at: new Date().toISOString()
+    };
+  }
+
   /**
    * Archive a draft entry (move to archive)
    */
@@ -134,27 +158,12 @@ export class MemoryDataService implements IDataService {
       
       const entry = this.draftEntries[index];
       
-      // Validate required fields exist before archiving
-      if (!entry || !entry.id || !entry.date || !entry.timeIn || !entry.timeOut || 
-          !entry.project || !entry.taskDescription) {
-        return { success: false, error: 'Entry missing required fields' };
+      const validation = this.validateArchiveEntry(entry);
+      if (!validation.valid) {
+        return { success: false, error: validation.error! };
       }
       
-      // Convert to DbTimesheetEntry format
-      const dbEntry: DbTimesheetEntry = {
-        id: entry.id,
-        date: entry.date,
-        time_in: this.parseTimeToMinutes(entry.timeIn),
-        time_out: this.parseTimeToMinutes(entry.timeOut),
-        hours: this.calculateHours(entry.timeIn, entry.timeOut),
-        project: entry.project,
-        tool: entry.tool || null,
-        detail_charge_code: entry.chargeCode || null,
-        task_description: entry.taskDescription,
-        status: 'submitted',
-        submitted_at: new Date().toISOString()
-      };
-      
+      const dbEntry = this.convertToDbEntry(entry);
       this.archiveEntries.push(dbEntry);
       this.draftEntries.splice(index, 1);
       return { success: true };

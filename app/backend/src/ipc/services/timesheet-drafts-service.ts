@@ -1,11 +1,11 @@
-import { ipcLogger } from '@sheetpilot/shared/logger';
+import { ipcLogger } from '../utils/logger';
 import { formatMinutesToTime, parseTimeToMinutes } from '@sheetpilot/shared/utils/format-conversions';
 import { getDb, resetInProgressTimesheetEntries } from '../../repositories';
 import { validateInput } from '../../validation/validate-ipc-input';
 import { deleteDraftSchema, saveDraftSchema } from '../../validation/ipc-schemas';
 
 export type SaveDraftInput = {
-  id?: number;
+  id?: number | null;
   date?: string;
   timeIn?: string;
   timeOut?: string;
@@ -44,7 +44,7 @@ export function saveDraftRequest(row: SaveDraftInput): SaveDraftResult {
   const validation = validateInput(saveDraftSchema, row, 'timesheet:saveDraft');
   if (!validation.success) {
     timer.done({ outcome: 'error', error: 'validation-failed' });
-    return { success: false, error: validation.error };
+    return { success: false, error: validation.error ?? 'Validation failed' };
   }
 
   const validatedRow = validation.data!;
@@ -291,6 +291,9 @@ function runSaveTransaction(params: {
         result = { changes: 0, lastInsertRowid: validatedRow.id };
       }
       savedId = validatedRow.id;
+      if (!result) {
+        throw new Error('Failed to update timesheet entry');
+      }
     } else {
       ipcLogger.debug('Inserting new timesheet entry (partial data allowed)');
       const insert = db.prepare(`
@@ -309,16 +312,25 @@ function runSaveTransaction(params: {
         validatedRow.taskDescription || null
       );
 
+      if (!result) {
+        throw new Error('Failed to insert timesheet entry');
+      }
       savedId = typeof result.lastInsertRowid === 'bigint' ? Number(result.lastInsertRowid) : result.lastInsertRowid;
     }
 
     const getEntry = db.prepare(`SELECT * FROM timesheet WHERE id = ?`);
     savedEntry = getEntry.get(savedId) as DbEntry | undefined;
 
+    if (!result) {
+      throw new Error('Database operation failed');
+    }
     return { result, savedId, savedEntry };
   });
 
   const transactionResult = saveTransaction();
+  if (!transactionResult.result) {
+    throw new Error('Transaction failed');
+  }
   return {
     changes: transactionResult.result.changes,
     savedId: transactionResult.savedId,

@@ -13,18 +13,18 @@ import type {
   ISubmissionService,
   SubmissionResult,
   ValidationResult
-} from '../../../../shared/contracts/ISubmissionService';
-import type { TimesheetEntry } from '../../../../shared/contracts/IDataService';
-import type { Credentials } from '../../../../shared/contracts/ICredentialService';
-import type { PluginMetadata } from '../../../../shared/plugin-types';
+} from '@sheetpilot/shared/contracts/ISubmissionService';
+import type { TimesheetEntry } from '@sheetpilot/shared/contracts/IDataService';
+import type { Credentials } from '@sheetpilot/shared/contracts/ICredentialService';
+import type { PluginMetadata } from '@sheetpilot/shared/plugin-types';
 import { runTimesheet } from '../bot/src/core/index';
-import { botLogger } from '@sheetpilot/shared/logger';
+import { botLogger } from '../utils/logger';
 import { checkAborted, createCancelledResult } from '../bot/src/utils/abort-utils';
 import { processEntriesByQuarter } from '../bot/src/utils/quarter-processing';
 import {
   parseTimeToMinutes,
   convertDateToUSFormat
-} from '../../../../shared/utils/format-conversions';
+} from '@sheetpilot/shared/utils/format-conversions';
 
 /**
  * Electron-based submission service using browser automation
@@ -63,42 +63,35 @@ export class ElectronBotService implements ISubmissionService {
   /**
    * Submit timesheet entries using browser automation
    */
-  public async submit(
-    entriesOrConfig: TimesheetEntry[] | SubmitConfig,
-    credentials?: Credentials,
-    progressCallback?: (percent: number, message: string) => void,
-    abortSignal?: AbortSignal,
-    useMockWebsite?: boolean
-  ): Promise<SubmissionResult> {
-    // Support both new object parameter and legacy multiple parameters
-    let entries: TimesheetEntry[];
-    let actualCredentials: Credentials;
-    let actualProgressCallback: ((percent: number, message: string) => void) | undefined;
-    let actualAbortSignal: AbortSignal | undefined;
-    let actualUseMockWebsite: boolean | undefined;
-
-    if (typeof entriesOrConfig === 'object' && entriesOrConfig !== null && 'entries' in entriesOrConfig) {
-      // New signature: object parameter
-      const config = entriesOrConfig as SubmitConfig;
-      entries = config.entries;
-      actualCredentials = config.credentials;
-      actualProgressCallback = config.progressCallback;
-      actualAbortSignal = config.abortSignal;
-      actualUseMockWebsite = config.useMockWebsite;
-    } else {
-      // Legacy signature: multiple parameters
-      entries = entriesOrConfig as TimesheetEntry[];
-      actualCredentials = credentials!;
-      actualProgressCallback = progressCallback;
-      actualAbortSignal = abortSignal;
-      actualUseMockWebsite = useMockWebsite;
-    }
+  public async submit(entries: TimesheetEntry[], credentials: Credentials, progressCallback?: (percent: number, message: string) => void, abortSignal?: {aborted: boolean; reason?: unknown}, useMockWebsite?: boolean): Promise<SubmissionResult> {
+    const actualCredentials = credentials;
+    const actualProgressCallback = progressCallback;
+    const actualUseMockWebsite = useMockWebsite;
     botLogger.info('Starting Electron submission', { entryCount: entries.length });
+    
+    // Convert simplified abort signal to AbortSignal if needed
+    let actualAbortSignal: AbortSignal | undefined = undefined;
+    if (abortSignal) {
+      if (abortSignal instanceof AbortSignal) {
+        actualAbortSignal = abortSignal;
+      } else if (abortSignal.aborted) {
+        // If already aborted, create an aborted signal
+        const controller = new AbortController();
+        controller.abort();
+        actualAbortSignal = controller.signal;
+      } else {
+        // Create a new AbortController that we can abort later if needed
+        // For now, we'll just check it periodically via checkAborted
+        // Since we can't easily convert a simplified signal to a real one,
+        // we'll pass undefined and rely on checkAborted calls
+        actualAbortSignal = undefined;
+      }
+    }
     
     try {
       // Check if aborted before starting
       try {
-        checkAborted(actualAbortSignal, 'Submission');
+        checkAborted(abortSignal, 'Submission');
       } catch {
         return createCancelledResult(entries.length);
       }
@@ -131,58 +124,61 @@ export class ElectronBotService implements ISubmissionService {
     }
   }
 
+  private validateDate(date: string | undefined, errors: string[]): void {
+    if (!date) {
+      errors.push('Date is required');
+    } else if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      errors.push('Date must be in YYYY-MM-DD format');
+    }
+  }
+
+  private validateTimeFormat(time: string | undefined, fieldName: string, errors: string[]): void {
+    if (!time) {
+      errors.push(`${fieldName} is required`);
+    } else if (!/^\d{1,2}:\d{2}$/.test(time)) {
+      errors.push(`${fieldName} must be in HH:MM format`);
+    }
+  }
+
+  private validateTimeIncrements(timeIn: string | undefined, timeOut: string | undefined, errors: string[]): void {
+    if (!timeIn || !timeOut) return;
+
+    const timeInParts = timeIn.split(':');
+    const timeOutParts = timeOut.split(':');
+    
+    const timeInMinutes = parseInt(timeInParts[0] || '0', 10) * 60 + parseInt(timeInParts[1] || '0', 10);
+    const timeOutMinutes = parseInt(timeOutParts[0] || '0', 10) * 60 + parseInt(timeOutParts[1] || '0', 10);
+    
+    if (timeInMinutes % 15 !== 0 || timeOutMinutes % 15 !== 0) {
+      errors.push('Times must be in 15-minute increments');
+    }
+    
+    if (timeOutMinutes <= timeInMinutes) {
+      errors.push('End time must be after start time');
+    }
+  }
+
+  private validateRequiredFields(entry: TimesheetEntry, errors: string[]): void {
+    if (!entry.project) {
+      errors.push('Project is required');
+    }
+    
+    if (!entry.taskDescription) {
+      errors.push('Task description is required');
+    }
+  }
+
   /**
    * Validate a timesheet entry
    */
   public validateEntry(entry: TimesheetEntry): ValidationResult {
     const errors: string[] = [];
     
-    // Validate date
-    if (!entry.date) {
-      errors.push('Date is required');
-    } else if (!/^\d{4}-\d{2}-\d{2}$/.test(entry.date)) {
-      errors.push('Date must be in YYYY-MM-DD format');
-    }
-    
-    // Validate time
-    if (!entry.timeIn) {
-      errors.push('Start time is required');
-    } else if (!/^\d{1,2}:\d{2}$/.test(entry.timeIn)) {
-      errors.push('Start time must be in HH:MM format');
-    }
-    
-    if (!entry.timeOut) {
-      errors.push('End time is required');
-    } else if (!/^\d{1,2}:\d{2}$/.test(entry.timeOut)) {
-      errors.push('End time must be in HH:MM format');
-    }
-    
-    // Validate times are 15-minute increments
-    if (entry.timeIn && entry.timeOut) {
-      const timeInParts = entry.timeIn.split(':');
-      const timeOutParts = entry.timeOut.split(':');
-      
-      const timeInMinutes = parseInt(timeInParts[0] || '0', 10) * 60 + parseInt(timeInParts[1] || '0', 10);
-      const timeOutMinutes = parseInt(timeOutParts[0] || '0', 10) * 60 + parseInt(timeOutParts[1] || '0', 10);
-      
-      if (timeInMinutes % 15 !== 0 || timeOutMinutes % 15 !== 0) {
-        errors.push('Times must be in 15-minute increments');
-      }
-      
-      if (timeOutMinutes <= timeInMinutes) {
-        errors.push('End time must be after start time');
-      }
-    }
-    
-    // Validate project
-    if (!entry.project) {
-      errors.push('Project is required');
-    }
-    
-    // Validate task description
-    if (!entry.taskDescription) {
-      errors.push('Task description is required');
-    }
+    this.validateDate(entry.date, errors);
+    this.validateTimeFormat(entry.timeIn, 'Start time', errors);
+    this.validateTimeFormat(entry.timeOut, 'End time', errors);
+    this.validateTimeIncrements(entry.timeIn, entry.timeOut, errors);
+    this.validateRequiredFields(entry, errors);
     
     return {
       valid: errors.length === 0,
@@ -199,10 +195,3 @@ export class ElectronBotService implements ISubmissionService {
   }
 }
 
-interface SubmitConfig {
-  entries: TimesheetEntry[];
-  credentials: Credentials;
-  progressCallback?: (percent: number, message: string) => void;
-  abortSignal?: AbortSignal;
-  useMockWebsite?: boolean;
-}

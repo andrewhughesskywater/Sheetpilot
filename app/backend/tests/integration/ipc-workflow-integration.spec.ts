@@ -13,8 +13,8 @@ import {
     setDbPath,
     openDb,
     closeConnection
-} from '../src/repositories';
-import { submitTimesheets } from '../src/services/timesheet-importer';
+} from '@/repositories';
+import { submitTimesheets } from '@/services/timesheet-importer';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -60,7 +60,7 @@ describe('IPC Workflow Integration', () => {
         expect(pending[0].status).toBeNull();
 
         // Simulate automation button click (IPC handler calls submitTimesheets)
-        const result = await submitTimesheets('test@example.com', 'password123');
+        const result = await submitTimesheets({ email: 'test@example.com', password: 'password123' });
         
         // Should attempt to process the entry
         expect(result).toBeDefined();
@@ -80,7 +80,7 @@ describe('IPC Workflow Integration', () => {
         expect(pending).toHaveLength(0);
 
         // Simulate automation button click with no pending entries
-        const result = await submitTimesheets('test@example.com', 'password123');
+        const result = await submitTimesheets({ email: 'test@example.com', password: 'password123' });
         
         expect(result).toBeDefined();
         expect(result.ok).toBe(true);
@@ -102,7 +102,7 @@ describe('IPC Workflow Integration', () => {
         const entryIdBefore = beforeSubmit[0].id;
 
         // Attempt submission (will fail in test environment)
-        await submitTimesheets('test@example.com', 'password123');
+        await submitTimesheets({ email: 'test@example.com', password: 'password123' });
 
         // Verify entry is still in database (not deleted on failed submission)
         const db = openDb();
@@ -127,7 +127,7 @@ describe('IPC Workflow Integration', () => {
         expect(pending).toHaveLength(3);
 
         // Attempt to submit all
-        const result = await submitTimesheets('test@example.com', 'password123');
+        const result = await submitTimesheets({ email: 'test@example.com', password: 'password123' });
         
         expect(result).toBeDefined();
         expect(result.totalProcessed).toBe(3);
@@ -148,10 +148,10 @@ describe('IPC Workflow Integration', () => {
         const originalEntry = beforeAttempt[0];
 
         // First automation attempt
-        await submitTimesheets('test@example.com', 'password123');
+        await submitTimesheets({ email: 'test@example.com', password: 'password123' });
 
         // Second automation attempt
-        await submitTimesheets('test@example.com', 'password123');
+        await submitTimesheets({ email: 'test@example.com', password: 'password123' });
 
         // Verify data hasn't been corrupted
         const db = openDb();

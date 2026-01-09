@@ -2,8 +2,8 @@ import { ipcMain } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { app } from 'electron';
-import { ipcLogger } from '@sheetpilot/shared/logger';
-import { setBrowserHeadless } from '../../../shared/constants';
+import { ipcLogger } from './utils/logger';
+import { setBrowserHeadless } from '@sheetpilot/shared/constants';
 import { isTrustedIpcSender } from './handlers/timesheet/main-window';
 
 /**

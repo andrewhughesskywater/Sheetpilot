@@ -18,7 +18,7 @@ import {
   getToolsForProject as getToolsForProjectShared,
   doesProjectNeedTools,
   doesToolNeedChargeCode
-} from '../../../shared/business-config';
+} from '@sheetpilot/shared/business-config';
 
 /**
  * @deprecated Use PROJECTS_WITHOUT_TOOLS from business-config

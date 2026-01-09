@@ -11,7 +11,7 @@ export function useSaveAndReload(
   const inFlightSavesRef = useRef<Map<number, AbortController>>(new Map());
   const pendingSaveRef = useRef<Map<number, TimesheetRow>>(new Map());
 
-  const rowsFieldsMatch = (a: TimesheetRow, b: TimesheetRow): boolean => {
+  const rowsFieldsMatch = useCallback((a: TimesheetRow, b: TimesheetRow): boolean => {
     return (
       a.date === b.date &&
       a.timeIn === b.timeIn &&
@@ -21,7 +21,7 @@ export function useSaveAndReload(
       (a.chargeCode ?? null) === (b.chargeCode ?? null) &&
       a.taskDescription === b.taskDescription
     );
-  };
+  }, []);
 
   const applySavedEntry = useCallback((
     currentData: TimesheetRow[],
@@ -40,6 +40,37 @@ export function useSaveAndReload(
     }
     return false;
   }, [onChange, setTimesheetDraftData]);
+
+  const handleSaveSuccess = useCallback((
+    savedEntry: TimesheetRow,
+    originalRow: TimesheetRow,
+    rowIdx: number
+  ) => {
+    if (rowsFieldsMatch(originalRow, savedEntry)) {
+      unsavedRowsRef.current.delete(rowIdx);
+      window.logger?.verbose('Row synced successfully', { id: savedEntry.id, rowIdx });
+    } else {
+      window.logger?.debug('Row values changed during save (race condition)', { rowIdx, saved: savedEntry, current: originalRow });
+    }
+    
+    interface WindowWithHotTableRef extends Window {
+      hotTableRef?: { current?: { hotInstance?: { getSourceData: () => unknown[] } } };
+    }
+    const hotInstance = (window as WindowWithHotTableRef).hotTableRef?.current?.hotInstance;
+    if (hotInstance) {
+      const currentData = hotInstance.getSourceData() as TimesheetRow[];
+      const updated = applySavedEntry(currentData, rowIdx, savedEntry);
+      if (updated) {
+        window.logger?.verbose('Row saved and state updated', { id: savedEntry.id, rowIdx });
+      }
+    }
+  }, [applySavedEntry, rowsFieldsMatch]);
+
+  const cleanupSaveOperation = useCallback((rowIdx: number) => {
+    pendingSaveRef.current.delete(rowIdx);
+    inFlightSavesRef.current.delete(rowIdx);
+    updateSaveButtonState?.();
+  }, [updateSaveButtonState]);
 
   const saveAndReloadRow = useCallback(async (row: TimesheetRow, rowIdx: number) => {
     const existingController = inFlightSavesRef.current.get(rowIdx);
@@ -60,43 +91,21 @@ export function useSaveAndReload(
       }
 
       if (saveResult.success && saveResult.entry) {
-        const savedEntry = saveResult.entry;
-        if (rowsFieldsMatch(row, savedEntry)) {
-          unsavedRowsRef.current.delete(rowIdx);
-          window.logger?.verbose('Row synced successfully', { id: savedEntry.id, rowIdx });
-        } else {
-          window.logger?.debug('Row values changed during save (race condition)', { rowIdx, saved: savedEntry, current: row });
-        }
-        // Access hotTableRef from window (set during component initialization)
-        interface WindowWithHotTableRef extends Window {
-          hotTableRef?: { current?: { hotInstance?: { getSourceData: () => unknown[] } } };
-        }
-        const hotInstance = (window as WindowWithHotTableRef).hotTableRef?.current?.hotInstance;
-        if (hotInstance) {
-          const currentData = hotInstance.getSourceData() as TimesheetRow[];
-          const updated = applySavedEntry(currentData, rowIdx, savedEntry);
-          if (updated) {
-            window.logger?.verbose('Row saved and state updated', { id: savedEntry.id, rowIdx });
-          }
-        }
+        handleSaveSuccess(saveResult.entry, row, rowIdx);
       } else {
         window.logger?.warn('Could not save row to database', { error: saveResult.error, rowIdx });
       }
 
-      pendingSaveRef.current.delete(rowIdx);
-      inFlightSavesRef.current.delete(rowIdx);
-      updateSaveButtonState?.();
+      cleanupSaveOperation(rowIdx);
     } catch (error) {
       if (abortController.signal.aborted) return;
       window.logger?.error('Encountered error saving and reloading row', {
         rowIdx,
         error: error instanceof Error ? error.message : String(error)
       });
-      pendingSaveRef.current.delete(rowIdx);
-      inFlightSavesRef.current.delete(rowIdx);
-      updateSaveButtonState?.();
+      cleanupSaveOperation(rowIdx);
     }
-  }, [applySavedEntry, updateSaveButtonState]);
+  }, [handleSaveSuccess, cleanupSaveOperation]);
 
   return {
     saveAndReloadRow,

@@ -12,7 +12,7 @@
 import type BetterSqlite3 from 'better-sqlite3';
 import * as fs from 'fs';
 import * as path from 'path';
-import { dbLogger } from '@sheetpilot/shared/logger';
+import { dbLogger } from './utils/logger';
 import { ensureSchemaInternal } from './connection-manager';
 
 /**
@@ -124,18 +124,36 @@ export function setSchemaVersion(db: BetterSqlite3.Database, version: number): v
 /**
  * Creates a backup of the database file before migration
  * 
+ * @param db - Database connection (used to checkpoint WAL mode databases)
  * @param dbPath - Path to the database file
  * @returns Path to the backup file, or null if backup failed
  */
-export function createBackup(dbPath: string): string | null {
+export function createBackup(db: BetterSqlite3.Database, dbPath: string): string | null {
     const timer = dbLogger.startTimer('create-db-backup');
     
     try {
-        // Check if database file exists
-        if (!fs.existsSync(dbPath)) {
-            dbLogger.verbose('Database file does not exist, skipping backup', { dbPath });
-            timer.done({ skipped: true, reason: 'file-not-exists' });
-            return null;
+        // Checkpoint WAL mode databases to ensure all data is in the main database file
+        // This is necessary because in WAL mode, data might only exist in the WAL file
+        // VACUUM INTO requires the main database file to exist with data
+        try {
+            // Force a full checkpoint to move all WAL data to main database
+            // This works even if not in WAL mode (no-op)
+            db.pragma('wal_checkpoint(TRUNCATE)');
+            dbLogger.verbose('WAL checkpoint completed before backup');
+        } catch (checkpointError) {
+            // If checkpoint fails, log but continue - might not be in WAL mode
+            dbLogger.verbose('WAL checkpoint failed or not needed', {
+                error: checkpointError instanceof Error ? checkpointError.message : String(checkpointError)
+            });
+        }
+        
+        // Ensure database file exists by performing a simple write operation
+        // This forces SQLite to create the main database file if it doesn't exist
+        try {
+            // Touch the database by reading and writing a system table
+            db.prepare('SELECT COUNT(*) FROM sqlite_master').get();
+        } catch {
+            // Ignore - just ensuring connection is active
         }
         
         // Generate backup filename with timestamp
@@ -149,22 +167,21 @@ export function createBackup(dbPath: string): string | null {
             backup: backupPath 
         });
         
-        // Copy the database file
-        fs.copyFileSync(dbPath, backupPath);
+        // Use SQLite's VACUUM INTO command which properly handles WAL mode databases
+        // This creates a complete backup including all data from WAL files
+        // VACUUM INTO is available in SQLite 3.27.0+ and creates an atomic backup
+        // Escape single quotes in the path by doubling them (SQL standard)
+        // Convert Windows backslashes to forward slashes for SQLite
+        const normalizedPath = backupPath.replace(/\\/g, '/');
+        const escapedPath = normalizedPath.replace(/'/g, "''");
+        db.exec(`VACUUM INTO '${escapedPath}'`);
         
-        // Also backup WAL and SHM files if they exist (for WAL mode databases)
-        const walPath = `${dbPath}-wal`;
-        const shmPath = `${dbPath}-shm`;
-        
-        if (fs.existsSync(walPath)) {
-            fs.copyFileSync(walPath, `${backupPath}-wal`);
-            dbLogger.verbose('WAL file backed up', { walPath });
+        // Verify backup was created
+        if (!fs.existsSync(backupPath)) {
+            throw new Error(`Backup file was not created at ${backupPath}`);
         }
         
-        if (fs.existsSync(shmPath)) {
-            fs.copyFileSync(shmPath, `${backupPath}-shm`);
-            dbLogger.verbose('SHM file backed up', { shmPath });
-        }
+        dbLogger.verbose('Database backup completed using VACUUM INTO');
         
         dbLogger.info('Database backup created successfully', { backupPath });
         timer.done({ backupPath });
@@ -224,7 +241,7 @@ export function runMigrations(db: BetterSqlite3.Database, dbPath: string): {
     let backupPath: string | null = null;
     if (currentVersion > 0) {
         // Only backup if there's existing data (version > 0)
-        backupPath = createBackup(dbPath);
+        backupPath = createBackup(db, dbPath);
         if (!backupPath && fs.existsSync(dbPath)) {
             // Backup failed but database exists - this is a safety concern
             const error = 'Could not create backup before migration. Migration aborted for safety.';

@@ -8,7 +8,7 @@
  * @since 2025
  */
 
-import { dbLogger } from '@sheetpilot/shared/logger';
+import { dbLogger } from './utils/logger';
 import { getDb } from './connection-manager';
 
 export interface TimesheetDedupKey {

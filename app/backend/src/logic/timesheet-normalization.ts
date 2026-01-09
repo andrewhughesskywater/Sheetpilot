@@ -42,20 +42,27 @@ export function normalizeRowData(row: TimesheetRow): TimesheetRow {
   return normalized;
 }
 
+function isRowEmpty(row: TimesheetRow | undefined): boolean {
+  if (!row) return true;
+  return !(row.date || row.timeIn || row.timeOut || row.project || row.tool || row.chargeCode || row.taskDescription);
+}
+
+function findLastNonEmptyRowIndex(rows: TimesheetRow[]): number {
+  for (let i = rows.length - 1; i >= 0; i--) {
+    if (!isRowEmpty(rows[i])) {
+      return i;
+    }
+  }
+  return -1;
+}
+
 /**
  * Ensure one blank row at end for new entries
  * Removes trailing empty rows and adds exactly one blank row
  */
 export function normalizeTrailingBlank(rows: TimesheetRow[]): TimesheetRow[] {
   // Remove trailing empty rows
-  let lastNonEmptyIndex = -1;
-  for (let i = rows.length - 1; i >= 0; i--) {
-    const row = rows[i];
-    if (row?.date || row?.timeIn || row?.timeOut || row?.project || row?.tool || row?.chargeCode || row?.taskDescription) {
-      lastNonEmptyIndex = i;
-      break;
-    }
-  }
+  const lastNonEmptyIndex = findLastNonEmptyRowIndex(rows);
   
   // Get rows up to last non-empty, then add one blank row
   const trimmedRows = rows.slice(0, lastNonEmptyIndex + 1);

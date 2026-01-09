@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import UpdateDialog from '../../src/components/UpdateDialog';
+import UpdateDialog from '@/components/UpdateDialog';
 
 describe('UpdateDialog', () => {
   it('should render when open', () => {

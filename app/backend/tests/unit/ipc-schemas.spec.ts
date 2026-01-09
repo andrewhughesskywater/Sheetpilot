@@ -32,7 +32,7 @@ import {
   getAllTimesheetEntriesSchema,
   readLogFileSchema,
   exportLogsSchema
-} from '../../src/validation/ipc-schemas';
+} from '@/validation/ipc-schemas';
 
 describe('IPC Schemas Validation', () => {
   describe('Common Schemas', () => {

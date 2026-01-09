@@ -12,7 +12,7 @@
  */
 
 import { ipcMain } from 'electron';
-import { ipcLogger } from '@sheetpilot/shared/logger';
+import { ipcLogger } from './utils/logger';
 
 interface CSPViolation {
   directive: string;

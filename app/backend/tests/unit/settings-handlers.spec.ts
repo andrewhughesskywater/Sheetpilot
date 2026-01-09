@@ -2,9 +2,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ipcMain, app as _app } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
-import { registerSettingsHandlers } from '../../src/ipc/settings-handlers';
-import { setBrowserHeadless } from '../../../shared/constants';
-import { ipcLogger } from '../../../shared/logger';
+import { registerSettingsHandlers } from '@/ipc/settings-handlers';
+import { setBrowserHeadless } from '@sheetpilot/shared/constants';
+import { ipcLogger } from '@sheetpilot/shared/logger';
 
 // Mock electron
 vi.mock('electron', () => ({
@@ -16,7 +16,7 @@ vi.mock('electron', () => ({
   }
 }));
 
-vi.mock('../../src/ipc/handlers/timesheet/main-window', () => ({
+vi.mock('@/ipc/handlers/timesheet/main-window', () => ({
   isTrustedIpcSender: vi.fn(() => true)
 }));
 

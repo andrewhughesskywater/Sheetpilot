@@ -42,9 +42,11 @@ export default defineConfig({
     ]
   },
   resolve: {
-    alias: {
-      '@': path.resolve(__dirname, '../src'),
-      '@tests': path.resolve(__dirname, '.')
-    }
+    alias: [
+      { find: /^@sheetpilot\/shared\/(.+)$/, replacement: path.resolve(__dirname, '../../shared/$1') },
+      { find: '@sheetpilot/shared', replacement: path.resolve(__dirname, '../../shared/index.ts') },
+      { find: '@', replacement: path.resolve(__dirname, '../src') },
+      { find: '@tests', replacement: path.resolve(__dirname, '.') },
+    ]
   }
 });

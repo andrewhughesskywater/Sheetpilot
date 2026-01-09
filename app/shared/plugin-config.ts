@@ -178,6 +178,36 @@ export function resolvePluginVariant(namespace: string, config: PluginRegistryCo
  * @param flag Feature flag configuration
  * @returns True if feature should be enabled
  */
+function checkDenyList(flag: FeatureFlag, userId: string | null): boolean {
+  return !(flag.denyList && flag.denyList.length > 0 && userId && flag.denyList.includes(userId));
+}
+
+function checkAllowList(flag: FeatureFlag, userId: string | null): boolean | null {
+  if (flag.allowList && flag.allowList.length > 0 && userId && flag.allowList.includes(userId)) {
+    return true;
+  }
+  return null;
+}
+
+function checkRolloutPercentage(flag: FeatureFlag): boolean | null {
+  if (flag.rolloutPercentage === undefined) {
+    return null;
+  }
+  
+  // Handle edge cases explicitly
+  if (flag.rolloutPercentage <= 0) {
+    return false; // 0% rollout = no one gets it
+  }
+  if (flag.rolloutPercentage >= 100) {
+    return true; // 100% rollout = everyone gets it
+  }
+  
+  // For values between 0 and 100, use hash-based selection
+  const userHash = getUserHash();
+  const threshold = flag.rolloutPercentage / 100;
+  return userHash < threshold;
+}
+
 function shouldEnableForUser(flag: FeatureFlag): boolean {
   if (!flag.enabled) {
     return false;
@@ -186,32 +216,20 @@ function shouldEnableForUser(flag: FeatureFlag): boolean {
   const userId = getCurrentUserId();
   
   // Check deny list first (highest priority)
-  if (flag.denyList && flag.denyList.length > 0 && userId && flag.denyList.includes(userId)) {
+  if (!checkDenyList(flag, userId)) {
     return false;
   }
   
   // Check allow list (second priority)
-  if (flag.allowList && flag.allowList.length > 0 && userId && flag.allowList.includes(userId)) {
-    return true;
+  const allowListResult = checkAllowList(flag, userId);
+  if (allowListResult !== null) {
+    return allowListResult;
   }
   
-  // If allow list exists but user not in it, don't enable unless rollout says so
-  // Continue to rollout check below
-  
   // Check rollout percentage (third priority)
-  if (flag.rolloutPercentage !== undefined) {
-    // Handle edge cases explicitly
-    if (flag.rolloutPercentage <= 0) {
-      return false; // 0% rollout = no one gets it
-    }
-    if (flag.rolloutPercentage >= 100) {
-      return true; // 100% rollout = everyone gets it
-    }
-    
-    // For values between 0 and 100, use hash-based selection
-    const userHash = getUserHash();
-    const threshold = flag.rolloutPercentage / 100;
-    return userHash < threshold;
+  const rolloutResult = checkRolloutPercentage(flag);
+  if (rolloutResult !== null) {
+    return rolloutResult;
   }
   
   // Default: enabled (if no allow/deny lists and no rollout specified)

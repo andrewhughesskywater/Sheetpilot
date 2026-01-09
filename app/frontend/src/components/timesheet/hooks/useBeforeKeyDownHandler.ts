@@ -4,13 +4,16 @@ import type { HotTableRef } from '@handsontable/react-wrapper';
 import type { TimesheetRow } from '../timesheet.schema';
 
 export function useBeforeKeyDownHandler() {
+  interface ComputeDateInsertConfig {
+    beforeKeyEvent: KeyboardEvent;
+    timesheetDraftData: TimesheetRow[];
+    selectedRows: Set<number>;
+    hotRef: RefObject<HotTableRef | null>;
+  }
+
   const computeDateInsert = useCallback(
-    (
-      beforeKeyEvent: KeyboardEvent,
-      timesheetDraftData: TimesheetRow[],
-      selectedRows: Set<number>,
-      hotRef: RefObject<HotTableRef | null>
-    ): void => {
+    (config: ComputeDateInsertConfig): void => {
+      const { beforeKeyEvent, timesheetDraftData, selectedRows, hotRef } = config;
       if (!beforeKeyEvent.shiftKey) return;
 
       const selectedRowArray = Array.from(selectedRows).sort((a, b) => a - b);
@@ -43,16 +46,19 @@ export function useBeforeKeyDownHandler() {
     []
   );
 
+  interface HandleBeforeKeyDownConfig {
+    event: KeyboardEvent;
+    timesheetDraftData: TimesheetRow[];
+    selectedRows: Set<number>;
+    hotRef: RefObject<HotTableRef | null>;
+    handleMacroKeyDown: (event: KeyboardEvent) => boolean;
+  }
+
   const handleBeforeKeyDown = useCallback(
-    (
-      event: KeyboardEvent,
-      timesheetDraftData: TimesheetRow[],
-      selectedRows: Set<number>,
-      hotRef: RefObject<HotTableRef | null>,
-      handleMacroKeyDown: (event: KeyboardEvent) => boolean
-    ): boolean => {
+    (config: HandleBeforeKeyDownConfig): boolean => {
+      const { event, timesheetDraftData, selectedRows, hotRef, handleMacroKeyDown } = config;
       if (event.shiftKey && event.key === 'ArrowDown') {
-        computeDateInsert(event, timesheetDraftData, selectedRows, hotRef);
+        computeDateInsert({ beforeKeyEvent: event, timesheetDraftData, selectedRows, hotRef });
         return false;
       }
 

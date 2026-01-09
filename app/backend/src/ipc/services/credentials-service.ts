@@ -1,4 +1,4 @@
-import { ipcLogger } from '@sheetpilot/shared/logger';
+import { ipcLogger } from '../utils/logger';
 import { CredentialsStorageError } from '@sheetpilot/shared/errors';
 import { deleteCredentials, listCredentials, storeCredentials } from '../../repositories';
 import { validateInput } from '../../validation/validate-ipc-input';

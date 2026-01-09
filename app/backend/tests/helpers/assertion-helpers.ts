@@ -10,9 +10,9 @@
  */
 
 import { expect } from 'vitest';
-import type { TimesheetRow } from '../../src/logic/timesheet-validation';
-import type { DbTimesheetEntry } from '../../../shared/contracts/IDataService';
-import { isValidDate, isValidTime, isTimeOutAfterTimeIn } from '../../src/logic/timesheet-validation';
+import type { TimesheetRow } from '@/logic/timesheet-validation';
+import type { DbTimesheetEntry } from '@sheetpilot/shared/contracts/IDataService';
+import { isValidDate, isValidTime, isTimeOutAfterTimeIn } from '@/logic/timesheet-validation';
 
 /**
  * Assert that a timesheet row has valid required fields

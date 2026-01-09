@@ -48,7 +48,7 @@ vi.mock('electron', () => {
 });
 
 // Mock database and services
-vi.mock('../../src/repositories', () => ({
+vi.mock('@/repositories', () => ({
   setDbPath: vi.fn(),
   ensureSchema: vi.fn(),
   getDbPath: vi.fn(() => 'C:/tmp/sheetpilot.sqlite'),
@@ -63,7 +63,7 @@ vi.mock('../../src/repositories', () => ({
   }))
 }));
 
-vi.mock('../../src/services/timesheet-importer', () => ({
+vi.mock('@/services/timesheet-importer', () => ({
   submitTimesheets: vi.fn(async () => ({
     ok: true,
     submittedIds: [1],
@@ -74,7 +74,7 @@ vi.mock('../../src/services/timesheet-importer', () => ({
   }))
 }));
 
-vi.mock('../../src/shared/logger', () => ({
+vi.mock('@sheetpilot/shared/logger', () => ({
   initializeLogging: vi.fn(),
   appLogger: {
     info: vi.fn(),

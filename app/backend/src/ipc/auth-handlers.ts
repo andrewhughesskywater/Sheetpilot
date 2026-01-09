@@ -9,7 +9,7 @@
  */
 
 import { ipcMain } from 'electron';
-import { ipcLogger, appLogger } from '@sheetpilot/shared/logger';
+import { ipcLogger, appLogger } from './utils/logger';
 import { isTrustedIpcSender } from './handlers/timesheet/main-window';
 import { 
   storeCredentials,
@@ -39,13 +39,7 @@ if (!ADMIN_PASSWORD) {
   });
 }
 
-/**
- * Register all authentication-related IPC handlers
- */
-export function registerAuthHandlers(): void {
-  ipcLogger.verbose('Registering authentication IPC handlers');
-  
-  // Handler for ping (connectivity test)
+function registerPingHandler(): void {
   ipcMain.handle('ping', async (event, message?: string) => {
     if (!isTrustedIpcSender(event)) {
       return 'Could not respond to ping: unauthorized request';
@@ -54,8 +48,9 @@ export function registerAuthHandlers(): void {
     return `pong: ${message}`;
   });
   ipcLogger.verbose('Registered handler: ping');
-  
-  // Handler for user login
+}
+
+function registerLoginHandler(): void {
   ipcMain.handle('auth:login', async (event, email: string, password: string, stayLoggedIn: boolean) => {
     if (!isTrustedIpcSender(event)) {
       return { success: false, error: 'Could not login: unauthorized request' };
@@ -127,8 +122,9 @@ export function registerAuthHandlers(): void {
     }
   });
   ipcLogger.verbose('Registered handler: auth:login');
+}
 
-  // Handler for session validation
+function registerValidateSessionHandler(): void {
   ipcMain.handle('auth:validateSession', async (event, token: string) => {
     if (!isTrustedIpcSender(event)) {
       return { valid: false };
@@ -150,8 +146,9 @@ export function registerAuthHandlers(): void {
     }
   });
   ipcLogger.verbose('Registered handler: auth:validateSession');
+}
 
-  // Handler for logout
+function registerLogoutHandler(): void {
   ipcMain.handle('auth:logout', async (event, token: string) => {
     if (!isTrustedIpcSender(event)) {
       return { success: false, error: 'Could not logout: unauthorized request' };
@@ -182,8 +179,9 @@ export function registerAuthHandlers(): void {
     }
   });
   ipcLogger.verbose('Registered handler: auth:logout');
+}
 
-  // Handler for getting current session
+function registerGetCurrentSessionHandler(): void {
   ipcMain.handle('auth:getCurrentSession', async (event, token: string) => {
     if (!isTrustedIpcSender(event)) {
       return null;
@@ -212,6 +210,20 @@ export function registerAuthHandlers(): void {
     }
   });
   ipcLogger.verbose('Registered handler: auth:getCurrentSession');
+}
+
+/**
+ * Register all authentication-related IPC handlers
+ */
+export function registerAuthHandlers(): void {
+  ipcLogger.verbose('Registering authentication IPC handlers');
+  
+  registerPingHandler();
+  registerLoginHandler();
+  registerValidateSessionHandler();
+  registerLogoutHandler();
+  registerGetCurrentSessionHandler();
+  
   ipcLogger.verbose('All authentication handlers registered successfully');
 }
 

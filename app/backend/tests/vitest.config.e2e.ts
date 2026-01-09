@@ -4,9 +4,11 @@ import { MarkdownReporter } from './helpers/markdown-reporter';
 
 export default defineConfig({
   resolve: {
-    alias: {
-      '@': path.resolve(__dirname, '../src'),
-    }
+    alias: [
+      { find: /^@sheetpilot\/shared\/(.+)$/, replacement: path.resolve(__dirname, '../../shared/$1') },
+      { find: '@sheetpilot/shared', replacement: path.resolve(__dirname, '../../shared/index.ts') },
+      { find: '@', replacement: path.resolve(__dirname, '../src') },
+    ]
   },
   test: {
     name: 'backend-e2e',

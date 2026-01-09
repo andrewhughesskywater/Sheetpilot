@@ -5,7 +5,7 @@ import {
   convertDateToUSFormat,
   convertDateToISOFormat,
   normalizeDateToISO
-} from '../../utils/format-conversions';
+} from '@/utils/format-conversions';
 
 describe('format-conversions', () => {
   describe('parseTimeToMinutes', () => {

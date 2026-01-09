@@ -64,39 +64,48 @@ function getLogUsername(): string {
 const ENVIRONMENT = process.env['NODE_ENV'] || 'production';
 
 
+function extractFromSingleObject(obj: Record<string, unknown>): { message: string; context?: Record<string, unknown>; component: string } {
+    const message = String(obj['message'] || '');
+    const component = String(obj['component'] || 'Application');
+    const { message: _, component: __, ...rest } = obj;
+    const context = Object.keys(rest).length > 0 ? rest : undefined;
+    return { message, context, component };
+}
+
+function extractFromMultipleArgs(data: unknown[]): { message: string; context?: Record<string, unknown> } {
+    const message = String(data[0]);
+    const context = data.length > 1 && typeof data[1] === 'object' && data[1] !== null
+        ? data[1] as Record<string, unknown>
+        : undefined;
+    return { message, context };
+}
+
 /**
  * Extract message and context from log data
  * @private
  */
 function extractMessageAndContext(data: unknown[]): { message: string; context?: Record<string, unknown>; component?: string } {
-    let message = '';
-    let context: Record<string, unknown> | undefined;
-    let component: string | undefined;
-    
     if (data.length === 1 && typeof data[0] === 'object' && data[0] !== null) {
         // Single object: extract message and remaining properties as context
-        const obj = data[0] as Record<string, unknown>;
-        message = String(obj['message'] || '');
-        component = String(obj['component'] || 'Application');
-        const { message: _, component: __, ...rest } = obj;
-        context = Object.keys(rest).length > 0 ? rest : undefined;
+        const extracted = extractFromSingleObject(data[0] as Record<string, unknown>);
+        const result: { message: string; context?: Record<string, unknown>; component?: string } = { 
+            message: extracted.message, 
+            component: extracted.component 
+        };
+        if (extracted.context !== undefined) {
+            result.context = extracted.context;
+        }
+        return result;
     } else if (data.length > 0) {
         // Multiple arguments: first is message, rest is context
-        message = String(data[0]);
-        if (data.length > 1 && typeof data[1] === 'object' && data[1] !== null) {
-            context = data[1] as Record<string, unknown>;
+        const extracted = extractFromMultipleArgs(data);
+        const result: { message: string; context?: Record<string, unknown>; component?: string } = { message: extracted.message };
+        if (extracted.context !== undefined) {
+            result.context = extracted.context;
         }
+        return result;
     }
-    
-    // Build result object conditionally to satisfy exactOptionalPropertyTypes
-    const result: { message: string; context?: Record<string, unknown>; component?: string } = { message };
-    if (context !== undefined) {
-        result.context = context;
-    }
-    if (component !== undefined) {
-        result.component = component;
-    }
-    return result;
+    return { message: '' };
 }
 
 /**

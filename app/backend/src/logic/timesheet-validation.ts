@@ -26,6 +26,29 @@ export interface TimesheetRow {
   taskDescription?: string;
 }
 
+function isValidMonth(month: number): boolean {
+  return month >= 1 && month <= 12;
+}
+
+function isValidDay(day: number): boolean {
+  return day >= 1 && day <= 31;
+}
+
+function isValidYear(year: number): boolean {
+  return year >= 1900 && year <= 2500;
+}
+
+function parseUSDateFormat(dateStr: string): { month: number; day: number; year: number } | null {
+  const usFormatMatch = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!usFormatMatch) return null;
+  
+  const month = parseInt(usFormatMatch[1]!, 10);
+  const day = parseInt(usFormatMatch[2]!, 10);
+  const year = parseInt(usFormatMatch[3]!, 10);
+  
+  return { month, day, year };
+}
+
 /**
  * Check if a date string is valid
  * Accepts both MM/DD/YYYY and YYYY-MM-DD formats
@@ -36,21 +59,17 @@ export function isValidDate(dateStr?: string): boolean {
   if (!dateStr) return false;
   
   // Check for MM/DD/YYYY or M/D/YYYY format (slash-separated only)
-  const usFormatMatch = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (!usFormatMatch) return false;
-  
-  const month = parseInt(usFormatMatch[1]!, 10);
-  const day = parseInt(usFormatMatch[2]!, 10);
-  const year = parseInt(usFormatMatch[3]!, 10);
+  const parsed = parseUSDateFormat(dateStr);
+  if (!parsed) return false;
   
   // Validate ranges
-  if (month < 1 || month > 12) return false;
-  if (day < 1 || day > 31) return false;
-  if (year < 1900 || year > 2500) return false;
+  if (!isValidMonth(parsed.month)) return false;
+  if (!isValidDay(parsed.day)) return false;
+  if (!isValidYear(parsed.year)) return false;
   
   // Create date object using ISO format to avoid locale issues
   // Note: month is 0-indexed in Date constructor
-  const date = new Date(year, month - 1, day);
+  const date = new Date(parsed.year, parsed.month - 1, parsed.day);
   
   // Check if the date is valid
   if (isNaN(date.getTime())) return false;
@@ -61,7 +80,7 @@ export function isValidDate(dateStr?: string): boolean {
   const actualDay = date.getDate();
   const actualYear = date.getFullYear();
   
-  return actualMonth === month && actualDay === day && actualYear === year;
+  return actualMonth === parsed.month && actualDay === parsed.day && actualYear === parsed.year;
 }
 
 /**
@@ -337,42 +356,8 @@ function validateFieldInternal(config: ValidateFieldConfig): string | null {
 
 /**
  * Validate a specific field in a timesheet row
- * @deprecated Use validateField with ValidateFieldConfig object instead
  */
-export function validateField(
-  value: unknown,
-  row: number,
-  prop: string | number,
-  rows: TimesheetRow[],
-  projects: string[],
-  chargeCodes: string[]
-): string | null;
-export function validateField(config: ValidateFieldConfig): string | null;
-export function validateField(
-  valueOrConfig: unknown | ValidateFieldConfig,
-  row?: number,
-  prop?: string | number,
-  rows?: TimesheetRow[],
-  projects?: string[],
-  chargeCodes?: string[]
-): string | null {
-  // New signature: object parameter
-  if (arguments.length === 1 && typeof valueOrConfig === 'object' && valueOrConfig !== null && 'value' in valueOrConfig) {
-    return validateFieldInternal(valueOrConfig as ValidateFieldConfig);
-  }
-  
-  // Old signature: multiple parameters (for backward compatibility with tests)
-  if (row !== undefined && prop !== undefined && rows !== undefined && projects !== undefined && chargeCodes !== undefined) {
-    return validateFieldInternal({
-      value: valueOrConfig,
-      row,
-      prop,
-      rows,
-      projects,
-      chargeCodes
-    });
-  }
-  
-  throw new Error('Invalid arguments to validateField');
+export function validateField(config: ValidateFieldConfig): string | null {
+  return validateFieldInternal(config);
 }
 

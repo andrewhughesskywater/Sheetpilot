@@ -9,8 +9,8 @@
  * @since 2025
  */
 
-import type { TimesheetRow } from '../../src/logic/timesheet-validation';
-import type { DbTimesheetEntry } from '../../../shared/contracts/IDataService';
+import type { TimesheetRow } from '@/logic/timesheet-validation';
+import type { DbTimesheetEntry } from '@sheetpilot/shared/contracts/IDataService';
 
 /**
  * Builder for TimesheetRow test data

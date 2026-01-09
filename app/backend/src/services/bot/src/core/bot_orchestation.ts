@@ -21,7 +21,7 @@
 import * as Cfg from '../config/automation_config';
 import { WebformFiller } from '../browser/webform_flow';
 import { LoginManager } from '../utils/authentication_flow';
-import { botLogger } from '@sheetpilot/shared/logger';
+import { botLogger } from '../../utils/logger';
 import { getQuarterForDate } from '../config/quarter_config';
 import { appSettings } from '@sheetpilot/shared/constants';
 import { checkAborted, setupAbortHandler } from '../utils/abort-utils';
@@ -537,7 +537,7 @@ export class BotOrchestrator {
         failed_rows.push([idx, errorMsg]);
 
         try {
-          await this.webform_filler.goto_base_url();
+          await this.webform_filler.navigate_to_base();
         } catch (recoveryError) {
           botLogger.warn('Recovery navigation failed', {
             rowIndex: idx,

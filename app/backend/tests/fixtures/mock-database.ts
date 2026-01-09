@@ -9,7 +9,7 @@
  * @since 2025
  */
 
-import type { DbTimesheetEntry } from '../../../shared/contracts/IDataService';
+import type { DbTimesheetEntry } from '@sheetpilot/shared/contracts/IDataService';
 
 /**
  * In-memory database for testing

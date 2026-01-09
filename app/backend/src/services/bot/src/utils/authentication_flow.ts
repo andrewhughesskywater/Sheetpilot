@@ -19,7 +19,7 @@ import type { Page } from 'playwright';
 import * as C from '../config/automation_config';
 import type { LoginStep } from '../config/automation_config';
 import type { WebformFiller } from '../browser/webform_flow';
-import { authLogger } from '@sheetpilot/shared/logger';
+import { authLogger } from '../../utils/logger';
 
 /**
  * Error thrown when navigation to authentication pages fails

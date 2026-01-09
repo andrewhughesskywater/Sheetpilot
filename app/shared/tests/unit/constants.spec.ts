@@ -7,10 +7,10 @@ import {
   appSettings,
   getBrowserHeadless,
   setBrowserHeadless
-} from '../constants';
+} from '@/constants';
 
 // Mock logger to avoid circular dependency issues
-vi.mock('../logger', () => ({
+vi.mock('@/logger', () => ({
   appLogger: {
     info: vi.fn()
   }

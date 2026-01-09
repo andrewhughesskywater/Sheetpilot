@@ -13,7 +13,7 @@ import type { TimesheetEntry } from '@sheetpilot/shared/contracts/IDataService';
 import type { SubmissionResult } from '@sheetpilot/shared/contracts/ISubmissionService';
 import { getQuarterForDate, groupEntriesByQuarter } from '../config/quarter_config';
 import { createFormConfig } from '../config/automation_config';
-import { botLogger } from '@sheetpilot/shared/logger';
+import { botLogger } from '../../utils/logger';
 import { checkAborted } from './abort-utils';
 
 /**
@@ -30,7 +30,7 @@ export interface QuarterProcessingConfig {
     formConfig: { BASE_URL: string; FORM_ID: string; SUBMISSION_ENDPOINT: string; SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[] };
     progressCallback?: (percent: number, message: string) => void;
     headless?: boolean;
-    abortSignal?: AbortSignal;
+    abortSignal?: AbortSignal | {aborted: boolean; reason?: unknown};
   }) => Promise<{ ok: boolean; submitted: number[]; errors: Array<[number, string]> }>;
   /** Email for authentication */
   email: string;
@@ -38,8 +38,8 @@ export interface QuarterProcessingConfig {
   password: string;
   /** Optional progress callback */
   progressCallback?: ((percent: number, message: string) => void) | undefined;
-  /** Optional abort signal */
-  abortSignal?: AbortSignal | undefined;
+  /** Optional abort signal (supports both AbortSignal and simplified {aborted: boolean} type) */
+  abortSignal?: AbortSignal | {aborted: boolean; reason?: unknown} | undefined;
   /** Whether to use mock website */
   useMockWebsite?: boolean | undefined;
 }

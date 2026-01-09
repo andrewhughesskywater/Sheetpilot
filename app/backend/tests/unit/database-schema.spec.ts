@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { DbTimesheetEntry } from '../../../shared/contracts/IDataService';
+import type { DbTimesheetEntry } from '@sheetpilot/shared/contracts/IDataService';
 import { DbTimesheetEntryBuilder } from '../helpers/test-builders';
 import { assertValidDbEntry, assertDatabaseConstraints } from '../helpers/assertion-helpers';
 

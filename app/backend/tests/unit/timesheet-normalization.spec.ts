@@ -1,9 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
-import { normalizeRowData, normalizeTrailingBlank, type TimesheetRow } from '../../src/logic/timesheet-normalization';
-import { projectNeedsTools as _projectNeedsTools, toolNeedsChargeCode as _toolNeedsChargeCode } from '../../src/logic/dropdown-logic';
+import { normalizeRowData, normalizeTrailingBlank, type TimesheetRow } from '@/logic/timesheet-normalization';
+import { projectNeedsTools as _projectNeedsTools, toolNeedsChargeCode as _toolNeedsChargeCode } from '@/logic/dropdown-logic';
 
 // Mock dropdown-logic
-vi.mock('../../src/logic/dropdown-logic', () => ({
+vi.mock('@/logic/dropdown-logic', () => ({
   projectNeedsTools: vi.fn((project?: string) => {
     // Mock: projects that need tools
     return project === 'ProjectWithTools';

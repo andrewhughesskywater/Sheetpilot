@@ -34,8 +34,8 @@ import {
   runMigrations,
   needsMigration,
   CURRENT_SCHEMA_VERSION
-} from '../../src/repositories/migrations';
-import { setDbPath, getDb, closeConnection, ensureSchema, getDbPath } from '../../src/repositories/connection-manager';
+} from '@/repositories'/migrations';
+import { setDbPath, getDb, closeConnection, ensureSchema, getDbPath } from '@/repositories'/connection-manager';
 
 describe('Database Migrations', () => {
   let testDbPath: string;
@@ -130,8 +130,9 @@ describe('Database Migrations', () => {
 
   describe('Database Backup', () => {
     it('should return null when database file does not exist', () => {
+      const db = getDb();
       const nonExistentPath = path.join(testDbDir, 'nonexistent.sqlite');
-      const backupPath = createBackup(nonExistentPath);
+      const backupPath = createBackup(db, nonExistentPath);
       
       expect(backupPath).toBeNull();
     });
@@ -182,7 +183,10 @@ describe('Database Migrations', () => {
       // Create an actual file that backup can copy
       actualFs.writeFileSync(testDbPath, Buffer.from('SQLite format 3\0'));
       
-      const backupPath = createBackup(testDbPath);
+      // Reopen database connection for backup
+      const backupDb = new (await import('better-sqlite3')).default(testDbPath);
+      const backupPath = createBackup(backupDb, testDbPath);
+      backupDb.close();
       expect(backupPath).not.toBeNull();
       
       const Database = require('better-sqlite3');

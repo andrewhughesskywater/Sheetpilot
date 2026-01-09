@@ -9,40 +9,30 @@
  * @since 2025
  */
 
-import { PluginRegistry } from '../../../shared/plugin-registry';
-import { loadPluginConfig } from '../../../shared/plugin-config';
-import { SQLiteDataService } from '../services/plugins/sqlite-data-service';
-import { MemoryDataService } from '../services/plugins/memory-data-service';
-import { SQLiteCredentialService } from '../services/plugins/sqlite-credential-service';
-import { ElectronBotService } from '../services/plugins/electron-bot-service';
-import { MockSubmissionService } from '../services/plugins/mock-submission-service';
-import { appLogger } from '@sheetpilot/shared/logger';
 import * as path from 'path';
+import { getRegistry, loadRegistryConfig } from './utils/registry';
+import { middlewareLogger } from './utils/logger';
+import { registerDataServices } from './plugins/data-services';
+import { registerCredentialServices } from './plugins/credential-services';
+import { registerSubmissionServices } from './plugins/submission-services';
 
 /**
  * Register all default plugins with the registry
  */
 export async function registerDefaultPlugins(): Promise<void> {
-  const registry = PluginRegistry.getInstance();
+  const registry = getRegistry();
   
   // Load configuration
   const configPath = path.join(process.cwd(), 'plugin-config.json');
-  const config = loadPluginConfig(configPath);
-  registry.loadConfig(config);
+  loadRegistryConfig(configPath);
   
-  // Register data services
-  await registry.registerPlugin('data', 'sqlite', new SQLiteDataService());
-  await registry.registerPlugin('data', 'memory', new MemoryDataService());
+  // Register all plugin types
+  await registerDataServices();
+  await registerCredentialServices();
+  await registerSubmissionServices();
   
-  // Register credential services
-  await registry.registerPlugin('credentials', 'sqlite', new SQLiteCredentialService());
-  
-  // Register submission services
-  await registry.registerPlugin('submission', 'electron', new ElectronBotService());
-  await registry.registerPlugin('submission', 'mock', new MockSubmissionService());
-  
-  appLogger.info('Default plugins registered successfully');
-  appLogger.verbose('Active plugins configured', {
+  middlewareLogger.info('Default plugins registered successfully');
+  middlewareLogger.verbose('Active plugins configured', {
     data: registry.getActivePluginName('data'),
     credentials: registry.getActivePluginName('credentials'),
     submission: registry.getActivePluginName('submission')
@@ -53,23 +43,20 @@ export async function registerDefaultPlugins(): Promise<void> {
  * Get the active data service
  */
 export function getDataService() {
-  const registry = PluginRegistry.getInstance();
-  return registry.getPlugin('data');
+  return getRegistry().getPlugin('data');
 }
 
 /**
  * Get the active credential service
  */
 export function getCredentialService() {
-  const registry = PluginRegistry.getInstance();
-  return registry.getPlugin('credentials');
+  return getRegistry().getPlugin('credentials');
 }
 
 /**
  * Get the active submission service
  */
 export function getSubmissionService() {
-  const registry = PluginRegistry.getInstance();
-  return registry.getPlugin('submission');
+  return getRegistry().getPlugin('submission');
 }
 

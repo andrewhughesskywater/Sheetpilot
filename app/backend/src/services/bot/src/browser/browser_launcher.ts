@@ -12,7 +12,7 @@
  */
 import { chromium, type Browser } from 'playwright';
 import * as cfg from '../automation_config';
-import { botLogger } from '@sheetpilot/shared/logger';
+import { botLogger } from '../../utils/logger';
 
 type BrowserProcessInfo = {
   spawnfile?: string;

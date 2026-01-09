@@ -22,14 +22,17 @@ export function usePasteHandler() {
     []
   );
 
+  interface ApplyPastedToolAndChargeCodeConfig {
+    timesheetDraftData: TimesheetRow[];
+    startRowIdx: number;
+    pastedRowCount: number;
+    hotRef: RefObject<HotTableRef | null>;
+    getChargeCodesForProject?: (project: string, tool: string) => string[];
+  }
+
   const applyPastedToolAndChargeCode = useCallback(
-    (
-      timesheetDraftData: TimesheetRow[],
-      startRowIdx: number,
-      pastedRowCount: number,
-      hotRef: RefObject<HotTableRef | null>,
-      getChargeCodesForProject?: (project: string, tool: string) => string[]
-    ): void => {
+    (config: ApplyPastedToolAndChargeCodeConfig): void => {
+      const { timesheetDraftData, startRowIdx, pastedRowCount, hotRef, getChargeCodesForProject } = config;
       for (let i = 0; i < pastedRowCount; i++) {
         const rowIdx = startRowIdx + i;
         const row = timesheetDraftData[rowIdx];
@@ -56,15 +59,18 @@ export function usePasteHandler() {
     [setTempDropdownValue]
   );
 
+  interface HandlePasteConfig {
+    pastedData: unknown[][];
+    timesheetDraftData: TimesheetRow[];
+    setTimesheetDraftData: (rows: TimesheetRow[]) => void;
+    hotRef: RefObject<HotTableRef | null>;
+    getChargeCodesForProject?: (project: string, tool: string) => string[];
+    onChange?: (rows: TimesheetRow[]) => void;
+  }
+
   const handlePaste = useCallback(
-    (
-      pastedData: unknown[][],
-      timesheetDraftData: TimesheetRow[],
-      setTimesheetDraftData: (rows: TimesheetRow[]) => void,
-      hotRef: RefObject<HotTableRef | null>,
-      getChargeCodesForProject?: (project: string, tool: string) => string[],
-      onChange?: (rows: TimesheetRow[]) => void
-    ): boolean => {
+    (config: HandlePasteConfig): boolean => {
+      const { pastedData, timesheetDraftData, setTimesheetDraftData, hotRef, getChargeCodesForProject, onChange } = config;
       const validation = validatePastedData(pastedData);
       if (!validation.isValid) {
         window.logger?.warn('Invalid paste data', { errors: validation.errors });
@@ -79,13 +85,13 @@ export function usePasteHandler() {
         onChange?.(normalizedRows);
 
         // Apply defaults to pasted rows
-        applyPastedToolAndChargeCode(
-          normalizedRows,
-          timesheetDraftData.length,
+        applyPastedToolAndChargeCode({
+          timesheetDraftData: normalizedRows,
+          startRowIdx: timesheetDraftData.length,
           pastedRowCount,
           hotRef,
           getChargeCodesForProject
-        );
+        });
 
         window.logger?.info('Paste data applied successfully', { rowCount: pastedRowCount });
         return true;

@@ -37,7 +37,7 @@ import { DataProvider, useData } from './contexts/DataContext';
 import { SessionProvider, useSession } from './contexts/SessionContext';
 import { initializeTheme } from './utils/theme-manager';
 import logoImage from './assets/images/logo.svg';
-import { APP_VERSION } from '../../shared/constants';
+import { APP_VERSION } from '@sheetpilot/shared/constants';
 import './styles/App.css';
 import './styles/transitions.css';
 import { onDownloadProgress, onUpdateAvailable, onUpdateDownloaded, removeAllUpdateListeners } from './services/ipc/updates';
@@ -179,42 +179,20 @@ export function Splash() {
   );
 }
 
-/**
- * Main application content after authentication
- * 
- * Orchestrates the entire application UI including:
- * - Tab-based navigation (Timesheet, Archive, Settings)
- * - Lazy-loaded page content with loading skeletons
- * - Animated page transitions
- * - Update progress dialogs
- * - On-demand data loading per tab
- * 
- * State management:
- * - Prevents duplicate data fetches during React StrictMode
- * - Handles empty data refresh edge cases
- * - Manages transition animations to prevent UI glitches
- * 
- * Accessibility:
- * - Implements workaround for MUI dialog focus trap issue
- * - Monitors aria-hidden changes to blur background content
- * 
- * @returns Authenticated application shell with navigation and content
- */
-function AppContent() {
-  const { isLoggedIn, isLoading: sessionLoading, login: sessionLogin } = useSession();
-  const [activeTab, setActiveTab] = useState(0);
-  const [displayedTab, setDisplayedTab] = useState(0);
-  const [isTransitioning, setIsTransitioning] = useState(false);
+interface TabDataRefreshConfig {
+  activeTab: number;
+  isLoggedIn: boolean;
+  refreshTimesheetDraft: () => Promise<void>;
+  refreshArchiveData: () => Promise<void>;
+  isTimesheetDraftLoading: boolean;
+  timesheetDraftData: unknown[];
+}
+
+function useTabDataRefresh(config: TabDataRefreshConfig) {
+  const { activeTab, isLoggedIn, refreshTimesheetDraft, refreshArchiveData, isTimesheetDraftLoading, timesheetDraftData } = config;
   const hasRequestedInitialTimesheetRef = useRef(false);
   const hasRefreshedEmptyOnceRef = useRef(false);
-  const timesheetGridRef = useRef<TimesheetGridHandle>(null);
-  
-  const [showUpdateDialog, setShowUpdateDialog] = useState(false);
-  const [updateVersion, setUpdateVersion] = useState<string>('');
-  const [updateProgress, setUpdateProgress] = useState(0);
-  const [updateStatus, setUpdateStatus] = useState<'downloading' | 'installing'>('downloading');
-  
-  const { refreshTimesheetDraft, refreshArchiveData, isTimesheetDraftLoading, timesheetDraftData } = useData();
+
   useEffect(() => {
     if (!isLoggedIn) return;
 
@@ -245,10 +223,9 @@ function AppContent() {
       void refreshArchiveData();
     }
   }, [activeTab, isLoggedIn, refreshTimesheetDraft, refreshArchiveData, isTimesheetDraftLoading, timesheetDraftData]);
+}
 
-  useEffect(() => {
-    initializeTheme();
-  }, []);
+function useAccessibilityFix() {
   useEffect(() => {
     const rootElement = document.getElementById('root');
     if (!rootElement) return;
@@ -266,19 +243,24 @@ function AppContent() {
     };
 
     const observer = new MutationObserver(handleAriaHiddenChange);
-
     observer.observe(rootElement, {
       attributes: true,
       attributeFilter: ['aria-hidden']
     });
-
     handleAriaHiddenChange();
 
     return () => {
       observer.disconnect();
     };
   }, []);
-  
+}
+
+function useUpdateDialog() {
+  const [showUpdateDialog, setShowUpdateDialog] = useState(false);
+  const [updateVersion, setUpdateVersion] = useState<string>('');
+  const [updateProgress, setUpdateProgress] = useState(0);
+  const [updateStatus, setUpdateStatus] = useState<'downloading' | 'installing'>('downloading');
+
   useEffect(() => {
     if (!window.updates) {
       return;
@@ -306,10 +288,52 @@ function AppContent() {
     };
   }, []);
 
+  return { showUpdateDialog, setShowUpdateDialog, updateVersion, updateProgress, updateStatus };
+}
 
-
-
-
+/**
+ * Main application content after authentication
+ * 
+ * Orchestrates the entire application UI including:
+ * - Tab-based navigation (Timesheet, Archive, Settings)
+ * - Lazy-loaded page content with loading skeletons
+ * - Animated page transitions
+ * - Update progress dialogs
+ * - On-demand data loading per tab
+ * 
+ * State management:
+ * - Prevents duplicate data fetches during React StrictMode
+ * - Handles empty data refresh edge cases
+ * - Manages transition animations to prevent UI glitches
+ * 
+ * Accessibility:
+ * - Implements workaround for MUI dialog focus trap issue
+ * - Monitors aria-hidden changes to blur background content
+ * 
+ * @returns Authenticated application shell with navigation and content
+ */
+function AppContent() {
+  const { isLoggedIn, isLoading: sessionLoading, login: sessionLogin } = useSession();
+  const [activeTab, setActiveTab] = useState(0);
+  const [displayedTab, setDisplayedTab] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const timesheetGridRef = useRef<TimesheetGridHandle>(null);
+  
+  const { refreshTimesheetDraft, refreshArchiveData, isTimesheetDraftLoading, timesheetDraftData } = useData();
+  const updateDialog = useUpdateDialog();
+  
+  useTabDataRefresh({
+    activeTab,
+    isLoggedIn,
+    refreshTimesheetDraft,
+    refreshArchiveData,
+    isTimesheetDraftLoading,
+    timesheetDraftData
+  });
+  useEffect(() => {
+    initializeTheme();
+  }, []);
+  useAccessibilityFix();
 
   return (
     <div className="app-container">
@@ -364,15 +388,15 @@ function AppContent() {
         </div>
 
         <UpdateDialog 
-          open={showUpdateDialog}
-          version={updateVersion}
-          progress={updateProgress}
-          status={updateStatus}
+          open={updateDialog.showUpdateDialog}
+          version={updateDialog.updateVersion}
+          progress={updateDialog.updateProgress}
+          status={updateDialog.updateStatus}
         />
       </div>
     </div>
   );
-};
+}
 
 export default function App() {
   return (

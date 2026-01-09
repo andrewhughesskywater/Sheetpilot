@@ -365,6 +365,30 @@ export function setTempDropdownValue(
   }, 10);
 }
 
+function isValidColumn(col: number | unknown): col is number {
+  return typeof col === 'number' && col >= 0;
+}
+
+function hasValue(value: unknown): boolean {
+  return value !== undefined && value !== null && value !== '';
+}
+
+interface ApplyValueConfig {
+  hotInstance: { propToCol: (prop: string) => number | unknown; setCellMeta: (row: number, col: number, key: string, value: unknown) => void; setDataAtCell: (row: number, col: number, value: unknown, source?: string) => void };
+  targetRow: number;
+  col: number | unknown;
+  value: unknown;
+  startCol: number;
+  maxStartCol: number;
+}
+
+function applyValue(config: ApplyValueConfig): void {
+  const { hotInstance, targetRow, col, value, startCol, maxStartCol } = config;
+  if (startCol <= maxStartCol && hasValue(value) && isValidColumn(col)) {
+    setTempDropdownValue(hotInstance, targetRow, col, value);
+  }
+}
+
 export const applyPastedToolAndChargeCode = (
   data: unknown[][],
   startRow: number,
@@ -379,14 +403,8 @@ export const applyPastedToolAndChargeCode = (
     if (targetRow < 0 || row.length < 7) return;
 
     const [_date, _timeIn, _timeOut, _project, tool, chargeCode, _taskDescription] = row;
-    const hasTool = tool !== undefined && tool !== null && tool !== '';
-    const hasCharge = chargeCode !== undefined && chargeCode !== null && chargeCode !== '';
-    if (startCol <= 4 && hasTool && typeof toolCol === 'number' && toolCol >= 0) {
-      setTempDropdownValue(hotInstance, targetRow, toolCol, tool);
-    }
-    if (startCol <= 5 && hasCharge && typeof chargeCodeCol === 'number' && chargeCodeCol >= 0) {
-      setTempDropdownValue(hotInstance, targetRow, chargeCodeCol, chargeCode);
-    }
+    applyValue({ hotInstance, targetRow, col: toolCol, value: tool, startCol, maxStartCol: 4 });
+    applyValue({ hotInstance, targetRow, col: chargeCodeCol, value: chargeCode, startCol, maxStartCol: 5 });
   });
 };
 

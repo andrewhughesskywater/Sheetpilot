@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ipcMain, app as _app } from 'electron';
 import * as fs from 'fs';
 import * as _path from 'path';
-import { registerLogsHandlers } from '../../src/ipc/logs-handlers';
+import { registerLogsHandlers } from '@/ipc/logs-handlers';
 
 // Mock electron
 vi.mock('electron', () => ({
@@ -14,11 +14,11 @@ vi.mock('electron', () => ({
   }
 }));
 
-vi.mock('../../src/ipc/handlers/timesheet/main-window', () => ({
+vi.mock('@/ipc/handlers/timesheet/main-window', () => ({
   isTrustedIpcSender: vi.fn(() => true)
 }));
 
-vi.mock('../../src/repositories', () => ({
+vi.mock('@/repositories', () => ({
   validateSession: vi.fn(() => ({ valid: true, email: 'user@example.com', isAdmin: false }))
 }));
 
@@ -53,7 +53,7 @@ vi.mock('path', async (importOriginal) => {
 });
 
 // Mock validation
-vi.mock('../../src/validation/validate-ipc-input', () => ({
+vi.mock('@/validation/validate-ipc-input', () => ({
   validateInput: vi.fn((schema, data) => ({ success: true, data }))
 }));
 

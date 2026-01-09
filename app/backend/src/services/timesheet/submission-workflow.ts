@@ -1,4 +1,4 @@
-import { ipcLogger } from '@sheetpilot/shared/logger';
+import { ipcLogger } from './utils/logger';
 import {
   getDbPath,
   getPendingTimesheetEntries,
@@ -50,6 +50,80 @@ export function cancelTimesheetSubmission(): { success: boolean; message?: strin
   }
 }
 
+function validateSubmissionRequest(token: string, timer: ReturnType<typeof ipcLogger.startTimer>): { valid: boolean; session?: ReturnType<typeof validateSession>; error?: string } {
+  if (!token) {
+    timer.done({ outcome: 'error', reason: 'no-session' });
+    return { valid: false, error: 'Session token is required. Please log in to submit timesheets.' };
+  }
+
+  const session = validateSession(token);
+  if (!session.valid) {
+    timer.done({ outcome: 'error', reason: 'invalid-session' });
+    return { valid: false, error: 'Session is invalid or expired. Please log in again.' };
+  }
+
+  if (session.isAdmin) {
+    ipcLogger.warn('Admin attempted timesheet submission', { email: session.email });
+    timer.done({ outcome: 'error', reason: 'admin-not-allowed' });
+    return { valid: false, error: 'Admin users cannot submit timesheet entries to SmartSheet.' };
+  }
+
+  return { valid: true, session };
+}
+
+function getSubmissionCredentials(): { credentials: ReturnType<typeof getCredentials>; error?: string } {
+  ipcLogger.verbose('Checking credentials for submission', { service: 'smartsheet' });
+  const credentials = getCredentials('smartsheet');
+  ipcLogger.verbose('Credentials check result', { service: 'smartsheet', found: !!credentials });
+
+  if (!credentials) {
+    ipcLogger.warn('Submission: credentials not found', { service: 'smartsheet' });
+    return { credentials: null, error: 'SmartSheet credentials not found. Please add your credentials to submit timesheets.' };
+  }
+
+  ipcLogger.verbose('Credentials retrieved, proceeding with submission', { service: 'smartsheet', email: credentials.email });
+  return { credentials };
+}
+
+function setupTimeoutMonitor(
+  pendingEntryIds: number[],
+  lastProgressTimeRef: { current: number },
+  submissionAbortedRef: { current: boolean }
+): NodeJS.Timeout {
+  return setInterval(() => {
+    const timeSinceLastProgress = Date.now() - lastProgressTimeRef.current;
+    const fiveMinutes = 5 * 60 * 1000;
+
+    if (timeSinceLastProgress > fiveMinutes && !submissionAbortedRef.current) {
+      submissionAbortedRef.current = true;
+      ipcLogger.error('Submission timeout: no progress for 5 minutes', {
+        timeSinceLastProgress,
+        lastProgressTime: new Date(lastProgressTimeRef.current).toISOString()
+      });
+
+      if (pendingEntryIds.length > 0) {
+        resetTimesheetEntriesStatus(pendingEntryIds);
+        ipcLogger.info('Reset entry status to pending after timeout', { count: pendingEntryIds.length });
+      }
+    }
+  }, 30000);
+}
+
+async function executeSubmission(
+  credentials: NonNullable<ReturnType<typeof getCredentials>>,
+  progressCallback: (percent: number, message: string) => void,
+  abortSignal: AbortSignal | undefined,
+  useMockWebsite: boolean | undefined
+): Promise<ReturnType<typeof submitTimesheets>> {
+  return await submitTimesheets({
+    email: credentials.email,
+    password: credentials.password,
+    progressCallback,
+    abortSignal,
+    useMockWebsite
+  });
+}
+
 export async function submitTimesheetWorkflow(params: {
   token: string;
   useMockWebsite?: boolean;
@@ -70,44 +144,24 @@ export async function submitTimesheetWorkflow(params: {
     isSubmissionInProgress = true;
     currentSubmissionAbortController = new AbortController();
 
-    if (!params.token) {
-      timer.done({ outcome: 'error', reason: 'no-session' });
-      return { error: 'Session token is required. Please log in to submit timesheets.' };
+    const validation = validateSubmissionRequest(params.token, timer);
+    if (!validation.valid) {
+      return { error: validation.error! };
     }
 
-    const session = validateSession(params.token);
-    if (!session.valid) {
-      timer.done({ outcome: 'error', reason: 'invalid-session' });
-      return { error: 'Session is invalid or expired. Please log in again.' };
-    }
-
-    if (session.isAdmin) {
-      ipcLogger.warn('Admin attempted timesheet submission', { email: session.email });
-      timer.done({ outcome: 'error', reason: 'admin-not-allowed' });
-      return { error: 'Admin users cannot submit timesheet entries to SmartSheet.' };
-    }
-
-    ipcLogger.verbose('Checking credentials for submission', { service: 'smartsheet' });
-    const credentials = getCredentials('smartsheet');
-    ipcLogger.verbose('Credentials check result', { service: 'smartsheet', found: !!credentials });
-
-    if (!credentials) {
-      ipcLogger.warn('Submission: credentials not found', { service: 'smartsheet' });
+    const credentialsCheck = getSubmissionCredentials();
+    if (!credentialsCheck.credentials) {
       timer.done({ outcome: 'error', reason: 'credentials-not-found' });
-      return { error: 'SmartSheet credentials not found. Please add your credentials to submit timesheets.' };
+      return { error: credentialsCheck.error! };
     }
 
-    ipcLogger.verbose('Credentials retrieved, proceeding with submission', { service: 'smartsheet', email: credentials.email });
-
-    let lastProgressTime = Date.now();
-    let timeoutCheckInterval: NodeJS.Timeout | null = null;
-    let submissionAborted = false;
-
+    const lastProgressTimeRef = { current: Date.now() };
+    const submissionAbortedRef = { current: false };
     const pendingEntries = getPendingTimesheetEntries() as Array<{ id: number }>;
     const pendingEntryIds = pendingEntries.map(e => e.id);
 
     const progressCallback = (percent: number, message: string) => {
-      lastProgressTime = Date.now();
+      lastProgressTimeRef.current = Date.now();
       params.onProgress(percent, message, { pendingIds: pendingEntryIds });
       ipcLogger.verbose('Submission progress update', {
         percent,
@@ -116,33 +170,11 @@ export async function submitTimesheetWorkflow(params: {
       });
     };
 
-    timeoutCheckInterval = setInterval(() => {
-      const timeSinceLastProgress = Date.now() - lastProgressTime;
-      const fiveMinutes = 5 * 60 * 1000;
-
-      if (timeSinceLastProgress > fiveMinutes && !submissionAborted) {
-        submissionAborted = true;
-        ipcLogger.error('Submission timeout: no progress for 5 minutes', {
-          timeSinceLastProgress,
-          lastProgressTime: new Date(lastProgressTime).toISOString()
-        });
-
-        if (pendingEntryIds.length > 0) {
-          resetTimesheetEntriesStatus(pendingEntryIds);
-          ipcLogger.info('Reset entry status to pending after timeout', { count: pendingEntryIds.length });
-        }
-
-        if (timeoutCheckInterval) {
-          clearInterval(timeoutCheckInterval);
-          timeoutCheckInterval = null;
-        }
-      }
-    }, 30000);
+    const timeoutCheckInterval = setupTimeoutMonitor(pendingEntryIds, lastProgressTimeRef, submissionAbortedRef);
 
     try {
-      const submitResult = await submitTimesheets(
-        credentials.email,
-        credentials.password,
+      const submitResult = await executeSubmission(
+        credentialsCheck.credentials,
         progressCallback,
         currentSubmissionAbortController?.signal,
         params.useMockWebsite
@@ -154,16 +186,12 @@ export async function submitTimesheetWorkflow(params: {
         totalProcessed: submitResult.totalProcessed
       });
 
-      if (timeoutCheckInterval) {
-        clearInterval(timeoutCheckInterval);
-        timeoutCheckInterval = null;
-      }
+      clearInterval(timeoutCheckInterval);
 
-      if (submissionAborted) {
+      if (submissionAbortedRef.current) {
         ipcLogger.warn('Submission was aborted by timeout', { submitResult });
         return {
-          error:
-            'Submission timed out after 5 minutes of no progress. Entries have been reset to pending status. Please try again.'
+          error: 'Submission timed out after 5 minutes of no progress. Entries have been reset to pending status. Please try again.'
         };
       }
 
@@ -181,9 +209,7 @@ export async function submitTimesheetWorkflow(params: {
 
       return { submitResult, dbPath: getDbPath() };
     } finally {
-      if (timeoutCheckInterval) {
-        clearInterval(timeoutCheckInterval);
-      }
+      clearInterval(timeoutCheckInterval);
     }
   } catch (err: unknown) {
     const errorCode = extractErrorCode(err);

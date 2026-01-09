@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { StatusButton } from '../../src/components/StatusButton';
+import { StatusButton } from '@/components/StatusButton';
 
 describe('StatusButton', () => {
   it('should render button with text', () => {

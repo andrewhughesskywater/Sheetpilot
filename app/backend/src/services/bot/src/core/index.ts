@@ -33,7 +33,7 @@ export { BotOrchestrator, TimesheetBot, type AutomationResult } from './bot_orch
 import { BotOrchestrator } from './bot_orchestation';
 import * as Cfg from '../config/automation_config';
 import { appSettings } from '@sheetpilot/shared/constants';
-import { botLogger } from '@sheetpilot/shared/logger';
+import { botLogger } from '../../utils/logger';
 
 // Authentication and login management
 export { LoginManager, BotNavigationError } from '../utils/authentication_flow';
@@ -54,7 +54,7 @@ interface RunTimesheetConfig {
   formConfig: { BASE_URL: string; FORM_ID: string; SUBMISSION_ENDPOINT: string; SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[] };
   progressCallback?: (percent: number, message: string) => void;
   headless?: boolean;
-  abortSignal?: AbortSignal;
+  abortSignal?: AbortSignal | {aborted: boolean; reason?: unknown};
 }
 
 /**
@@ -125,7 +125,17 @@ export async function runTimesheet(config: RunTimesheetConfig): Promise<{
     }
     
     botLogger.info('Starting automation', { rowCount: rows.length });
-    const [success, submitted_indices, errors] = await bot.run_automation(rows, [email, password], abortSignal);
+    // Convert simplified abort signal to AbortSignal if needed
+    const actualAbortSignal: AbortSignal | undefined = abortSignal instanceof AbortSignal 
+      ? abortSignal 
+      : abortSignal?.aborted 
+        ? (() => {
+            const controller = new AbortController();
+            controller.abort();
+            return controller.signal;
+          })()
+        : undefined;
+    const [success, submitted_indices, errors] = await bot.run_automation(rows, [email, password], actualAbortSignal);
     botLogger.info('Automation completed', { success, submittedCount: submitted_indices.length, errorCount: errors.length });
     
     return {

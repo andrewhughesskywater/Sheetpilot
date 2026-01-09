@@ -11,7 +11,7 @@
 import { ipcMain, app } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
-import { ipcLogger } from '@sheetpilot/shared/logger';
+import { ipcLogger } from './utils/logger';
 import { validateSession } from '../repositories';
 import { isTrustedIpcSender } from './handlers/timesheet/main-window';
 import { validateInput } from '../validation/validate-ipc-input';
@@ -90,6 +90,40 @@ export function registerLogsHandlers(): void {
     }
   });
 
+function validateLogPath(logPath: string, userDataPath: string): { valid: boolean; error?: string; resolvedPath?: string } {
+  const resolvedUserDataPath = path.resolve(userDataPath);
+  const resolvedLogPath = path.resolve(logPath);
+  const logFileName = path.basename(resolvedLogPath);
+  const isExpectedLogFile = logFileName.startsWith('sheetpilot_') && logFileName.endsWith('.log');
+  const isWithinUserData = resolvedLogPath === resolvedUserDataPath || resolvedLogPath.startsWith(resolvedUserDataPath + path.sep);
+
+  if (!isWithinUserData || !isExpectedLogFile) {
+    ipcLogger.security('logs-access-denied', 'Unauthorized log path requested', {
+      requestedPath: logPath,
+      resolvedLogPath,
+      userDataPath: resolvedUserDataPath
+    });
+    return { valid: false, error: 'Could not export logs: log path not allowed' };
+  }
+
+  return { valid: true, resolvedPath: resolvedLogPath };
+}
+
+async function processLogExport(logPath: string, exportFormat: 'json' | 'txt'): Promise<{ success: boolean; content?: string; filename?: string; mimeType?: string; error?: string }> {
+  try {
+    const logContent = await fs.promises.readFile(logPath, 'utf8');
+    
+    if (exportFormat === 'json') {
+      return exportLogsAsJson(logContent);
+    } else {
+      return exportLogsAsText(logContent);
+    }
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    return { success: false, error: errorMessage };
+  }
+}
+
   // Handler for exporting logs
   ipcMain.handle('logs:exportLogs', async (event, token: string, logPath: string, exportFormat: 'json' | 'txt' = 'txt') => {
     if (!isTrustedIpcSender(event)) {
@@ -115,32 +149,15 @@ export function registerLogsHandlers(): void {
     
     try {
       const userDataPath = app.getPath('userData');
-      const resolvedUserDataPath = path.resolve(userDataPath);
-      const resolvedLogPath = path.resolve(validatedData.logPath);
-      const logFileName = path.basename(resolvedLogPath);
-      const isExpectedLogFile = logFileName.startsWith('sheetpilot_') && logFileName.endsWith('.log');
-      const isWithinUserData =
-        resolvedLogPath === resolvedUserDataPath || resolvedLogPath.startsWith(resolvedUserDataPath + path.sep);
-
-      if (!isWithinUserData || !isExpectedLogFile) {
-        ipcLogger.security('logs-access-denied', 'Unauthorized log path requested', {
-          requestedPath: validatedData.logPath,
-          resolvedLogPath,
-          userDataPath: resolvedUserDataPath
-        });
-        return { success: false, error: 'Could not export logs: log path not allowed' };
+      const pathValidation = validateLogPath(validatedData.logPath, userDataPath);
+      if (!pathValidation.valid) {
+        return { success: false, error: pathValidation.error };
       }
 
-      const logContent = await fs.promises.readFile(validatedData.logPath, 'utf8');
-      
-      if (validatedData.exportFormat === 'json') {
-        return exportLogsAsJson(logContent);
-      } else {
-        return exportLogsAsText(logContent);
-      }
+      return await processLogExport(pathValidation.resolvedPath!, validatedData.exportFormat ?? 'txt');
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      return { success: false, error: errorMessage };
+      ipcLogger.error('Could not export logs', err);
+      return { success: false, error: err instanceof Error ? err.message : String(err) };
     }
   });
 }

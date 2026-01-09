@@ -12,7 +12,7 @@
  */
 import type { Browser, BrowserContext, Page } from 'playwright';
 import * as cfg from '../automation_config';
-import { botLogger } from '@sheetpilot/shared/logger';
+import { botLogger } from '../../utils/logger';
 
 export type FormConfig = {
   BASE_URL: string;

@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { useTheme } from '../../src/hooks/useTheme';
-import * as themeManager from '../../src/utils/theme-manager';
+import { useTheme } from '@/hooks/useTheme';
+import * as themeManager from '@/utils/theme-manager';
 
 // Mock theme-manager
-vi.mock('../../src/utils/theme-manager', () => ({
+vi.mock('@/utils/theme-manager', () => ({
   initializeTheme: vi.fn(() => 'auto'),
   setThemeMode: vi.fn(),
   getStoredTheme: vi.fn(() => 'auto'),

@@ -131,7 +131,7 @@ let mockDbInstance: ReturnType<typeof createMockDb>;
 
 // Mock repositories module (single source of truth)
 // Create mockDb instance inside the factory to avoid hoisting issues
-vi.mock('../src/repositories', () => {
+vi.mock('@/repositories', () => {
   // Initialize mockDbInstance here so it's available both in factory and in tests
   mockDbInstance = createMockDb();
   
@@ -192,7 +192,7 @@ vi.mock('../src/repositories', () => {
 });
 
 // Mock timesheet importer (default: no entries to submit)
-vi.mock('../src/services/timesheet-importer', () => ({
+vi.mock('@/services/timesheet-importer', () => ({
   submitTimesheets: vi.fn(async () => ({ 
     ok: true, 
     submittedIds: [], 
@@ -228,9 +228,9 @@ vi.mock('../../shared/logger', () => {
 });
 
 // Import after mocks
-import { registerAllIPCHandlers } from '../src/ipc/index';
-import * as repo from '../src/repositories';
-import * as imp from '../src/services/timesheet-importer';
+import { registerAllIPCHandlers } from '@/ipc/index';
+import * as repo from '@/repositories';
+import * as imp from '@/services/timesheet-importer';
 
 type VMock = ReturnType<typeof vi.fn>;
 const mdb = repo as unknown as {

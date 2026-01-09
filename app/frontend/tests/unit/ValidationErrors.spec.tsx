@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { ValidationErrors } from '../../src/components/timesheet/ValidationErrors';
+import { ValidationErrors } from '@/components/timesheet/ValidationErrors';
 
 describe('ValidationErrors', () => {
   it('should return null when no errors', () => {

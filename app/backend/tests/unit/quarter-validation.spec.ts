@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { validateQuarterAvailability, QUARTER_DEFINITIONS, getQuarterForDate } from '../../src/services/bot/src/config/quarter_config';
+import { validateQuarterAvailability, QUARTER_DEFINITIONS, getQuarterForDate } from '@/services/bot/src/config/quarter_config';
 import { quarterTestCases } from '../fixtures/timesheet-data';
 
 describe('Quarter Validation Unit Tests', () => {

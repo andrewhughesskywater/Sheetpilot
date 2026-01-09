@@ -17,7 +17,7 @@
  *   constants (`BASE_URL`, `FORM_ID`, `SUBMISSION_ENDPOINT`) exist only for compatibility.
  */
 
-import { botLogger } from '@sheetpilot/shared/logger';
+import { botLogger } from '../../utils/logger';
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -524,7 +524,7 @@ export async function sleep(ms: number): Promise<void> {
       base_timeout: base_timeout ?? DYNAMIC_WAIT_BASE_TIMEOUT,
       max_timeout: max_timeout ?? DYNAMIC_WAIT_MAX_TIMEOUT,
       multiplier: multiplier ?? DYNAMIC_WAIT_MULTIPLIER,
-      operation_name: _operation_name ?? "operation"
+      operation_name: "operation"
     });
   }
   
@@ -552,7 +552,9 @@ export async function sleep(ms: number): Promise<void> {
     pageOrConfig: import('playwright').Page | DynamicWaitForElementConfig,
     selector?: string,
     state: 'visible' | 'hidden' | 'attached' = 'visible',
-    base_timeout = DYNAMIC_WAIT_BASE_TIMEOUT
+    base_timeout?: number,
+    max_timeout?: number,
+    _operation_name?: string
   ): Promise<boolean> {
     // Support both new object parameter and legacy multiple parameters
     let page: import('playwright').Page;
@@ -574,8 +576,8 @@ export async function sleep(ms: number): Promise<void> {
       page = pageOrConfig as import('playwright').Page;
       actualSelector = selector!;
       actualState = state;
-      actualBaseTimeout = base_timeout;
-      actualMaxTimeout = DYNAMIC_WAIT_MAX_TIMEOUT;
+      actualBaseTimeout = base_timeout ?? DYNAMIC_WAIT_BASE_TIMEOUT;
+      actualMaxTimeout = max_timeout ?? DYNAMIC_WAIT_MAX_TIMEOUT;
     }
 
     return dynamic_wait(async () => {
@@ -675,9 +677,9 @@ export async function sleep(ms: number): Promise<void> {
         case 'hidden':
           return await element.isHidden();
         case 'attached':
-          return await element.isAttached();
+          return (await element.count()) > 0;
         case 'detached':
-          return !(await element.isAttached());
+          return (await element.count()) === 0;
         default:
           return true;
       }
@@ -701,7 +703,9 @@ export async function sleep(ms: number): Promise<void> {
     pageOrConfig: import('playwright').Page | WaitForDomStabilityConfig,
     selector?: string,
     state: 'visible' | 'hidden' | 'attached' | 'detached' = 'visible',
-    base_timeout = DYNAMIC_WAIT_BASE_TIMEOUT
+    base_timeout?: number,
+    max_timeout?: number,
+    _operation_name?: string
   ): Promise<boolean> {
     // Support both new object parameter and legacy multiple parameters
     let page: import('playwright').Page;
@@ -723,8 +727,8 @@ export async function sleep(ms: number): Promise<void> {
       page = pageOrConfig as import('playwright').Page;
       actualSelector = selector!;
       actualState = state;
-      actualBaseTimeout = base_timeout;
-      actualMaxTimeout = DYNAMIC_WAIT_MAX_TIMEOUT;
+      actualBaseTimeout = base_timeout ?? DYNAMIC_WAIT_BASE_TIMEOUT;
+      actualMaxTimeout = max_timeout ?? DYNAMIC_WAIT_MAX_TIMEOUT;
     }
     return dynamic_wait(async () => {
       try {
@@ -781,41 +785,47 @@ export async function sleep(ms: number): Promise<void> {
     base_timeout = DYNAMIC_WAIT_BASE_TIMEOUT,
     max_timeout = DYNAMIC_WAIT_MAX_TIMEOUT
   ): Promise<boolean> {
-    return dynamic_wait(async () => {
-      try {
-        // Check for common dropdown option patterns
-        const optionSelectors = [
-          `${dropdownSelector} [role="option"]`,
-          `${dropdownSelector} .dropdown-option`,
-          `${dropdownSelector} .option`,
-          `${dropdownSelector} li`,
-          `${dropdownSelector} [data-value]`,
-          '[role="listbox"] [role="option"]', // Fallback to any listbox
-          '.dropdown-menu .dropdown-item',
-          '.select-options .option'
-        ];
-        
-        for (const optionSelector of optionSelectors) {
-          try {
-            const options = page.locator(optionSelector);
-            if (await checkOptionVisibility(options)) {
-              return true;
+    return dynamic_wait({
+      condition_func: async () => {
+        try {
+          // Check for common dropdown option patterns
+          const optionSelectors = [
+            `${dropdownSelector} [role="option"]`,
+            `${dropdownSelector} .dropdown-option`,
+            `${dropdownSelector} .option`,
+            `${dropdownSelector} li`,
+            `${dropdownSelector} [data-value]`,
+            '[role="listbox"] [role="option"]', // Fallback to any listbox
+            '.dropdown-menu .dropdown-item',
+            '.select-options .option'
+          ];
+          
+          for (const optionSelector of optionSelectors) {
+            try {
+              const options = page.locator(optionSelector);
+              if (await checkOptionVisibility(options)) {
+                return true;
+              }
+            } catch {
+              continue;
             }
-          } catch {
-            continue;
           }
+          
+          // If no options found, proceed anyway after a short delay
+          // This handles cases where dropdowns don't show options or use different patterns
+          await page.waitForTimeout(SHORT_DELAY_MS);
+          return true;
+        } catch {
+          // If there's any error, proceed anyway to avoid hanging
+          await page.waitForTimeout(SHORT_DELAY_MS);
+          return true;
         }
-        
-        // If no options found, proceed anyway after a short delay
-        // This handles cases where dropdowns don't show options or use different patterns
-        await page.waitForTimeout(SHORT_DELAY_MS);
-        return true;
-      } catch {
-        // If there's any error, proceed anyway to avoid hanging
-        await page.waitForTimeout(SHORT_DELAY_MS);
-        return true;
-      }
-    }, Math.min(base_timeout, HALF_TIMEOUT_MULTIPLIER), Math.min(max_timeout, 1.0), DYNAMIC_WAIT_MULTIPLIER, 'dropdown options population');
+      },
+      base_timeout: Math.min(base_timeout, HALF_TIMEOUT_MULTIPLIER),
+      max_timeout: Math.min(max_timeout, 1.0),
+      multiplier: DYNAMIC_WAIT_MULTIPLIER,
+      operation_name: 'dropdown options population'
+    });
   }
 
   /**
@@ -833,61 +843,67 @@ export async function sleep(ms: number): Promise<void> {
     base_timeout = DYNAMIC_WAIT_BASE_TIMEOUT,
     max_timeout = DYNAMIC_WAIT_MAX_TIMEOUT
   ): Promise<boolean> {
-    return dynamic_wait(async () => {
-      try {
-        // Wait for any validation indicators to appear
-        const validationSelectors = [
-          `${fieldSelector} + .error`,
-          `${fieldSelector} + .validation-error`,
-          `${fieldSelector} ~ .error-message`,
-          `${fieldSelector} ~ .field-error`,
-          `[data-field-error="${fieldSelector}"]`,
-          `.error:has-text("${fieldSelector}")`
-        ];
-        
-        let hasValidationError = false;
-        
-        // Check if validation errors exist
-        for (const errorSelector of validationSelectors) {
-          try {
-            const errorElement = page.locator(errorSelector);
-            if (await errorElement.isVisible().catch(() => false)) {
-              hasValidationError = true;
-              break;
+    return dynamic_wait({
+      condition_func: async () => {
+        try {
+          // Wait for any validation indicators to appear
+          const validationSelectors = [
+            `${fieldSelector} + .error`,
+            `${fieldSelector} + .validation-error`,
+            `${fieldSelector} ~ .error-message`,
+            `${fieldSelector} ~ .field-error`,
+            `[data-field-error="${fieldSelector}"]`,
+            `.error:has-text("${fieldSelector}")`
+          ];
+          
+          let hasValidationError = false;
+          
+          // Check if validation errors exist
+          for (const errorSelector of validationSelectors) {
+            try {
+              const errorElement = page.locator(errorSelector);
+              if (await errorElement.isVisible().catch(() => false)) {
+                hasValidationError = true;
+                break;
+              }
+            } catch {
+              continue;
             }
-          } catch {
-            continue;
           }
-        }
-        
-        // Wait a moment to see if validation state changes
-        await page.waitForTimeout(SHORT_DELAY_MS);
-        
-        // Check again to ensure validation is stable
-        let stillHasError = false;
-        for (const errorSelector of validationSelectors) {
-          try {
-            const errorElement = page.locator(errorSelector);
-            if (await errorElement.isVisible().catch(() => false)) {
-              stillHasError = true;
-              break;
+          
+          // Wait a moment to see if validation state changes
+          await page.waitForTimeout(SHORT_DELAY_MS);
+          
+          // Check again to ensure validation is stable
+          let stillHasError = false;
+          for (const errorSelector of validationSelectors) {
+            try {
+              const errorElement = page.locator(errorSelector);
+              if (await errorElement.isVisible().catch(() => false)) {
+                stillHasError = true;
+                break;
+              }
+            } catch {
+              continue;
             }
-          } catch {
-            continue;
           }
+          
+          // Validation is stable if error state hasn't changed
+          // If no validation errors were found initially, proceed anyway
+          const validationStable = (hasValidationError === stillHasError);
+          
+          return validationStable || !hasValidationError;
+        } catch {
+          // If we can't check validation, proceed anyway to avoid hanging
+          await page.waitForTimeout(SHORT_DELAY_MS);
+          return true;
         }
-        
-        // Validation is stable if error state hasn't changed
-        // If no validation errors were found initially, proceed anyway
-        const validationStable = (hasValidationError === stillHasError);
-        
-        return validationStable || !hasValidationError;
-      } catch {
-        // If we can't check validation, proceed anyway to avoid hanging
-        await page.waitForTimeout(SHORT_DELAY_MS);
-        return true;
-      }
-    }, Math.min(base_timeout, SHORT_WAIT_TIMEOUT), Math.min(max_timeout, SHORT_WAIT_TIMEOUT * 2), DYNAMIC_WAIT_MULTIPLIER, 'validation stability');
+      },
+      base_timeout: Math.min(base_timeout, SHORT_WAIT_TIMEOUT),
+      max_timeout: Math.min(max_timeout, SHORT_WAIT_TIMEOUT * 2),
+      multiplier: DYNAMIC_WAIT_MULTIPLIER,
+      operation_name: 'validation stability'
+    });
   }
 
   /**
@@ -903,37 +919,43 @@ export async function sleep(ms: number): Promise<void> {
     base_timeout = DYNAMIC_WAIT_BASE_TIMEOUT,
     max_timeout = DYNAMIC_WAIT_MAX_TIMEOUT
   ): Promise<boolean> {
-    return dynamic_wait(async () => {
-      try {
-        // Wait for network to be idle
-        await page.waitForLoadState('networkidle', { timeout: base_timeout * 1000 });
-        
-        // Additional check for submission-specific indicators
-        const submissionIndicators = [
-          '.submission-success',
-          '.form-success',
-          '[data-submission-status="success"]',
-          '.confirmation-message',
-          '.success-message'
-        ];
-        
-        // Check if any success indicators are visible
-        for (const indicator of submissionIndicators) {
-          try {
-            const element = page.locator(indicator);
-            if (await element.isVisible().catch(() => false)) {
-              return true;
+    return dynamic_wait({
+      condition_func: async () => {
+        try {
+          // Wait for network to be idle
+          await page.waitForLoadState('networkidle', { timeout: base_timeout * 1000 });
+          
+          // Additional check for submission-specific indicators
+          const submissionIndicators = [
+            '.submission-success',
+            '.form-success',
+            '[data-submission-status="success"]',
+            '.confirmation-message',
+            '.success-message'
+          ];
+          
+          // Check if any success indicators are visible
+          for (const indicator of submissionIndicators) {
+            try {
+              const element = page.locator(indicator);
+              if (await element.isVisible().catch(() => false)) {
+                return true;
+              }
+            } catch {
+              continue;
             }
-          } catch {
-            continue;
           }
+          
+          return true; // Network idle is sufficient
+        } catch {
+          return false;
         }
-        
-        return true; // Network idle is sufficient
-      } catch {
-        return false;
-      }
-    }, base_timeout, max_timeout, DYNAMIC_WAIT_MULTIPLIER, 'submission network idle');
+      },
+      base_timeout,
+      max_timeout,
+      multiplier: DYNAMIC_WAIT_MULTIPLIER,
+      operation_name: 'submission network idle'
+    });
   }
 
   /**

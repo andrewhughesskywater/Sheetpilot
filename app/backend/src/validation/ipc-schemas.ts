@@ -21,7 +21,7 @@ import { z } from 'zod';
  * Uses regex to accept formats like 'a@b.c' that Zod's .email() might reject
  */
 export const emailSchema = z.string()
-  .regex(/^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\.\-]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]+$/, 'Invalid email format')
+  .regex(/^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+.-]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9-]*\.)+[A-Za-z]+$/, 'Invalid email format')
   .min(3, 'Email must be at least 3 characters')
   .max(255, 'Email must not exceed 255 characters');
 

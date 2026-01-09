@@ -141,7 +141,7 @@ function createMockBrowser() {
   };
 }
 
-vi.mock('../src/services/bot/src/electron-browser', () => ({
+vi.mock('@/services/bot/src/electron-browser', () => ({
   ElectronBrowser: {
     launch: vi.fn(() => Promise.resolve(createMockBrowser()))
   },

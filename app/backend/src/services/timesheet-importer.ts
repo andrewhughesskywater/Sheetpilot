@@ -18,15 +18,15 @@ import {
     getTimesheetEntriesByIds,
     resetInProgressTimesheetEntries
 } from '../repositories';
-import { botLogger } from '@sheetpilot/shared/logger';
+import { botLogger } from './utils/logger';
 import { getSubmissionService } from '../middleware/bootstrap-plugins';
-import type { TimesheetEntry } from '../../../shared/contracts/IDataService';
-import type { Credentials } from '../../../shared/contracts/ICredentialService';
-import type { SubmissionResult, ISubmissionService } from '../../../shared/contracts/ISubmissionService';
+import type { TimesheetEntry } from '@sheetpilot/shared/contracts/IDataService';
+import type { Credentials } from '@sheetpilot/shared/contracts/ICredentialService';
+import type { SubmissionResult, ISubmissionService } from '@sheetpilot/shared/contracts/ISubmissionService';
 import {
   formatMinutesToTime,
   normalizeDateToISO
-} from '../../../shared/utils/format-conversions';
+} from '@sheetpilot/shared/utils/format-conversions';
 // Dynamic import to avoid top-level async operations during module loading
 
 
@@ -55,7 +55,7 @@ type DbRow = {
  * Result object for timesheet submission operations
  * Re-export the contract type for backward compatibility
  */
-export type { SubmissionResult } from '../../../shared/contracts/ISubmissionService';
+export type { SubmissionResult } from '@sheetpilot/shared/contracts/ISubmissionService';
 
 /**
  * Converts database row format to TimesheetEntry format
@@ -265,7 +265,16 @@ function processSubmissionResult(result: SubmissionResult, dbRowsLength: number)
  * const result = await submitTimesheets('user@company.com', 'password123');
  * console.log(`Submitted ${result.successCount} entries, ${result.errorCount} errors`);
  */
-export async function submitTimesheets(email: string, password: string, progressCallback?: (percent: number, message: string) => void, abortSignal?: AbortSignal, useMockWebsite?: boolean): Promise<SubmissionResult> {
+interface SubmitTimesheetsConfig {
+  email: string;
+  password: string;
+  progressCallback?: (percent: number, message: string) => void;
+  abortSignal?: AbortSignal;
+  useMockWebsite?: boolean;
+}
+
+export async function submitTimesheets(config: SubmitTimesheetsConfig): Promise<SubmissionResult> {
+    const { email, password, progressCallback, abortSignal, useMockWebsite } = config;
     const timer = botLogger.startTimer('submit-timesheets');
     botLogger.info('Starting automated timesheet submission', { email });
     
@@ -297,7 +306,13 @@ export async function submitTimesheets(email: string, password: string, progress
         
         // Submit entries via plugin system
         const credentials: Credentials = { email, password };
-        const result = await submissionService.submit(entries, credentials, progressCallback, abortSignal, useMockWebsite);
+        const result = await submissionService.submit(
+          entries,
+          credentials,
+          progressCallback,
+          abortSignal,
+          useMockWebsite
+        );
         
         botLogger.info('Submission completed via plugin system', { 
             ok: result.ok,

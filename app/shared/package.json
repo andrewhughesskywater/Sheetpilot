@@ -5,13 +5,18 @@
   "description": "Shared TypeScript contracts and utilities for Sheetpilot",
   "main": "./index.ts",
   "types": "./index.ts",
+  "type": "commonjs",
   "exports": {
     ".": {
       "types": "./index.ts",
+      "require": "./index.ts",
+      "import": "./index.ts",
       "default": "./index.ts"
     },
     "./*": {
       "types": "./*.ts",
+      "require": "./*.ts",
+      "import": "./*.ts",
       "default": "./*.ts"
     }
   },

@@ -15,8 +15,8 @@ import {
     setDbPath,
     openDb,
     closeConnection
-} from '../src/repositories';
-import { submitTimesheets, getPendingEntries } from '../src/services/timesheet-importer';
+} from '@/repositories';
+import { submitTimesheets, getPendingEntries } from '@/services/timesheet-importer';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -152,7 +152,7 @@ describe('Timesheet Submission Integration', () => {
     
     it('should handle empty pending entries gracefully', async () => {
         // No entries in database
-        const result = await submitTimesheets('test@example.com', 'password123');
+        const result = await submitTimesheets({ email: 'test@example.com', password: 'password123' });
         
         expect(result.ok).toBe(true);
         expect(result.submittedIds).toHaveLength(0);
@@ -200,7 +200,7 @@ describe('Timesheet Submission Integration', () => {
         
         // This should not throw "Page is not available; call start() first"
         // It will fail during authentication (expected), but the browser should be initialized
-        const result = await submitTimesheets('test@example.com', 'password123');
+        const result = await submitTimesheets({ email: 'test@example.com', password: 'password123' });
         
         // Verify the function ran (even if submission failed)
         expect(result).toBeDefined();
@@ -222,7 +222,7 @@ describe('Timesheet Submission Integration', () => {
             taskDescription: 'First task'
         });
         
-        await submitTimesheets('test1@example.com', 'password1');
+        await submitTimesheets({ email: 'test1@example.com', password: 'password1' });
         
         // Second attempt - browser should be properly cleaned up and restarted
         insertTimesheetEntry({
@@ -234,7 +234,7 @@ describe('Timesheet Submission Integration', () => {
         });
         
         // This should not fail with "Page is not available" or resource leak errors
-        const result = await submitTimesheets('test2@example.com', 'password2');
+        const result = await submitTimesheets({ email: 'test2@example.com', password: 'password2' });
         
         expect(result).toBeDefined();
         // Even though authentication fails, the browser lifecycle should work correctly

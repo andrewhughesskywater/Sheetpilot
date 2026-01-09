@@ -8,6 +8,23 @@
     "outDir": "build/dist",
     "rootDir": "app",
     "baseUrl": ".",
+    "paths": {
+      "@sheetpilot/shared": ["app/shared/index.ts"],
+      "@sheetpilot/shared/*": ["app/shared/*"],
+      "@/bootstrap": ["app/backend/src/bootstrap/index.ts"],
+      "@/bootstrap/*": ["app/backend/src/bootstrap/*"],
+      "@/ipc": ["app/backend/src/ipc/index.ts"],
+      "@/ipc/*": ["app/backend/src/ipc/*"],
+      "@/repositories": ["app/backend/src/repositories/index.ts"],
+      "@/repositories/*": ["app/backend/src/repositories/*"],
+      "@/services/*": ["app/backend/src/services/*"],
+      "@/logic/*": ["app/backend/src/logic/*"],
+      "@/middleware": ["app/backend/src/middleware/index.ts"],
+      "@/middleware/*": ["app/backend/src/middleware/*"],
+      "@/validation/*": ["app/backend/src/validation/*"],
+      "@/preload": ["app/backend/src/preload/index.ts"],
+      "@/preload/*": ["app/backend/src/preload/*"]
+    },
     "typeRoots": [
       "./node_modules/@types",
       "./app/backend/node_modules/@types",

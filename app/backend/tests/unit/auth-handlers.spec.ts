@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ipcMain, IpcMainInvokeEvent } from 'electron';
-import { registerAuthHandlers } from '../../src/ipc/auth-handlers';
-import * as repositories from '../../src/repositories';
+import { registerAuthHandlers } from '@/ipc/auth-handlers';
+import * as repositories from '@/repositories'';
 // We use getCredentials from repositories in our mocks
-import { ipcLogger as _ipcLogger } from '../../../shared/logger';
+import { ipcLogger as _ipcLogger } from '@sheetpilot/shared/logger';
 
 // Mock electron
 vi.mock('electron', () => ({
@@ -12,12 +12,12 @@ vi.mock('electron', () => ({
   }
 }));
 
-vi.mock('../../src/ipc/handlers/timesheet/main-window', () => ({
+vi.mock('@/ipc/handlers/timesheet/main-window', () => ({
   isTrustedIpcSender: vi.fn(() => true)
 }));
 
 // Mock repositories
-vi.mock('../../src/repositories', () => ({
+vi.mock('@/repositories', () => ({
   storeCredentials: vi.fn(),
   getCredentials: vi.fn(),
   createSession: vi.fn(),
@@ -41,7 +41,7 @@ vi.mock('../../../shared/logger', () => ({
 }));
 
 // Mock validation
-vi.mock('../../src/validation/validate-ipc-input', () => ({
+vi.mock('@/validation/validate-ipc-input', () => ({
   validateInput: vi.fn((schema, data) => ({ success: true, data }))
 }));
 

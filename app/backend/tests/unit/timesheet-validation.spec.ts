@@ -17,7 +17,7 @@ import {
   validateField,
   formatTimeInput,
   type TimesheetRow
-} from '../../src/logic/timesheet-validation';
+} from '@/logic/timesheet-validation';
 
 describe('Backend Timesheet Validation Logic', () => {
   describe('isValidDate Function', () => {
@@ -271,144 +271,144 @@ describe('Backend Timesheet Validation Logic', () => {
     describe('Date Field Validation', () => {
       it('should accept valid dates', () => {
         const currentQuarterDate = randomDateInCurrentQuarter();
-        const result = validateField(currentQuarterDate, 0, 'date', mockRows, mockProjects, mockChargeCodes);
+        const result = validateField({ value: currentQuarterDate, row: 0, prop: 'date', rows: mockRows, projects: mockProjects, chargeCodes: mockChargeCodes });
         expect(result).toBeNull();
       });
 
       it('should reject empty dates', () => {
-        const result = validateField('', 0, 'date', mockRows, mockProjects, mockChargeCodes);
+        const result = validateField({ value: '', row: 0, prop: 'date', rows: mockRows, projects: mockProjects, chargeCodes: mockChargeCodes });
         expect(result).toContain('required');
       });
 
       it('should reject invalid date formats', () => {
-        const result = validateField('2025-01-15', 0, 'date', mockRows, mockProjects, mockChargeCodes);
+        const result = validateField({ value: '2025-01-15', row: 0, prop: 'date', rows: mockRows, projects: mockProjects, chargeCodes: mockChargeCodes });
         expect(result).toContain('like 01/15/2024');
       });
 
       it('should reject invalid dates', () => {
-        const result = validateField('02/30/2025', 0, 'date', mockRows, mockProjects, mockChargeCodes);
+        const result = validateField({ value: '02/30/2025', row: 0, prop: 'date', rows: mockRows, projects: mockProjects, chargeCodes: mockChargeCodes });
         expect(result).toContain('like 01/15/2024');
       });
     });
 
     describe('TimeIn Field Validation', () => {
       it('should accept valid times', () => {
-        const result = validateField('09:00', 0, 'timeIn', mockRows, mockProjects, mockChargeCodes);
+        const result = validateField({ value: '09:00', row: 0, prop: 'timeIn', rows: mockRows, projects: mockProjects, chargeCodes: mockChargeCodes });
         expect(result).toBeNull();
       });
 
       it('should reject empty times', () => {
-        const result = validateField('', 0, 'timeIn', mockRows, mockProjects, mockChargeCodes);
+        const result = validateField({ value: '', row: 0, prop: 'timeIn', rows: mockRows, projects: mockProjects, chargeCodes: mockChargeCodes });
         expect(result).toContain('required');
       });
 
       it('should reject non-15-minute increments', () => {
-        const result = validateField('09:01', 0, 'timeIn', mockRows, mockProjects, mockChargeCodes);
+        const result = validateField({ value: '09:01', row: 0, prop: 'timeIn', rows: mockRows, projects: mockProjects, chargeCodes: mockChargeCodes });
         expect(result).toContain('15 minute steps');
       });
     });
 
     describe('TimeOut Field Validation', () => {
       it('should accept valid times', () => {
-        const result = validateField('17:00', 0, 'timeOut', mockRows, mockProjects, mockChargeCodes);
+        const result = validateField({ value: '17:00', row: 0, prop: 'timeOut', rows: mockRows, projects: mockProjects, chargeCodes: mockChargeCodes });
         expect(result).toBeNull();
       });
 
       it('should reject times before timeIn', () => {
-        const result = validateField('08:00', 0, 'timeOut', mockRows, mockProjects, mockChargeCodes);
+        const result = validateField({ value: '08:00', row: 0, prop: 'timeOut', rows: mockRows, projects: mockProjects, chargeCodes: mockChargeCodes });
         expect(result).toContain('after start time');
       });
 
       it('should reject times equal to timeIn', () => {
-        const result = validateField('09:00', 0, 'timeOut', mockRows, mockProjects, mockChargeCodes);
+        const result = validateField({ value: '09:00', row: 0, prop: 'timeOut', rows: mockRows, projects: mockProjects, chargeCodes: mockChargeCodes });
         expect(result).toContain('after start time');
       });
     });
 
     describe('Project Field Validation', () => {
       it('should accept valid projects', () => {
-        const result = validateField('FL-Carver Techs', 0, 'project', mockRows, mockProjects, mockChargeCodes);
+        const result = validateField({ value: 'FL-Carver Techs', row: 0, prop: 'project', rows: mockRows, projects: mockProjects, chargeCodes: mockChargeCodes });
         expect(result).toBeNull();
       });
 
       it('should reject empty projects', () => {
-        const result = validateField('', 0, 'project', mockRows, mockProjects, mockChargeCodes);
+        const result = validateField({ value: '', row: 0, prop: 'project', rows: mockRows, projects: mockProjects, chargeCodes: mockChargeCodes });
         expect(result).toContain('required');
       });
 
       it('should reject invalid projects', () => {
-        const result = validateField('Invalid Project', 0, 'project', mockRows, mockProjects, mockChargeCodes);
+        const result = validateField({ value: 'Invalid Project', row: 0, prop: 'project', rows: mockRows, projects: mockProjects, chargeCodes: mockChargeCodes });
         expect(result).toContain('from the list');
       });
     });
 
     describe('Tool Field Validation', () => {
       it('should accept valid tools for projects that need them', () => {
-        const result = validateField('#1 Rinse and 2D marker', 0, 'tool', mockRows, mockProjects, mockChargeCodes);
+        const result = validateField({ value: '#1 Rinse and 2D marker', row: 0, prop: 'tool', rows: mockRows, projects: mockProjects, chargeCodes: mockChargeCodes });
         expect(result).toBeNull();
       });
 
       it('should accept null for projects without tools', () => {
         const rowsWithPTO = [{ ...mockRows[0], project: 'PTO/RTO' }];
-        const result = validateField('', 0, 'tool', rowsWithPTO, mockProjects, mockChargeCodes);
+        const result = validateField({ value: '', row: 0, prop: 'tool', rows: rowsWithPTO, projects: mockProjects, chargeCodes: mockChargeCodes });
         expect(result).toBeNull();
       });
 
       it('should require tool for projects that need them', () => {
-        const result = validateField('', 0, 'tool', mockRows, mockProjects, mockChargeCodes);
+        const result = validateField({ value: '', row: 0, prop: 'tool', rows: mockRows, projects: mockProjects, chargeCodes: mockChargeCodes });
         expect(result).toContain('pick a tool');
       });
     });
 
     describe('ChargeCode Field Validation', () => {
       it('should accept valid charge codes', () => {
-        const result = validateField('EPR1', 0, 'chargeCode', mockRows, mockProjects, mockChargeCodes);
+        const result = validateField({ value: 'EPR1', row: 0, prop: 'chargeCode', rows: mockRows, projects: mockProjects, chargeCodes: mockChargeCodes });
         expect(result).toBeNull();
       });
 
       it('should accept null for tools without charge codes', () => {
         const rowsWithMeeting = [{ ...mockRows[0], tool: 'Meeting' }];
-        const result = validateField('', 0, 'chargeCode', rowsWithMeeting, mockProjects, mockChargeCodes);
+        const result = validateField({ value: '', row: 0, prop: 'chargeCode', rows: rowsWithMeeting, projects: mockProjects, chargeCodes: mockChargeCodes });
         expect(result).toBeNull();
       });
 
       it('should require charge code for tools that need them', () => {
-        const result = validateField('', 0, 'chargeCode', mockRows, mockProjects, mockChargeCodes);
+        const result = validateField({ value: '', row: 0, prop: 'chargeCode', rows: mockRows, projects: mockProjects, chargeCodes: mockChargeCodes });
         expect(result).toContain('charge code');
       });
 
       it('should reject invalid charge codes', () => {
-        const result = validateField('INVALID', 0, 'chargeCode', mockRows, mockProjects, mockChargeCodes);
+        const result = validateField({ value: 'INVALID', row: 0, prop: 'chargeCode', rows: mockRows, projects: mockProjects, chargeCodes: mockChargeCodes });
         expect(result).toContain('from the list');
       });
     });
 
     describe('TaskDescription Field Validation', () => {
       it('should accept valid descriptions', () => {
-        const result = validateField('Test task description', 0, 'taskDescription', mockRows, mockProjects, mockChargeCodes);
+        const result = validateField({ value: 'Test task description', row: 0, prop: 'taskDescription', rows: mockRows, projects: mockProjects, chargeCodes: mockChargeCodes });
         expect(result).toBeNull();
       });
 
       it('should reject empty descriptions', () => {
-        const result = validateField('', 0, 'taskDescription', mockRows, mockProjects, mockChargeCodes);
+        const result = validateField({ value: '', row: 0, prop: 'taskDescription', rows: mockRows, projects: mockProjects, chargeCodes: mockChargeCodes });
         expect(result).toContain('required');
       });
 
       it('should accept long descriptions', () => {
         const longDescription = 'A'.repeat(1000);
-        const result = validateField(longDescription, 0, 'taskDescription', mockRows, mockProjects, mockChargeCodes);
+        const result = validateField({ value: longDescription, row: 0, prop: 'taskDescription', rows: mockRows, projects: mockProjects, chargeCodes: mockChargeCodes });
         expect(result).toBeNull();
       });
 
       it('should accept descriptions with special characters', () => {
-        const result = validateField('Task with "quotes" and <brackets>', 0, 'taskDescription', mockRows, mockProjects, mockChargeCodes);
+        const result = validateField({ value: 'Task with "quotes" and <brackets>', row: 0, prop: 'taskDescription', rows: mockRows, projects: mockProjects, chargeCodes: mockChargeCodes });
         expect(result).toBeNull();
       });
     });
 
     describe('Unknown Field Validation', () => {
       it('should return null for unknown fields', () => {
-        const result = validateField('value', 0, 'unknownField', mockRows, mockProjects, mockChargeCodes);
+        const result = validateField({ value: 'value', row: 0, prop: 'unknownField', rows: mockRows, projects: mockProjects, chargeCodes: mockChargeCodes });
         expect(result).toBeNull();
       });
     });
@@ -431,11 +431,11 @@ describe('Backend Timesheet Validation Logic', () => {
 
     it('should provide user-friendly error messages', () => {
       const errors = [
-        validateField('', 0, 'date', mockRows, mockProjects, mockChargeCodes),
-        validateField('', 0, 'timeIn', mockRows, mockProjects, mockChargeCodes),
-        validateField('', 0, 'timeOut', mockRows, mockProjects, mockChargeCodes),
-        validateField('', 0, 'project', mockRows, mockProjects, mockChargeCodes),
-        validateField('', 0, 'taskDescription', mockRows, mockProjects, mockChargeCodes)
+        validateField({ value: '', row: 0, prop: 'date', rows: mockRows, projects: mockProjects, chargeCodes: mockChargeCodes }),
+        validateField({ value: '', row: 0, prop: 'timeIn', rows: mockRows, projects: mockProjects, chargeCodes: mockChargeCodes }),
+        validateField({ value: '', row: 0, prop: 'timeOut', rows: mockRows, projects: mockProjects, chargeCodes: mockChargeCodes }),
+        validateField({ value: '', row: 0, prop: 'project', rows: mockRows, projects: mockProjects, chargeCodes: mockChargeCodes }),
+        validateField({ value: '', row: 0, prop: 'taskDescription', rows: mockRows, projects: mockProjects, chargeCodes: mockChargeCodes })
       ];
       
       errors.forEach(error => {
@@ -447,10 +447,10 @@ describe('Backend Timesheet Validation Logic', () => {
     });
 
     it('should provide actionable guidance', () => {
-      const dateError = validateField('invalid', 0, 'date', mockRows, mockProjects, mockChargeCodes);
+      const dateError = validateField({ value: 'invalid', row: 0, prop: 'date', rows: mockRows, projects: mockProjects, chargeCodes: mockChargeCodes });
       expect(dateError).toContain('like 01/15/2024'); // Shows example
       
-      const timeError = validateField('invalid', 0, 'timeIn', mockRows, mockProjects, mockChargeCodes);
+      const timeError = validateField({ value: 'invalid', row: 0, prop: 'timeIn', rows: mockRows, projects: mockProjects, chargeCodes: mockChargeCodes });
       expect(timeError).toContain('like 09:00'); // Shows example
     });
   });
@@ -475,7 +475,7 @@ describe('Backend Timesheet Validation Logic', () => {
       const values = ['01/15/2025', '09:00', '17:00', 'FL-Carver Techs', '#1 Rinse', 'EPR1', 'Test'];
       
       fields.forEach((field, index) => {
-        const result = validateField(values[index], 0, field, mockRows, mockProjects, mockChargeCodes);
+        const result = validateField({ value: values[index], row: 0, prop: field, rows: mockRows, projects: mockProjects, chargeCodes: mockChargeCodes });
         expect(typeof result).toBe(result === null ? 'object' : 'string');
       });
     });
@@ -496,11 +496,11 @@ describe('Backend Timesheet Validation Logic', () => {
       ];
 
       // PTO/RTO doesn't need tools, so tool should be null
-      const toolResult = validateField('', 0, 'tool', mockRows, mockProjects, mockChargeCodes);
+      const toolResult = validateField({ value: '', row: 0, prop: 'tool', rows: mockRows, projects: mockProjects, chargeCodes: mockChargeCodes });
       expect(toolResult).toBeNull();
       
       // If no tool, then no charge code
-      const chargeCodeResult = validateField('', 0, 'chargeCode', mockRows, mockProjects, mockChargeCodes);
+      const chargeCodeResult = validateField({ value: '', row: 0, prop: 'chargeCode', rows: mockRows, projects: mockProjects, chargeCodes: mockChargeCodes });
       expect(chargeCodeResult).toBeNull();
     });
   });

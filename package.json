@@ -70,7 +70,11 @@
     "validate:quality": "npm run lint && npm run lint:metrics && npm run depcruise:check",
     "depcruise:check": "depcruise --config .dependency-cruiser.js --ts-config tsconfig.json --progress none --output-type err app",
     "depcruise:report": "depcruise --config .dependency-cruiser.js --ts-config tsconfig.json --progress none --output-type html app > dependency-cruise-report.html",
-    "build:debug": "cross-env DEBUG=electron-builder npm run build"
+    "build:debug": "cross-env DEBUG=electron-builder npm run build",
+    "analyze:structure": "node scripts/analyze-structure.js",
+    "analyze:dependencies": "node scripts/analyze-dependencies.js",
+    "analyze:hierarchy": "node scripts/analyze-hierarchy.js",
+    "analyze:modularity": "node scripts/analyze-modularity.js"
   },
   "dependencies": {
     "better-sqlite3": "^12.4.1",

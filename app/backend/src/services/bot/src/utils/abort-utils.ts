@@ -8,15 +8,15 @@
  * @since 2025
  */
 
-import { botLogger } from '@sheetpilot/shared/logger';
+import { botLogger } from '../../utils/logger';
 
 /**
  * Checks if an abort signal is already aborted and throws if so
- * @param abortSignal - Optional abort signal to check
+ * @param abortSignal - Optional abort signal to check (supports both AbortSignal and simplified {aborted: boolean} type)
  * @param context - Context string for logging (e.g., 'submission', 'automation')
  * @throws Error if signal is aborted
  */
-export function checkAborted(abortSignal: AbortSignal | undefined, context: string): void {
+export function checkAborted(abortSignal: AbortSignal | {aborted: boolean; reason?: unknown} | undefined, context: string): void {
   if (abortSignal?.aborted) {
     const message = `${context} was cancelled`;
     botLogger.info(`${context} aborted before starting`);

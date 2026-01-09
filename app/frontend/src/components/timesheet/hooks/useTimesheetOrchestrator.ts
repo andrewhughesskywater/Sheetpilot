@@ -81,13 +81,13 @@ export function useTimesheetOrchestrator(onChange?: (rows: TimesheetRow[]) => vo
 
   const hotTableRef = useRef<HotTableRef | null>(null);
 
-  const { isProcessing, handleSubmitTimesheet, handleStopSubmission } = useTimesheetSubmission(
-    token ?? undefined,
+  const { isProcessing, handleSubmitTimesheet, handleStopSubmission } = useTimesheetSubmission({
+    token: token ?? undefined,
     isAdmin,
     timesheetDraftData,
     refreshTimesheetDraft,
     refreshArchiveData
-  );
+  });
 
   const { macros, setMacros, showMacroDialog, setShowMacroDialog, applyMacro, duplicateSelectedRow } = useMacroSystem();
 

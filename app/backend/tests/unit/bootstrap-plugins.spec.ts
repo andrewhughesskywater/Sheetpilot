@@ -5,24 +5,24 @@ import {
   getDataService,
   getCredentialService,
   getSubmissionService
-} from '../../src/middleware/bootstrap-plugins';
-import { PluginRegistry } from '../../../shared/plugin-registry';
-import { loadPluginConfig } from '../../../shared/plugin-config';
-import { SQLiteDataService } from '../../src/services/plugins/sqlite-data-service';
-import { MemoryDataService } from '../../src/services/plugins/memory-data-service';
-import { SQLiteCredentialService } from '../../src/services/plugins/sqlite-credential-service';
-import { ElectronBotService } from '../../src/services/plugins/electron-bot-service';
-import { MockSubmissionService } from '../../src/services/plugins/mock-submission-service';
-import { appLogger } from '../../../shared/logger';
+} from '@/middleware/bootstrap-plugins';
+import { PluginRegistry } from '@sheetpilot/shared/plugin-registry';
+import { loadPluginConfig } from '@sheetpilot/shared/plugin-config';
+import { SQLiteDataService } from '@/services/plugins/sqlite-data-service';
+import { MemoryDataService } from '@/services/plugins/memory-data-service';
+import { SQLiteCredentialService } from '@/services/plugins/sqlite-credential-service';
+import { ElectronBotService } from '@/services/plugins/electron-bot-service';
+import { MockSubmissionService } from '@/services/plugins/mock-submission-service';
+import { appLogger } from '@sheetpilot/shared/logger';
 
 // Mock dependencies
 vi.mock('../../../shared/plugin-registry');
 vi.mock('../../../shared/plugin-config');
-vi.mock('../../src/services/plugins/sqlite-data-service');
-vi.mock('../../src/services/plugins/memory-data-service');
-vi.mock('../../src/services/plugins/sqlite-credential-service');
-vi.mock('../../src/services/plugins/electron-bot-service');
-vi.mock('../../src/services/plugins/mock-submission-service');
+vi.mock('@/services/plugins/sqlite-data-service');
+vi.mock('@/services/plugins/memory-data-service');
+vi.mock('@/services/plugins/sqlite-credential-service');
+vi.mock('@/services/plugins/electron-bot-service');
+vi.mock('@/services/plugins/mock-submission-service');
 vi.mock('../../../shared/logger');
 vi.mock('path', async (importOriginal) => {
   const actual = await importOriginal<typeof import('path')>();

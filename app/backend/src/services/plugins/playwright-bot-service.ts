@@ -13,18 +13,18 @@ import type {
   ISubmissionService,
   SubmissionResult,
   ValidationResult
-} from '../../../../shared/contracts/ISubmissionService';
-import type { TimesheetEntry } from '../../../../shared/contracts/IDataService';
-import type { Credentials } from '../../../../shared/contracts/ICredentialService';
-import type { PluginMetadata } from '../../../../shared/plugin-types';
-import { runTimesheet } from '../bot/src/index';
-import { botLogger } from '@sheetpilot/shared/logger';
+} from '@sheetpilot/shared/contracts/ISubmissionService';
+import type { TimesheetEntry } from '@sheetpilot/shared/contracts/IDataService';
+import type { Credentials } from '@sheetpilot/shared/contracts/ICredentialService';
+import type { PluginMetadata } from '@sheetpilot/shared/plugin-types';
+import { runTimesheet } from '../bot/src/core/index';
+import { botLogger } from '../utils/logger';
 import { checkAborted, createCancelledResult } from '../bot/src/utils/abort-utils';
 import { processEntriesByQuarter } from '../bot/src/utils/quarter-processing';
 import {
   parseTimeToMinutes,
   convertDateToUSFormat
-} from '../../../../shared/utils/format-conversions';
+} from '@sheetpilot/shared/utils/format-conversions';
 
 /**
  * Playwright-based submission service using browser automation
@@ -101,58 +101,61 @@ export class PlaywrightBotService implements ISubmissionService {
     }
   }
 
+  private validateDate(date: string | undefined, errors: string[]): void {
+    if (!date) {
+      errors.push('Date is required');
+    } else if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      errors.push('Date must be in YYYY-MM-DD format');
+    }
+  }
+
+  private validateTimeFormat(time: string | undefined, fieldName: string, errors: string[]): void {
+    if (!time) {
+      errors.push(`${fieldName} is required`);
+    } else if (!/^\d{1,2}:\d{2}$/.test(time)) {
+      errors.push(`${fieldName} must be in HH:MM format`);
+    }
+  }
+
+  private validateTimeIncrements(timeIn: string | undefined, timeOut: string | undefined, errors: string[]): void {
+    if (!timeIn || !timeOut) return;
+
+    const timeInParts = timeIn.split(':');
+    const timeOutParts = timeOut.split(':');
+    
+    const timeInMinutes = parseInt(timeInParts[0] || '0', 10) * 60 + parseInt(timeInParts[1] || '0', 10);
+    const timeOutMinutes = parseInt(timeOutParts[0] || '0', 10) * 60 + parseInt(timeOutParts[1] || '0', 10);
+    
+    if (timeInMinutes % 15 !== 0 || timeOutMinutes % 15 !== 0) {
+      errors.push('Times must be in 15-minute increments');
+    }
+    
+    if (timeOutMinutes <= timeInMinutes) {
+      errors.push('End time must be after start time');
+    }
+  }
+
+  private validateRequiredFields(entry: TimesheetEntry, errors: string[]): void {
+    if (!entry.project) {
+      errors.push('Project is required');
+    }
+    
+    if (!entry.taskDescription) {
+      errors.push('Task description is required');
+    }
+  }
+
   /**
    * Validate a timesheet entry
    */
   public validateEntry(entry: TimesheetEntry): ValidationResult {
     const errors: string[] = [];
     
-    // Validate date
-    if (!entry.date) {
-      errors.push('Date is required');
-    } else if (!/^\d{4}-\d{2}-\d{2}$/.test(entry.date)) {
-      errors.push('Date must be in YYYY-MM-DD format');
-    }
-    
-    // Validate time
-    if (!entry.timeIn) {
-      errors.push('Start time is required');
-    } else if (!/^\d{1,2}:\d{2}$/.test(entry.timeIn)) {
-      errors.push('Start time must be in HH:MM format');
-    }
-    
-    if (!entry.timeOut) {
-      errors.push('End time is required');
-    } else if (!/^\d{1,2}:\d{2}$/.test(entry.timeOut)) {
-      errors.push('End time must be in HH:MM format');
-    }
-    
-    // Validate times are 15-minute increments
-    if (entry.timeIn && entry.timeOut) {
-      const timeInParts = entry.timeIn.split(':');
-      const timeOutParts = entry.timeOut.split(':');
-      
-      const timeInMinutes = parseInt(timeInParts[0] || '0', 10) * 60 + parseInt(timeInParts[1] || '0', 10);
-      const timeOutMinutes = parseInt(timeOutParts[0] || '0', 10) * 60 + parseInt(timeOutParts[1] || '0', 10);
-      
-      if (timeInMinutes % 15 !== 0 || timeOutMinutes % 15 !== 0) {
-        errors.push('Times must be in 15-minute increments');
-      }
-      
-      if (timeOutMinutes <= timeInMinutes) {
-        errors.push('End time must be after start time');
-      }
-    }
-    
-    // Validate project
-    if (!entry.project) {
-      errors.push('Project is required');
-    }
-    
-    // Validate task description
-    if (!entry.taskDescription) {
-      errors.push('Task description is required');
-    }
+    this.validateDate(entry.date, errors);
+    this.validateTimeFormat(entry.timeIn, 'Start time', errors);
+    this.validateTimeFormat(entry.timeOut, 'End time', errors);
+    this.validateTimeIncrements(entry.timeIn, entry.timeOut, errors);
+    this.validateRequiredFields(entry, errors);
     
     return {
       valid: errors.length === 0,

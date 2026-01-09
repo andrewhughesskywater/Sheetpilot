@@ -16,7 +16,7 @@
 
 import { chromium, type Browser, type BrowserContext, type Page } from 'playwright';
 import * as cfg from '../config/automation_config';
-import { botLogger } from '@sheetpilot/shared/logger';
+import { botLogger } from '../../utils/logger';
 import { SubmissionMonitor } from './submission_monitor';
 
 export class BotNotStartedError extends Error {}
@@ -205,13 +205,19 @@ export class WebformFiller {
     const projectLocator =
       cfg.FIELD_DEFINITIONS['project_code']?.locator ?? "input[aria-label='Project']";
 
-    await cfg.dynamic_wait(async () => {
-      const loc = page.locator(projectLocator).first();
-      const visible = await loc.isVisible().catch(() => false);
-      if (!visible) return false;
-      const enabled = await loc.isEnabled().catch(() => false);
-      return enabled;
-    }, cfg.DYNAMIC_WAIT_BASE_TIMEOUT, Math.min(cfg.GLOBAL_TIMEOUT, 2), cfg.DYNAMIC_WAIT_MULTIPLIER, 'form ready');
+    await cfg.dynamic_wait({
+      condition_func: async () => {
+        const loc = page.locator(projectLocator).first();
+        const visible = await loc.isVisible().catch(() => false);
+        if (!visible) return false;
+        const enabled = await loc.isEnabled().catch(() => false);
+        return enabled;
+      },
+      base_timeout: cfg.DYNAMIC_WAIT_BASE_TIMEOUT,
+      max_timeout: Math.min(cfg.GLOBAL_TIMEOUT, 2),
+      multiplier: cfg.DYNAMIC_WAIT_MULTIPLIER,
+      operation_name: 'form ready',
+    });
   }
 
   async inject_field_value(spec: Record<string, unknown>, value: string): Promise<void> {
@@ -246,8 +252,8 @@ export class WebformFiller {
       const hoursLocator =
         cfg.FIELD_DEFINITIONS['hours']?.locator ?? "input[aria-label='Hours']";
 
-      const cleared = await cfg.dynamic_wait(
-        async () => {
+      const cleared = await cfg.dynamic_wait({
+        condition_func: async () => {
           const proj = page.locator(projectLocator).first();
           const date = page.locator(dateLocator).first();
           const hours = page.locator(hoursLocator).first();
@@ -267,11 +273,11 @@ export class WebformFiller {
           // Project is the strongest signal; date/hours help confirm the clear.
           return projEmpty && (dateEmpty || hoursEmpty);
         },
-        cfg.DYNAMIC_WAIT_BASE_TIMEOUT,
-        Math.min(cfg.GLOBAL_TIMEOUT, 2),
-        cfg.DYNAMIC_WAIT_MULTIPLIER,
-        'form cleared after submit',
-      );
+        base_timeout: cfg.DYNAMIC_WAIT_BASE_TIMEOUT,
+        max_timeout: Math.min(cfg.GLOBAL_TIMEOUT, 2),
+        multiplier: cfg.DYNAMIC_WAIT_MULTIPLIER,
+        operation_name: 'form cleared after submit',
+      });
 
       timer.done({ success: true, cleared });
       return true;

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ipcMain } from 'electron';
-import { registerDatabaseHandlers } from '../../src/ipc/database-handlers';
-import * as repositories from '../../src/repositories';
+import { registerDatabaseHandlers } from '@/ipc/database-handlers';
+import * as repositories from '@/repositories'';
 
 // Mock electron
 vi.mock('electron', () => ({
@@ -10,12 +10,12 @@ vi.mock('electron', () => ({
   }
 }));
 
-vi.mock('../../src/ipc/handlers/timesheet/main-window', () => ({
+vi.mock('@/ipc/handlers/timesheet/main-window', () => ({
   isTrustedIpcSender: vi.fn(() => true)
 }));
 
 // Mock repositories
-vi.mock('../../src/repositories', () => ({
+vi.mock('@/repositories', () => ({
   getDb: vi.fn(),
   validateSession: vi.fn()
 }));
