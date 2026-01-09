@@ -1,9 +1,6 @@
 import { useEffect } from 'react';
 
-export function useKeyboardShortcuts(
-  applyMacro: (index: number) => void,
-  duplicateSelectedRow: () => void
-) {
+export function useKeyboardShortcuts(applyMacro: (index: number) => void, duplicateSelectedRow: () => void) {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const hasShortcutModifier = e.ctrlKey || e.metaKey;

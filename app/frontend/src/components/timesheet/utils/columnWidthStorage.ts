@@ -1,6 +1,6 @@
 /**
  * @fileoverview Column Width Storage Utility
- * 
+ *
  * Handles persistence of timesheet grid column widths to localStorage.
  * Allows users to customize column widths and have them persist across sessions.
  */
@@ -20,10 +20,10 @@ export function loadColumnWidths(): ColumnWidthMap | null {
   try {
     const stored = localStorage.getItem(COLUMN_WIDTH_STORAGE_KEY);
     if (!stored) return null;
-    
+
     const parsed = JSON.parse(stored) as unknown;
     if (typeof parsed !== 'object' || parsed === null) return null;
-    
+
     // Validate that all values are numbers
     const widthMap: ColumnWidthMap = {};
     for (const [key, value] of Object.entries(parsed)) {
@@ -31,7 +31,7 @@ export function loadColumnWidths(): ColumnWidthMap | null {
         widthMap[key] = value;
       }
     }
-    
+
     return Object.keys(widthMap).length > 0 ? widthMap : null;
   } catch (error) {
     // Silently handle parse errors - return null to use defaults

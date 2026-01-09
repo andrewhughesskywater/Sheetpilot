@@ -1,22 +1,20 @@
 /**
  * @fileoverview Database Connection Manager
- * 
+ *
  * Manages the singleton database connection with thread-safe initialization.
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025
  */
 
+import { DatabaseConnectionError, DatabaseSchemaError } from '@sheetpilot/shared/errors';
 import type BetterSqlite3 from 'better-sqlite3';
 import Database from 'better-sqlite3';
-import * as path from 'path';
 import * as fs from 'fs';
+import * as path from 'path';
+
 import { dbLogger } from './utils/logger';
-import {
-    DatabaseConnectionError,
-    DatabaseSchemaError
-} from '@sheetpilot/shared/errors';
 
 /**
  * Database file path configuration
@@ -24,8 +22,8 @@ import {
  * Defaults to 'sheetpilot.sqlite' in the current working directory
  */
 let DB_PATH = process.env['SHEETPILOT_DB']
-    ? path.resolve(process.env['SHEETPILOT_DB'])
-    : path.resolve(process.cwd(), 'sheetpilot.sqlite');
+  ? path.resolve(process.env['SHEETPILOT_DB'])
+  : path.resolve(process.cwd(), 'sheetpilot.sqlite');
 
 /**
  * SINGLETON DATABASE CONNECTION
@@ -42,15 +40,15 @@ let preventReconnection = false; // Test-only flag to prevent auto-reconnection
  * Sets the database file path
  * Closes existing connection if path changes and resets schema initialization state
  */
-export const setDbPath = (p: string) => { 
-    const newPath = path.resolve(p);
-    if (newPath !== DB_PATH) {
-        // Close existing connection if path changes
-        closeConnection();
-        DB_PATH = newPath;
-        schemaInitialized = false;
-        dbLogger.info('Database path changed', { newPath });
-    }
+export const setDbPath = (p: string) => {
+  const newPath = path.resolve(p);
+  if (newPath !== DB_PATH) {
+    // Close existing connection if path changes
+    closeConnection();
+    DB_PATH = newPath;
+    schemaInitialized = false;
+    dbLogger.info('Database path changed', { newPath });
+  }
 };
 
 /**
@@ -63,54 +61,54 @@ export const getDbPath = () => DB_PATH;
  * If connection is closed, reset the singleton to allow reinitialization
  */
 function isConnectionHealthy(): boolean {
-    try {
-        if (connectionInstance === null) {
-            return false;
-        }
-        // Check if connection is actually open
-        const isOpen = connectionInstance.open;
-        if (!isOpen) {
-            // Connection is closed, reset singleton
-            connectionInstance = null;
-            schemaInitialized = false;
-            return false;
-        }
-        return true;
-    } catch {
-        // Connection is in an invalid state, reset singleton
-        connectionInstance = null;
-        schemaInitialized = false;
-        return false;
+  try {
+    if (connectionInstance === null) {
+      return false;
     }
+    // Check if connection is actually open
+    const isOpen = connectionInstance.open;
+    if (!isOpen) {
+      // Connection is closed, reset singleton
+      connectionInstance = null;
+      schemaInitialized = false;
+      return false;
+    }
+    return true;
+  } catch {
+    // Connection is in an invalid state, reset singleton
+    connectionInstance = null;
+    schemaInitialized = false;
+    return false;
+  }
 }
 
 /**
  * Closes the persistent database connection
  */
 export function closeConnection(): void {
-    if (connectionInstance) {
-        try {
-            connectionInstance.close();
-            dbLogger.info('Database connection closed');
-        } catch (error) {
-            dbLogger.error('Error closing database connection', error);
-        } finally {
-            connectionInstance = null;
-            isInitializing = false;
-            schemaInitialized = false;
-            preventReconnection = false; // Reset flag when explicitly closing
-        }
-    } else {
-        // Reset flag even if connection was already closed
-        preventReconnection = false;
+  if (connectionInstance) {
+    try {
+      connectionInstance.close();
+      dbLogger.info('Database connection closed');
+    } catch (error) {
+      dbLogger.error('Error closing database connection', error);
+    } finally {
+      connectionInstance = null;
+      isInitializing = false;
+      schemaInitialized = false;
+      preventReconnection = false; // Reset flag when explicitly closing
     }
+  } else {
+    // Reset flag even if connection was already closed
+    preventReconnection = false;
+  }
 }
 
 /**
  * Resets the preventReconnection flag (for testing)
  */
 export function resetPreventReconnectionFlag(): void {
-    preventReconnection = false;
+  preventReconnection = false;
 }
 
 /**
@@ -118,64 +116,61 @@ export function resetPreventReconnectionFlag(): void {
  * This allows tests to verify error handling when database is closed
  */
 export function closeConnectionForTesting(): void {
-    if (connectionInstance) {
-        try {
-            connectionInstance.close();
-            dbLogger.info('Database connection closed for testing');
-        } catch (error) {
-            dbLogger.error('Error closing database connection for testing', error);
-        } finally {
-            connectionInstance = null;
-            isInitializing = false;
-            schemaInitialized = false;
-            preventReconnection = true; // Prevent auto-reconnection
-        }
+  if (connectionInstance) {
+    try {
+      connectionInstance.close();
+      dbLogger.info('Database connection closed for testing');
+    } catch (error) {
+      dbLogger.error('Error closing database connection for testing', error);
+    } finally {
+      connectionInstance = null;
+      isInitializing = false;
+      schemaInitialized = false;
+      preventReconnection = true; // Prevent auto-reconnection
     }
+  }
 }
 
 /**
  * Gracefully shutdown database connection
  */
 export function shutdownDatabase(): void {
-    closeConnection();
+  closeConnection();
 }
 
 /**
  * Module cache for better-sqlite3
  */
-let __betterSqlite3Module: (typeof import('better-sqlite3')) | null = null;
+let __betterSqlite3Module: typeof import('better-sqlite3') | null = null;
 
-function loadBetterSqlite3(): (typeof import('better-sqlite3')) {
-    if (__betterSqlite3Module) return __betterSqlite3Module;
-    try {
-        dbLogger.verbose('Loading better-sqlite3 native module');
-        // Use the statically imported module instead of dynamic require
-        // This allows test mocks to properly intercept the module
-        __betterSqlite3Module = { default: Database } as unknown as (typeof import('better-sqlite3'));
-        if (!__betterSqlite3Module) {
-            throw new Error('Could not load better-sqlite3 module');
-        }
-        dbLogger.info('better-sqlite3 module loaded successfully');
-        return __betterSqlite3Module;
-    } catch (err: unknown) {
-        const message = [
-            'Could not load better-sqlite3 native module',
-            err instanceof Error ? err.message : String(err),
-            'Recommended actions:',
-            '- Run: npm run rebuild   (rebuilds native modules for current Electron)',
-            '- Or run: npx electron-rebuild -f -w better-sqlite3',
-            '- Ensure Electron and Node versions match the compiled native module'
-        ].join('\n');
-        dbLogger.error('Could not load better-sqlite3 module', { 
-            error: err instanceof Error ? err.message : String(err),
-            stack: err instanceof Error ? err.stack : undefined,
-            recommendedActions: [
-                'npm run rebuild',
-                'npx electron-rebuild -f -w better-sqlite3'
-            ]
-        });
-        throw new Error(message);
+function loadBetterSqlite3(): typeof import('better-sqlite3') {
+  if (__betterSqlite3Module) return __betterSqlite3Module;
+  try {
+    dbLogger.verbose('Loading better-sqlite3 native module');
+    // Use the statically imported module instead of dynamic require
+    // This allows test mocks to properly intercept the module
+    __betterSqlite3Module = { default: Database } as unknown as typeof import('better-sqlite3');
+    if (!__betterSqlite3Module) {
+      throw new Error('Could not load better-sqlite3 module');
     }
+    dbLogger.info('better-sqlite3 module loaded successfully');
+    return __betterSqlite3Module;
+  } catch (err: unknown) {
+    const message = [
+      'Could not load better-sqlite3 native module',
+      err instanceof Error ? err.message : String(err),
+      'Recommended actions:',
+      '- Run: npm run rebuild   (rebuilds native modules for current Electron)',
+      '- Or run: npx electron-rebuild -f -w better-sqlite3',
+      '- Ensure Electron and Node versions match the compiled native module',
+    ].join('\n');
+    dbLogger.error('Could not load better-sqlite3 module', {
+      error: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+      recommendedActions: ['npm run rebuild', 'npx electron-rebuild -f -w better-sqlite3'],
+    });
+    throw new Error(message);
+  }
 }
 
 /**
@@ -183,11 +178,10 @@ function loadBetterSqlite3(): (typeof import('better-sqlite3')) {
  * @private
  */
 export function ensureSchemaInternal(db: BetterSqlite3.Database) {
-    
-    // Create timesheet table with comprehensive schema and constraints
-    // Note: Core fields are nullable to allow saving partial/draft rows.
-    // Required field validation is enforced at the application level before submission.
-    db.exec(`
+  // Create timesheet table with comprehensive schema and constraints
+  // Note: Core fields are nullable to allow saving partial/draft rows.
+  // Required field validation is enforced at the application level before submission.
+  db.exec(`
         CREATE TABLE IF NOT EXISTS timesheet(
             -- Primary key with auto-increment
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -278,215 +272,214 @@ export function ensureSchemaInternal(db: BetterSqlite3.Database) {
  * Reset closed connection instance
  */
 function resetClosedConnection(): void {
-    if (connectionInstance !== null && !connectionInstance.open) {
-        connectionInstance = null;
-        schemaInitialized = false;
-    }
+  if (connectionInstance !== null && !connectionInstance.open) {
+    connectionInstance = null;
+    schemaInitialized = false;
+  }
 }
 
 /**
  * Acquire initialization lock and return unlock function
  */
-function acquireInitializationLock(): (() => void) {
-    isInitializing = true;
-    let unlockFunction: (() => void) = () => {};
-    const currentLock = connectionLock.then(() => {
-        return new Promise<void>((resolve) => {
-            unlockFunction = resolve;
-        });
+function acquireInitializationLock(): () => void {
+  isInitializing = true;
+  let unlockFunction: () => void = () => {};
+  const currentLock = connectionLock.then(() => {
+    return new Promise<void>((resolve) => {
+      unlockFunction = resolve;
     });
-    connectionLock = currentLock;
-    return unlockFunction;
+  });
+  connectionLock = currentLock;
+  return unlockFunction;
 }
 
 /**
  * Create and configure database instance
  */
 function createDatabaseInstance(): BetterSqlite3.Database {
-    // Ensure the database directory exists
-    const dbDir = path.dirname(DB_PATH);
-    fs.mkdirSync(dbDir, { recursive: true });
-    
-    dbLogger.verbose('Opening persistent database connection', { dbPath: DB_PATH });
-    
-    const mod = loadBetterSqlite3() as unknown;
-    // Support both ES module default export and CommonJS direct export
-    const DatabaseCtor = (mod as { default?: unknown })?.default ?? (mod as { Database?: unknown })?.Database ?? mod;
-    const db = new (DatabaseCtor as new (path: string, opts?: BetterSqlite3.Options) => BetterSqlite3.Database)(DB_PATH);
-    
-    // Configure WAL mode for better concurrency
-    db.pragma('journal_mode = WAL');
-    db.pragma('synchronous = NORMAL');
-    db.pragma('cache_size = -32768'); // 32MB cache
-    
-    return db;
+  // Ensure the database directory exists
+  const dbDir = path.dirname(DB_PATH);
+  fs.mkdirSync(dbDir, { recursive: true });
+
+  dbLogger.verbose('Opening persistent database connection', { dbPath: DB_PATH });
+
+  const mod = loadBetterSqlite3() as unknown;
+  // Support both ES module default export and CommonJS direct export
+  const DatabaseCtor = (mod as { default?: unknown })?.default ?? (mod as { Database?: unknown })?.Database ?? mod;
+  const db = new (DatabaseCtor as new (path: string, opts?: BetterSqlite3.Options) => BetterSqlite3.Database)(DB_PATH);
+
+  // Configure WAL mode for better concurrency
+  db.pragma('journal_mode = WAL');
+  db.pragma('synchronous = NORMAL');
+  db.pragma('cache_size = -32768'); // 32MB cache
+
+  return db;
 }
 
 /**
  * Initialize database schema if not already initialized
  */
 function initializeSchemaIfNeeded(db: BetterSqlite3.Database, unlockFunction: () => void): void {
-    if (schemaInitialized) return;
-    
-    const timer = dbLogger.startTimer('schema-init');
-    try {
-        ensureSchemaInternal(db);
-        schemaInitialized = true;
-        dbLogger.info('Database schema initialized', { dbPath: DB_PATH });
-    } catch (error) {
-        isInitializing = false;
-        unlockFunction();
-        throw new DatabaseSchemaError({
-            dbPath: DB_PATH,
-            error: error instanceof Error ? error.message : String(error),
-            stack: error instanceof Error ? error.stack : undefined
-        });
-    } finally {
-        timer.done();
-    }
+  if (schemaInitialized) return;
+
+  const timer = dbLogger.startTimer('schema-init');
+  try {
+    ensureSchemaInternal(db);
+    schemaInitialized = true;
+    dbLogger.info('Database schema initialized', { dbPath: DB_PATH });
+  } catch (error) {
+    isInitializing = false;
+    unlockFunction();
+    throw new DatabaseSchemaError({
+      dbPath: DB_PATH,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+  } finally {
+    timer.done();
+  }
 }
 
 /**
  * Initialize new database connection
  */
 function initializeConnection(unlockFunction: () => void): void {
-    try {
-        // Double-check after acquiring lock - another thread might have initialized
-        if (isConnectionHealthy()) {
-            isInitializing = false;
-            unlockFunction();
-            return;
-        }
-        
-        const db = createDatabaseInstance();
-        initializeSchemaIfNeeded(db, unlockFunction);
-        
-        connectionInstance = db;
-        isInitializing = false;
-        dbLogger.info('Persistent database connection established', { dbPath: DB_PATH });
-    } catch (error) {
-        isInitializing = false;
-        dbLogger.error('Could not establish database connection', error);
-        unlockFunction();
-        throw new DatabaseConnectionError({
-            dbPath: DB_PATH,
-            error: error instanceof Error ? error.message : String(error),
-            stack: error instanceof Error ? error.stack : undefined
-        });
-    } finally {
-        // Ensure unlock is called and flag is reset even if something unexpected happens
-        if (isInitializing) {
-            isInitializing = false;
-        }
-        unlockFunction();
+  try {
+    // Double-check after acquiring lock - another thread might have initialized
+    if (isConnectionHealthy()) {
+      isInitializing = false;
+      unlockFunction();
+      return;
     }
+
+    const db = createDatabaseInstance();
+    initializeSchemaIfNeeded(db, unlockFunction);
+
+    connectionInstance = db;
+    isInitializing = false;
+    dbLogger.info('Persistent database connection established', { dbPath: DB_PATH });
+  } catch (error) {
+    isInitializing = false;
+    dbLogger.error('Could not establish database connection', error);
+    unlockFunction();
+    throw new DatabaseConnectionError({
+      dbPath: DB_PATH,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+  } finally {
+    // Ensure unlock is called and flag is reset even if something unexpected happens
+    if (isInitializing) {
+      isInitializing = false;
+    }
+    unlockFunction();
+  }
 }
 
 /**
  * Gets or creates the singleton database connection
  */
 function getDbConnection(): BetterSqlite3.Database {
-    // If we already have a healthy connection, return it
-    if (isConnectionHealthy()) {
-        return connectionInstance!;
-    }
-    
-    // If reconnection is prevented (for testing), throw error
-    if (preventReconnection) {
-        throw new DatabaseConnectionError({
-            dbPath: DB_PATH,
-            error: 'Database connection is closed (test mode)'
-        });
-    }
-    
-    // Reset connection instance if it was closed
-    resetClosedConnection();
-    
-    // If another thread is initializing, wait for it and check again
-    if (connectionInstance === null && !isInitializing) {
-        const unlockFunction = acquireInitializationLock();
-        initializeConnection(unlockFunction);
-    }
-    
-    // If we still don't have a connection after waiting, something went wrong
-    if (!connectionInstance) {
-        throw new DatabaseConnectionError({
-            dbPath: DB_PATH,
-            error: 'Could not establish database connection after initialization'
-        });
-    }
-    
-    return connectionInstance;
+  // If we already have a healthy connection, return it
+  if (isConnectionHealthy()) {
+    return connectionInstance!;
+  }
+
+  // If reconnection is prevented (for testing), throw error
+  if (preventReconnection) {
+    throw new DatabaseConnectionError({
+      dbPath: DB_PATH,
+      error: 'Database connection is closed (test mode)',
+    });
+  }
+
+  // Reset connection instance if it was closed
+  resetClosedConnection();
+
+  // If another thread is initializing, wait for it and check again
+  if (connectionInstance === null && !isInitializing) {
+    const unlockFunction = acquireInitializationLock();
+    initializeConnection(unlockFunction);
+  }
+
+  // If we still don't have a connection after waiting, something went wrong
+  if (!connectionInstance) {
+    throw new DatabaseConnectionError({
+      dbPath: DB_PATH,
+      error: 'Could not establish database connection after initialization',
+    });
+  }
+
+  return connectionInstance;
 }
 
 /**
  * Gets database connection with retry logic
  */
 export function getDb(): BetterSqlite3.Database {
-    return getDbConnection();
+  return getDbConnection();
 }
 
 /**
  * Backwards-compatible alias for getDb()
  */
 export function openDb(): BetterSqlite3.Database {
-    return getDb();
+  return getDb();
 }
 
 /**
  * Ensures the database schema is created and up-to-date
  */
 export function ensureSchema() {
-    // NOTE: Do NOT reset preventReconnection flag here
-    // Tests that close connection should remain closed until explicitly reset
-    // Schema initialization should only happen if connection is allowed
-    
-    if (schemaInitialized) {
-        dbLogger.debug('Schema already ensured, skipping');
-        return;
-    }
-    
-    const timer = dbLogger.startTimer('ensure-schema');
-    dbLogger.info('Ensuring database schema is up to date');
-    const db = getDb();
-    
-    ensureSchemaInternal(db);
-    schemaInitialized = true;
-    
-    dbLogger.info('Database schema ensured successfully');
-    timer.done();
+  // NOTE: Do NOT reset preventReconnection flag here
+  // Tests that close connection should remain closed until explicitly reset
+  // Schema initialization should only happen if connection is allowed
+
+  if (schemaInitialized) {
+    dbLogger.debug('Schema already ensured, skipping');
+    return;
+  }
+
+  const timer = dbLogger.startTimer('ensure-schema');
+  dbLogger.info('Ensuring database schema is up to date');
+  const db = getDb();
+
+  ensureSchemaInternal(db);
+  schemaInitialized = true;
+
+  dbLogger.info('Database schema ensured successfully');
+  timer.done();
 }
 
 /**
  * Rebuilds the database by dropping and recreating all tables
  */
 export function rebuildDatabase(): void {
-    const timer = dbLogger.startTimer('rebuild-database');
-    const db = getDb();
-    
-    try {
-        dbLogger.warn('Rebuilding database - dropping all tables');
-        
-        // Drop all tables
-        db.exec(`
+  const timer = dbLogger.startTimer('rebuild-database');
+  const db = getDb();
+
+  try {
+    dbLogger.warn('Rebuilding database - dropping all tables');
+
+    // Drop all tables
+    db.exec(`
             DROP TABLE IF EXISTS timesheet;
             DROP TABLE IF EXISTS credentials;
             DROP TABLE IF EXISTS sessions;
             DROP TABLE IF EXISTS schema_info;
         `);
-        
-        // Reset schema initialized flag to force recreation
-        schemaInitialized = false;
-        
-        // Recreate schema
-        ensureSchema();
-        
-        dbLogger.info('Database rebuilt successfully');
-        timer.done();
-    } catch (error) {
-        dbLogger.error('Could not rebuild database', error);
-        timer.done({ outcome: 'error' });
-        throw error;
-    }
-}
 
+    // Reset schema initialized flag to force recreation
+    schemaInitialized = false;
+
+    // Recreate schema
+    ensureSchema();
+
+    dbLogger.info('Database rebuilt successfully');
+    timer.done();
+  } catch (error) {
+    dbLogger.error('Could not rebuild database', error);
+    timer.done({ outcome: 'error' });
+    throw error;
+  }
+}

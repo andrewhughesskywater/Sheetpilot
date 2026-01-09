@@ -2,6 +2,7 @@
  * @fileoverview Export Logs Dialog component
  */
 
+import DownloadIcon from '@mui/icons-material/Download';
 import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -10,7 +11,7 @@ import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import Typography from '@mui/material/Typography';
-import DownloadIcon from '@mui/icons-material/Download';
+
 import { type ExportLogsDialogProps } from '../SettingsTypes';
 
 export function ExportLogsDialog({
@@ -20,7 +21,7 @@ export function ExportLogsDialog({
   isExporting,
   isLoading,
   onClose,
-  onExport
+  onExport,
 }: ExportLogsDialogProps) {
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth disableRestoreFocus>

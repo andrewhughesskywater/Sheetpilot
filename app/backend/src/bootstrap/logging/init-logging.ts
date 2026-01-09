@@ -1,4 +1,5 @@
 import type { App } from 'electron';
+
 import type { LoggerLike } from './logger-contract';
 
 export function initializeLoggingOrExit(app: App, logger: LoggerLike, initializeLogging: () => void): boolean {
@@ -25,11 +26,11 @@ export function initializeLoggingOrExit(app: App, logger: LoggerLike, initialize
       );
       setTimeout(() => app.exit(1), 2000);
     } catch (dialogErr: unknown) {
-      logger.error('Could not show error dialog', { error: dialogErr instanceof Error ? dialogErr.message : String(dialogErr) });
+      logger.error('Could not show error dialog', {
+        error: dialogErr instanceof Error ? dialogErr.message : String(dialogErr),
+      });
       app.exit(1);
     }
     return false;
   }
 }
-
-

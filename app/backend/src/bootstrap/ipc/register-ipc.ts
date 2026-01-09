@@ -1,6 +1,7 @@
 import type { BrowserWindow } from 'electron';
-import type { LoggerLike } from '../logging/logger-contract';
+
 import { registerAllIPCHandlers, setMainWindow } from '../../ipc/index';
+import type { LoggerLike } from '../logging/logger-contract';
 
 let ipcModuleLoaded = false;
 
@@ -21,7 +22,7 @@ export function registerIpcHandlers(params: {
       error: string;
       stack?: string | undefined;
     } = {
-      error: err instanceof Error ? err.message : String(err)
+      error: err instanceof Error ? err.message : String(err),
     };
 
     if (err instanceof Error && err.stack !== undefined) {
@@ -41,5 +42,3 @@ export function setIpcMainWindow(mainWindow: BrowserWindow | null, logger: Logge
   setMainWindow(mainWindow);
   logger.verbose('MainWindow reference updated successfully');
 }
-
-

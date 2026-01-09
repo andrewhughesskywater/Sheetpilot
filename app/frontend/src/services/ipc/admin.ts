@@ -11,5 +11,3 @@ export async function rebuildDatabase(token: string): Promise<{ success: boolean
   }
   return window.admin.rebuildDatabase(token);
 }
-
-

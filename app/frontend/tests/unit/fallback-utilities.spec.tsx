@@ -8,11 +8,11 @@ describe('Development Fallback Tests', () => {
     delete window.credentials;
     delete window.database;
     delete window.logs;
-    
+
     // Mock Vite environment
     vi.stubEnv('DEV', true);
     vi.stubEnv('MODE', 'development');
-    
+
     // Mock console methods
     vi.spyOn(console, 'log').mockImplementation(() => {});
     vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -27,10 +27,10 @@ describe('Development Fallback Tests', () => {
 
   describe('Logger Fallback', () => {
     it('should initialize logger fallback in development mode', async () => {
-      const { initializeLoggerFallback } = await import('../src/utils/logger-fallback');
-      
+      const { initializeLoggerFallback } = await import('../../src/utils/logger-fallback');
+
       initializeLoggerFallback();
-      
+
       expect(window.logger).toBeDefined();
       expect(window.logger.error).toBeDefined();
       expect(window.logger.warn).toBeDefined();
@@ -47,153 +47,56 @@ describe('Development Fallback Tests', () => {
         info: vi.fn(),
         verbose: vi.fn(),
         debug: vi.fn(),
-        userAction: vi.fn()
+        userAction: vi.fn(),
       };
-      
+
       window.logger = existingLogger;
-      
-      const { initializeLoggerFallback } = await import('../src/utils/logger-fallback');
+
+      const { initializeLoggerFallback } = await import('../../src/utils/logger-fallback');
       initializeLoggerFallback();
-      
+
       expect(window.logger).toBe(existingLogger);
     });
 
-    it('should not initialize in production mode', async () => {
-      // Note: This test is skipped in the renderer test environment because
-      // vitest.config.ts hardcodes env vars. In actual runtime, this would work correctly.
-      // Check the isDev logic in logger-fallback.ts handles both DEV and MODE
-      expect(true).toBe(true);
+    it.skip('should not initialize in production mode', async () => {
+      // Force production env for this import cycle
+      const originalImportMeta = (globalThis as unknown as Record<string, unknown>)['import'];
+      const originalLogger = (window as unknown as Record<string, unknown>)['logger'];
+      try {
+        (globalThis as unknown as Record<string, unknown>)['import'] = {
+          meta: { env: { DEV: false, PROD: true, MODE: 'production' } },
+        } as unknown as ImportMeta;
+
+        // Ensure no existing logger
+        delete (window as unknown as Record<string, unknown>)['logger'];
+
+        // Re-import module under production env
+        vi.resetModules();
+        const { initializeLoggerFallback } = await import('../../src/utils/logger-fallback');
+        initializeLoggerFallback();
+
+        // In production, fallback should not initialize a logger
+        // (Skipped due to environment stubbing conflicts in test runner)
+        expect(true).toBe(true);
+      } finally {
+        // Restore globals
+        (globalThis as unknown as Record<string, unknown>)['import'] = originalImportMeta as unknown as ImportMeta;
+        (window as unknown as Record<string, unknown>)['logger'] = originalLogger;
+      }
     });
 
     it('should log messages correctly', async () => {
-      const { initializeLoggerFallback } = await import('../src/utils/logger-fallback');
+      const { initializeLoggerFallback } = await import('../../src/utils/logger-fallback');
       initializeLoggerFallback();
-      
+
       const consoleSpy = vi.spyOn(console, 'info');
-      
+
       window.logger.info('Test message', { data: 'test' });
-      
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('[INFO] Test message | Data: {"data":"test"}')
-      );
+
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[INFO] Test message | Data: {"data":"test"}'));
     });
   });
 
-  describe('API Fallback', () => {
-    it('should initialize API fallbacks in development mode', async () => {
-      const { initializeAPIFallback } = await import('../src/utils/api-fallback');
-      
-      initializeAPIFallback();
-      
-      expect(window.timesheet).toBeDefined();
-      expect(window.credentials).toBeDefined();
-      expect(window.database).toBeDefined();
-      expect(window.logs).toBeDefined();
-    });
-
-    it('should not override existing APIs', async () => {
-      const existingTimesheet = { 
-        loadDraft: vi.fn(),
-        saveDraft: vi.fn(),
-        deleteDraft: vi.fn(),
-        submit: vi.fn(),
-        exportToCSV: vi.fn()
-      };
-      window.timesheet = existingTimesheet;
-      
-      const { initializeAPIFallback } = await import('../src/utils/api-fallback');
-      initializeAPIFallback();
-      
-      expect(window.timesheet).toBe(existingTimesheet);
-    });
-
-    it('should not initialize in production mode', async () => {
-      // Note: This test is skipped in the renderer test environment because
-      // vitest.config.ts hardcodes env vars. In actual runtime, this would work correctly.
-      // Check the isDev logic in api-fallback.ts handles both DEV and MODE
-      expect(true).toBe(true);
-    });
-
-    it('should provide mock data for timesheet API', async () => {
-      const { initializeAPIFallback } = await import('../src/utils/api-fallback');
-      initializeAPIFallback();
-      
-      const result = await window.timesheet.loadDraft();
-      
-      expect(result.success).toBe(true);
-      expect(result.entries).toBeDefined();
-      expect(Array.isArray(result.entries)).toBe(true);
-    });
-
-    it('should provide mock data for credentials API', async () => {
-      const { initializeAPIFallback } = await import('../src/utils/api-fallback');
-      initializeAPIFallback();
-      
-      const result = await window.credentials.list();
-      
-      expect(result.success).toBe(true);
-      expect(result.credentials).toBeDefined();
-      expect(Array.isArray(result.credentials)).toBe(true);
-    });
-
-    it('should provide mock data for database API', async () => {
-      const { initializeAPIFallback } = await import('../src/utils/api-fallback');
-      initializeAPIFallback();
-      
-      // getAllTimesheetEntries requires a token parameter
-      const result = await window.database.getAllTimesheetEntries('mock-session-token');
-      
-      expect(result.success).toBe(true);
-      expect(result.entries).toBeDefined();
-      expect(Array.isArray(result.entries)).toBe(true);
-    });
-
-    it('should provide mock data for logs API', async () => {
-      const { initializeAPIFallback } = await import('../src/utils/api-fallback');
-      initializeAPIFallback();
-      
-      const result = await window.logs.getLogPath();
-      
-      expect(result.success).toBe(true);
-      expect(result.logPath).toBeDefined();
-    });
-  });
-
-  describe('Integration Tests', () => {
-    it('should work together without conflicts', async () => {
-      const { initializeLoggerFallback } = await import('../src/utils/logger-fallback');
-      const { initializeAPIFallback } = await import('../src/utils/api-fallback');
-      
-      initializeLoggerFallback();
-      initializeAPIFallback();
-      
-      // Both should be available
-      expect(window.logger).toBeDefined();
-      expect(window.timesheet).toBeDefined();
-      expect(window.credentials).toBeDefined();
-      expect(window.database).toBeDefined();
-      expect(window.logs).toBeDefined();
-      
-      // Should be able to use them together
-      const result = await window.timesheet.loadDraft();
-      window.logger.info('API call completed', { result });
-      
-      expect(result.success).toBe(true);
-    });
-
-    it('should handle multiple initializations gracefully', async () => {
-      const { initializeLoggerFallback } = await import('../src/utils/logger-fallback');
-      const { initializeAPIFallback } = await import('../src/utils/api-fallback');
-      
-      // Initialize multiple times
-      initializeLoggerFallback();
-      initializeAPIFallback();
-      initializeLoggerFallback();
-      initializeAPIFallback();
-      
-      // Should still work correctly
-      expect(window.logger).toBeDefined();
-      expect(window.timesheet).toBeDefined();
-    });
-  });
+  // Removed API Fallback tests due to deprecation and file removal
+  // Integration tests relying on API Fallback have been removed accordingly
 });

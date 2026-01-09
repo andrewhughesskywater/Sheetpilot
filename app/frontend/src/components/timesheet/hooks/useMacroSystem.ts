@@ -1,8 +1,9 @@
-import { useState, useCallback } from 'react';
-import type { MacroRow } from '../../../utils/macroStorage';
-import { loadMacros, isMacroEmpty } from '../../../utils/macroStorage';
 import type { HotTableRef } from '@handsontable/react-wrapper';
 import type { MutableRefObject } from 'react';
+import { useCallback,useState } from 'react';
+
+import type { MacroRow } from '../../../utils/macroStorage';
+import { isMacroEmpty,loadMacros } from '../../../utils/macroStorage';
 import type { TimesheetRow } from '../timesheet.schema';
 
 interface UseMacroSystemParams {
@@ -72,7 +73,7 @@ export function useMacroSystem(params?: UseMacroSystemParams) {
         project: macro.project || newData[row]?.project,
         tool: macro.tool !== undefined ? macro.tool : newData[row]?.tool,
         chargeCode: macro.chargeCode !== undefined ? macro.chargeCode : newData[row]?.chargeCode,
-        taskDescription: macro.taskDescription || newData[row]?.taskDescription
+        taskDescription: macro.taskDescription || newData[row]?.taskDescription,
       };
 
       params.setTimesheetDraftData(newData);

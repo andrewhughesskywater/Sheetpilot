@@ -6,7 +6,7 @@ describe('End-to-End Blank Screen Prevention Tests', () => {
   beforeEach(() => {
     // Clear all mocks
     vi.clearAllMocks();
-    
+
     // Mock console methods to prevent test output noise
     vi.spyOn(console, 'log').mockImplementation(() => {});
     vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -24,7 +24,7 @@ describe('End-to-End Blank Screen Prevention Tests', () => {
       // Simulate the exact scenario that caused the blank screen
       vi.stubEnv('DEV', true);
       vi.stubEnv('NODE_ENV', 'development');
-      
+
       // Ensure no APIs are available (simulating browser environment)
       delete window.logger;
       delete window.timesheet;
@@ -34,14 +34,15 @@ describe('End-to-End Blank Screen Prevention Tests', () => {
       delete window.api;
 
       // Render the app
-      render(
-        <App />
-      );
+      render(<App />);
 
       // Wait for the app to render - look for the navigation tabs which should be present
-      await waitFor(() => {
-        expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
-      }, { timeout: 5000 });
+      await waitFor(
+        () => {
+          expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
+        },
+        { timeout: 5000 }
+      );
 
       // Verify the app is not blank
       expect(screen.getByText('Timesheet')).toBeInTheDocument();
@@ -50,7 +51,7 @@ describe('End-to-End Blank Screen Prevention Tests', () => {
     it('should handle the exact error sequence that caused blank screen', async () => {
       // Simulate the exact error sequence from the original issue
       vi.stubEnv('DEV', true);
-      
+
       // Start with no APIs (browser environment)
       delete window.logger;
       delete window.timesheet;
@@ -59,14 +60,15 @@ describe('End-to-End Blank Screen Prevention Tests', () => {
       delete window.logs;
 
       // Render the app
-      render(
-        <App />
-      );
+      render(<App />);
 
       // Wait for the app to render
-      await waitFor(() => {
-        expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
-      }, { timeout: 5000 });
+      await waitFor(
+        () => {
+          expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
+        },
+        { timeout: 5000 }
+      );
 
       // Verify the app renders successfully
       expect(screen.getByText('Timesheet')).toBeInTheDocument();
@@ -75,10 +77,10 @@ describe('End-to-End Blank Screen Prevention Tests', () => {
 
   describe('Additional Failure Scenarios', () => {
     it('should handle API initialization failures', async () => {
-      (window as {timesheet?: unknown}).timesheet = {
+      (window as { timesheet?: unknown }).timesheet = {
         saveDraft: () => {
           throw new Error('API initialization failed');
-        }
+        },
       };
 
       render(<App />);
@@ -89,8 +91,8 @@ describe('End-to-End Blank Screen Prevention Tests', () => {
     });
 
     it('should handle partial API availability', async () => {
-      (window as {timesheet?: unknown}).timesheet = {
-        saveDraft: vi.fn()
+      (window as { timesheet?: unknown }).timesheet = {
+        saveDraft: vi.fn(),
         // loadDraft missing
       };
 
@@ -102,8 +104,8 @@ describe('End-to-End Blank Screen Prevention Tests', () => {
     });
 
     it('should handle network failures gracefully', async () => {
-      (window as {timesheet?: unknown}).timesheet = {
-        loadDraft: vi.fn().mockRejectedValue(new Error('Network error'))
+      (window as { timesheet?: unknown }).timesheet = {
+        loadDraft: vi.fn().mockRejectedValue(new Error('Network error')),
       };
 
       render(<App />);
@@ -134,7 +136,9 @@ describe('End-to-End Blank Screen Prevention Tests', () => {
       const startTime = Date.now();
 
       // Simulate heavy initialization
-      Array(1000).fill(0).forEach((_, i) => i * 2);
+      Array(1000)
+        .fill(0)
+        .forEach((_, i) => i * 2);
 
       const duration = Date.now() - startTime;
 
@@ -183,13 +187,14 @@ describe('End-to-End Blank Screen Prevention Tests', () => {
       vi.stubEnv('DEV', true);
       vi.stubEnv('NODE_ENV', 'development');
 
-      render(
-        <App />
-      );
+      render(<App />);
 
-      await waitFor(() => {
-        expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
-      }, { timeout: 5000 });
+      await waitFor(
+        () => {
+          expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
+        },
+        { timeout: 5000 }
+      );
 
       expect(screen.getByText('Timesheet')).toBeInTheDocument();
     });
@@ -197,7 +202,7 @@ describe('End-to-End Blank Screen Prevention Tests', () => {
     it('should work correctly in production environment', async () => {
       vi.stubEnv('DEV', false);
       vi.stubEnv('NODE_ENV', 'production');
-      
+
       // Mock production APIs (simulating Electron environment)
       window.logger = {
         error: vi.fn(),
@@ -205,36 +210,37 @@ describe('End-to-End Blank Screen Prevention Tests', () => {
         info: vi.fn(),
         verbose: vi.fn(),
         debug: vi.fn(),
-        userAction: vi.fn()
+        userAction: vi.fn(),
       };
       window.timesheet = {
         loadDraft: vi.fn().mockResolvedValue({ success: true, entries: [] }),
         saveDraft: vi.fn(),
         deleteDraft: vi.fn(),
         submit: vi.fn(),
-        exportToCSV: vi.fn()
+        exportToCSV: vi.fn(),
       };
       window.credentials = {
         store: vi.fn(),
         list: vi.fn().mockResolvedValue({ success: true, credentials: [] }),
-        delete: vi.fn()
+        delete: vi.fn(),
       };
       window.database = {
         getAllTimesheetEntries: vi.fn(),
-        getAllArchiveData: vi.fn()
+        getAllArchiveData: vi.fn(),
       };
       window.logs = {
         getLogPath: vi.fn(),
-        exportLogs: vi.fn()
+        exportLogs: vi.fn(),
       };
 
-      render(
-        <App />
-      );
+      render(<App />);
 
-      await waitFor(() => {
-        expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
-      }, { timeout: 5000 });
+      await waitFor(
+        () => {
+          expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
+        },
+        { timeout: 5000 }
+      );
 
       expect(screen.getByText('Timesheet')).toBeInTheDocument();
     });
@@ -243,27 +249,23 @@ describe('End-to-End Blank Screen Prevention Tests', () => {
   describe('API Error Scenarios', () => {
     it('should handle API timeouts gracefully', async () => {
       vi.stubEnv('DEV', true);
-      
+
       // Mock APIs that timeout
       window.timesheet = {
-        loadDraft: vi.fn().mockImplementation(() => 
-          new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Timeout')), 100)
-          )
-        ),
+        loadDraft: vi
+          .fn()
+          .mockImplementation(() => new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 100))),
         saveDraft: vi.fn(),
         deleteDraft: vi.fn(),
         submit: vi.fn(),
-        exportToCSV: vi.fn()
+        exportToCSV: vi.fn(),
       };
       window.credentials = {
         store: vi.fn(),
-        list: vi.fn().mockImplementation(() => 
-          new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Timeout')), 100)
-          )
-        ),
-        delete: vi.fn()
+        list: vi
+          .fn()
+          .mockImplementation(() => new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 100))),
+        delete: vi.fn(),
       };
       window.logger = {
         error: vi.fn(),
@@ -271,35 +273,36 @@ describe('End-to-End Blank Screen Prevention Tests', () => {
         info: vi.fn(),
         verbose: vi.fn(),
         debug: vi.fn(),
-        userAction: vi.fn()
+        userAction: vi.fn(),
       };
 
-      render(
-        <App />
-      );
+      render(<App />);
 
-      await waitFor(() => {
-        expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
-      }, { timeout: 5000 });
+      await waitFor(
+        () => {
+          expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
+        },
+        { timeout: 5000 }
+      );
 
       expect(screen.getByText('Timesheet')).toBeInTheDocument();
     });
 
     it('should handle malformed API responses gracefully', async () => {
       vi.stubEnv('DEV', true);
-      
+
       // Mock APIs that return malformed data
       window.timesheet = {
         loadDraft: vi.fn().mockResolvedValue(null),
         saveDraft: vi.fn(),
         deleteDraft: vi.fn(),
         submit: vi.fn(),
-        exportToCSV: vi.fn()
+        exportToCSV: vi.fn(),
       };
       window.credentials = {
         store: vi.fn(),
         list: vi.fn().mockResolvedValue(undefined),
-        delete: vi.fn()
+        delete: vi.fn(),
       };
       window.logger = {
         error: vi.fn(),
@@ -307,16 +310,17 @@ describe('End-to-End Blank Screen Prevention Tests', () => {
         info: vi.fn(),
         verbose: vi.fn(),
         debug: vi.fn(),
-        userAction: vi.fn()
+        userAction: vi.fn(),
       };
 
-      render(
-        <App />
-      );
+      render(<App />);
 
-      await waitFor(() => {
-        expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
-      }, { timeout: 5000 });
+      await waitFor(
+        () => {
+          expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
+        },
+        { timeout: 5000 }
+      );
 
       expect(screen.getByText('Timesheet')).toBeInTheDocument();
     });

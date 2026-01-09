@@ -1,6 +1,7 @@
+import type { App, BrowserWindow, Screen } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
-import type { App, BrowserWindow, Screen } from 'electron';
+
 import type { LoggerLike } from '../logging/logger-contract';
 
 export interface WindowState {
@@ -14,12 +15,7 @@ export interface WindowState {
 /**
  * Validate a positive number field
  */
-function validatePositiveNumber(
-  value: unknown,
-  fieldName: string,
-  defaultValue: number,
-  logger: LoggerLike
-): number {
+function validatePositiveNumber(value: unknown, fieldName: string, defaultValue: number, logger: LoggerLike): number {
   if (typeof value === 'number' && value > 0) {
     return Math.round(value);
   }
@@ -30,11 +26,7 @@ function validatePositiveNumber(
 /**
  * Validate an optional non-negative number field
  */
-function validateOptionalNonNegativeNumber(
-  value: unknown,
-  fieldName: string,
-  logger: LoggerLike
-): number | undefined {
+function validateOptionalNonNegativeNumber(value: unknown, fieldName: string, logger: LoggerLike): number | undefined {
   if (typeof value === 'number' && value >= 0) {
     return Math.round(value);
   }
@@ -75,7 +67,7 @@ export function validateWindowState(data: unknown, logger: LoggerLike, defaults:
     height,
     ...(x !== undefined ? { x } : {}),
     ...(y !== undefined ? { y } : {}),
-    ...(isMaximized !== undefined ? { isMaximized } : {})
+    ...(isMaximized !== undefined ? { isMaximized } : {}),
   };
 }
 
@@ -88,7 +80,7 @@ export function getDefaultWindowState(): WindowState {
   return {
     width: defaultWidth,
     height: defaultHeight,
-    isMaximized: false
+    isMaximized: false,
   };
 }
 
@@ -136,7 +128,7 @@ export async function restoreWindowState(params: {
         width: validWidth,
         height: validHeight,
         ...(validX !== undefined ? { x: validX } : {}),
-        ...(validY !== undefined ? { y: validY } : {})
+        ...(validY !== undefined ? { y: validY } : {}),
       };
       params.window.setBounds(bounds);
     }
@@ -145,7 +137,7 @@ export async function restoreWindowState(params: {
   } catch (error: unknown) {
     // Window state file doesn't exist or is invalid - keep defaults
     params.logger.debug('Using default window state', {
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
     });
   }
 }
@@ -181,7 +173,7 @@ export function createDebouncedWindowStateSaver(params: {
             height: bounds.height,
             x: bounds.x,
             y: bounds.y,
-            isMaximized
+            isMaximized,
           };
 
           await fs.promises.mkdir(userDataPath, { recursive: true });
@@ -189,7 +181,9 @@ export function createDebouncedWindowStateSaver(params: {
 
           params.logger.debug('Window state saved', windowState);
         } catch (error: unknown) {
-          params.logger.warn('Could not save window state', { error: error instanceof Error ? error.message : String(error) });
+          params.logger.warn('Could not save window state', {
+            error: error instanceof Error ? error.message : String(error),
+          });
         }
       })();
     }, delayMs);
@@ -197,5 +191,3 @@ export function createDebouncedWindowStateSaver(params: {
 
   return { scheduleSave };
 }
-
-

@@ -1,21 +1,21 @@
 /**
  * ValidationErrorDialog Component
- * 
+ *
  * Dialog that displays all validation errors with row numbers and descriptions.
  * Opens when the user clicks the "Multiple Errors" summary button.
  */
 
-import Dialog from '@mui/material/Dialog';
-import DialogTitle from '@mui/material/DialogTitle';
-import DialogContent from '@mui/material/DialogContent';
-import DialogActions from '@mui/material/DialogActions';
+import CloseIcon from '@mui/icons-material/Close';
+import ErrorIcon from '@mui/icons-material/Error';
 import Button from '@mui/material/Button';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogTitle from '@mui/material/DialogTitle';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
-import ErrorIcon from '@mui/icons-material/Error';
-import CloseIcon from '@mui/icons-material/Close';
 
 interface ValidationError {
   row: number;
@@ -32,16 +32,9 @@ export interface ValidationErrorDialogProps {
 
 export function ValidationErrorDialog({ open, errors, onClose }: ValidationErrorDialogProps) {
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      maxWidth="md"
-      fullWidth
-    >
-      <DialogTitle>
-        Timesheet Validation Errors ({errors.length})
-      </DialogTitle>
-      
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+      <DialogTitle>Timesheet Validation Errors ({errors.length})</DialogTitle>
+
       <DialogContent>
         <List>
           {errors.map((error, index) => (
@@ -49,25 +42,17 @@ export function ValidationErrorDialog({ open, errors, onClose }: ValidationError
               <ListItemIcon>
                 <ErrorIcon color="error" />
               </ListItemIcon>
-              <ListItemText
-                primary={`Row ${error.row + 1}`}
-                secondary={error.message}
-              />
+              <ListItemText primary={`Row ${error.row + 1}`} secondary={error.message} />
             </ListItem>
           ))}
         </List>
       </DialogContent>
-      
+
       <DialogActions>
-        <Button
-          onClick={onClose}
-          variant="contained"
-          startIcon={<CloseIcon />}
-        >
+        <Button onClick={onClose} variant="contained" startIcon={<CloseIcon />}>
           Close
         </Button>
       </DialogActions>
     </Dialog>
   );
 }
-

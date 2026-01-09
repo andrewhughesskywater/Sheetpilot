@@ -1,9 +1,9 @@
 /**
  * @fileoverview IPC Schemas Validation Unit Tests
- * 
+ *
  * Tests all Zod schemas used for IPC input validation to ensure proper
  * validation and security against injection attacks.
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025
@@ -31,7 +31,7 @@ import {
   adminTokenSchema,
   getAllTimesheetEntriesSchema,
   readLogFileSchema,
-  exportLogsSchema
+  exportLogsSchema,
 } from '@/validation/ipc-schemas';
 
 describe('IPC Schemas Validation', () => {
@@ -43,25 +43,18 @@ describe('IPC Schemas Validation', () => {
           'test.user@domain.co.uk',
           'first.last+tag@company.com',
           'user123@test-domain.com',
-          'a@b.c'
+          'a@b.c',
         ];
-        
-        validEmails.forEach(email => {
+
+        validEmails.forEach((email) => {
           expect(() => emailSchema.parse(email)).not.toThrow();
         });
       });
 
       it('should reject invalid email formats', () => {
-        const invalidEmails = [
-          'invalid',
-          '@domain.com',
-          'user@',
-          'user @domain.com',
-          'user..name@domain.com',
-          ''
-        ];
-        
-        invalidEmails.forEach(email => {
+        const invalidEmails = ['invalid', '@domain.com', 'user@', 'user @domain.com', 'user..name@domain.com', ''];
+
+        invalidEmails.forEach((email) => {
           expect(() => emailSchema.parse(email)).toThrow();
         });
       });
@@ -74,15 +67,9 @@ describe('IPC Schemas Validation', () => {
 
     describe('passwordSchema', () => {
       it('should accept any non-empty password', () => {
-        const passwords = [
-          'short',
-          'a',
-          'Long password with spaces and special chars!@#$',
-          'P@ssw0rd123',
-          '12345678'
-        ];
-        
-        passwords.forEach(password => {
+        const passwords = ['short', 'a', 'Long password with spaces and special chars!@#$', 'P@ssw0rd123', '12345678'];
+
+        passwords.forEach((password) => {
           expect(() => passwordSchema.parse(password)).not.toThrow();
         });
       });
@@ -104,30 +91,24 @@ describe('IPC Schemas Validation', () => {
 
     describe('serviceNameSchema', () => {
       it('should accept valid service names', () => {
-        const validNames = [
-          'smartsheet',
-          'test-service',
-          'service_name',
-          'SERVICE123',
-          'a'
-        ];
-        
-        validNames.forEach(name => {
+        const validNames = ['smartsheet', 'test-service', 'service_name', 'SERVICE123', 'a'];
+
+        validNames.forEach((name) => {
           expect(() => serviceNameSchema.parse(name)).not.toThrow();
         });
       });
 
       it('should reject invalid characters', () => {
         const invalidNames = [
-          'service name',  // Space
-          'service.name',  // Dot
-          'service@name',  // At sign
-          'service/name',  // Slash
+          'service name', // Space
+          'service.name', // Dot
+          'service@name', // At sign
+          'service/name', // Slash
           'service\\name', // Backslash
-          ''
+          '',
         ];
-        
-        invalidNames.forEach(name => {
+
+        invalidNames.forEach((name) => {
           expect(() => serviceNameSchema.parse(name)).toThrow();
         });
       });
@@ -142,10 +123,10 @@ describe('IPC Schemas Validation', () => {
         const validUUIDs = [
           '123e4567-e89b-12d3-a456-426614174000',
           '550e8400-e29b-41d4-a716-446655440000',
-          '6ba7b810-9dad-11d1-80b4-00c04fd430c8'
+          '6ba7b810-9dad-11d1-80b4-00c04fd430c8',
         ];
-        
-        validUUIDs.forEach(uuid => {
+
+        validUUIDs.forEach((uuid) => {
           expect(() => sessionTokenSchema.parse(uuid)).not.toThrow();
         });
       });
@@ -155,10 +136,10 @@ describe('IPC Schemas Validation', () => {
           'not-a-uuid',
           '123-456-789',
           '',
-          '12345678-1234-1234-1234-1234567890' // Wrong length
+          '12345678-1234-1234-1234-1234567890', // Wrong length
         ];
-        
-        invalidUUIDs.forEach(uuid => {
+
+        invalidUUIDs.forEach((uuid) => {
           expect(() => sessionTokenSchema.parse(uuid)).toThrow();
         });
       });
@@ -166,40 +147,31 @@ describe('IPC Schemas Validation', () => {
 
     describe('dateSchema', () => {
       it('should accept ISO format dates (YYYY-MM-DD)', () => {
-        const validDates = [
-          '2025-01-15',
-          '2024-12-31',
-          '2025-06-30'
-        ];
-        
-        validDates.forEach(date => {
+        const validDates = ['2025-01-15', '2024-12-31', '2025-06-30'];
+
+        validDates.forEach((date) => {
           expect(() => dateSchema.parse(date)).not.toThrow();
         });
       });
 
       it('should accept US format dates (MM/DD/YYYY)', () => {
-        const validDates = [
-          '01/15/2025',
-          '12/31/2024',
-          '6/15/2025',
-          '1/1/2025'
-        ];
-        
-        validDates.forEach(date => {
+        const validDates = ['01/15/2025', '12/31/2024', '6/15/2025', '1/1/2025'];
+
+        validDates.forEach((date) => {
           expect(() => dateSchema.parse(date)).not.toThrow();
         });
       });
 
       it('should reject invalid date formats', () => {
         const invalidDates = [
-          '15-01-2025',  // Wrong order
-          '2025/01/15',  // Wrong separator for ISO
-          '01-15-2025',  // Wrong separator for US
+          '15-01-2025', // Wrong order
+          '2025/01/15', // Wrong separator for ISO
+          '01-15-2025', // Wrong separator for US
           '',
-          'not-a-date'
+          'not-a-date',
         ];
-        
-        invalidDates.forEach(date => {
+
+        invalidDates.forEach((date) => {
           expect(() => dateSchema.parse(date)).toThrow();
         });
       });
@@ -212,26 +184,26 @@ describe('IPC Schemas Validation', () => {
           '09:00',
           '17:30',
           '23:59',
-          '9:00',  // Single digit hour
-          '9:5'    // Single digit minutes
+          '9:00', // Single digit hour
+          '9:5', // Single digit minutes
         ];
-        
-        validTimes.forEach(time => {
+
+        validTimes.forEach((time) => {
           expect(() => timeSchema.parse(time)).not.toThrow();
         });
       });
 
       it('should reject invalid time formats', () => {
         const invalidTimes = [
-          '25:00',  // Invalid hour
-          '09:60',  // Invalid minute
-          '9',      // Missing minutes
+          '25:00', // Invalid hour
+          '09:60', // Invalid minute
+          '9', // Missing minutes
           '',
           'not-a-time',
-          '09:00:00' // Seconds not allowed
+          '09:00:00', // Seconds not allowed
         ];
-        
-        invalidTimes.forEach(time => {
+
+        invalidTimes.forEach((time) => {
           expect(() => timeSchema.parse(time)).toThrow();
         });
       });
@@ -239,14 +211,9 @@ describe('IPC Schemas Validation', () => {
 
     describe('projectNameSchema', () => {
       it('should accept valid project names', () => {
-        const validNames = [
-          'FL-Carver Techs',
-          'PTO/RTO',
-          'SWFL-CHEM/GAS',
-          'Test Project 123'
-        ];
-        
-        validNames.forEach(name => {
+        const validNames = ['FL-Carver Techs', 'PTO/RTO', 'SWFL-CHEM/GAS', 'Test Project 123'];
+
+        validNames.forEach((name) => {
           expect(() => projectNameSchema.parse(name)).not.toThrow();
         });
       });
@@ -267,10 +234,10 @@ describe('IPC Schemas Validation', () => {
           'Simple task',
           'Task with special chars!@#$%^&*()',
           'Very long task description '.repeat(50),
-          'Task with\nnewlines\nand\ttabs'
+          'Task with\nnewlines\nand\ttabs',
         ];
-        
-        validDescriptions.forEach(desc => {
+
+        validDescriptions.forEach((desc) => {
           expect(() => taskDescriptionSchema.parse(desc)).not.toThrow();
         });
       });
@@ -292,9 +259,9 @@ describe('IPC Schemas Validation', () => {
         const valid = {
           service: 'smartsheet',
           email: 'user@example.com',
-          password: 'password123'
+          password: 'password123',
         };
-        
+
         expect(() => storeCredentialsSchema.parse(valid)).not.toThrow();
       });
 
@@ -308,9 +275,9 @@ describe('IPC Schemas Validation', () => {
         const invalid = {
           service: 123,
           email: 'user@example.com',
-          password: 'password123'
+          password: 'password123',
         };
-        
+
         expect(() => storeCredentialsSchema.parse(invalid)).toThrow();
       });
     });
@@ -332,9 +299,9 @@ describe('IPC Schemas Validation', () => {
         const valid = {
           email: 'user@example.com',
           password: 'password123',
-          stayLoggedIn: true
+          stayLoggedIn: true,
         };
-        
+
         expect(() => loginSchema.parse(valid)).not.toThrow();
       });
 
@@ -342,9 +309,9 @@ describe('IPC Schemas Validation', () => {
         const invalid = {
           email: 'not-an-email',
           password: 'password123',
-          stayLoggedIn: true
+          stayLoggedIn: true,
         };
-        
+
         expect(() => loginSchema.parse(invalid)).toThrow();
       });
 
@@ -352,9 +319,9 @@ describe('IPC Schemas Validation', () => {
         const invalid = {
           email: 'user@example.com',
           password: 'password123',
-          stayLoggedIn: 'true' // String instead of boolean
+          stayLoggedIn: 'true', // String instead of boolean
         };
-        
+
         expect(() => loginSchema.parse(invalid)).toThrow();
       });
     });
@@ -362,20 +329,16 @@ describe('IPC Schemas Validation', () => {
     describe('validateSessionSchema', () => {
       it('should accept valid session token', () => {
         const valid = {
-          token: '123e4567-e89b-12d3-a456-426614174000'
+          token: '123e4567-e89b-12d3-a456-426614174000',
         };
-        
+
         expect(() => validateSessionSchema.parse(valid)).not.toThrow();
       });
 
       it('should reject invalid tokens', () => {
-        const invalid = [
-          { token: 'not-a-uuid' },
-          { token: '' },
-          {}
-        ];
-        
-        invalid.forEach(obj => {
+        const invalid = [{ token: 'not-a-uuid' }, { token: '' }, {}];
+
+        invalid.forEach((obj) => {
           expect(() => validateSessionSchema.parse(obj)).toThrow();
         });
       });
@@ -384,9 +347,9 @@ describe('IPC Schemas Validation', () => {
     describe('logoutSchema', () => {
       it('should accept valid token', () => {
         const valid = {
-          token: '123e4567-e89b-12d3-a456-426614174000'
+          token: '123e4567-e89b-12d3-a456-426614174000',
         };
-        
+
         expect(() => logoutSchema.parse(valid)).not.toThrow();
       });
     });
@@ -394,9 +357,9 @@ describe('IPC Schemas Validation', () => {
     describe('getCurrentSessionSchema', () => {
       it('should accept valid token', () => {
         const valid = {
-          token: '123e4567-e89b-12d3-a456-426614174000'
+          token: '123e4567-e89b-12d3-a456-426614174000',
         };
-        
+
         expect(() => getCurrentSessionSchema.parse(valid)).not.toThrow();
       });
     });
@@ -412,9 +375,9 @@ describe('IPC Schemas Validation', () => {
           project: 'FL-Carver Techs',
           tool: '#1 Rinse and 2D marker',
           chargeCode: 'EPR1',
-          taskDescription: 'Test task'
+          taskDescription: 'Test task',
         };
-        
+
         expect(() => saveDraftSchema.parse(valid)).not.toThrow();
       });
 
@@ -426,9 +389,9 @@ describe('IPC Schemas Validation', () => {
           project: 'FL-Carver Techs',
           tool: '#1 Rinse and 2D marker',
           chargeCode: 'EPR1',
-          taskDescription: 'Test task'
+          taskDescription: 'Test task',
         };
-        
+
         expect(() => saveDraftSchema.parse(valid)).not.toThrow();
       });
 
@@ -439,9 +402,9 @@ describe('IPC Schemas Validation', () => {
           timeIn: '09:00',
           timeOut: '17:00',
           project: 'Test',
-          taskDescription: 'Test'
+          taskDescription: 'Test',
         };
-        
+
         expect(() => saveDraftSchema.parse(valid)).not.toThrow();
       });
 
@@ -453,9 +416,9 @@ describe('IPC Schemas Validation', () => {
           project: 'Test',
           tool: null,
           chargeCode: null,
-          taskDescription: 'Test'
+          taskDescription: 'Test',
         };
-        
+
         expect(() => saveDraftSchema.parse(valid)).not.toThrow();
       });
 
@@ -465,9 +428,9 @@ describe('IPC Schemas Validation', () => {
           timeIn: '17:00',
           timeOut: '09:00', // Before timeIn
           project: 'Test',
-          taskDescription: 'Test'
+          taskDescription: 'Test',
         };
-        
+
         expect(() => saveDraftSchema.parse(invalid)).toThrow();
       });
 
@@ -477,9 +440,9 @@ describe('IPC Schemas Validation', () => {
           timeIn: '09:00',
           timeOut: '09:00', // Same as timeIn
           project: 'Test',
-          taskDescription: 'Test'
+          taskDescription: 'Test',
         };
-        
+
         expect(() => saveDraftSchema.parse(invalid)).toThrow();
       });
 
@@ -489,10 +452,10 @@ describe('IPC Schemas Validation', () => {
           { date: '2025-01-15', timeIn: '09:00', timeOut: '17:00', taskDescription: 'Test' }, // Missing project
           { date: '2025-01-15', timeIn: '09:00', project: 'Test', taskDescription: 'Test' }, // Missing timeOut
           { date: '2025-01-15', timeOut: '17:00', project: 'Test', taskDescription: 'Test' }, // Missing timeIn
-          { timeIn: '09:00', timeOut: '17:00', project: 'Test', taskDescription: 'Test' } // Missing date
+          { timeIn: '09:00', timeOut: '17:00', project: 'Test', taskDescription: 'Test' }, // Missing date
         ];
-        
-        missingFields.forEach(data => {
+
+        missingFields.forEach((data) => {
           expect(() => saveDraftSchema.parse(data)).toThrow();
         });
       });
@@ -503,9 +466,9 @@ describe('IPC Schemas Validation', () => {
           timeIn: '09:00',
           timeOut: '17:00',
           project: 'Test',
-          taskDescription: 'Test'
+          taskDescription: 'Test',
         };
-        
+
         expect(() => saveDraftSchema.parse(invalid)).toThrow();
       });
 
@@ -515,9 +478,9 @@ describe('IPC Schemas Validation', () => {
           timeIn: 'not-a-time',
           timeOut: '17:00',
           project: 'Test',
-          taskDescription: 'Test'
+          taskDescription: 'Test',
         };
-        
+
         expect(() => saveDraftSchema.parse(invalid)).toThrow();
       });
 
@@ -528,9 +491,9 @@ describe('IPC Schemas Validation', () => {
           timeIn: '09:00',
           timeOut: '17:00',
           project: 'Test',
-          taskDescription: 'Test'
+          taskDescription: 'Test',
         };
-        
+
         expect(() => saveDraftSchema.parse(invalid)).toThrow();
       });
 
@@ -541,9 +504,9 @@ describe('IPC Schemas Validation', () => {
           timeIn: '09:00',
           timeOut: '17:00',
           project: 'Test',
-          taskDescription: 'Test'
+          taskDescription: 'Test',
         };
-        
+
         expect(() => saveDraftSchema.parse(invalid)).toThrow();
       });
     });
@@ -551,8 +514,8 @@ describe('IPC Schemas Validation', () => {
     describe('deleteDraftSchema', () => {
       it('should accept valid positive integers', () => {
         const validIds = [1, 2, 100, 999999];
-        
-        validIds.forEach(id => {
+
+        validIds.forEach((id) => {
           expect(() => deleteDraftSchema.parse({ id })).not.toThrow();
         });
       });
@@ -561,12 +524,12 @@ describe('IPC Schemas Validation', () => {
         const invalidIds = [
           { id: 0 },
           { id: -1 },
-          { id: 1.5 },  // Float
-          { id: '1' },  // String
-          {}
+          { id: 1.5 }, // Float
+          { id: '1' }, // String
+          {},
         ];
-        
-        invalidIds.forEach(data => {
+
+        invalidIds.forEach((data) => {
           expect(() => deleteDraftSchema.parse(data)).toThrow();
         });
       });
@@ -575,9 +538,9 @@ describe('IPC Schemas Validation', () => {
     describe('submitTimesheetsSchema', () => {
       it('should accept valid token', () => {
         const valid = {
-          token: '123e4567-e89b-12d3-a456-426614174000'
+          token: '123e4567-e89b-12d3-a456-426614174000',
         };
-        
+
         expect(() => submitTimesheetsSchema.parse(valid)).not.toThrow();
       });
 
@@ -592,9 +555,9 @@ describe('IPC Schemas Validation', () => {
     describe('adminTokenSchema', () => {
       it('should accept valid UUID tokens', () => {
         const valid = {
-          token: '123e4567-e89b-12d3-a456-426614174000'
+          token: '123e4567-e89b-12d3-a456-426614174000',
         };
-        
+
         expect(() => adminTokenSchema.parse(valid)).not.toThrow();
       });
 
@@ -608,9 +571,9 @@ describe('IPC Schemas Validation', () => {
     describe('getAllTimesheetEntriesSchema', () => {
       it('should accept valid token', () => {
         const valid = {
-          token: '123e4567-e89b-12d3-a456-426614174000'
+          token: '123e4567-e89b-12d3-a456-426614174000',
         };
-        
+
         expect(() => getAllTimesheetEntriesSchema.parse(valid)).not.toThrow();
       });
 
@@ -623,14 +586,9 @@ describe('IPC Schemas Validation', () => {
   describe('Logs Schemas', () => {
     describe('readLogFileSchema', () => {
       it('should accept valid log paths', () => {
-        const validPaths = [
-          'C:\\logs\\app.log',
-          '/var/log/app.log',
-          'logs/application.log',
-          'app-2025-01-15.log'
-        ];
-        
-        validPaths.forEach(logPath => {
+        const validPaths = ['C:\\logs\\app.log', '/var/log/app.log', 'logs/application.log', 'app-2025-01-15.log'];
+
+        validPaths.forEach((logPath) => {
           expect(() => readLogFileSchema.parse({ logPath })).not.toThrow();
         });
       });
@@ -650,10 +608,10 @@ describe('IPC Schemas Validation', () => {
         const validRequests = [
           { logPath: 'app.log', exportFormat: 'json' as const },
           { logPath: 'app.log', exportFormat: 'txt' as const },
-          { logPath: 'app.log' } // exportFormat is optional
+          { logPath: 'app.log' }, // exportFormat is optional
         ];
-        
-        validRequests.forEach(req => {
+
+        validRequests.forEach((req) => {
           expect(() => exportLogsSchema.parse(req)).not.toThrow();
         });
       });
@@ -661,9 +619,9 @@ describe('IPC Schemas Validation', () => {
       it('should reject invalid export formats', () => {
         const invalid = {
           logPath: 'app.log',
-          exportFormat: 'csv' // Not in enum
+          exportFormat: 'csv', // Not in enum
         };
-        
+
         expect(() => exportLogsSchema.parse(invalid)).toThrow();
       });
     });
@@ -675,9 +633,9 @@ describe('IPC Schemas Validation', () => {
         service: 'smartsheet',
         email: 'user@example.com',
         password: 'password123',
-        extraField: 'should be ignored'
+        extraField: 'should be ignored',
       };
-      
+
       // Zod by default strips extra fields
       const result = storeCredentialsSchema.parse(withExtra);
       expect(result).not.toHaveProperty('extraField');
@@ -690,22 +648,18 @@ describe('IPC Schemas Validation', () => {
         timeIn: '09:00',
         timeOut: '17:00',
         project: 'Test',
-        taskDescription: 'Test'
+        taskDescription: 'Test',
       };
-      
+
       expect(() => saveDraftSchema.parse(minimal)).not.toThrow();
     });
   });
 
   describe('Security Tests', () => {
     it('should prevent SQL injection in service names', () => {
-      const sqlInjection = [
-        "service'; DROP TABLE credentials; --",
-        "service' OR '1'='1",
-        "service'; DELETE FROM * --"
-      ];
-      
-      sqlInjection.forEach(attack => {
+      const sqlInjection = ["service'; DROP TABLE credentials; --", "service' OR '1'='1", "service'; DELETE FROM * --"];
+
+      sqlInjection.forEach((attack) => {
         expect(() => serviceNameSchema.parse(attack)).toThrow();
       });
     });
@@ -714,12 +668,12 @@ describe('IPC Schemas Validation', () => {
       const xssAttempts = [
         '<script>alert("XSS")</script>',
         '<img src=x onerror=alert("XSS")>',
-        '<iframe src="javascript:alert(\'XSS\')"></iframe>'
+        '<iframe src="javascript:alert(\'XSS\')"></iframe>',
       ];
-      
+
       // Task descriptions should accept these (they're just text)
       // XSS prevention happens at the rendering layer
-      xssAttempts.forEach(attack => {
+      xssAttempts.forEach((attack) => {
         expect(() => taskDescriptionSchema.parse(attack)).not.toThrow();
       });
     });
@@ -728,27 +682,22 @@ describe('IPC Schemas Validation', () => {
       const pathTraversal = [
         '../../../etc/passwd',
         '..\\..\\..\\windows\\system32\\config\\sam',
-        'logs/../../secret.txt'
+        'logs/../../secret.txt',
       ];
-      
+
       // Schemas accept these paths (validation happens at filesystem layer)
-      pathTraversal.forEach(path => {
+      pathTraversal.forEach((path) => {
         expect(() => readLogFileSchema.parse({ logPath: path })).not.toThrow();
       });
     });
 
     it('should prevent command injection in project names', () => {
-      const commandInjection = [
-        'project; rm -rf /',
-        'project && del /f /q *.*',
-        'project | cat /etc/passwd'
-      ];
-      
+      const commandInjection = ['project; rm -rf /', 'project && del /f /q *.*', 'project | cat /etc/passwd'];
+
       // These should be accepted as text (validation for allowed values happens elsewhere)
-      commandInjection.forEach(attack => {
+      commandInjection.forEach((attack) => {
         expect(() => projectNameSchema.parse(attack)).not.toThrow();
       });
     });
   });
 });
-

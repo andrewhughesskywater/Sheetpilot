@@ -2,6 +2,8 @@
  * @fileoverview Admin Tools Dialog component
  */
 
+import DeleteIcon from '@mui/icons-material/Delete';
+import SecurityIcon from '@mui/icons-material/Security';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -10,8 +12,7 @@ import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import Typography from '@mui/material/Typography';
-import DeleteIcon from '@mui/icons-material/Delete';
-import SecurityIcon from '@mui/icons-material/Security';
+
 import { type AdminToolsDialogProps } from '../SettingsTypes';
 
 export function AdminToolsDialog({
@@ -20,7 +21,7 @@ export function AdminToolsDialog({
   isAdminActionLoading,
   onClose,
   onRequestClearCredentials,
-  onRequestRebuildDatabase
+  onRequestRebuildDatabase,
 }: AdminToolsDialogProps) {
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth disableRestoreFocus>

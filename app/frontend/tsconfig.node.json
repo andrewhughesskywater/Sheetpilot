@@ -34,8 +34,5 @@
       "@sheetpilot/shared/*": ["../shared/*"]
     }
   },
-  "include": [
-    "src/config/vite.config.ts",
-    "tests/vitest.config.blank-screen-prevention.ts"
-  ]
+  "include": ["src/config/vite.config.ts", "tests/vitest.config.blank-screen-prevention.ts"]
 }

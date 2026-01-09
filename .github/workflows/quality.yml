@@ -29,6 +29,9 @@ jobs:
       - name: Rebuild native modules
         run: npm run rebuild
 
+      - name: Format check
+        run: npm run format:check
+
       - name: Type check
         run: npm run type-check
 
@@ -51,6 +54,15 @@ jobs:
 
       - name: Run integration tests
         run: npm run test:integration
+
+      - name: Run unit tests with coverage
+        run: npm run test:unit -- --coverage
+
+      - name: Run integration tests with coverage
+        run: npm run test:integration -- --coverage
+
+      - name: Run frontend tests with coverage
+        run: npm run test:renderer -- --coverage
 
       - name: Upload ESLint report
         uses: actions/upload-artifact@v4

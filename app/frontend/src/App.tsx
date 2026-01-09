@@ -1,16 +1,16 @@
 /**
  * @fileoverview Main Application Component
- * 
+ *
  * Root component orchestrating the application shell, navigation, authentication,
  * and lazy-loaded page content with smooth transitions.
- * 
+ *
  * Key responsibilities:
  * - Authentication flow and session management
  * - Tab-based navigation with animated transitions
  * - Lazy loading of heavy components (TimesheetGrid, Archive, Settings)
  * - Auto-update handling with progress tracking
  * - On-demand data loading per tab to optimize startup performance
- * 
+ *
  * Architecture decisions:
  * - Lazy loading with Suspense to reduce initial bundle size
  * - On-demand data fetching when tabs activate (not on mount) for performance
@@ -18,47 +18,51 @@
  * - Real-time row saves eliminate need for batch save on tab change
  */
 
-import { useState, useEffect, Suspense, lazy, useRef } from 'react';
-import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
-import CircularProgress from '@mui/material/CircularProgress';
-import LinearProgress from '@mui/material/LinearProgress';
-const Archive = lazy(() => import('./components/archive/DatabaseViewer'));
-const TimesheetGrid = lazy(() => import('./components/timesheet/TimesheetGrid'));
-import type { TimesheetGridHandle } from './components/timesheet/TimesheetGrid';
-import Navigation from './components/Navigation';
-const Settings = lazy(() => import('./components/Settings'));
-import TimesheetSkeleton from './components/skeletons/TimesheetSkeleton';
-import ArchiveSkeleton from './components/skeletons/ArchiveSkeleton';
-import SettingsSkeleton from './components/skeletons/SettingsSkeleton';
-import UpdateDialog from './components/UpdateDialog';
-import LoginDialog from './components/LoginDialog';
-import { DataProvider, useData } from './contexts/DataContext';
-import { SessionProvider, useSession } from './contexts/SessionContext';
-import { initializeTheme } from './utils/theme-manager';
-import logoImage from './assets/images/logo.svg';
-import { APP_VERSION } from '@sheetpilot/shared/constants';
 import './styles/App.css';
 import './styles/transitions.css';
-import { onDownloadProgress, onUpdateAvailable, onUpdateDownloaded, removeAllUpdateListeners } from './services/ipc/updates';
+
+import Box from '@mui/material/Box';
+import CircularProgress from '@mui/material/CircularProgress';
+import LinearProgress from '@mui/material/LinearProgress';
+import Typography from '@mui/material/Typography';
+import { APP_VERSION } from '@sheetpilot/shared/constants';
+import { lazy, Suspense, useEffect, useRef,useState } from 'react';
+
+import logoImage from './assets/images/logo.svg';
+import LoginDialog from './components/LoginDialog';
+import Navigation from './components/Navigation';
+import ArchiveSkeleton from './components/skeletons/ArchiveSkeleton';
+import SettingsSkeleton from './components/skeletons/SettingsSkeleton';
+import TimesheetSkeleton from './components/skeletons/TimesheetSkeleton';
+import type { TimesheetGridHandle } from './components/timesheet/TimesheetGrid';
+import UpdateDialog from './components/UpdateDialog';
+import { DataProvider, useData } from './contexts/DataContext';
+import { SessionProvider, useSession } from './contexts/SessionContext';
 import { logDebug, logInfo, logUserAction } from './services/ipc/logger';
+import {
+  onDownloadProgress,
+  onUpdateAvailable,
+  onUpdateDownloaded,
+  removeAllUpdateListeners,
+} from './services/ipc/updates';
+import { initializeTheme } from './utils/theme-manager';
+
+const Archive = lazy(() => import('./components/archive/DatabaseViewer'));
+const TimesheetGrid = lazy(() => import('./components/timesheet/TimesheetGrid'));
+const Settings = lazy(() => import('./components/Settings'));
 
 /**
  * About dialog content component
- * 
+ *
  * Displays application branding, version, and author information.
  * Used in both splash screen and settings about dialog.
- * 
+ *
  * @returns About content with logo, version, and description
  */
 export function AboutBody() {
   return (
     <Box className="about-dialog-content">
-      <img 
-        src={logoImage} 
-        alt="SheetPilot Logo" 
-        className="about-dialog-logo"
-      />
+      <img src={logoImage} alt="SheetPilot Logo" className="about-dialog-logo" />
       <Typography variant="body1" color="text.secondary" gutterBottom>
         Version {APP_VERSION}
       </Typography>
@@ -74,19 +78,19 @@ export function AboutBody() {
 
 /**
  * Splash screen component shown during app initialization and updates
- * 
+ *
  * Displays application branding and update progress during:
  * - Initial app startup
  * - Update download and installation
  * - Update finalization after restart
- * 
+ *
  * Update flow:
  * 1. Checking - Looking for available updates
  * 2. Downloading - Downloading update with progress bar
  * 3. Installing - Preparing update for installation
  * 4. Finalizing - Post-restart update completion (detected via URL hash)
  * 5. Ready - Proceeding to main app
- * 
+ *
  * @returns Splash screen with progress indicator
  */
 export function Splash() {
@@ -167,8 +171,8 @@ export function Splash() {
             borderRadius: 'var(--sp-radius-sm)',
             backgroundColor: 'var(--md-sys-color-surface-variant)',
             '& .MuiLinearProgress-bar': {
-              backgroundColor: 'var(--md-sys-color-primary)'
-            }
+              backgroundColor: 'var(--md-sys-color-primary)',
+            },
           }}
         />
         <Typography variant="body2" color="text.secondary" sx={{ mt: 1, textAlign: 'center' }}>
@@ -189,7 +193,14 @@ interface TabDataRefreshConfig {
 }
 
 function useTabDataRefresh(config: TabDataRefreshConfig) {
-  const { activeTab, isLoggedIn, refreshTimesheetDraft, refreshArchiveData, isTimesheetDraftLoading, timesheetDraftData } = config;
+  const {
+    activeTab,
+    isLoggedIn,
+    refreshTimesheetDraft,
+    refreshArchiveData,
+    isTimesheetDraftLoading,
+    timesheetDraftData,
+  } = config;
   const hasRequestedInitialTimesheetRef = useRef(false);
   const hasRefreshedEmptyOnceRef = useRef(false);
 
@@ -203,16 +214,12 @@ function useTabDataRefresh(config: TabDataRefreshConfig) {
         void refreshTimesheetDraft();
         return;
       }
-      const hasRealRows = Array.isArray(timesheetDraftData) && timesheetDraftData.some((r) => {
-        const row = r as Record<string, unknown>;
-        return Boolean(
-          row['date'] ||
-          row['timeIn'] ||
-          row['timeOut'] ||
-          row['project'] ||
-          row['taskDescription']
-        );
-      });
+      const hasRealRows =
+        Array.isArray(timesheetDraftData) &&
+        timesheetDraftData.some((r) => {
+          const row = r as Record<string, unknown>;
+          return Boolean(row['date'] || row['timeIn'] || row['timeOut'] || row['project'] || row['taskDescription']);
+        });
       if (!isTimesheetDraftLoading && !hasRealRows && !hasRefreshedEmptyOnceRef.current) {
         window.logger?.debug('[App] Timesheet appears empty post-init; refreshing once');
         hasRefreshedEmptyOnceRef.current = true;
@@ -238,9 +245,7 @@ function useAccessibilityFix() {
           // When root is hidden (dialog is open), blur any focused elements inside root
           // This prevents "focus trapped in aria-hidden element" accessibility warning
           // Check if element is in root AND not in a dialog portal
-          if (activeElement && 
-              rootElement.contains(activeElement) && 
-              activeElement !== document.body) {
+          if (activeElement && rootElement.contains(activeElement) && activeElement !== document.body) {
             // Additional check: make sure the element isn't in a dialog portal
             // (in case MUI renders dialog inside root in some edge cases)
             const isInDialog = activeElement.closest('[role="dialog"]');
@@ -255,7 +260,7 @@ function useAccessibilityFix() {
     const observer = new MutationObserver(handleAriaHiddenChange);
     observer.observe(rootElement, {
       attributes: true,
-      attributeFilter: ['aria-hidden']
+      attributeFilter: ['aria-hidden'],
     });
     handleAriaHiddenChange();
 
@@ -275,24 +280,24 @@ function useUpdateDialog() {
     if (!window.updates) {
       return;
     }
-    
+
     onUpdateAvailable((version) => {
       logInfo('Update available event received', { version });
       setUpdateVersion(version);
       setUpdateStatus('downloading');
       setShowUpdateDialog(true);
     });
-    
+
     onDownloadProgress((progress) => {
       logDebug('Download progress', { percent: progress.percent });
       setUpdateProgress(progress.percent);
     });
-    
+
     onUpdateDownloaded((version) => {
       logInfo('Update downloaded event received', { version });
       setUpdateStatus('installing');
     });
-    
+
     return () => {
       removeAllUpdateListeners();
     };
@@ -303,23 +308,23 @@ function useUpdateDialog() {
 
 /**
  * Main application content after authentication
- * 
+ *
  * Orchestrates the entire application UI including:
  * - Tab-based navigation (Timesheet, Archive, Settings)
  * - Lazy-loaded page content with loading skeletons
  * - Animated page transitions
  * - Update progress dialogs
  * - On-demand data loading per tab
- * 
+ *
  * State management:
  * - Prevents duplicate data fetches during React StrictMode
  * - Handles empty data refresh edge cases
  * - Manages transition animations to prevent UI glitches
- * 
+ *
  * Accessibility:
  * - Implements workaround for MUI dialog focus trap issue
  * - Monitors aria-hidden changes to blur background content
- * 
+ *
  * @returns Authenticated application shell with navigation and content
  */
 function AppContent() {
@@ -328,17 +333,17 @@ function AppContent() {
   const [displayedTab, setDisplayedTab] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const timesheetGridRef = useRef<TimesheetGridHandle>(null);
-  
+
   const { refreshTimesheetDraft, refreshArchiveData, isTimesheetDraftLoading, timesheetDraftData } = useData();
   const updateDialog = useUpdateDialog();
-  
+
   useTabDataRefresh({
     activeTab,
     isLoggedIn,
     refreshTimesheetDraft,
     refreshArchiveData,
     isTimesheetDraftLoading,
-    timesheetDraftData
+    timesheetDraftData,
   });
   useEffect(() => {
     initializeTheme();
@@ -347,25 +352,25 @@ function AppContent() {
 
   return (
     <div className="app-container">
-      <Navigation 
+      <Navigation
         activeTab={activeTab}
         onTabChange={async (newTab) => {
           if (isTransitioning || newTab === activeTab) return;
-          
+
           logUserAction('tab-change', { from: activeTab, to: newTab });
-          
+
           setIsTransitioning(true);
-          
-          await new Promise(resolve => setTimeout(resolve, 200));
-          
+
+          await new Promise((resolve) => setTimeout(resolve, 200));
+
           setActiveTab(newTab);
           setDisplayedTab(newTab);
-          
-          await new Promise(resolve => setTimeout(resolve, 100));
+
+          await new Promise((resolve) => setTimeout(resolve, 100));
           setIsTransitioning(false);
         }}
       />
-      
+
       <div className="main-content-area">
         <div className="content-area">
           {sessionLoading ? (
@@ -397,7 +402,7 @@ function AppContent() {
           )}
         </div>
 
-        <UpdateDialog 
+        <UpdateDialog
           open={updateDialog.showUpdateDialog}
           version={updateDialog.updateVersion}
           progress={updateDialog.updateProgress}

@@ -11,6 +11,7 @@
  */
 
 import type { App } from 'electron';
+
 import type { LoggerLike } from '../logging/logger-contract';
 
 export interface ErrorDialogParams {
@@ -41,7 +42,7 @@ export async function showErrorDialog(params: ErrorDialogParams): Promise<void> 
   logger.error(title, {
     message,
     error: error instanceof Error ? error.message : String(error),
-    stack: error instanceof Error ? error.stack : undefined
+    stack: error instanceof Error ? error.stack : undefined,
   });
 
   // 2. Capture in Sentry if available (non-blocking, fire-and-forget)
@@ -52,8 +53,8 @@ export async function showErrorDialog(params: ErrorDialogParams): Promise<void> 
       Sentry.captureException(error instanceof Error ? error : new Error(String(error)), {
         tags: {
           context: 'startup',
-          errorType: title
-        }
+          errorType: title,
+        },
       });
     }
   } catch {
@@ -66,7 +67,7 @@ export async function showErrorDialog(params: ErrorDialogParams): Promise<void> 
     dialog.showErrorBox(title, message);
   } catch (dialogErr: unknown) {
     logger.error('Could not show error dialog', {
-      error: dialogErr instanceof Error ? dialogErr.message : String(dialogErr)
+      error: dialogErr instanceof Error ? dialogErr.message : String(dialogErr),
     });
   }
 

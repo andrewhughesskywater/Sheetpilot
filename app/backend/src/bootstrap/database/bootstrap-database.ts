@@ -1,7 +1,8 @@
-import * as path from 'path';
 import type { App } from 'electron';
-import type { LoggerLike } from '../logging/logger-contract';
+import * as path from 'path';
+
 import { ensureSchema, getDb, getDbPath, runMigrations, setDbPath } from '../../repositories';
+import type { LoggerLike } from '../logging/logger-contract';
 
 export function bootstrapDatabase(app: App, logger: LoggerLike): void {
   const timer = logger.startTimer('bootstrap-database');
@@ -15,7 +16,7 @@ export function bootstrapDatabase(app: App, logger: LoggerLike): void {
   if (!migrationResult.success) {
     logger.error('Database migration failed', {
       error: migrationResult.error,
-      backupPath: migrationResult.backupPath
+      backupPath: migrationResult.backupPath,
     });
     // Continue anyway - ensureSchema will handle basic table creation
   } else if (migrationResult.migrationsRun > 0) {
@@ -23,7 +24,7 @@ export function bootstrapDatabase(app: App, logger: LoggerLike): void {
       fromVersion: migrationResult.fromVersion,
       toVersion: migrationResult.toVersion,
       migrationsRun: migrationResult.migrationsRun,
-      backupPath: migrationResult.backupPath
+      backupPath: migrationResult.backupPath,
     });
   }
 
@@ -32,5 +33,3 @@ export function bootstrapDatabase(app: App, logger: LoggerLike): void {
   logger.info('Database initialized successfully', { dbPath: getDbPath() });
   timer.done();
 }
-
-

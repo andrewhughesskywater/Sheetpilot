@@ -10,10 +10,7 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false
   },
-  "include": [
-    "app/backend/src/**/*.ts",
-    "app/shared/**/*.ts"
-  ],
+  "include": ["app/backend/src/**/*.ts", "app/shared/**/*.ts"],
   "exclude": [
     "node_modules",
     "build",

@@ -1,6 +1,7 @@
 import { ipcMain } from 'electron';
-import { ipcLogger } from '../../utils/logger';
+
 import { getDb } from '../../../repositories';
+import { ipcLogger } from '../../utils/logger';
 import { isTrustedIpcSender } from './main-window';
 
 export function registerTimesheetDevHandlers(): void {
@@ -50,5 +51,3 @@ export function registerTimesheetDevHandlers(): void {
 
   ipcLogger.verbose('Timesheet dev handlers registered');
 }
-
-

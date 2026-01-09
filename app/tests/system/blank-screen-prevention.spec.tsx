@@ -10,43 +10,43 @@ const mockWindow = {
     info: vi.fn(),
     verbose: vi.fn(),
     debug: vi.fn(),
-    userAction: vi.fn()
+    userAction: vi.fn(),
   },
   timesheet: {
     loadDraft: vi.fn(),
     saveDraft: vi.fn(),
     deleteDraft: vi.fn(),
     submit: vi.fn(),
-    exportToCSV: vi.fn()
+    exportToCSV: vi.fn(),
   },
   credentials: {
     store: vi.fn(),
     list: vi.fn(),
-    delete: vi.fn()
+    delete: vi.fn(),
   },
   database: {
     getAllTimesheetEntries: vi.fn(),
-    getAllArchiveData: vi.fn()
+    getAllArchiveData: vi.fn(),
   },
   logs: {
     getLogPath: vi.fn(),
-    exportLogs: vi.fn()
+    exportLogs: vi.fn(),
   },
   api: {
-    ping: vi.fn()
-  }
+    ping: vi.fn(),
+  },
 };
 
 // Mock Vite environment
 vi.mock('vite', () => ({
-  defineConfig: vi.fn()
+  defineConfig: vi.fn(),
 }));
 
 describe('App Rendering Tests - Blank Screen Prevention', () => {
   beforeEach(() => {
     // Reset all mocks
     vi.clearAllMocks();
-    
+
     // Clear window APIs
     delete window.logger;
     delete window.timesheet;
@@ -54,10 +54,10 @@ describe('App Rendering Tests - Blank Screen Prevention', () => {
     delete window.database;
     delete window.logs;
     delete window.api;
-    
+
     // Mock window object
     Object.assign(window, mockWindow);
-    
+
     // Mock console methods to prevent test output noise
     vi.spyOn(console, 'log').mockImplementation(() => {});
     vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -81,21 +81,22 @@ describe('App Rendering Tests - Blank Screen Prevention', () => {
       // Mock successful API responses
       mockWindow.timesheet.loadDraft.mockResolvedValue({
         success: true,
-        entries: []
+        entries: [],
       });
       mockWindow.credentials.list.mockResolvedValue({
         success: true,
-        credentials: []
+        credentials: [],
       });
 
-      render(
-        <App />
-      );
+      render(<App />);
 
       // Wait for the app to render - look for the navigation tabs which should be present
-      await waitFor(() => {
-        expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
-      }, { timeout: 10000 });
+      await waitFor(
+        () => {
+          expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
+        },
+        { timeout: 10000 }
+      );
 
       // Verify the app is not blank
       expect(screen.getByText('Timesheet')).toBeInTheDocument();
@@ -105,70 +106,75 @@ describe('App Rendering Tests - Blank Screen Prevention', () => {
       // Remove logger from window
       delete window.logger;
 
-      render(
-        <App />
-      );
+      render(<App />);
 
       // Should not throw errors
-      await waitFor(() => {
-        expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
-      }, { timeout: 10000 });
+      await waitFor(
+        () => {
+          expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
+        },
+        { timeout: 10000 }
+      );
     });
 
     it('should handle missing timesheet API gracefully', async () => {
       // Remove timesheet API from window
       delete window.timesheet;
 
-      render(
-        <App />
-      );
+      render(<App />);
 
       // Should not throw errors
-      await waitFor(() => {
-        expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
-      }, { timeout: 10000 });
+      await waitFor(
+        () => {
+          expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
+        },
+        { timeout: 10000 }
+      );
     });
 
     it('should handle missing credentials API gracefully', async () => {
       // Remove credentials API from window
       delete window.credentials;
 
-      render(
-        <App />
-      );
+      render(<App />);
 
       // Should not throw errors
-      await waitFor(() => {
-        expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
-      }, { timeout: 10000 });
+      await waitFor(
+        () => {
+          expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
+        },
+        { timeout: 10000 }
+      );
     });
 
     it('should handle missing database API gracefully', async () => {
       // Remove database API from window
       delete window.database;
 
-      render(
-        <App />
-      );
+      render(<App />);
 
       // Should not throw errors
-      await waitFor(() => {
-        expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
-      }, { timeout: 10000 });
+      await waitFor(
+        () => {
+          expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
+        },
+        { timeout: 10000 }
+      );
     });
 
     it('should handle missing logs API gracefully', async () => {
       // Remove logs API from window
       delete window.logs;
 
-      render(
-        <App />
-      );
+      render(<App />);
 
       // Should not throw errors
-      await waitFor(() => {
-        expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
-      }, { timeout: 10000 });
+      await waitFor(
+        () => {
+          expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
+        },
+        { timeout: 10000 }
+      );
     });
 
     it('should handle all APIs missing gracefully', async () => {
@@ -179,14 +185,15 @@ describe('App Rendering Tests - Blank Screen Prevention', () => {
       delete window.database;
       delete window.logs;
 
-      render(
-        <App />
-      );
+      render(<App />);
 
       // Should not throw errors and should render
-      await waitFor(() => {
-        expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
-      }, { timeout: 10000 });
+      await waitFor(
+        () => {
+          expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
+        },
+        { timeout: 10000 }
+      );
     });
 
     // Skip: Fallback initialization check requires module-level mocking which isn't reliable
@@ -195,14 +202,15 @@ describe('App Rendering Tests - Blank Screen Prevention', () => {
       const { initializeLoggerFallback } = await import('../src/utils/logger-fallback');
       const { initializeAPIFallback } = await import('../src/utils/api-fallback');
 
-      render(
-        <App />
-      );
+      render(<App />);
 
       // Wait for app to render first
-      await waitFor(() => {
-        expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
-      }, { timeout: 10000 });
+      await waitFor(
+        () => {
+          expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
+        },
+        { timeout: 10000 }
+      );
 
       // Verify fallbacks are initialized
       expect(initializeLoggerFallback).toHaveBeenCalled();
@@ -221,21 +229,22 @@ describe('App Rendering Tests - Blank Screen Prevention', () => {
       // Mock successful API responses
       mockWindow.timesheet.loadDraft.mockResolvedValue({
         success: true,
-        entries: []
+        entries: [],
       });
       mockWindow.credentials.list.mockResolvedValue({
         success: true,
-        credentials: []
+        credentials: [],
       });
 
-      render(
-        <App />
-      );
+      render(<App />);
 
       // Wait for the app to render
-      await waitFor(() => {
-        expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
-      }, { timeout: 10000 });
+      await waitFor(
+        () => {
+          expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
+        },
+        { timeout: 10000 }
+      );
 
       // Verify the app is not blank
       expect(screen.getByText('Timesheet')).toBeInTheDocument();
@@ -247,14 +256,15 @@ describe('App Rendering Tests - Blank Screen Prevention', () => {
       const { initializeLoggerFallback } = await import('../src/utils/logger-fallback');
       const { initializeAPIFallback } = await import('../src/utils/api-fallback');
 
-      render(
-        <App />
-      );
+      render(<App />);
 
       // Wait for app to render first
-      await waitFor(() => {
-        expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
-      }, { timeout: 10000 });
+      await waitFor(
+        () => {
+          expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
+        },
+        { timeout: 10000 }
+      );
 
       // Verify fallbacks are not initialized in production
       expect(initializeLoggerFallback).not.toHaveBeenCalled();
@@ -268,14 +278,15 @@ describe('App Rendering Tests - Blank Screen Prevention', () => {
       mockWindow.timesheet.loadDraft.mockRejectedValue(new Error('API Error'));
       mockWindow.credentials.list.mockRejectedValue(new Error('API Error'));
 
-      render(
-        <App />
-      );
+      render(<App />);
 
       // Should not crash the app
-      await waitFor(() => {
-        expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
-      }, { timeout: 10000 });
+      await waitFor(
+        () => {
+          expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
+        },
+        { timeout: 10000 }
+      );
     });
 
     it('should handle malformed API responses gracefully', async () => {
@@ -283,14 +294,15 @@ describe('App Rendering Tests - Blank Screen Prevention', () => {
       mockWindow.timesheet.loadDraft.mockResolvedValue(null);
       mockWindow.credentials.list.mockResolvedValue(undefined);
 
-      render(
-        <App />
-      );
+      render(<App />);
 
       // Should not crash the app
-      await waitFor(() => {
-        expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
-      }, { timeout: 10000 });
+      await waitFor(
+        () => {
+          expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
+        },
+        { timeout: 10000 }
+      );
     });
   });
 
@@ -299,21 +311,22 @@ describe('App Rendering Tests - Blank Screen Prevention', () => {
       // Mock successful API responses
       mockWindow.timesheet.loadDraft.mockResolvedValue({
         success: true,
-        entries: []
+        entries: [],
       });
       mockWindow.credentials.list.mockResolvedValue({
         success: true,
-        credentials: []
+        credentials: [],
       });
 
-      render(
-        <App />
-      );
+      render(<App />);
 
       // Wait for components to load
-      await waitFor(() => {
-        expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
-      }, { timeout: 10000 });
+      await waitFor(
+        () => {
+          expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
+        },
+        { timeout: 10000 }
+      );
 
       // Verify all main tabs are present
       expect(screen.getByText('Timesheet')).toBeInTheDocument();
@@ -325,21 +338,22 @@ describe('App Rendering Tests - Blank Screen Prevention', () => {
       // Mock successful API responses
       mockWindow.timesheet.loadDraft.mockResolvedValue({
         success: true,
-        entries: []
+        entries: [],
       });
       mockWindow.credentials.list.mockResolvedValue({
         success: true,
-        credentials: []
+        credentials: [],
       });
 
-      render(
-        <App />
-      );
+      render(<App />);
 
       // Wait for initial render
-      await waitFor(() => {
-        expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
-      }, { timeout: 10000 });
+      await waitFor(
+        () => {
+          expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
+        },
+        { timeout: 10000 }
+      );
 
       // Should show loading skeleton or loaded content - app should not crash
       expect(screen.getByText('Timesheet')).toBeInTheDocument();
@@ -355,17 +369,18 @@ describe('App Rendering Tests - Blank Screen Prevention', () => {
       // Force an error by making an API return invalid data
       mockWindow.timesheet.loadDraft.mockResolvedValue({
         success: false,
-        error: 'Invalid data'
+        error: 'Invalid data',
       });
 
-      render(
-        <App />
-      );
+      render(<App />);
 
       // Should not crash the app
-      await waitFor(() => {
-        expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
-      }, { timeout: 10000 });
+      await waitFor(
+        () => {
+          expect(screen.getByRole('tablist', { name: 'navigation tabs' })).toBeInTheDocument();
+        },
+        { timeout: 10000 }
+      );
 
       console.error = originalError;
     });

@@ -33,14 +33,14 @@ export interface QuarterDefinition {
 
 /**
  * Available quarters configuration
- * 
+ *
  * To add new quarters:
  * 1. Add new QuarterDefinition to this array
  * 2. Specify date range and form URL/ID
  * 3. No other changes needed - routing logic automatically handles new quarters
- * 
+ *
  * Only the active quarters are allowed to be in this section and will change over the course of the year
- * 
+ *
  * ON PAIN OF DEATH, DO NOT CHANEGE THE QUARTER DEFINITIONS
  */
 export const QUARTER_DEFINITIONS: QuarterDefinition[] = [
@@ -50,7 +50,7 @@ export const QUARTER_DEFINITIONS: QuarterDefinition[] = [
     startDate: '2025-10-01',
     endDate: '2025-12-31',
     formUrl: 'https://app.smartsheet.com/b/form/0199fabee6497e60abb6030c48d84585',
-    formId: '0199fabee6497e60abb6030c48d84585'
+    formId: '0199fabee6497e60abb6030c48d84585',
   },
   {
     id: 'Q1-2026',
@@ -58,13 +58,13 @@ export const QUARTER_DEFINITIONS: QuarterDefinition[] = [
     startDate: '2026-01-01',
     endDate: '2026-03-31',
     formUrl: 'https://app.smartsheet.com/b/form/019b5b17a03a79ac9437e45996f49f4f',
-    formId: '019b5b17a03a79ac9437e45996f49f4f'
-  }
+    formId: '019b5b17a03a79ac9437e45996f49f4f',
+  },
 ];
 
 /**
  * Determines which quarter a date falls into
- * 
+ *
  * @param dateStr - Date in YYYY-MM-DD format
  * @returns Quarter definition if date falls within a quarter, null otherwise
  */
@@ -78,10 +78,7 @@ export function getQuarterForDate(dateStr: string): QuarterDefinition | null {
   const monthIndex = Number(dateStr.slice(5, 7)) - 1; // 0-based
   const day = Number(dateStr.slice(8, 10));
   const dt = new Date(Date.UTC(year, monthIndex, day));
-  const isValidDate =
-    dt.getUTCFullYear() === year &&
-    dt.getUTCMonth() === monthIndex &&
-    dt.getUTCDate() === day;
+  const isValidDate = dt.getUTCFullYear() === year && dt.getUTCMonth() === monthIndex && dt.getUTCDate() === day;
   if (!isValidDate) return null;
 
   // ISO date strings are lexicographically sortable; compare as strings
@@ -93,7 +90,7 @@ export function getQuarterForDate(dateStr: string): QuarterDefinition | null {
 
 /**
  * Validates if a date falls within any available quarter
- * 
+ *
  * @param dateStr - Date in YYYY-MM-DD format
  * @returns Error message if date is invalid or outside quarters, null if valid
  */
@@ -101,27 +98,30 @@ export function validateQuarterAvailability(dateStr: string): string | null {
   if (!dateStr) {
     return 'Please enter a date';
   }
-  
+
   // Check if date falls within any quarter
   const quarter = getQuarterForDate(dateStr);
   if (!quarter) {
     // Create helpful error message listing available quarters
-    const availableQuarters = QUARTER_DEFINITIONS.map(q => `${q.name} (${q.startDate.split('-')[1]}/${q.startDate.split('-')[2]}-${q.endDate.split('-')[1]}/${q.endDate.split('-')[2]})`).join(' or ');
+    const availableQuarters = QUARTER_DEFINITIONS.map(
+      (q) =>
+        `${q.name} (${q.startDate.split('-')[1]}/${q.startDate.split('-')[2]}-${q.endDate.split('-')[1]}/${q.endDate.split('-')[2]})`
+    ).join(' or ');
     return `Date must be in ${availableQuarters}`;
   }
-  
+
   return null;
 }
 
 /**
  * Groups timesheet entries by quarter
- * 
+ *
  * @param entries - Array of timesheet entries with date field
  * @returns Map of quarter ID to entries array
  */
 export function groupEntriesByQuarter<T extends { date: string }>(entries: T[]): Map<string, T[]> {
   const grouped = new Map<string, T[]>();
-  
+
   for (const entry of entries) {
     const quarter = getQuarterForDate(entry.date);
     if (quarter) {
@@ -131,32 +131,32 @@ export function groupEntriesByQuarter<T extends { date: string }>(entries: T[]):
       grouped.get(quarter.id)!.push(entry);
     }
   }
-  
+
   return grouped;
 }
 
 /**
  * Gets all available quarter IDs
- * 
+ *
  * @returns Array of quarter IDs
  */
 export function getAvailableQuarterIds(): string[] {
-  return QUARTER_DEFINITIONS.map(q => q.id);
+  return QUARTER_DEFINITIONS.map((q) => q.id);
 }
 
 /**
  * Gets quarter definition by ID
- * 
+ *
  * @param quarterId - Quarter identifier
  * @returns Quarter definition if found, null otherwise
  */
 export function getQuarterById(quarterId: string): QuarterDefinition | null {
-  return QUARTER_DEFINITIONS.find(q => q.id === quarterId) || null;
+  return QUARTER_DEFINITIONS.find((q) => q.id === quarterId) || null;
 }
 
 /**
  * Gets the current quarter based on today's date
- * 
+ *
  * @returns Current quarter definition if today falls within a quarter, null otherwise
  */
 export function getCurrentQuarter(): QuarterDefinition | null {

@@ -8,12 +8,12 @@ import { ipcLogger as _ipcLogger } from '@sheetpilot/shared/logger';
 // Mock electron
 vi.mock('electron', () => ({
   ipcMain: {
-    handle: vi.fn()
-  }
+    handle: vi.fn(),
+  },
 }));
 
 vi.mock('@/ipc/handlers/timesheet/main-window', () => ({
-  isTrustedIpcSender: vi.fn(() => true)
+  isTrustedIpcSender: vi.fn(() => true),
 }));
 
 // Mock repositories
@@ -23,7 +23,7 @@ vi.mock('@/repositories', () => ({
   createSession: vi.fn(),
   validateSession: vi.fn(),
   clearSession: vi.fn(),
-  clearUserSessions: vi.fn()
+  clearUserSessions: vi.fn(),
 }));
 
 // Mock logger
@@ -33,16 +33,16 @@ vi.mock('../../../shared/logger', () => ({
     debug: vi.fn(),
     info: vi.fn(),
     audit: vi.fn(),
-    error: vi.fn()
+    error: vi.fn(),
   },
   appLogger: {
-    warn: vi.fn()
-  }
+    warn: vi.fn(),
+  },
 }));
 
 // Mock validation
 vi.mock('@/validation/validate-ipc-input', () => ({
-  validateInput: vi.fn((schema, data) => ({ success: true, data }))
+  validateInput: vi.fn((schema, data) => ({ success: true, data })),
 }));
 
 describe('auth-handlers', () => {
@@ -53,12 +53,14 @@ describe('auth-handlers', () => {
     vi.clearAllMocks();
     process.env = { ...originalEnv };
     handleCalls = [];
-    
+
     // Capture handle calls
-    vi.mocked(ipcMain.handle).mockImplementation((channel: string, handler: (event: IpcMainInvokeEvent, ...args: any[]) => any) => {
-      handleCalls.push([channel, handler]);
-      return undefined as never;
-    });
+    vi.mocked(ipcMain.handle).mockImplementation(
+      (channel: string, handler: (event: IpcMainInvokeEvent, ...args: any[]) => any) => {
+        handleCalls.push([channel, handler]);
+        return undefined as never;
+      }
+    );
   });
 
   afterEach(() => {
@@ -100,13 +102,18 @@ describe('auth-handlers', () => {
       vi.mocked(repositories.storeCredentials).mockReturnValue({
         success: true,
         message: 'Stored',
-        changes: 1
+        changes: 1,
       });
       vi.mocked(repositories.createSession).mockReturnValue('test-token');
 
       registerAuthHandlers();
 
-      const handler = getHandler('auth:login') as (event: unknown, email: string, password: string, stayLoggedIn: boolean) => Promise<{ success: boolean; token?: string; isAdmin?: boolean; error?: string }>;
+      const handler = getHandler('auth:login') as (
+        event: unknown,
+        email: string,
+        password: string,
+        stayLoggedIn: boolean
+      ) => Promise<{ success: boolean; token?: string; isAdmin?: boolean; error?: string }>;
 
       const result = await handler({}, 'user@example.com', 'password', false);
 
@@ -120,7 +127,7 @@ describe('auth-handlers', () => {
       // Set env vars before importing/registering
       const originalAdminUser = process.env['SHEETPILOT_ADMIN_USERNAME'];
       const originalAdminPass = process.env['SHEETPILOT_ADMIN_PASSWORD'];
-      
+
       process.env['SHEETPILOT_ADMIN_USERNAME'] = 'Admin';
       process.env['SHEETPILOT_ADMIN_PASSWORD'] = 'admin123';
 
@@ -129,24 +136,29 @@ describe('auth-handlers', () => {
       // Re-import the module to pick up new env vars
       vi.resetModules();
       const { registerAuthHandlers: registerAuth } = await import('../../src/ipc/auth-handlers');
-      
+
       // Clear and setup fresh handler capture
       handleCalls = [];
       vi.mocked(ipcMain.handle).mockImplementation((channel: string, listener: (event: any, ...args: any[]) => any) => {
         handleCalls.push([channel, listener]);
         return undefined as never;
       });
-      
+
       registerAuth();
 
-      const handler = getHandler('auth:login') as (event: unknown, email: string, password: string, stayLoggedIn: boolean) => Promise<{ success: boolean; token?: string; isAdmin?: boolean; error?: string }>;
+      const handler = getHandler('auth:login') as (
+        event: unknown,
+        email: string,
+        password: string,
+        stayLoggedIn: boolean
+      ) => Promise<{ success: boolean; token?: string; isAdmin?: boolean; error?: string }>;
 
       const result = await handler({}, 'Admin', 'admin123', false);
 
       expect(result.success).toBe(true);
       expect(result.isAdmin).toBe(true);
       expect(repositories.storeCredentials).not.toHaveBeenCalled();
-      
+
       // Restore env vars
       if (originalAdminUser) process.env['SHEETPILOT_ADMIN_USERNAME'] = originalAdminUser;
       else delete process.env['SHEETPILOT_ADMIN_USERNAME'];
@@ -160,12 +172,17 @@ describe('auth-handlers', () => {
       vi.mocked(repositories.storeCredentials).mockReturnValue({
         success: false,
         message: 'Storage failed',
-        changes: 0
+        changes: 0,
       });
 
       registerAuthHandlers();
 
-      const handler = getHandler('auth:login') as (event: unknown, email: string, password: string, stayLoggedIn: boolean) => Promise<{ success: boolean; token?: string; isAdmin?: boolean; error?: string }>;
+      const handler = getHandler('auth:login') as (
+        event: unknown,
+        email: string,
+        password: string,
+        stayLoggedIn: boolean
+      ) => Promise<{ success: boolean; token?: string; isAdmin?: boolean; error?: string }>;
 
       const result = await handler({}, 'user@example.com', 'password', false);
 
@@ -182,7 +199,12 @@ describe('auth-handlers', () => {
 
       registerAuthHandlers();
 
-      const handler = getHandler('auth:login') as (event: unknown, email: string, password: string, stayLoggedIn: boolean) => Promise<{ success: boolean; token?: string; isAdmin?: boolean; error?: string }>;
+      const handler = getHandler('auth:login') as (
+        event: unknown,
+        email: string,
+        password: string,
+        stayLoggedIn: boolean
+      ) => Promise<{ success: boolean; token?: string; isAdmin?: boolean; error?: string }>;
 
       const result = await handler({}, 'user@example.com', 'password', false);
 
@@ -196,12 +218,15 @@ describe('auth-handlers', () => {
       vi.mocked(repositories.validateSession).mockReturnValue({
         valid: true,
         email: 'user@example.com',
-        isAdmin: false
+        isAdmin: false,
       });
 
       registerAuthHandlers();
 
-      const handler = getHandler('auth:validateSession') as (event: unknown, token: string) => Promise<{ valid: boolean; email?: string; isAdmin?: boolean }>;
+      const handler = getHandler('auth:validateSession') as (
+        event: unknown,
+        token: string
+      ) => Promise<{ valid: boolean; email?: string; isAdmin?: boolean }>;
 
       const result = await handler({}, 'test-token');
 
@@ -211,12 +236,15 @@ describe('auth-handlers', () => {
 
     it('should invalidate invalid session', async () => {
       vi.mocked(repositories.validateSession).mockReturnValue({
-        valid: false
+        valid: false,
       });
 
       registerAuthHandlers();
 
-      const handler = getHandler('auth:validateSession') as (event: unknown, token: string) => Promise<{ valid: boolean; email?: string; isAdmin?: boolean }>;
+      const handler = getHandler('auth:validateSession') as (
+        event: unknown,
+        token: string
+      ) => Promise<{ valid: boolean; email?: string; isAdmin?: boolean }>;
 
       const result = await handler({}, 'invalid-token');
 
@@ -229,7 +257,7 @@ describe('auth-handlers', () => {
       vi.mocked(repositories.validateSession).mockReturnValue({
         valid: true,
         email: 'user@example.com',
-        isAdmin: false
+        isAdmin: false,
       });
       vi.mocked(repositories.clearSession).mockReturnValue(undefined);
       vi.mocked(repositories.clearUserSessions).mockReturnValue(undefined);
@@ -247,7 +275,7 @@ describe('auth-handlers', () => {
       vi.mocked(repositories.validateSession).mockReturnValue({
         valid: true,
         email: 'user@example.com',
-        isAdmin: false
+        isAdmin: false,
       });
       vi.mocked(repositories.clearUserSessions).mockImplementation(() => {
         throw new Error('Logout failed');
@@ -255,7 +283,10 @@ describe('auth-handlers', () => {
 
       registerAuthHandlers();
 
-      const handler = getHandler('auth:logout') as (event: unknown, token: string) => Promise<{ success: boolean; error?: string }>;
+      const handler = getHandler('auth:logout') as (
+        event: unknown,
+        token: string
+      ) => Promise<{ success: boolean; error?: string }>;
 
       const result = await handler({}, 'test-token');
 
@@ -269,12 +300,15 @@ describe('auth-handlers', () => {
       vi.mocked(repositories.validateSession).mockReturnValue({
         valid: true,
         email: 'user@example.com',
-        isAdmin: false
+        isAdmin: false,
       });
 
       registerAuthHandlers();
 
-      const handler = getHandler('auth:getCurrentSession') as (event: unknown, token: string) => Promise<{ email?: string; token?: string; isAdmin?: boolean } | null>;
+      const handler = getHandler('auth:getCurrentSession') as (
+        event: unknown,
+        token: string
+      ) => Promise<{ email?: string; token?: string; isAdmin?: boolean } | null>;
 
       const result = await handler({}, 'test-token');
 
@@ -284,4 +318,3 @@ describe('auth-handlers', () => {
     });
   });
 });
-

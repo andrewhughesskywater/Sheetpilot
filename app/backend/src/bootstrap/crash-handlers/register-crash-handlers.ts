@@ -1,4 +1,5 @@
 import type { App } from 'electron';
+
 import type { LoggerLike } from '../logging/logger-contract';
 
 export function registerCrashHandlers(app: App, logger: LoggerLike): void {
@@ -7,7 +8,7 @@ export function registerCrashHandlers(app: App, logger: LoggerLike): void {
     logger.error('Uncaught exception detected', {
       message: error.message,
       stack: error.stack,
-      name: error.name
+      name: error.name,
     });
 
     // Always log to console first
@@ -37,15 +38,18 @@ export function registerCrashHandlers(app: App, logger: LoggerLike): void {
     }
 
     // Exit after a delay to allow error dialog to be shown
-    setTimeout(() => {
-      app.exit(1);
-    }, dialogShown ? 2000 : 100);
+    setTimeout(
+      () => {
+        app.exit(1);
+      },
+      dialogShown ? 2000 : 100
+    );
   });
 
   process.on('unhandledRejection', (reason: unknown) => {
     logger.error('Unhandled promise rejection detected', {
       reason: reason instanceof Error ? reason.message : String(reason),
-      stack: reason instanceof Error ? reason.stack : undefined
+      stack: reason instanceof Error ? reason.stack : undefined,
     });
   });
 
@@ -53,5 +57,3 @@ export function registerCrashHandlers(app: App, logger: LoggerLike): void {
     logger.warn('Application handled previously unhandled rejection');
   });
 }
-
-

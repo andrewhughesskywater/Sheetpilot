@@ -1,17 +1,18 @@
 /**
  * @fileoverview Content Security Policy (CSP) Violation Reporting
- * 
+ *
  * Handles CSP violation reports from the renderer process with rate limiting
  * to prevent log flooding while maintaining security visibility.
- * 
+ *
  * Rate limiting: Maximum 3 violations per directive per hour per source.
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2026
  */
 
 import { ipcMain } from 'electron';
+
 import { ipcLogger } from './utils/logger';
 
 interface CSPViolation {
@@ -68,7 +69,7 @@ function shouldLogViolation(violation: CSPViolation): boolean {
 
   // Check if hour window has passed since first violation
   const hourElapsed = now - entry.firstViolation >= HOUR_IN_MS;
-  
+
   if (hourElapsed) {
     // Reset counter for new hour window
     violationTracker.set(key, {

@@ -1,9 +1,9 @@
 /**
  * @fileoverview Test Data Builders
- * 
+ *
  * Builder pattern for creating test data with fluent API.
  * Provides type-safe construction of test objects with sensible defaults.
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025
@@ -23,7 +23,7 @@ export class TimesheetRowBuilder {
     project: 'FL-Carver Techs',
     tool: '#1 Rinse and 2D marker',
     chargeCode: 'EPR1',
-    taskDescription: 'Test task description'
+    taskDescription: 'Test task description',
   };
 
   static create(): TimesheetRowBuilder {
@@ -72,32 +72,22 @@ export class TimesheetRowBuilder {
 
   // Convenience methods for common scenarios
   asPTOEntry(): TimesheetRowBuilder {
-    return this
-      .withProject('PTO/RTO')
-      .withTool(null)
-      .withChargeCode(null)
-      .withTaskDescription('Personal time off');
+    return this.withProject('PTO/RTO').withTool(null).withChargeCode(null).withTaskDescription('Personal time off');
   }
 
   asTrainingEntry(): TimesheetRowBuilder {
-    return this
-      .withProject('Training')
-      .withTool(null)
-      .withChargeCode(null)
-      .withTaskDescription('Safety training');
+    return this.withProject('Training').withTool(null).withChargeCode(null).withTaskDescription('Safety training');
   }
 
   asMeetingEntry(): TimesheetRowBuilder {
-    return this
-      .withProject('FL-Carver Techs')
+    return this.withProject('FL-Carver Techs')
       .withTool('Meeting')
       .withChargeCode(null)
       .withTaskDescription('Team meeting');
   }
 
   asEquipmentEntry(): TimesheetRowBuilder {
-    return this
-      .withProject('FL-Carver Techs')
+    return this.withProject('FL-Carver Techs')
       .withTool('#1 Rinse and 2D marker')
       .withChargeCode('EPR1')
       .withTaskDescription('Equipment maintenance');
@@ -179,7 +169,7 @@ export class DbTimesheetEntryBuilder {
     detail_charge_code: 'EPR1',
     task_description: 'Test task description',
     status: null,
-    submitted_at: null
+    submitted_at: null,
   };
 
   static create(): DbTimesheetEntryBuilder {
@@ -246,38 +236,32 @@ export class DbTimesheetEntryBuilder {
   }
 
   asComplete(): DbTimesheetEntryBuilder {
-    return this
-      .withStatus('Complete')
-      .withSubmittedAt(new Date().toISOString());
+    return this.withStatus('Complete').withSubmittedAt(new Date().toISOString());
   }
 
   asPTOEntry(): DbTimesheetEntryBuilder {
-    return this
-      .withProject('PTO/RTO')
+    return this.withProject('PTO/RTO')
       .withTool(null)
       .withDetailChargeCode(null)
       .withTaskDescription('Personal time off');
   }
 
   asTrainingEntry(): DbTimesheetEntryBuilder {
-    return this
-      .withProject('Training')
+    return this.withProject('Training')
       .withTool(null)
       .withDetailChargeCode(null)
       .withTaskDescription('Safety training');
   }
 
   asMeetingEntry(): DbTimesheetEntryBuilder {
-    return this
-      .withProject('FL-Carver Techs')
+    return this.withProject('FL-Carver Techs')
       .withTool('Meeting')
       .withDetailChargeCode(null)
       .withTaskDescription('Team meeting');
   }
 
   asEquipmentEntry(): DbTimesheetEntryBuilder {
-    return this
-      .withProject('FL-Carver Techs')
+    return this.withProject('FL-Carver Techs')
       .withTool('#1 Rinse and 2D marker')
       .withDetailChargeCode('EPR1')
       .withTaskDescription('Equipment maintenance');
@@ -299,7 +283,7 @@ export class IPCPayloadBuilder {
     project: 'FL-Carver Techs',
     tool: '#1 Rinse and 2D marker',
     chargeCode: 'EPR1',
-    taskDescription: 'Test task description'
+    taskDescription: 'Test task description',
   };
 
   static create(): IPCPayloadBuilder {
@@ -403,23 +387,25 @@ export class TestDataUtils {
 
     const entry: DbTimesheetEntry = {
       id: row.id || 1,
-      date: row.date ? (() => {
-        const parts = row.date.split('/').map(Number);
-        const month = parts[0] ?? 1;
-        const day = parts[1] ?? 1;
-        const year = parts[2] ?? 2025;
-        return `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-      })() : '2025-01-15',
+      date: row.date
+        ? (() => {
+            const parts = row.date.split('/').map(Number);
+            const month = parts[0] ?? 1;
+            const day = parts[1] ?? 1;
+            const year = parts[2] ?? 2025;
+            return `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+          })()
+        : '2025-01-15',
       time_in: timeInMinutes,
       time_out: timeOutMinutes,
       hours: (timeOutMinutes - timeInMinutes) / 60.0,
       project: row.project || 'FL-Carver Techs',
-      task_description: row.taskDescription || 'Test task'
+      task_description: row.taskDescription || 'Test task',
     };
-    
+
     if (row.tool) entry.tool = row.tool;
     if (row.chargeCode) entry.detail_charge_code = row.chargeCode;
-    
+
     return entry;
   }
 
@@ -441,7 +427,7 @@ export class TestDataUtils {
       project: entry.project,
       tool: entry.tool ?? null,
       chargeCode: entry.detail_charge_code ?? null,
-      taskDescription: entry.task_description
+      taskDescription: entry.task_description,
     };
   }
 
@@ -449,9 +435,7 @@ export class TestDataUtils {
    * Create multiple entries with sequential IDs
    */
   static createMultipleEntries(count: number, baseBuilder: TimesheetRowBuilder): TimesheetRow[] {
-    return Array.from({ length: count }, (_, index) => 
-      baseBuilder.withId(index + 1).build()
-    );
+    return Array.from({ length: count }, (_, index) => baseBuilder.withId(index + 1).build());
   }
 
   /**
@@ -460,15 +444,15 @@ export class TestDataUtils {
   static createAllProjectEntries(): TimesheetRow[] {
     const projects = [
       'FL-Carver Techs',
-      'FL-Carver Tools', 
+      'FL-Carver Tools',
       'OSC-BBB',
       'PTO/RTO',
       'SWFL-CHEM/GAS',
       'SWFL-EQUIP',
-      'Training'
+      'Training',
     ];
 
-    return projects.map((project, index) => 
+    return projects.map((project, index) =>
       TimesheetRowBuilder.create()
         .withId(index + 1)
         .withProject(project)

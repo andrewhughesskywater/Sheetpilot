@@ -4,6 +4,10 @@ const react = require('eslint-plugin-react');
 const reactHooks = require('eslint-plugin-react-hooks');
 const reactRefresh = require('eslint-plugin-react-refresh');
 const sonarjs = require('eslint-plugin-sonarjs');
+const prettierConfig = require('eslint-config-prettier');
+const importPlugin = require('eslint-plugin-import');
+const simpleImportSort = require('eslint-plugin-simple-import-sort');
+const unusedImports = require('eslint-plugin-unused-imports');
 
 const TS_FILES = ['**/*.{ts,tsx,cts,mts}'];
 const TEST_FILES = [
@@ -50,9 +54,15 @@ module.exports = [
 
   // TypeScript (robust + strict, but scoped to production code by ignores and lint scripts)
   ...typescriptRecommendedPreset,
+  prettierConfig, // Disable formatting rules that conflict with Prettier
   {
     files: TS_FILES,
-    plugins: { sonarjs },
+    plugins: {
+      sonarjs,
+      import: importPlugin,
+      'simple-import-sort': simpleImportSort,
+      'unused-imports': unusedImports,
+    },
     languageOptions: {
       parserOptions: {
         ecmaVersion: 'latest',
@@ -61,12 +71,38 @@ module.exports = [
         tsconfigRootDir: __dirname
       }
     },
+    settings: {
+      'import/resolver': {
+        typescript: {
+          alwaysTryTypes: true,
+          project: ['./tsconfig.json', './app/backend/tsconfig.json', './app/frontend/tsconfig.json']
+        },
+        node: true
+      }
+    },
     rules: {
+      // ===== IMPORT MANAGEMENT (HARD GATES) =====
+      'simple-import-sort/imports': 'error',
+      'simple-import-sort/exports': 'error',
+      'unused-imports/no-unused-imports': 'error',
+      'unused-imports/no-unused-vars': ['error', {
+        vars: 'all',
+        varsIgnorePattern: '^_',
+        args: 'after-used',
+        argsIgnorePattern: '^_'
+      }],
+      'import/no-duplicates': 'error',
+      'import/no-cycle': 'error',
+      'import/no-self-import': 'error',
+      'import/no-useless-path-segments': 'error',
+      'import/first': 'error',
+      'import/newline-after-import': 'error',
+
+      // ===== TYPE SAFETY (HARD GATES) =====
       // User standard: never allow explicit `any`.
       '@typescript-eslint/no-explicit-any': 'error',
-
       '@typescript-eslint/no-require-imports': 'off',
-      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+      '@typescript-eslint/no-unused-vars': 'off', // Use unused-imports plugin instead
       '@typescript-eslint/consistent-type-imports': ['error', { prefer: 'type-imports', disallowTypeAnnotations: false }],
       '@typescript-eslint/ban-ts-comment': ['error', {
         'ts-expect-error': 'allow-with-description',
@@ -74,23 +110,45 @@ module.exports = [
         'ts-nocheck': false,
         'ts-check': false
       }],
+      '@typescript-eslint/explicit-function-return-type': ['error', {
+        allowExpressions: true,
+        allowTypedFunctionExpressions: true,
+        allowHigherOrderFunctions: true,
+        allowDirectConstAssertionInArrowFunctions: true
+      }],
+      '@typescript-eslint/explicit-module-boundary-types': 'error',
+      '@typescript-eslint/no-inferrable-types': 'off', // Allow explicit types for clarity
 
       'no-case-declarations': 'error',
 
-      // Complexity & cognitive limits (industry-standard baselines; ratchet over time)
+      // ===== COMPLEXITY & COGNITIVE LIMITS (HARD GATES) =====
       'complexity': ['error', { max: 12 }],
       'max-depth': ['error', 4],
       'max-params': ['error', 4],
+      'max-lines': ['error', { max: 500, skipBlankLines: true, skipComments: true }],
       'max-lines-per-function': ['error', { max: 120, skipBlankLines: true, skipComments: true }],
+      'max-nested-callbacks': ['error', 3],
+      'max-statements': ['error', 30, { ignoreTopLevelFunctions: false }],
       'sonarjs/cognitive-complexity': ['error', 20],
+      'sonarjs/no-identical-functions': 'error',
+      'sonarjs/no-duplicate-string': ['error', { threshold: 5 }],
+      'sonarjs/no-collapsible-if': 'error',
+      'sonarjs/no-nested-switch': 'error',
 
-      // Useful SonarJS code smell detections
-      'sonarjs/no-identical-functions': 'warn',
-      'sonarjs/no-duplicate-string': ['warn', { threshold: 5 }],
-      'sonarjs/no-collapsible-if': 'warn',
-      'sonarjs/no-nested-switch': 'error'
-      // Note: prefer-immediate-return disabled due to compatibility with ESLint 9 flat config
-    }
+      // ===== CODE QUALITY (HARD GATES) =====
+      'no-console': ['error', { allow: ['warn', 'error'] }],
+      'no-debugger': 'error',
+      'no-alert': 'error',
+      'no-var': 'error',
+      'prefer-const': 'error',
+      'prefer-template': 'error',
+      'prefer-arrow-callback': 'error',
+      'no-throw-literal': 'error',
+      'no-return-await': 'error',
+      'require-await': 'off', // Use @typescript-eslint version in type-aware section
+      'no-implicit-coercion': 'error',
+      'no-sequences': 'error',
+    },
   },
 
   // Relaxed complexity for React UI components (presentational code)
@@ -101,8 +159,12 @@ module.exports = [
     ],
     rules: {
       'max-lines-per-function': ['error', { max: 250, skipBlankLines: true, skipComments: true }],
+      'max-statements': ['error', 40],
       'complexity': ['error', { max: 20 }],
       'sonarjs/cognitive-complexity': ['error', 25],
+      'no-console': 'off', // Allow console in UI for debugging
+      '@typescript-eslint/explicit-function-return-type': 'off', // React components don't need explicit return types
+      '@typescript-eslint/explicit-module-boundary-types': 'off'
     }
   },
 
@@ -118,7 +180,9 @@ module.exports = [
     rules: {
       'complexity': ['error', { max: 10 }],
       'max-lines-per-function': ['error', { max: 100, skipBlankLines: true, skipComments: true }],
-      'sonarjs/cognitive-complexity': ['error', 15]
+      'max-statements': ['error', 25],
+      'sonarjs/cognitive-complexity': ['error', 15],
+      'max-lines': ['error', { max: 400, skipBlankLines: true, skipComments: true }]
     }
   },
 
@@ -131,7 +195,8 @@ module.exports = [
     rules: {
       'complexity': ['error', { max: 12 }],
       'max-params': ['error', { max: 5 }], // IPC handlers often need event + multiple params
-      'max-lines-per-function': ['error', { max: 150, skipBlankLines: true, skipComments: true }]
+      'max-lines-per-function': ['error', { max: 150, skipBlankLines: true, skipComments: true }],
+      'max-statements': ['error', 30]
     }
   },
 
@@ -146,7 +211,10 @@ module.exports = [
       'complexity': ['error', { max: 15 }],
       'max-params': ['error', { max: 5 }],
       'max-lines-per-function': ['error', { max: 150, skipBlankLines: true, skipComments: true }],
-      '@typescript-eslint/no-explicit-any': 'warn' // Config files sometimes need flexibility
+      'max-statements': ['error', 35],
+      '@typescript-eslint/no-explicit-any': 'warn', // Config files sometimes need flexibility
+      '@typescript-eslint/explicit-function-return-type': 'off',
+      '@typescript-eslint/explicit-module-boundary-types': 'off'
     }
   },
 
@@ -157,7 +225,9 @@ module.exports = [
     files: ['app/frontend/src/**/*use*.{ts,tsx}'],
     rules: {
       'complexity': ['error', { max: 18 }],
-      'max-lines-per-function': ['error', { max: 150, skipBlankLines: true, skipComments: true }]
+      'max-lines-per-function': ['error', { max: 150, skipBlankLines: true, skipComments: true }],
+      'max-statements': ['error', 35],
+      '@typescript-eslint/explicit-function-return-type': 'off'
     }
   },
 

@@ -1,31 +1,27 @@
 /**
  * @fileoverview Authentication IPC Handlers
- * 
+ *
  * Handles IPC communication for user authentication and session management.
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025
  */
 
 import { ipcMain } from 'electron';
-import { ipcLogger, appLogger } from './utils/logger';
-import { isTrustedIpcSender } from './handlers/timesheet/main-window';
-import { 
-  storeCredentials,
+
+import {
+  clearSession,
+  clearUserSessions,
+  createSession,
   getCredentials,
-  createSession, 
-  validateSession, 
-  clearSession, 
-  clearUserSessions 
+  storeCredentials,
+  validateSession,
 } from '../repositories';
+import { getCurrentSessionSchema,loginSchema, logoutSchema, validateSessionSchema } from '../validation/ipc-schemas';
 import { validateInput } from '../validation/validate-ipc-input';
-import { 
-  loginSchema,
-  validateSessionSchema,
-  logoutSchema,
-  getCurrentSessionSchema
-} from '../validation/ipc-schemas';
+import { isTrustedIpcSender } from './handlers/timesheet/main-window';
+import { appLogger,ipcLogger } from './utils/logger';
 
 // Admin credentials from environment variables
 // For production: Set SHEETPILOT_ADMIN_USERNAME and SHEETPILOT_ADMIN_PASSWORD
@@ -35,7 +31,7 @@ const ADMIN_PASSWORD = process.env['SHEETPILOT_ADMIN_PASSWORD'];
 if (!ADMIN_PASSWORD) {
   appLogger.warn('Admin password not configured', {
     message: 'Set SHEETPILOT_ADMIN_PASSWORD environment variable for admin access',
-    security: 'Admin login will be disabled'
+    security: 'Admin login will be disabled',
   });
 }
 
@@ -62,13 +58,13 @@ function registerLoginHandler(): void {
     if (!validation.success) {
       return { success: false, error: validation.error };
     }
-    
+
     const validatedData = validation.data!;
     ipcLogger.audit('login-attempt', 'User attempting login', { email: validatedData.email });
-    
+
     try {
       let isAdmin = false;
-      
+
       // Check if this is an admin login
       if (ADMIN_PASSWORD && validatedData.email === ADMIN_USERNAME && validatedData.password === ADMIN_PASSWORD) {
         isAdmin = true;
@@ -76,25 +72,25 @@ function registerLoginHandler(): void {
       } else {
         // For regular users, check if credentials already exist
         const existingCredentials = getCredentials('smartsheet');
-        
+
         if (existingCredentials) {
           // Returning user - verify password matches stored credentials
           if (existingCredentials.email !== validatedData.email) {
-            ipcLogger.warn('Login email mismatch', { 
+            ipcLogger.warn('Login email mismatch', {
               providedEmail: validatedData.email,
-              storedEmail: existingCredentials.email 
+              storedEmail: existingCredentials.email,
             });
-            return { 
-              success: false, 
-              error: `Credentials are stored for ${existingCredentials.email}. Use that email or clear credentials in Settings.` 
+            return {
+              success: false,
+              error: `Credentials are stored for ${existingCredentials.email}. Use that email or clear credentials in Settings.`,
             };
           }
-          
+
           if (existingCredentials.password !== validatedData.password) {
             ipcLogger.warn('Login password mismatch', { email: validatedData.email });
             return { success: false, error: 'Incorrect password. Please try again.' };
           }
-          
+
           ipcLogger.verbose('Password verified for returning user', { email: validatedData.email });
         } else {
           // New user - store credentials
@@ -108,12 +104,12 @@ function registerLoginHandler(): void {
 
       // Create session
       const sessionToken = createSession(validatedData.email, validatedData.stayLoggedIn, isAdmin);
-      
+
       ipcLogger.info('Login successful', { email: validatedData.email, isAdmin });
       return {
         success: true,
         token: sessionToken,
-        isAdmin
+        isAdmin,
       };
     } catch (err: unknown) {
       ipcLogger.error('Could not login', err);
@@ -134,7 +130,7 @@ function registerValidateSessionHandler(): void {
     if (!validation.success) {
       return { valid: false };
     }
-    
+
     const validatedData = validation.data!;
 
     try {
@@ -158,10 +154,10 @@ function registerLogoutHandler(): void {
     if (!validation.success) {
       return { success: false, error: validation.error };
     }
-    
+
     const validatedData = validation.data!;
-    ipcLogger.audit('logout', 'User logging out', { token: validatedData.token.substring(0, 8) + '...' });
-    
+    ipcLogger.audit('logout', 'User logging out', { token: `${validatedData.token.substring(0, 8)  }...` });
+
     try {
       // Get session info before clearing
       const session = validateSession(validatedData.token);
@@ -171,7 +167,7 @@ function registerLogoutHandler(): void {
       } else {
         clearSession(validatedData.token);
       }
-      
+
       return { success: true };
     } catch (err: unknown) {
       ipcLogger.error('Could not logout', err);
@@ -191,7 +187,7 @@ function registerGetCurrentSessionHandler(): void {
     if (!validation.success) {
       return null;
     }
-    
+
     const validatedData = validation.data!;
 
     try {
@@ -200,7 +196,7 @@ function registerGetCurrentSessionHandler(): void {
         return {
           email: session.email,
           token: validatedData.token,
-          isAdmin: session.isAdmin || false
+          isAdmin: session.isAdmin || false,
         };
       }
       return null;
@@ -217,14 +213,12 @@ function registerGetCurrentSessionHandler(): void {
  */
 export function registerAuthHandlers(): void {
   ipcLogger.verbose('Registering authentication IPC handlers');
-  
+
   registerPingHandler();
   registerLoginHandler();
   registerValidateSessionHandler();
   registerLogoutHandler();
   registerGetCurrentSessionHandler();
-  
+
   ipcLogger.verbose('All authentication handlers registered successfully');
 }
-
-

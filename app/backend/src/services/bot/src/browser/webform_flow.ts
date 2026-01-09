@@ -14,9 +14,10 @@
  * Prefer changing `WebformFiller` when you want behavior changes today.
  */
 
-import { chromium, type Browser, type BrowserContext, type Page } from 'playwright';
-import * as cfg from '../config/automation_config';
+import { type Browser, type BrowserContext, chromium, type Page } from 'playwright';
+
 import { botLogger } from '../../utils/logger';
+import * as cfg from '../config/automation_config';
 import { SubmissionMonitor } from './submission_monitor';
 
 function resolveBrowserChannel(): string {
@@ -31,7 +32,7 @@ function buildBrowserLaunchArgs(): string[] {
     '--disable-dev-shm-usage',
     '--disable-gpu',
     '--disable-extensions',
-    '--disable-blink-features=AutomationControlled'
+    '--disable-blink-features=AutomationControlled',
   ];
   return baseArgs.concat(process.platform === 'win32' ? [] : ['--no-sandbox']);
 }
@@ -79,13 +80,23 @@ export class WebformFiller {
   pages: Page[] = [];
   context: BrowserContext | null = null;
   page: Page | null = null;
-  formConfig: { BASE_URL: string; FORM_ID: string; SUBMISSION_ENDPOINT: string; SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[] };
+  formConfig: {
+    BASE_URL: string;
+    FORM_ID: string;
+    SUBMISSION_ENDPOINT: string;
+    SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[];
+  };
 
   constructor(
     config: typeof cfg,
     headless: boolean = true,
     browserKind: string = 'chromium',
-    formConfig?: { BASE_URL: string; FORM_ID: string; SUBMISSION_ENDPOINT: string; SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[] }
+    formConfig?: {
+      BASE_URL: string;
+      FORM_ID: string;
+      SUBMISSION_ENDPOINT: string;
+      SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[];
+    }
   ) {
     this.cfg = config;
     this.headless = headless;
@@ -97,7 +108,7 @@ export class WebformFiller {
       BASE_URL: cfg.BASE_URL,
       FORM_ID: cfg.FORM_ID,
       SUBMISSION_ENDPOINT: cfg.SUBMISSION_ENDPOINT,
-      SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: cfg.SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS
+      SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: cfg.SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS,
     };
   }
 
@@ -136,7 +147,7 @@ export class WebformFiller {
       this.browser = await chromium.launch({
         headless: this.headless,
         channel,
-        args: buildBrowserLaunchArgs()
+        args: buildBrowserLaunchArgs(),
       });
 
       const spawnedExecutablePath = redactUserHomeFromPath(
@@ -161,10 +172,10 @@ export class WebformFiller {
     const context = await this.browser.newContext({
       viewport: {
         width: cfg.BROWSER_VIEWPORT_WIDTH,
-        height: cfg.BROWSER_VIEWPORT_HEIGHT
+        height: cfg.BROWSER_VIEWPORT_HEIGHT,
       },
       ignoreHTTPSErrors: false,
-      javaScriptEnabled: true
+      javaScriptEnabled: true,
     });
 
     await context.addInitScript(() => {
@@ -216,7 +227,7 @@ export class WebformFiller {
   async navigateToBase(): Promise<void> {
     const page = this.requirePage();
     await page.goto(this.formConfig.BASE_URL, {
-      timeout: cfg.GLOBAL_TIMEOUT * 1000
+      timeout: cfg.GLOBAL_TIMEOUT * 1000,
     });
   }
 
@@ -224,8 +235,7 @@ export class WebformFiller {
     const page = this.requirePage();
     // This method is called for every row. Keep it fast and deterministic.
     // Treat "form ready" as: required field exists, is visible, and is enabled.
-    const projectLocator =
-      cfg.FIELD_DEFINITIONS['project_code']?.locator ?? "input[aria-label='Project']";
+    const projectLocator = cfg.FIELD_DEFINITIONS['project_code']?.locator ?? "input[aria-label='Project']";
 
     await cfg.dynamic_wait({
       condition_func: async () => {
@@ -267,12 +277,9 @@ export class WebformFiller {
 
       // You confirmed: successful submit clears the form.
       // Wait for a "form cleared" signal so the next row can start immediately.
-      const projectLocator =
-        cfg.FIELD_DEFINITIONS['project_code']?.locator ?? "input[aria-label='Project']";
-      const dateLocator =
-        cfg.FIELD_DEFINITIONS['date']?.locator ?? "input[placeholder='mm/dd/yyyy']";
-      const hoursLocator =
-        cfg.FIELD_DEFINITIONS['hours']?.locator ?? "input[aria-label='Hours']";
+      const projectLocator = cfg.FIELD_DEFINITIONS['project_code']?.locator ?? "input[aria-label='Project']";
+      const dateLocator = cfg.FIELD_DEFINITIONS['date']?.locator ?? "input[placeholder='mm/dd/yyyy']";
+      const hoursLocator = cfg.FIELD_DEFINITIONS['hours']?.locator ?? "input[aria-label='Hours']";
 
       const cleared = await cfg.dynamic_wait({
         condition_func: async () => {

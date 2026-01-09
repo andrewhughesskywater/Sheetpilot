@@ -1054,11 +1054,10 @@
 
     <pattern name="fallback-mechanisms">
       <description>Graceful degradation when services fail</description>
-      <keywords>fallback, graceful degradation, localStorage restore, logger fallback, API fallback, resilience</keywords>
+      <keywords>fallback, graceful degradation, localStorage restore, logger fallback, resilience</keywords>
       <related-files>
         <file>frontend/contexts/DataContext.tsx</file>
         <file>frontend/src/utils/logger-fallback.ts</file>
-        <file>frontend/src/utils/api-fallback.ts</file>
       </related-files>
       <examples>
         <example>
@@ -1069,10 +1068,7 @@
           <scenario>window.logger is undefined (development mode)</scenario>
           <fallback>Use console-based logger from logger-fallback</fallback>
         </example>
-        <example>
-          <scenario>IPC API is undefined (development mode)</scenario>
-          <fallback>Use mock API from api-fallback</fallback>
-        </example>
+        <!-- IPC API fallback removed with api-fallback deprecation -->
       </examples>
     </pattern>
 

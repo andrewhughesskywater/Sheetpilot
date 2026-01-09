@@ -1,8 +1,9 @@
-import { ipcLogger } from '../utils/logger';
 import { formatMinutesToTime, parseTimeToMinutes } from '@sheetpilot/shared/utils/format-conversions';
+
 import { getDb, resetInProgressTimesheetEntries } from '../../repositories';
-import { validateInput } from '../../validation/validate-ipc-input';
 import { deleteDraftSchema, saveDraftSchema } from '../../validation/ipc-schemas';
+import { validateInput } from '../../validation/validate-ipc-input';
+import { ipcLogger } from '../utils/logger';
 
 export type SaveDraftInput = {
   id?: number | null;
@@ -53,22 +54,34 @@ export function saveDraftRequest(row: SaveDraftInput): SaveDraftResult {
     ipcLogger.verbose('Saving draft timesheet entry (partial data allowed)', {
       id: validatedRow.id,
       date: validatedRow.date,
-      project: validatedRow.project
+      project: validatedRow.project,
     });
 
     const { timeInMinutes, timeOutMinutes } = parseAndValidateTimes(validatedRow.timeIn, validatedRow.timeOut);
 
+    // Filter out undefined properties for exactOptionalPropertyTypes compliance
+    const filteredRow: SaveDraftInput = {
+      id: validatedRow.id ?? null,
+    };
+    if (validatedRow.date !== undefined) filteredRow.date = validatedRow.date;
+    if (validatedRow.timeIn !== undefined) filteredRow.timeIn = validatedRow.timeIn;
+    if (validatedRow.timeOut !== undefined) filteredRow.timeOut = validatedRow.timeOut;
+    if (validatedRow.project !== undefined) filteredRow.project = validatedRow.project;
+    if (validatedRow.tool !== undefined) filteredRow.tool = validatedRow.tool;
+    if (validatedRow.chargeCode !== undefined) filteredRow.chargeCode = validatedRow.chargeCode;
+    if (validatedRow.taskDescription !== undefined) filteredRow.taskDescription = validatedRow.taskDescription;
+
     const { changes, savedId, savedEntry } = runSaveTransaction({
-      validatedRow,
+      validatedRow: filteredRow,
       timeInMinutes,
-      timeOutMinutes
+      timeOutMinutes,
     });
 
     ipcLogger.info('Draft timesheet entry saved', {
       id: savedId,
       changes,
       date: validatedRow.date,
-      project: validatedRow.project
+      project: validatedRow.project,
     });
     timer.done({ changes });
 
@@ -77,7 +90,7 @@ export function saveDraftRequest(row: SaveDraftInput): SaveDraftResult {
         success: true,
         changes,
         id: savedId,
-        entry: mapDbEntryToGrid(savedEntry)
+        entry: mapDbEntryToGrid(savedEntry),
       };
     }
 
@@ -86,7 +99,7 @@ export function saveDraftRequest(row: SaveDraftInput): SaveDraftResult {
     ipcLogger.error('Could not save draft timesheet entry', {
       date: validatedRow.date,
       project: validatedRow.project,
-      error: err instanceof Error ? err.message : String(err)
+      error: err instanceof Error ? err.message : String(err),
     });
     const errorMessage = err instanceof Error ? err.message : String(err);
     timer.done({ outcome: 'error', error: errorMessage });
@@ -98,7 +111,7 @@ export function deleteDraftRequest(id: number): DeleteDraftResult {
   const timer = ipcLogger.startTimer('delete-draft');
   const validation = validateInput(deleteDraftSchema, { id }, 'timesheet:deleteDraft');
   if (!validation.success) {
-    return { success: false, error: validation.error };
+    return { success: false, error: validation.error ?? 'Validation failed' };
   }
 
   const validated = validation.data!;
@@ -130,14 +143,14 @@ export function deleteDraftRequest(id: number): DeleteDraftResult {
     ipcLogger.info('Timesheet entry deleted', {
       id: validated.id,
       changes: result.changes,
-      previousStatus: entry?.status
+      previousStatus: entry?.status,
     });
     timer.done({ changes: result.changes });
     return { success: true, changes: result.changes };
   } catch (err: unknown) {
     ipcLogger.error('Could not delete timesheet entry', {
       entryId: validated.id,
-      error: err instanceof Error ? err.message : String(err)
+      error: err instanceof Error ? err.message : String(err),
     });
     const errorMessage = err instanceof Error ? err.message : String(err);
     timer.done({ outcome: 'error', error: errorMessage });
@@ -215,7 +228,10 @@ export function loadDraftByIdRequest(id: number): LoadDraftByIdResult {
   }
 }
 
-function parseAndValidateTimes(timeIn?: string, timeOut?: string): { timeInMinutes: number | null; timeOutMinutes: number | null } {
+function parseAndValidateTimes(
+  timeIn?: string,
+  timeOut?: string
+): { timeInMinutes: number | null; timeOutMinutes: number | null } {
   let timeInMinutes: number | null = null;
   let timeOutMinutes: number | null = null;
 
@@ -291,7 +307,7 @@ function updateExistingEntry(
   ipcLogger.debug('Updating existing timesheet entry (partial data allowed)', { id: validatedRow.id });
 
   const { fields, values } = buildUpdateFieldsAndValues(validatedRow, timeInMinutes, timeOutMinutes);
-  
+
   if (fields.length === 0) {
     return { changes: 0, savedId: validatedRow.id! };
   }
@@ -299,11 +315,11 @@ function updateExistingEntry(
   const updateSql = `UPDATE timesheet SET ${fields.join(', ')} WHERE id = ? AND status IS NULL`;
   const update = db.prepare(updateSql);
   const result = update.run(...values, validatedRow.id);
-  
+
   if (!result) {
     throw new Error('Failed to update timesheet entry');
   }
-  
+
   return { changes: result.changes, savedId: validatedRow.id! };
 }
 
@@ -314,7 +330,7 @@ function insertNewEntry(
   timeOutMinutes: number | null
 ): { changes: number; savedId: number } {
   ipcLogger.debug('Inserting new timesheet entry (partial data allowed)');
-  
+
   const insert = db.prepare(`
     INSERT INTO timesheet
     (date, time_in, time_out, project, tool, detail_charge_code, task_description, status)
@@ -334,11 +350,9 @@ function insertNewEntry(
   if (!result) {
     throw new Error('Failed to insert timesheet entry');
   }
-  
-  const savedId = typeof result.lastInsertRowid === 'bigint' 
-    ? Number(result.lastInsertRowid) 
-    : result.lastInsertRowid;
-    
+
+  const savedId = typeof result.lastInsertRowid === 'bigint' ? Number(result.lastInsertRowid) : result.lastInsertRowid;
+
   return { changes: result.changes, savedId };
 }
 
@@ -352,7 +366,7 @@ function runSaveTransaction(params: {
 
   const saveTransaction = db.transaction(() => {
     const isUpdate = validatedRow.id !== undefined && validatedRow.id !== null;
-    
+
     const { changes, savedId } = isUpdate
       ? updateExistingEntry(db, validatedRow, timeInMinutes, timeOutMinutes)
       : insertNewEntry(db, validatedRow, timeInMinutes, timeOutMinutes);
@@ -360,7 +374,11 @@ function runSaveTransaction(params: {
     const getEntry = db.prepare(`SELECT * FROM timesheet WHERE id = ?`);
     const savedEntry = getEntry.get(savedId) as DbEntry | undefined;
 
-    return { changes, savedId, savedEntry };
+    return {
+      changes,
+      savedId,
+      ...(savedEntry && { savedEntry }),
+    };
   });
 
   return saveTransaction();
@@ -384,7 +402,7 @@ function mapDbEntryToGrid(entry: DbEntry): {
     project: entry.project,
     tool: entry.tool || null,
     chargeCode: entry.detail_charge_code || null,
-    taskDescription: entry.task_description
+    taskDescription: entry.task_description,
   };
 }
 

@@ -1,9 +1,9 @@
 /**
  * @fileoverview Deprecated Constants Tests
- * 
+ *
  * Tests that deprecated constants are properly marked and that the
  * createFormConfig function works correctly as the replacement.
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025
@@ -40,7 +40,7 @@ describe('Deprecated Constants', () => {
     it('should create valid config with custom URL and ID', () => {
       const testUrl = 'https://app.smartsheet.com/b/form/test123';
       const testId = 'test123';
-      
+
       const config = createFormConfig(testUrl, testId);
 
       expect(config.BASE_URL).toBe(testUrl);
@@ -49,7 +49,7 @@ describe('Deprecated Constants', () => {
       expect(config.SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS).toEqual([
         '**forms.smartsheet.com/api/submit/test123',
         '**forms.smartsheet.com/**',
-        '**app.smartsheet.com/**'
+        '**app.smartsheet.com/**',
       ]);
     });
 
@@ -57,9 +57,7 @@ describe('Deprecated Constants', () => {
       const q3FormId = QUARTER_DEFINITIONS[0].formId;
       const config = createFormConfig('https://example.com', q3FormId);
 
-      expect(config.SUBMISSION_ENDPOINT).toBe(
-        `https://forms.smartsheet.com/api/submit/${q3FormId}`
-      );
+      expect(config.SUBMISSION_ENDPOINT).toBe(`https://forms.smartsheet.com/api/submit/${q3FormId}`);
     });
 
     it('should generate correct URL patterns', () => {
@@ -67,9 +65,7 @@ describe('Deprecated Constants', () => {
       const config = createFormConfig('https://app.smartsheet.com/b/form/xyz', testFormId);
 
       expect(config.SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS).toHaveLength(3);
-      expect(config.SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS[0]).toBe(
-        `**forms.smartsheet.com/api/submit/${testFormId}`
-      );
+      expect(config.SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS[0]).toBe(`**forms.smartsheet.com/api/submit/${testFormId}`);
       expect(config.SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS[1]).toBe('**forms.smartsheet.com/**');
       expect(config.SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS[2]).toBe('**app.smartsheet.com/**');
     });
@@ -84,10 +80,7 @@ describe('Deprecated Constants', () => {
     });
 
     it('should work with Q3 quarter definition', () => {
-      const q3Config = createFormConfig(
-        QUARTER_DEFINITIONS[0].formUrl,
-        QUARTER_DEFINITIONS[0].formId
-      );
+      const q3Config = createFormConfig(QUARTER_DEFINITIONS[0].formUrl, QUARTER_DEFINITIONS[0].formId);
 
       expect(q3Config.BASE_URL).toBe(QUARTER_DEFINITIONS[0].formUrl);
       expect(q3Config.FORM_ID).toBe(QUARTER_DEFINITIONS[0].formId);
@@ -95,10 +88,7 @@ describe('Deprecated Constants', () => {
     });
 
     it('should work with Q4 quarter definition', () => {
-      const q4Config = createFormConfig(
-        QUARTER_DEFINITIONS[1].formUrl,
-        QUARTER_DEFINITIONS[1].formId
-      );
+      const q4Config = createFormConfig(QUARTER_DEFINITIONS[1].formUrl, QUARTER_DEFINITIONS[1].formId);
 
       expect(q4Config.BASE_URL).toBe(QUARTER_DEFINITIONS[1].formUrl);
       expect(q4Config.FORM_ID).toBe(QUARTER_DEFINITIONS[1].formId);
@@ -106,27 +96,17 @@ describe('Deprecated Constants', () => {
     });
 
     it('should generate correct patterns for Q3 form', () => {
-      const q3Config = createFormConfig(
-        QUARTER_DEFINITIONS[0].formUrl,
-        QUARTER_DEFINITIONS[0].formId
-      );
+      const q3Config = createFormConfig(QUARTER_DEFINITIONS[0].formUrl, QUARTER_DEFINITIONS[0].formId);
 
       const patterns = q3Config.SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS;
-      expect(patterns).toContain(
-        `**forms.smartsheet.com/api/submit/${QUARTER_DEFINITIONS[0].formId}`
-      );
+      expect(patterns).toContain(`**forms.smartsheet.com/api/submit/${QUARTER_DEFINITIONS[0].formId}`);
     });
 
     it('should generate correct patterns for Q4 form', () => {
-      const q4Config = createFormConfig(
-        QUARTER_DEFINITIONS[1].formUrl,
-        QUARTER_DEFINITIONS[1].formId
-      );
+      const q4Config = createFormConfig(QUARTER_DEFINITIONS[1].formUrl, QUARTER_DEFINITIONS[1].formId);
 
       const patterns = q4Config.SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS;
-      expect(patterns).toContain(
-        `**forms.smartsheet.com/api/submit/${QUARTER_DEFINITIONS[1].formId}`
-      );
+      expect(patterns).toContain(`**forms.smartsheet.com/api/submit/${QUARTER_DEFINITIONS[1].formId}`);
     });
   });
 
@@ -145,7 +125,7 @@ describe('Deprecated Constants', () => {
 
     it('should use createFormConfig to create valid configurations', () => {
       const config = createFormConfig('https://test.com', 'test-id');
-      
+
       expect(config.BASE_URL).not.toBe('DEPRECATED_USE_DYNAMIC_CONFIG');
       expect(config.FORM_ID).not.toBe('DEPRECATED_USE_DYNAMIC_CONFIG');
       expect(config).toHaveProperty('BASE_URL');
@@ -155,4 +135,3 @@ describe('Deprecated Constants', () => {
     });
   });
 });
-

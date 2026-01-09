@@ -67,7 +67,8 @@ export const timesheetBridge = {
     };
     error?: string;
   }> => ipcRenderer.invoke('timesheet:loadDraftById', id),
-  deleteDraft: (id: number): Promise<{ success: boolean; error?: string }> => ipcRenderer.invoke('timesheet:deleteDraft', id),
+  deleteDraft: (id: number): Promise<{ success: boolean; error?: string }> =>
+    ipcRenderer.invoke('timesheet:deleteDraft', id),
   resetInProgress: (): Promise<{ success: boolean; count?: number; error?: string }> =>
     ipcRenderer.invoke('timesheet:resetInProgress'),
   exportToCSV: (): Promise<{
@@ -85,7 +86,5 @@ export const timesheetBridge = {
   },
   removeProgressListener: (): void => {
     ipcRenderer.removeAllListeners('timesheet:progress');
-  }
+  },
 };
-
-

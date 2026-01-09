@@ -4,11 +4,11 @@ import type { PluginRegistryConfig } from '@/plugin-types';
 
 vi.mock('fs', () => ({
   existsSync: vi.fn(),
-  readFileSync: vi.fn()
+  readFileSync: vi.fn(),
 }));
 
 vi.mock('path', () => ({
-  resolve: vi.fn((p: string) => p)
+  resolve: vi.fn((p: string) => p),
 }));
 
 describe('plugin-config', () => {
@@ -34,7 +34,7 @@ describe('plugin-config', () => {
   describe('loadPluginConfig', () => {
     it('should return default config when no file path provided', () => {
       const config = loadPluginConfig();
-      
+
       expect(config).toBeDefined();
       expect(config.plugins).toBeDefined();
       expect(config.plugins.data.active).toBe('sqlite');
@@ -47,7 +47,7 @@ describe('plugin-config', () => {
       // The actual loadPluginConfig will fall back to defaults if file doesn't exist
       // To fully test file loading, use integration tests with real files
       const config = loadPluginConfig('/path/to/config.json');
-      
+
       // Should return default config since file doesn't exist
       expect(config).toBeDefined();
       expect(config.plugins).toBeDefined();
@@ -89,9 +89,9 @@ describe('plugin-config', () => {
         plugins: {
           data: { active: 'memory' },
           credentials: { active: 'sqlite' },
-          submission: { active: 'mock' }
+          submission: { active: 'mock' },
         },
-        featureFlags: {}
+        featureFlags: {},
       };
 
       process.env.SHEETPILOT_PLUGIN_CONFIG = JSON.stringify(envConfig);
@@ -120,11 +120,11 @@ describe('plugin-config', () => {
         plugins: {
           data: { active: 'memory' },
           credentials: { active: 'sqlite' },
-          submission: { active: 'electron', alternatives: ['mock'] }
+          submission: { active: 'electron', alternatives: ['mock'] },
         },
         featureFlags: {
-          experimentalGrid: { enabled: true, variant: 'simple-table' }
-        }
+          experimentalGrid: { enabled: true, variant: 'simple-table' },
+        },
       };
 
       process.env.SHEETPILOT_PLUGIN_CONFIG = JSON.stringify(userConfig);
@@ -176,4 +176,3 @@ describe('plugin-config', () => {
     });
   });
 });
-

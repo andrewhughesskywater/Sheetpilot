@@ -1,9 +1,9 @@
 /**
  * @fileoverview Window API Type Definitions
- * 
+ *
  * TypeScript definitions for Electron IPC APIs exposed via preload script.
  * All APIs are optional to support graceful degradation in development mode.
- * 
+ *
  * API Categories:
  * - api: General utilities (ping)
  * - timesheet: Draft and submission operations
@@ -28,14 +28,17 @@ declare global {
       /** Test IPC communication */
       ping: (msg: string) => Promise<string>;
     };
-    
+
     /**
      * Timesheet draft and submission operations
-     * 
+     *
      * Handles CRUD operations for draft entries and submission workflow.
      */
     timesheet?: {
-      submit: (token: string, useMockWebsite?: boolean) => Promise<{
+      submit: (
+        token: string,
+        useMockWebsite?: boolean
+      ) => Promise<{
         submitResult?: { ok: boolean; successCount: number; removedCount: number; totalProcessed: number };
         dbPath?: string;
         error?: string;
@@ -51,9 +54,9 @@ declare global {
         tool?: string | null;
         chargeCode?: string | null;
         taskDescription?: string;
-      }) => Promise<{ 
-        success: boolean; 
-        changes?: number; 
+      }) => Promise<{
+        success: boolean;
+        changes?: number;
         id?: number;
         entry?: {
           id: number;
@@ -105,35 +108,49 @@ declare global {
         error?: string;
       }>;
       /** Subscribe to submission progress updates */
-      onSubmissionProgress: (callback: (progress: { percent: number; current: number; total: number; message: string }) => void) => void;
+      onSubmissionProgress: (
+        callback: (progress: { percent: number; current: number; total: number; message: string }) => void
+      ) => void;
       /** Unsubscribe from progress updates */
       removeProgressListener: () => void;
     };
-    
+
     /**
      * Secure credential storage
-     * 
+     *
      * Stores encrypted credentials in system keychain/credential store.
      * Passwords never stored in plain text.
      */
     credentials?: {
       /** Store credentials securely */
-      store: (service: string, email: string, password: string) => Promise<{ success: boolean; message: string; changes: number }>;
+      store: (
+        service: string,
+        email: string,
+        password: string
+      ) => Promise<{ success: boolean; message: string; changes: number }>;
       /** List all stored credential services */
-      list: () => Promise<{ success: boolean; credentials: Array<{ id: number; service: string; email: string; created_at: string; updated_at: string }>; error?: string }>;
+      list: () => Promise<{
+        success: boolean;
+        credentials: Array<{ id: number; service: string; email: string; created_at: string; updated_at: string }>;
+        error?: string;
+      }>;
       /** Delete credentials for a service */
       delete: (service: string) => Promise<{ success: boolean; message: string; changes: number }>;
     };
-    
+
     /**
      * Authentication and session management
-     * 
+     *
      * Token-based authentication with session persistence.
      * Tokens validated on each use and expire after inactivity.
      */
     auth?: {
       /** Authenticate user and create session */
-      login: (email: string, password: string, stayLoggedIn: boolean) => Promise<{ success: boolean; token?: string; isAdmin?: boolean; error?: string }>;
+      login: (
+        email: string,
+        password: string,
+        stayLoggedIn: boolean
+      ) => Promise<{ success: boolean; token?: string; isAdmin?: boolean; error?: string }>;
       /** Validate existing session token */
       validateSession: (token: string) => Promise<{ valid: boolean; email?: string; isAdmin?: boolean }>;
       /** End session and invalidate token */
@@ -141,10 +158,10 @@ declare global {
       /** Get current session info */
       getCurrentSession: (token: string) => Promise<{ email: string; token: string; isAdmin: boolean } | null>;
     };
-    
+
     /**
      * Administrative operations (destructive)
-     * 
+     *
      * Requires admin token. All operations are irreversible.
      * Admin users cannot submit timesheets (read-only access).
      */
@@ -154,10 +171,10 @@ declare global {
       /** Rebuild database from scratch (destructive - deletes all data) */
       rebuildDatabase: (token: string) => Promise<{ success: boolean; error?: string }>;
     };
-    
+
     /**
      * Database archive access
-     * 
+     *
      * Read-only access to submitted timesheet entries and credentials.
      * Requires authentication token.
      */
@@ -166,9 +183,17 @@ declare global {
       getAllTimesheetEntries: (token: string) => Promise<{
         success: boolean;
         entries?: Array<{
-          id: number; date: string; time_in: number; time_out: number; hours: number;
-          project: string; tool?: string; detail_charge_code?: string; task_description: string;
-          status?: string; submitted_at?: string;
+          id: number;
+          date: string;
+          time_in: number;
+          time_out: number;
+          hours: number;
+          project: string;
+          tool?: string;
+          detail_charge_code?: string;
+          task_description: string;
+          status?: string;
+          submitted_at?: string;
         }>;
         error?: string;
       }>;
@@ -176,30 +201,44 @@ declare global {
       getAllArchiveData: (token: string) => Promise<{
         success: boolean;
         timesheet?: Array<{
-          id: number; date: string; time_in: number; time_out: number; hours: number;
-          project: string; tool?: string; detail_charge_code?: string; task_description: string;
-          status?: string; submitted_at?: string;
+          id: number;
+          date: string;
+          time_in: number;
+          time_out: number;
+          hours: number;
+          project: string;
+          tool?: string;
+          detail_charge_code?: string;
+          task_description: string;
+          status?: string;
+          submitted_at?: string;
         }>;
         credentials?: Array<{ id: number; service: string; email: string; created_at: string; updated_at: string }>;
         error?: string;
       }>;
     };
-    
+
     /**
      * Log file operations
-     * 
+     *
      * Access application logs for troubleshooting and support.
      */
     logs?: {
       /** Get log directory path and list of log files */
-      getLogPath: (token: string) => Promise<{ success: boolean; logPath?: string; logFiles?: string[]; error?: string }>;
+      getLogPath: (
+        token: string
+      ) => Promise<{ success: boolean; logPath?: string; logFiles?: string[]; error?: string }>;
       /** Export logs for download */
-      exportLogs: (token: string, logPath: string, format?: 'json' | 'txt') => Promise<{ success: boolean; content?: string; filename?: string; mimeType?: string; error?: string }>;
+      exportLogs: (
+        token: string,
+        logPath: string,
+        format?: 'json' | 'txt'
+      ) => Promise<{ success: boolean; content?: string; filename?: string; mimeType?: string; error?: string }>;
     };
-    
+
     /**
      * Structured logging API
-     * 
+     *
      * Logs written to file in NDJSON format with automatic PII redaction.
      */
     logger?: {
@@ -216,10 +255,10 @@ declare global {
       /** Log user action for analytics */
       userAction: (action: string, data?: unknown) => void;
     };
-    
+
     /**
      * Auto-update system
-     * 
+     *
      * Handles application updates with progress tracking.
      * Updates downloaded in background and installed on restart.
      */
@@ -227,7 +266,9 @@ declare global {
       /** Subscribe to update available events */
       onUpdateAvailable: (callback: (version: string) => void) => void;
       /** Subscribe to download progress updates */
-      onDownloadProgress: (callback: (progress: { percent: number; transferred: number; total: number }) => void) => void;
+      onDownloadProgress: (
+        callback: (progress: { percent: number; transferred: number; total: number }) => void
+      ) => void;
       /** Subscribe to update downloaded events */
       onUpdateDownloaded: (callback: (version: string) => void) => void;
       /** Cancel in-progress update download */
@@ -237,10 +278,10 @@ declare global {
       /** Remove all update event listeners */
       removeAllListeners: () => void;
     };
-    
+
     /**
      * Application settings
-     * 
+     *
      * Persistent key-value storage for application configuration.
      */
     settings?: {

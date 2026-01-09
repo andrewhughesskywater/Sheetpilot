@@ -428,9 +428,9 @@
       <keywords>entry points, main.tsx, App.tsx, React root, theme provider, navigation, Suspense</keywords>
       <file path="app/frontend/src/main.tsx">
         <purpose>Frontend entry point - initializes React app, fallbacks, error handlers, and theme</purpose>
-        <search-keywords>frontend entry, React root, ReactDOM, MUI theme, error handlers, logger fallback, API fallback, safe init, startup performance</search-keywords>
+        <search-keywords>frontend entry, React root, ReactDOM, MUI theme, error handlers, logger fallback, safe init, startup performance</search-keywords>
         <responsibilities>
-          <item>Initialize logger and API fallbacks for development mode</item>
+          <item>Initialize logger fallback for development mode</item>
           <item>Set up global error handlers (unhandled errors and promise rejections)</item>
           <item>Monitor startup performance</item>
           <item>Configure MUI theme provider</item>
@@ -444,7 +444,6 @@
           <import>@mui/material - Material-UI components</import>
           <import>./App - Main application component</import>
           <import>./utils/logger-fallback - Development logging fallback</import>
-          <import>./utils/api-fallback - Development API fallback</import>
           <import>./utils/safe-init - Idempotent initialization</import>
         </dependencies>
         <data-flow>
@@ -740,7 +739,7 @@
 
     <!-- Utils -->
     <module name="utils" description="Utility functions and helpers">
-      <keywords>utils, utilities, helpers, theme manager, logger fallback, API fallback, macroStorage, smartDate</keywords>
+      <keywords>utils, utilities, helpers, theme manager, logger fallback, macroStorage, smartDate</keywords>
       <file path="app/frontend/src/utils/theme-manager.ts">
         <purpose>Theme initialization and management utilities</purpose>
         <responsibilities>
@@ -760,15 +759,7 @@
         </responsibilities>
       </file>
 
-      <file path="app/frontend/src/utils/api-fallback.ts">
-        <purpose>Development fallback for window.api when running without Electron</purpose>
-        <search-keywords>API fallback, development fallback, mock IPC, window API mock, placeholder data, development mode</search-keywords>
-        <responsibilities>
-          <item>Provide mock implementations of IPC APIs</item>
-          <item>Return placeholder data for testing</item>
-          <item>Log API calls to console</item>
-        </responsibilities>
-      </file>
+      <!-- api-fallback.ts removed; development now focuses on logger fallback only -->
 
       <file path="app/frontend/src/utils/safe-init.ts">
         <purpose>Idempotent initialization utility to prevent duplicate runs</purpose>

@@ -1,9 +1,9 @@
 /**
  * @fileoverview TimesheetGrid Component
- * 
+ *
  * Core timesheet data entry component using Handsontable for spreadsheet-like data manipulation.
  * Handles real-time validation, auto-save with debouncing, macro support, and timesheet submission.
- * 
+ *
  * Key features:
  * - Real-time validation with visual feedback (no blocking validators to prevent editor issues)
  * - Individual row auto-save with debouncing and receipt verification
@@ -12,7 +12,7 @@
  * - Macro system for quick data entry (Ctrl+1-5)
  * - Keyboard shortcuts for date entry (Tab, Shift+Tab, Ctrl+Tab, Ctrl+T)
  * - Cascading business rules (project → tool → charge code dependencies)
- * 
+ *
  * Architecture decisions:
  * - Validators removed from column config to prevent editor blocking (validation in afterChange)
  * - Individual row saves instead of batch saves for better UX and data safety
@@ -20,28 +20,27 @@
  * - Hidden ID column (col 0) as "Golden Rule" for Handsontable-SQL sync
  */
 
-import { useCallback, useImperativeHandle, forwardRef, memo } from 'react';
-import { registerAllModules } from 'handsontable/registry';
-import { registerEditor } from 'handsontable/editors';
 import 'handsontable/styles/handsontable.css';
 import 'handsontable/styles/ht-theme-horizon.css';
-import { useTimesheetOrchestrator } from './hooks/useTimesheetOrchestrator';
 import './TimesheetGrid.css';
-import type { TimesheetRow } from './timesheet.schema';
-import MacroManagerDialog from './MacroManagerDialog';
+
+import { registerEditor } from 'handsontable/editors';
+import { registerAllModules } from 'handsontable/registry';
+import { forwardRef, memo,useCallback, useImperativeHandle } from 'react';
+
 import KeyboardShortcutsHintDialog from '../KeyboardShortcutsHintDialog';
-import { ValidationErrorDialog } from './ValidationErrorDialog';
+import { useTimesheetOrchestrator } from './hooks/useTimesheetOrchestrator';
+import MacroManagerDialog from './MacroManagerDialog';
 import { MacroToolbar } from './presentational/MacroToolbar';
+import { TimesheetFooter } from './presentational/TimesheetFooter';
 import { TimesheetHeader } from './presentational/TimesheetHeader';
 import { TimesheetHotTable } from './presentational/TimesheetHotTable';
-import { TimesheetFooter } from './presentational/TimesheetFooter';
-
-//
-
-// Handsontable-related helper types and functions are imported from utils
-
-import { batchSaveToDatabase as batchSaveToDatabaseUtil } from './timesheet.persistence';
 import { SpellcheckEditor } from './SpellcheckEditor';
+//
+// Handsontable-related helper types and functions are imported from utils
+import { batchSaveToDatabase as batchSaveToDatabaseUtil } from './timesheet.persistence';
+import type { TimesheetRow } from './timesheet.schema';
+import { ValidationErrorDialog } from './ValidationErrorDialog';
 // Orchestrator composes sub-orchestrators and exposes the model
 
 // Register all Handsontable modules
@@ -67,10 +66,10 @@ export interface TimesheetGridHandle {
 
 /**
  * Core timesheet grid component with spreadsheet interface
- * 
+ *
  * Provides Excel-like data entry with real-time validation, auto-save, and smart features.
  * Uses forwardRef to expose batchSaveToDatabase for parent component control.
- * 
+ *
  * Key behaviors:
  * - Individual row auto-save with 500ms debounce
  * - Receipt verification to handle race conditions during rapid edits
@@ -79,19 +78,19 @@ export interface TimesheetGridHandle {
  * - Cascading dropdowns (project → tool → charge code)
  * - Macro support for quick data entry (Ctrl+1-5)
  * - Keyboard shortcuts for date entry
- * 
+ *
  * Performance optimizations:
  * - Lazy component loading
  * - Debounced saves per row
  * - Abort controllers for in-flight saves
  * - updateData() instead of loadData() to preserve UI state
- * 
+ *
  * @param props - Component props
  * @param props.onChange - Optional callback fired when data changes
  * @param ref - Forward ref exposing batchSaveToDatabase method
  * @returns Timesheet grid with toolbar and dialogs
  */
-const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(function TimesheetGrid({ onChange }, ref) {
+const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(({ onChange }, ref) => {
   const {
     hotTableRef,
     timesheetDraftData,
@@ -191,13 +190,19 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
         buttonStatus={buttonStatus}
       />
 
-      <ValidationErrorDialog open={showErrorDialog} errors={validationErrors} onClose={() => setShowErrorDialog(false)} />
+      <ValidationErrorDialog
+        open={showErrorDialog}
+        errors={validationErrors}
+        onClose={() => setShowErrorDialog(false)}
+      />
       <MacroManagerDialog
         open={showMacroDialog}
         onClose={() => setShowMacroDialog(false)}
         onSave={(savedMacros) => {
           setMacros(savedMacros);
-          window.logger?.info('Macros updated', { count: savedMacros.filter((m) => m && Object.keys(m).length).length });
+          window.logger?.info('Macros updated', {
+            count: savedMacros.filter((m) => m && Object.keys(m).length).length,
+          });
         }}
       />
       <KeyboardShortcutsHintDialog open={showShortcutsHint} onClose={() => setShowShortcutsHint(false)} />
@@ -207,4 +212,3 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
 
 // Wrap with React.memo to prevent unnecessary re-renders
 export default memo(TimesheetGrid);
-

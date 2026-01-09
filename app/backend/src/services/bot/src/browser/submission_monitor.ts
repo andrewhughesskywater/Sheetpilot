@@ -9,8 +9,9 @@
  * - falling back to DOM text indicators when network signals are missing
  */
 import type { Locator, Page, Response } from 'playwright';
-import * as cfg from '../config/automation_config';
+
 import { botLogger } from '../../utils/logger';
+import * as cfg from '../config/automation_config';
 
 type RecordedResponse = { status: number; url: string; body?: string };
 type RecordedResponseSummary = { status: number; url: string };
@@ -51,7 +52,7 @@ export class SubmissionMonitor {
       allResponses,
       submissionIds,
       submissionTokens,
-      requestIds
+      requestIds,
     });
     page.on('response', handler);
 
@@ -66,10 +67,7 @@ export class SubmissionMonitor {
       let domSuccessFound = false;
 
       try {
-        const verifyTimeout = Math.min(
-          cfg.SUBMIT_VERIFY_TIMEOUT_MS / 1000.0,
-          cfg.GLOBAL_TIMEOUT,
-        );
+        const verifyTimeout = Math.min(cfg.SUBMIT_VERIFY_TIMEOUT_MS / 1000.0, cfg.GLOBAL_TIMEOUT);
 
         await cfg.dynamic_wait({
           condition_func: async () => {
@@ -91,7 +89,7 @@ export class SubmissionMonitor {
         domSuccessFound,
         submissionIds,
         submissionTokens,
-        requestIds
+        requestIds,
       });
 
       timer.done({ success: ok, method: domSuccessFound ? 'dom' : 'http' });
@@ -111,7 +109,11 @@ export class SubmissionMonitor {
       if (!this._isSuccessRelevantResponse(url, status)) return;
 
       const body = await this._tryReadResponseBody(response, { url, status });
-      this._recordSuccessResponse(successResponses, { url, status, body });
+      this._recordSuccessResponse(successResponses, {
+        url,
+        status,
+        ...(body !== undefined && { body }),
+      });
       this._tryCollectRequestId(response, requestIds);
 
       if (!body) return;
@@ -157,21 +159,14 @@ export class SubmissionMonitor {
   private _tryCollectRequestId(response: Response, requestIds: string[]): void {
     try {
       const headers = response.request().headers();
-      const requestIdHeader =
-        headers['x-request-id'] ??
-        headers['x-amzn-trace-id'] ??
-        headers['x-correlation-id'];
+      const requestIdHeader = headers['x-request-id'] ?? headers['x-amzn-trace-id'] ?? headers['x-correlation-id'];
       if (requestIdHeader) requestIds.push(String(requestIdHeader));
     } catch {
       // ignore
     }
   }
 
-  private _extractSubmissionFieldsFromBody(
-    body: string,
-    submissionIds: string[],
-    submissionTokens: string[]
-  ): void {
+  private _extractSubmissionFieldsFromBody(body: string, submissionIds: string[], submissionTokens: string[]): void {
     const parsed = this._tryParseJson(body);
     if (parsed) {
       const submissionId = this._getStringProp(parsed, 'submissionId');
@@ -189,10 +184,7 @@ export class SubmissionMonitor {
   }
 
   private async _findSubmitButton(page: Page): Promise<Locator | null> {
-    const selectors = [
-      cfg.SUBMIT_BUTTON_LOCATOR,
-      ...cfg.SUBMIT_BUTTON_FALLBACK_LOCATORS,
-    ];
+    const selectors = [cfg.SUBMIT_BUTTON_LOCATOR, ...cfg.SUBMIT_BUTTON_FALLBACK_LOCATORS];
 
     for (const selector of selectors) {
       const visible = await cfg.dynamic_wait_for_element(
@@ -200,7 +192,7 @@ export class SubmissionMonitor {
         selector,
         'visible',
         cfg.DYNAMIC_WAIT_BASE_TIMEOUT,
-        cfg.GLOBAL_TIMEOUT,
+        cfg.GLOBAL_TIMEOUT
       );
       if (!visible) continue;
 
@@ -266,12 +258,10 @@ export class SubmissionMonitor {
       return true;
     }
 
-    const bodyHasIndicator = successResponses.some(r => {
+    const bodyHasIndicator = successResponses.some((r) => {
       if (!r.body) return false;
       const lower = r.body.toLowerCase();
-      return cfg.SUBMIT_SUCCESS_INDICATORS.some(ind =>
-        lower.includes(ind.toLowerCase()),
-      );
+      return cfg.SUBMIT_SUCCESS_INDICATORS.some((ind) => lower.includes(ind.toLowerCase()));
     });
 
     botLogger.info('Submission verified via response content validation', {

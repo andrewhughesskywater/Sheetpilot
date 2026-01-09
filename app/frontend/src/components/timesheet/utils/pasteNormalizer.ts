@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
+
 import type { TimesheetRow } from '../timesheet.schema';
 
 interface PasteMetadata {
@@ -32,19 +33,19 @@ function mapPastedRow(rawData: unknown[], columnCount: number): Partial<Timeshee
 
   const date = mapFieldValue(rawData, 0, columnCount);
   if (date) result.date = date;
-  
+
   const timeIn = mapFieldValue(rawData, 1, columnCount);
   if (timeIn) result.timeIn = timeIn;
-  
+
   const timeOut = mapFieldValue(rawData, 2, columnCount);
   if (timeOut) result.timeOut = timeOut;
-  
+
   const project = mapFieldValue(rawData, 3, columnCount);
   if (project) result.project = project;
-  
+
   result.tool = mapFieldValue(rawData, 4, columnCount);
   result.chargeCode = mapFieldValue(rawData, 5, columnCount);
-  
+
   const taskDescription = mapFieldValue(rawData, 6, columnCount);
   if (taskDescription) result.taskDescription = taskDescription;
 
@@ -67,7 +68,7 @@ function createTimesheetRow(partial: Partial<TimesheetRow>): TimesheetRow {
     taskDescription: partial.taskDescription || '',
     receipt: undefined,
     submitted: false,
-    receiptVerificationRequired: false
+    receiptVerificationRequired: false,
   };
 }
 
@@ -97,9 +98,7 @@ export function normalizePastedRows(pastedData: unknown[][], existingRows: Times
   return [...existingRows, ...normalized];
 }
 
-export function validatePastedData(
-  pastedData: unknown[][]
-): { isValid: boolean; errors: string[] } {
+export function validatePastedData(pastedData: unknown[][]): { isValid: boolean; errors: string[] } {
   const errors: string[] = [];
 
   if (!Array.isArray(pastedData) || pastedData.length === 0) {
@@ -113,7 +112,7 @@ export function validatePastedData(
 
   if (metadata.columnCount > 7) {
     window.logger?.warn('Pasted data has more than 7 columns; extra columns will be ignored', {
-      columnCount: metadata.columnCount
+      columnCount: metadata.columnCount,
     });
   }
 

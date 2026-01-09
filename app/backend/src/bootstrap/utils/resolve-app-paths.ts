@@ -6,6 +6,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+
 import type { LoggerLike } from '../logging/logger-contract';
 
 export interface AppPathsResolved {
@@ -23,8 +24,8 @@ export function resolvePreloadPath(backendDirname: string): string {
   if (!fs.existsSync(preloadPath)) {
     throw new Error(
       `Preload script not found at: ${preloadPath}\n` +
-      `backendDirname: ${backendDirname}\n` +
-      `Please rebuild the application.`
+        `backendDirname: ${backendDirname}\n` +
+        `Please rebuild the application.`
     );
   }
 
@@ -40,7 +41,19 @@ export function resolveIconPathSync(backendDirname: string, packagedLike: boolea
     return undefined;
   }
 
-  const iconPath = path.join(backendDirname, '..', '..', '..', '..', 'app', 'frontend', 'src', 'assets', 'images', 'icon.ico');
+  const iconPath = path.join(
+    backendDirname,
+    '..',
+    '..',
+    '..',
+    '..',
+    'app',
+    'frontend',
+    'src',
+    'assets',
+    'images',
+    'icon.ico'
+  );
   return iconPath;
 }
 
@@ -48,10 +61,7 @@ export function resolveIconPathSync(backendDirname: string, packagedLike: boolea
  * Asynchronously validate icon path (non-critical, deferred).
  * Logs warning if icon doesn't exist but doesn't block startup.
  */
-export async function validateIconPathAsync(
-  iconPath: string | undefined,
-  logger: LoggerLike
-): Promise<void> {
+export async function validateIconPathAsync(iconPath: string | undefined, logger: LoggerLike): Promise<void> {
   if (!iconPath) {
     return;
   }
@@ -64,7 +74,7 @@ export async function validateIconPathAsync(
   } catch (err: unknown) {
     logger.warn('Could not validate icon path', {
       iconPath,
-      error: err instanceof Error ? err.message : String(err)
+      error: err instanceof Error ? err.message : String(err),
     });
   }
 }
@@ -76,6 +86,6 @@ export async function validateIconPathAsync(
 export function resolveAppPathsSync(backendDirname: string, packagedLike: boolean): AppPathsResolved {
   return {
     preloadPath: resolvePreloadPath(backendDirname),
-    iconPath: resolveIconPathSync(backendDirname, packagedLike)
+    iconPath: resolveIconPathSync(backendDirname, packagedLike),
   };
 }

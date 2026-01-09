@@ -28,7 +28,7 @@ vi.mock('fs', async () => {
       }
       // Fall back to actual fs.existsSync for non-database paths
       return actual.existsSync(path);
-    }
+    },
   };
 });
 
@@ -36,25 +36,25 @@ vi.mock('fs', async () => {
 // MUST be synchronous for proper hoisting
 vi.mock('better-sqlite3', async () => {
   const pathModule = await import('path');
-  
+
   // Import the comprehensive in-memory database mock
   const { createInMemoryDatabase } = await import('./fixtures/in-memory-db-mock');
-  
+
   // Use the createInMemoryDatabase function which manages its own instance cache
   // This ensures we don't have two separate caches that can get out of sync
   function Database(path: string, _opts?: unknown) {
     const resolvedPath = pathModule.resolve(path);
     createdDbPaths.add(resolvedPath);
     createdDbPaths.add(pathModule.dirname(resolvedPath));
-    
+
     // Always use createInMemoryDatabase - it handles caching internally
     return createInMemoryDatabase(resolvedPath);
   }
-  
+
   return {
     default: Database,
     Database: Database,
-    __esModule: true
+    __esModule: true,
   };
 });
 
@@ -76,9 +76,15 @@ function createMockLocator() {
     textContent: vi.fn(() => Promise.resolve(null)),
     evaluate: vi.fn(() => Promise.resolve({})),
     boundingBox: vi.fn(() => Promise.resolve(null)),
-    first: vi.fn(function(this: typeof mockLocator) { return this; }),
-    nth: vi.fn(function(this: typeof mockLocator) { return this; }),
-    locator: vi.fn(function(this: typeof mockLocator) { return this; })
+    first: vi.fn(function (this: typeof mockLocator) {
+      return this;
+    }),
+    nth: vi.fn(function (this: typeof mockLocator) {
+      return this;
+    }),
+    locator: vi.fn(function (this: typeof mockLocator) {
+      return this;
+    }),
   };
   return mockLocator;
 }
@@ -107,10 +113,10 @@ function createMockPage() {
       session: {
         webRequest: {
           onCompleted: vi.fn(),
-          onBeforeSendHeaders: vi.fn()
-        }
-      }
-    }))
+          onBeforeSendHeaders: vi.fn(),
+        },
+      },
+    })),
   };
   return mockPage;
 }
@@ -124,8 +130,8 @@ function createMockContext(page: ReturnType<typeof createMockPage>) {
     getBrowserWindow: vi.fn(() => ({
       webContents: page.getWebContents(),
       close: vi.fn(),
-      isDestroyed: vi.fn(() => false)
-    }))
+      isDestroyed: vi.fn(() => false),
+    })),
   };
 }
 
@@ -133,24 +139,24 @@ function createMockContext(page: ReturnType<typeof createMockPage>) {
 function createMockBrowser() {
   const mockPage = createMockPage();
   const mockContext = createMockContext(mockPage);
-  
+
   return {
     newContext: vi.fn(() => Promise.resolve(mockContext)),
     close: vi.fn(() => Promise.resolve()),
-    getContexts: vi.fn(() => [mockContext])
+    getContexts: vi.fn(() => [mockContext]),
   };
 }
 
 vi.mock('@/services/bot/src/electron-browser', () => ({
   ElectronBrowser: {
-    launch: vi.fn(() => Promise.resolve(createMockBrowser()))
+    launch: vi.fn(() => Promise.resolve(createMockBrowser())),
   },
   chromium: vi.fn(() => ({
-    launch: vi.fn(() => Promise.resolve(createMockBrowser()))
+    launch: vi.fn(() => Promise.resolve(createMockBrowser())),
   })),
   ElectronBrowserContext: vi.fn(),
   ElectronPage: vi.fn(),
-  ElectronLocator: vi.fn()
+  ElectronLocator: vi.fn(),
 }));
 
 // Mock Electron to provide app.isPackaged and other required APIs
@@ -165,25 +171,25 @@ vi.mock('electron', () => ({
     on: vi.fn(),
     once: vi.fn(),
     quit: vi.fn(),
-    exit: vi.fn()
+    exit: vi.fn(),
   },
   ipcMain: {
     handle: vi.fn(),
     on: vi.fn(),
     once: vi.fn(),
-    removeHandler: vi.fn()
+    removeHandler: vi.fn(),
   },
   BrowserWindow: vi.fn(),
   dialog: {
     showMessageBox: vi.fn(() => Promise.resolve({ response: 0 })),
     showOpenDialog: vi.fn(() => Promise.resolve({ filePaths: [] })),
-    showSaveDialog: vi.fn(() => Promise.resolve({ filePath: '' }))
+    showSaveDialog: vi.fn(() => Promise.resolve({ filePath: '' })),
   },
   screen: {
     getPrimaryDisplay: vi.fn(() => ({
-      workAreaSize: { width: 1920, height: 1080 }
-    }))
-  }
+      workAreaSize: { width: 1920, height: 1080 },
+    })),
+  },
 }));
 
 // Clean up after each test to prevent memory leaks and test interference
@@ -197,10 +203,9 @@ afterEach(async () => {
   } catch {
     // Ignore if reset fails
   }
-  
+
   // Restore all mocks to prevent pollution between test files
   vi.restoreAllMocks();
-  
+
   // Browser mocks are created fresh for each test instance
 });
-

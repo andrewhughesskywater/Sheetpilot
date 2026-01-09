@@ -11,9 +11,10 @@
 
 import type { TimesheetEntry } from '@sheetpilot/shared/contracts/IDataService';
 import type { SubmissionResult } from '@sheetpilot/shared/contracts/ISubmissionService';
-import { getQuarterForDate, groupEntriesByQuarter } from '../config/quarter_config';
-import { createFormConfig } from '../config/automation_config';
+
 import { botLogger } from '../../utils/logger';
+import { createFormConfig } from '../config/automation_config';
+import { getQuarterForDate, groupEntriesByQuarter } from '../config/quarter_config';
 import { checkAborted } from './abort-utils';
 
 /**
@@ -27,10 +28,15 @@ export interface QuarterProcessingConfig {
     rows: Array<Record<string, unknown>>;
     email: string;
     password: string;
-    formConfig: { BASE_URL: string; FORM_ID: string; SUBMISSION_ENDPOINT: string; SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[] };
+    formConfig: {
+      BASE_URL: string;
+      FORM_ID: string;
+      SUBMISSION_ENDPOINT: string;
+      SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[];
+    };
     progressCallback?: (percent: number, message: string) => void;
     headless?: boolean;
-    abortSignal?: AbortSignal | {aborted: boolean; reason?: unknown};
+    abortSignal?: AbortSignal | { aborted: boolean; reason?: unknown };
   }) => Promise<{ ok: boolean; submitted: number[]; errors: Array<[number, string]> }>;
   /** Email for authentication */
   email: string;
@@ -39,7 +45,7 @@ export interface QuarterProcessingConfig {
   /** Optional progress callback */
   progressCallback?: ((percent: number, message: string) => void) | undefined;
   /** Optional abort signal (supports both AbortSignal and simplified {aborted: boolean} type) */
-  abortSignal?: AbortSignal | {aborted: boolean; reason?: unknown} | undefined;
+  abortSignal?: AbortSignal | { aborted: boolean; reason?: unknown } | undefined;
   /** Whether to use mock website */
   useMockWebsite?: boolean | undefined;
 }
@@ -61,7 +67,7 @@ function buildMockFormConfig(): FormConfig {
     BASE_URL: mockBaseUrl,
     FORM_ID: mockFormId,
     SUBMISSION_ENDPOINT: `${mockBaseUrl}/api/submit/${mockFormId}`,
-    SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: [`**${mockDomain}/api/submit/**`, `**${mockDomain}/**`]
+    SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: [`**${mockDomain}/api/submit/**`, `**${mockDomain}/**`],
   };
 }
 
@@ -71,8 +77,8 @@ function mapBotResultsToIds(
   errors: Array<[number, string]>
 ): { submittedIds: number[]; failedIds: number[] } {
   const submittedIds = submitted
-    .filter(i => i >= 0 && i < ids.length)
-    .map(i => ids[i])
+    .filter((i) => i >= 0 && i < ids.length)
+    .map((i) => ids[i])
     .filter((id): id is number => id !== undefined);
 
   const failedIds = errors
@@ -96,7 +102,7 @@ async function processQuarterGroup(params: {
   if (!quarterDef) {
     botLogger.error('Could not determine quarter for entries', {
       firstDate: quarterEntries[0]?.date,
-      dates: quarterEntries.map(e => e.date)
+      dates: quarterEntries.map((e) => e.date),
     });
     return null;
   }
@@ -105,8 +111,8 @@ async function processQuarterGroup(params: {
     ? buildMockFormConfig()
     : createFormConfig(quarterDef.formUrl, quarterDef.formId);
 
-  const ids = quarterEntries.map(e => e.id).filter((id): id is number => id !== undefined);
-  const botRows = quarterEntries.map(entry => config.toBotRow(entry));
+  const ids = quarterEntries.map((e) => e.id).filter((id): id is number => id !== undefined);
+  const botRows = quarterEntries.map((entry) => config.toBotRow(entry));
   botLogger.debug('Converted to bot format', { idMappings: ids });
 
   botLogger.verbose('Starting bot automation', { formUrl: formConfig.BASE_URL, formId: formConfig.FORM_ID });
@@ -123,9 +129,8 @@ async function processQuarterGroup(params: {
     email: config.email,
     password: config.password,
     formConfig,
-    progressCallback: config.progressCallback ?? undefined,
-    headless: undefined,
-    abortSignal: config.abortSignal ?? undefined
+    ...(config.progressCallback && { progressCallback: config.progressCallback }),
+    ...(config.abortSignal && { abortSignal: config.abortSignal }),
   });
 
   botLogger.info('Bot automation completed', { ok, submittedCount: submitted.length, errorCount: errors.length });
@@ -142,7 +147,7 @@ async function processQuarterGroup(params: {
     submittedIds,
     failedIndices: errors.map(([i]) => i),
     failedIds,
-    totalIds: ids.length
+    totalIds: ids.length,
   });
 
   return { ok, submittedIds, failedIds };
@@ -160,26 +165,26 @@ export async function processEntriesByQuarter(
 ): Promise<SubmissionResult> {
   // Helpful diagnostic: log each entry’s derived quarter so routing issues surface quickly.
   botLogger.debug('Checking entries for quarter assignment', {
-    entries: entries.map(entry => ({
+    entries: entries.map((entry) => ({
       id: entry.id,
       date: entry.date,
-      quarter: getQuarterForDate(entry.date)?.id || 'NONE'
-    }))
+      quarter: getQuarterForDate(entry.date)?.id || 'NONE',
+    })),
   });
-  
+
   // Group entries by quarter (needed for form configuration)
   const quarterGroups = groupEntriesByQuarter(entries);
   botLogger.verbose('Entries grouped by quarter', { quarterCount: quarterGroups.size });
-  
+
   const allSubmittedIds: number[] = [];
   const allFailedIds: number[] = [];
   let overallSuccess = true;
-  
+
   // Process each quarter separately with appropriate form configuration
   for (const [quarterId, quarterEntries] of Array.from(quarterGroups.entries())) {
     const result = await processQuarterGroup({ quarterId, quarterEntries, config });
     if (!result) {
-      quarterEntries.forEach(entry => {
+      quarterEntries.forEach((entry) => {
         if (entry.id) allFailedIds.push(entry.id);
       });
       overallSuccess = false;
@@ -190,14 +195,13 @@ export async function processEntriesByQuarter(
     allFailedIds.push(...result.failedIds);
     if (!result.ok) overallSuccess = false;
   }
-  
+
   return {
     ok: overallSuccess,
     submittedIds: allSubmittedIds,
     removedIds: allFailedIds,
     totalProcessed: entries.length,
     successCount: allSubmittedIds.length,
-    removedCount: allFailedIds.length
+    removedCount: allFailedIds.length,
   };
 }
-

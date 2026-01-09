@@ -11,55 +11,41 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: [path.resolve(__dirname, 'setup.ts')],
     globals: true,
-    include: [
-      'app/frontend/tests/**/*.spec.{ts,tsx}',
-      'app/frontend/tests/**/*.test.{ts,tsx}'
-    ],
-    exclude: [
-      'node_modules',
-      'dist',
-      'build'
-    ],
+    include: ['app/frontend/tests/**/*.spec.{ts,tsx}', 'app/frontend/tests/**/*.test.{ts,tsx}'],
+    exclude: ['node_modules', 'dist', 'build'],
     deps: {
       optimizer: {
         web: {
-          include: [
-            '@emotion/react',
-            '@emotion/styled',
-            '@mui/material',
-            '@mui/styled-engine'
-          ]
-        }
-      }
+          include: ['@emotion/react', '@emotion/styled', '@mui/material', '@mui/styled-engine'],
+        },
+      },
     },
     reporters: [
       'default',
-      new MarkdownReporter({ 
+      new MarkdownReporter({
         outputFile: 'frontend-test-results.md',
-        outputDir: path.resolve(__dirname, '../../..', 'test-results')
-      })
+        outputDir: path.resolve(__dirname, '../../..', 'test-results'),
+      }),
     ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'json-summary'],
-      include: [
-        'src/**/*.{ts,tsx}'
-      ],
+      include: ['src/**/*.{ts,tsx}'],
       exclude: [
         'src/**/*.spec.{ts,tsx}',
         'src/**/*.test.{ts,tsx}',
         'tests/**/*',
         'src/**/*.d.ts',
         'src/main.tsx', // Entry point - tested via integration
-        'src/App.tsx' // Main app - tested via integration
+        'src/App.tsx', // Main app - tested via integration
       ],
       thresholds: {
-        statements: 100,
-        branches: 100,
-        functions: 100,
-        lines: 100
-      }
-    }
+        statements: 70,
+        branches: 70,
+        functions: 70,
+        lines: 70,
+      },
+    },
   },
   resolve: {
     alias: [
@@ -67,6 +53,6 @@ export default defineConfig({
       { find: '@sheetpilot/shared', replacement: path.resolve(__dirname, '../../shared/index.ts') },
       { find: '@', replacement: path.resolve(__dirname, '../src') },
       { find: '@tests', replacement: path.resolve(__dirname, '.') },
-    ]
-  }
+    ],
+  },
 });

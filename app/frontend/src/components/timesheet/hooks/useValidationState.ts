@@ -1,4 +1,5 @@
 import { useState } from 'react';
+
 import type { ValidationError } from '../utils/timesheetGridUtils';
 
 export function useValidationState() {

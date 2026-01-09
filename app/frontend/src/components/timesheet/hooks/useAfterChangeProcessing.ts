@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+
 import type { HandsontableChange, TimesheetRow, ValidationError } from '../timesheet.schema';
 
 interface ChangeProcessor {
@@ -9,24 +10,27 @@ interface ChangeProcessor {
 }
 
 export function useAfterChangeProcessing(): ChangeProcessor {
-  const processChangesList = useCallback((changes: HandsontableChange[], _rows: TimesheetRow[]): Record<number, Record<string, unknown>> => {
-    const result: Record<number, Record<string, unknown>> = {};
+  const processChangesList = useCallback(
+    (changes: HandsontableChange[], _rows: TimesheetRow[]): Record<number, Record<string, unknown>> => {
+      const result: Record<number, Record<string, unknown>> = {};
 
-    for (const change of changes) {
-      if (!change) continue;
+      for (const change of changes) {
+        if (!change) continue;
 
-      const [rowIdx, prop, _oldValue, newValue] = change;
-      if (rowIdx === null || rowIdx === undefined || prop === null) continue;
+        const [rowIdx, prop, _oldValue, newValue] = change;
+        if (rowIdx === null || rowIdx === undefined || prop === null) continue;
 
-      if (!result[rowIdx]) {
-        result[rowIdx] = {};
+        if (!result[rowIdx]) {
+          result[rowIdx] = {};
+        }
+
+        result[rowIdx][prop] = newValue;
       }
 
-      result[rowIdx][prop] = newValue;
-    }
-
-    return result;
-  }, []);
+      return result;
+    },
+    []
+  );
 
   const applyOverlapValidation = useCallback(
     (rowIdx: number, errors: ValidationError[], rows: TimesheetRow[]): ValidationError[] => {
@@ -52,7 +56,7 @@ export function useAfterChangeProcessing(): ChangeProcessor {
             rowIdx,
             field: 'timeIn',
             message: 'Time range overlaps with previous entry',
-            type: 'timeOverlap'
+            type: 'timeOverlap',
           });
         }
       }
@@ -77,7 +81,7 @@ export function useAfterChangeProcessing(): ChangeProcessor {
             rowIdx,
             field: 'timeOut',
             message: 'timeOut must be after timeIn',
-            type: 'timeOutOrdering'
+            type: 'timeOutOrdering',
           });
         }
       } else {
@@ -118,6 +122,6 @@ export function useAfterChangeProcessing(): ChangeProcessor {
     processChangesList,
     applyOverlapValidation,
     applyTimeOutValidation,
-    mergeValidationErrors
+    mergeValidationErrors,
   };
 }

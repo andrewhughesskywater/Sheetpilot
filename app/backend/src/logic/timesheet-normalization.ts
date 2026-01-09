@@ -1,9 +1,9 @@
 /**
  * @fileoverview Timesheet Normalization Logic
- * 
+ *
  * Pure functions for normalizing timesheet data.
  * Extracted from TimesheetGrid component for reusability.
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025
@@ -63,10 +63,9 @@ function findLastNonEmptyRowIndex(rows: TimesheetRow[]): number {
 export function normalizeTrailingBlank(rows: TimesheetRow[]): TimesheetRow[] {
   // Remove trailing empty rows
   const lastNonEmptyIndex = findLastNonEmptyRowIndex(rows);
-  
+
   // Get rows up to last non-empty, then add one blank row
   const trimmedRows = rows.slice(0, lastNonEmptyIndex + 1);
   trimmedRows.push({});
   return trimmedRows;
 }
-

@@ -9,7 +9,11 @@ export async function listCredentials(): Promise<{
   return window.credentials.list();
 }
 
-export async function storeCredentials(service: string, email: string, password: string): Promise<{
+export async function storeCredentials(
+  service: string,
+  email: string,
+  password: string
+): Promise<{
   success: boolean;
   message: string;
   changes: number;
@@ -19,5 +23,3 @@ export async function storeCredentials(service: string, email: string, password:
   }
   return window.credentials.store(service, email, password);
 }
-
-

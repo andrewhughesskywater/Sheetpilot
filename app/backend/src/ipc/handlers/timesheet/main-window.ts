@@ -26,5 +26,3 @@ export function emitSubmissionProgress(progressData: {
     mainWindowRef.webContents.send('timesheet:progress', progressData);
   }
 }
-
-

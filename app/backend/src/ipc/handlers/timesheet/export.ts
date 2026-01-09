@@ -1,6 +1,7 @@
 import { ipcMain } from 'electron';
-import { ipcLogger } from '../../utils/logger';
+
 import { getSubmittedTimesheetEntriesForExport } from '../../../repositories';
+import { ipcLogger } from '../../utils/logger';
 import { isTrustedIpcSender } from './main-window';
 
 export function registerTimesheetExportHandlers(): void {
@@ -26,7 +27,7 @@ export function registerTimesheetExportHandlers(): void {
       if (entries.length === 0) {
         return {
           success: false,
-          error: 'No submitted timesheet entries found to export'
+          error: 'No submitted timesheet entries found to export',
         };
       }
 
@@ -46,7 +47,7 @@ export function registerTimesheetExportHandlers(): void {
         'Charge Code',
         'Task Description',
         'Status',
-        'Submitted At'
+        'Submitted At',
       ];
 
       const csvRows = [headers.join(',')];
@@ -62,7 +63,7 @@ export function registerTimesheetExportHandlers(): void {
           `"${(entry.detail_charge_code || '').replace(/"/g, '""')}"`,
           `"${entry.task_description.replace(/"/g, '""')}"`,
           entry.status,
-          entry.submitted_at
+          entry.submitted_at,
         ];
         csvRows.push(row.join(','));
       }
@@ -71,7 +72,7 @@ export function registerTimesheetExportHandlers(): void {
 
       ipcLogger.info('CSV export completed', {
         entryCount: entries.length,
-        csvSize: csvContent.length
+        csvSize: csvContent.length,
       });
 
       return {
@@ -79,7 +80,7 @@ export function registerTimesheetExportHandlers(): void {
         csvData: csvContent,
         csvContent,
         entryCount: entries.length,
-        filename: `timesheet_export_${new Date().toISOString().split('T')[0]}.csv`
+        filename: `timesheet_export_${new Date().toISOString().split('T')[0]}.csv`,
       };
     } catch (err: unknown) {
       ipcLogger.error('Could not export CSV', err);
@@ -90,5 +91,3 @@ export function registerTimesheetExportHandlers(): void {
 
   ipcLogger.verbose('Timesheet export handlers registered');
 }
-
-

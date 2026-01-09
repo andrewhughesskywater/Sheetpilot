@@ -2,9 +2,10 @@
  * @fileoverview Settings helper components and utility functions
  */
 
+import SettingsIcon from '@mui/icons-material/Settings';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import SettingsIcon from '@mui/icons-material/Settings';
+
 import { type FeatureCardProps, type SettingsCardsGridProps } from './SettingsTypes';
 
 export function FeatureCard({ title, className, onActivate }: FeatureCardProps) {
@@ -49,7 +50,7 @@ export function SettingsCardsGrid({
   onOpenSettings,
   onOpenAbout,
   onLogout,
-  onOpenAdminTools
+  onOpenAdminTools,
 }: SettingsCardsGridProps) {
   return (
     <Box className="settings-cards-grid">

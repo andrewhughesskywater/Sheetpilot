@@ -1,19 +1,20 @@
 /**
  * @fileoverview Credentials IPC Handlers
- * 
+ *
  * Handles IPC communication for credential storage and retrieval.
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025
  */
 
 import { ipcMain } from 'electron';
+
 import { isTrustedIpcSender } from './handlers/timesheet/main-window';
 import {
   deleteCredentialsRequest,
   listCredentialsRequest,
-  storeCredentialsRequest
+  storeCredentialsRequest,
 } from './services/credentials-service';
 
 /**
@@ -24,7 +25,11 @@ export function registerCredentialsHandlers(): void {
     if (!isTrustedIpcSender(event)) {
       return { success: false, message: 'Could not store credentials: unauthorized request', changes: 0 };
     }
-    return storeCredentialsRequest(service, email, password);
+    const result = storeCredentialsRequest(service, email, password);
+    if (!result.success && result.error) {
+      throw result.error;
+    }
+    return result;
   });
 
   ipcMain.handle('credentials:list', async (event) => {
@@ -41,5 +46,3 @@ export function registerCredentialsHandlers(): void {
     return deleteCredentialsRequest(service);
   });
 }
-
-

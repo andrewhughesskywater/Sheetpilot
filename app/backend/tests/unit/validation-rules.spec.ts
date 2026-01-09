@@ -1,9 +1,9 @@
 /**
  * @fileoverview Validation Rules Unit Tests
- * 
+ *
  * Comprehensive tests for all validation logic to prevent AI regression.
  * Tests every validation rule, edge case, and business constraint.
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025
@@ -15,7 +15,7 @@ import {
   isValidTime,
   isTimeOutAfterTimeIn,
   validateField,
-  formatTimeInput
+  formatTimeInput,
 } from '@/logic/timesheet-validation';
 import { validateQuarterAvailability, QUARTER_DEFINITIONS } from '@/services/bot/src/config/quarter_config';
 import { validTimesheetEntries, invalidTimesheetEntries, edgeCaseEntries } from '../fixtures/timesheet-data';
@@ -32,10 +32,10 @@ describe('Validation Rules Unit Tests', () => {
         '01/15/2025',
         '12/31/2024',
         '02/29/2024', // Leap year
-        '03/31/2025'
+        '03/31/2025',
       ];
-      
-      validDates.forEach(date => {
+
+      validDates.forEach((date) => {
         expect(isValidDate(date)).toBe(true);
       });
     });
@@ -43,15 +43,15 @@ describe('Validation Rules Unit Tests', () => {
     it('should reject invalid date formats', () => {
       const invalidDates = [
         '2025-01-15', // Wrong format
-        '1/15/25',    // Wrong format
+        '1/15/25', // Wrong format
         '01-15-2025', // Wrong separator
         '15/01/2025', // Wrong order
-        '01/15',      // Missing year
+        '01/15', // Missing year
         '2025/01/15', // Wrong format
-        ''            // Empty
+        '', // Empty
       ];
-      
-      invalidDates.forEach(date => {
+
+      invalidDates.forEach((date) => {
         expect(isValidDate(date)).toBe(false);
       });
     });
@@ -64,18 +64,18 @@ describe('Validation Rules Unit Tests', () => {
         '02/29/2023', // Not a leap year
         '00/15/2025', // Invalid month
         '01/00/2025', // Invalid day
-        '01/32/2025'  // Invalid day
+        '01/32/2025', // Invalid day
       ];
-      
-      invalidDates.forEach(date => {
+
+      invalidDates.forEach((date) => {
         expect(isValidDate(date)).toBe(false);
       });
     });
 
     it('should handle leap year correctly', () => {
-      expect(isValidDate('02/29/2024')).toBe(true);  // Leap year
+      expect(isValidDate('02/29/2024')).toBe(true); // Leap year
       expect(isValidDate('02/29/2023')).toBe(false); // Not leap year
-      expect(isValidDate('02/29/2020')).toBe(true);  // Leap year
+      expect(isValidDate('02/29/2020')).toBe(true); // Leap year
       expect(isValidDate('02/29/2021')).toBe(false); // Not leap year
     });
 
@@ -91,25 +91,35 @@ describe('Validation Rules Unit Tests', () => {
       const invalidQuarterDates: string[] = [];
 
       // For each defined quarter, add a valid date from that quarter
-      QUARTER_DEFINITIONS.forEach(quarter => {
+      QUARTER_DEFINITIONS.forEach((quarter) => {
         const start = parseISODate(quarter.startDate);
         const end = parseISODate(quarter.endDate);
         // Use day 15 of the quarter as a safe middle ground (or end date if quarter is < 15 days)
         const testDay = Math.min(15, end.day);
-        validQuarterDates.push(`${String(start.month).padStart(2, '0')}/${String(testDay).padStart(2, '0')}/${start.year}`);
+        validQuarterDates.push(
+          `${String(start.month).padStart(2, '0')}/${String(testDay).padStart(2, '0')}/${start.year}`
+        );
       });
 
       // Add invalid dates: before earliest quarter and after latest quarter
-      const allStarts = QUARTER_DEFINITIONS.map(q => parseISODate(q.startDate));
-      const allEnds = QUARTER_DEFINITIONS.map(q => parseISODate(q.endDate));
-      
-      const earliest = allStarts.reduce((a, b) => 
-        a.year < b.year || (a.year === b.year && a.month < b.month) || (a.year === b.year && a.month === b.month && a.day < b.day) ? a : b
+      const allStarts = QUARTER_DEFINITIONS.map((q) => parseISODate(q.startDate));
+      const allEnds = QUARTER_DEFINITIONS.map((q) => parseISODate(q.endDate));
+
+      const earliest = allStarts.reduce((a, b) =>
+        a.year < b.year ||
+        (a.year === b.year && a.month < b.month) ||
+        (a.year === b.year && a.month === b.month && a.day < b.day)
+          ? a
+          : b
       );
-      const latest = allEnds.reduce((a, b) => 
-        a.year > b.year || (a.year === b.year && a.month > b.month) || (a.year === b.year && a.month === b.month && a.day > b.day) ? a : b
+      const latest = allEnds.reduce((a, b) =>
+        a.year > b.year ||
+        (a.year === b.year && a.month > b.month) ||
+        (a.year === b.year && a.month === b.month && a.day > b.day)
+          ? a
+          : b
       );
-      
+
       // 100 days before earliest (simplified calculation)
       let beforeDay = earliest.day - 100;
       let beforeMonth = earliest.month;
@@ -122,8 +132,10 @@ describe('Validation Rules Unit Tests', () => {
         }
         beforeDay += 31; // Simplified
       }
-      invalidQuarterDates.push(`${beforeMonth.toString().padStart(2, '0')}/${beforeDay.toString().padStart(2, '0')}/${beforeYear}`);
-      
+      invalidQuarterDates.push(
+        `${beforeMonth.toString().padStart(2, '0')}/${beforeDay.toString().padStart(2, '0')}/${beforeYear}`
+      );
+
       // 100 days after latest (simplified calculation)
       let afterDay = latest.day + 100;
       let afterMonth = latest.month;
@@ -136,15 +148,17 @@ describe('Validation Rules Unit Tests', () => {
           afterYear += 1;
         }
       }
-      invalidQuarterDates.push(`${afterMonth.toString().padStart(2, '0')}/${afterDay.toString().padStart(2, '0')}/${afterYear}`);
-      
-      validQuarterDates.forEach(date => {
+      invalidQuarterDates.push(
+        `${afterMonth.toString().padStart(2, '0')}/${afterDay.toString().padStart(2, '0')}/${afterYear}`
+      );
+
+      validQuarterDates.forEach((date) => {
         const [month, day, year] = date.split('/').map(Number);
         const isoDate = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
         expect(validateQuarterAvailability(isoDate)).toBeNull();
       });
-      
-      invalidQuarterDates.forEach(date => {
+
+      invalidQuarterDates.forEach((date) => {
         const [month, day, year] = date.split('/').map(Number);
         const isoDate = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
         expect(validateQuarterAvailability(isoDate)).toBeTruthy();
@@ -154,75 +168,89 @@ describe('Validation Rules Unit Tests', () => {
 
   describe('Time Format Validation', () => {
     it('should validate HH:MM format', () => {
-      const validTimes = [
-        '09:00',
-        '17:30',
-        '00:00',
-        '23:45',
-        '12:15'
-      ];
-      
-      validTimes.forEach(time => {
+      const validTimes = ['09:00', '17:30', '00:00', '23:45', '12:15'];
+
+      validTimes.forEach((time) => {
         expect(isValidTime(time)).toBe(true);
       });
     });
 
     it('should validate numeric time formats', () => {
       const validNumericTimes = [
-        '900',   // 09:00
-        '1730',  // 17:30
-        '800',   // 08:00
-        '1430',  // 14:30
-        '08',    // 08:00
-        '8'      // 08:00
+        '900', // 09:00
+        '1730', // 17:30
+        '800', // 08:00
+        '1430', // 14:30
+        '08', // 08:00
+        '8', // 08:00
       ];
-      
-      validNumericTimes.forEach(time => {
+
+      validNumericTimes.forEach((time) => {
         expect(isValidTime(time)).toBe(true);
       });
     });
 
     it('should reject invalid time formats', () => {
       const invalidTimes = [
-        '25:00',  // Invalid hour
-        '09:60',  // Invalid minute
-        '09:01',  // Not 15-minute increment
-        '09:07',  // Not 15-minute increment
-        '09:13',  // Not 15-minute increment
-        '09:22',  // Not 15-minute increment
-        '09:38',  // Not 15-minute increment
-        '09:52',  // Not 15-minute increment
-        'abc',    // Non-numeric
-        ''        // Empty
+        '25:00', // Invalid hour
+        '09:60', // Invalid minute
+        '09:01', // Not 15-minute increment
+        '09:07', // Not 15-minute increment
+        '09:13', // Not 15-minute increment
+        '09:22', // Not 15-minute increment
+        '09:38', // Not 15-minute increment
+        '09:52', // Not 15-minute increment
+        'abc', // Non-numeric
+        '', // Empty
       ];
-      
-      invalidTimes.forEach(time => {
+
+      invalidTimes.forEach((time) => {
         expect(isValidTime(time)).toBe(false);
       });
-      
+
       // Test that missing leading zero gets normalized and becomes valid
       expect(isValidTime('9:00')).toBe(true);
     });
 
     it('should enforce 15-minute increments', () => {
       const validIncrements = [
-        '00:00', '00:15', '00:30', '00:45',
-        '09:00', '09:15', '09:30', '09:45',
-        '17:00', '17:15', '17:30', '17:45',
-        '23:00', '23:15', '23:30', '23:45'
+        '00:00',
+        '00:15',
+        '00:30',
+        '00:45',
+        '09:00',
+        '09:15',
+        '09:30',
+        '09:45',
+        '17:00',
+        '17:15',
+        '17:30',
+        '17:45',
+        '23:00',
+        '23:15',
+        '23:30',
+        '23:45',
       ];
-      
+
       const invalidIncrements = [
-        '09:01', '09:07', '09:13', '09:22',
-        '09:38', '09:52', '17:03', '17:17',
-        '17:23', '17:37', '17:53'
+        '09:01',
+        '09:07',
+        '09:13',
+        '09:22',
+        '09:38',
+        '09:52',
+        '17:03',
+        '17:17',
+        '17:23',
+        '17:37',
+        '17:53',
       ];
-      
-      validIncrements.forEach(time => {
+
+      validIncrements.forEach((time) => {
         expect(isValidTime(time)).toBe(true);
       });
-      
-      invalidIncrements.forEach(time => {
+
+      invalidIncrements.forEach((time) => {
         expect(isValidTime(time)).toBe(false);
       });
     });
@@ -236,10 +264,10 @@ describe('Validation Rules Unit Tests', () => {
         { input: '08', expected: '08:00' },
         { input: '8', expected: '08:00' },
         { input: '09:00', expected: '09:00' }, // Already formatted
-        { input: 'abc', expected: 'abc' },     // Invalid input
-        { input: '', expected: '' }            // Empty input
+        { input: 'abc', expected: 'abc' }, // Invalid input
+        { input: '', expected: '' }, // Empty input
       ];
-      
+
       formatTestCases.forEach(({ input, expected }) => {
         expect(formatTimeInput(input)).toBe(expected);
       });
@@ -253,9 +281,9 @@ describe('Validation Rules Unit Tests', () => {
         { timeIn: '08:30', timeOut: '16:30' },
         { timeIn: '00:00', timeOut: '00:15' },
         { timeIn: '23:30', timeOut: '23:45' },
-        { timeIn: '09:15', timeOut: '09:30' }
+        { timeIn: '09:15', timeOut: '09:30' },
       ];
-      
+
       validTimePairs.forEach(({ timeIn, timeOut }) => {
         expect(isTimeOutAfterTimeIn(timeIn, timeOut)).toBe(true);
       });
@@ -267,9 +295,9 @@ describe('Validation Rules Unit Tests', () => {
         { timeIn: '09:30', timeOut: '09:15' },
         { timeIn: '12:45', timeOut: '08:30' },
         { timeIn: '09:00', timeOut: '09:00' }, // Same time
-        { timeIn: '15:30', timeOut: '15:30' }  // Same time
+        { timeIn: '15:30', timeOut: '15:30' }, // Same time
       ];
-      
+
       invalidTimePairs.forEach(({ timeIn, timeOut }) => {
         expect(isTimeOutAfterTimeIn(timeIn, timeOut)).toBe(false);
       });
@@ -278,13 +306,13 @@ describe('Validation Rules Unit Tests', () => {
     it('should handle edge cases for time validation', () => {
       // Midnight to next day
       expect(isTimeOutAfterTimeIn('23:45', '00:00')).toBe(false);
-      
+
       // Same time
       expect(isTimeOutAfterTimeIn('12:00', '12:00')).toBe(false);
-      
+
       // Very short duration
       expect(isTimeOutAfterTimeIn('09:00', '09:15')).toBe(true);
-      
+
       // Very long duration
       expect(isTimeOutAfterTimeIn('06:00', '18:00')).toBe(true);
     });
@@ -299,24 +327,38 @@ describe('Validation Rules Unit Tests', () => {
         project: 'FL-Carver Techs',
         tool: '#1 Rinse and 2D marker',
         chargeCode: 'EPR1',
-        taskDescription: 'Test task'
-      }
+        taskDescription: 'Test task',
+      },
     ];
-    
+
     const projects = [
-      'FL-Carver Techs', 'FL-Carver Tools', 'OSC-BBB',
-      'PTO/RTO', 'SWFL-CHEM/GAS', 'SWFL-EQUIP', 'Training'
+      'FL-Carver Techs',
+      'FL-Carver Tools',
+      'OSC-BBB',
+      'PTO/RTO',
+      'SWFL-CHEM/GAS',
+      'SWFL-EQUIP',
+      'Training',
     ];
-    
+
     const chargeCodes = [
-      'Admin', 'EPR1', 'EPR2', 'EPR3', 'EPR4', 'Repair',
-      'Meeting', 'Other', 'PM', 'Training', 'Upgrade'
+      'Admin',
+      'EPR1',
+      'EPR2',
+      'EPR3',
+      'EPR4',
+      'Repair',
+      'Meeting',
+      'Other',
+      'PM',
+      'Training',
+      'Upgrade',
     ];
 
     it('should validate required fields', () => {
       const requiredFields = ['date', 'timeIn', 'timeOut', 'project', 'taskDescription'];
-      
-      requiredFields.forEach(field => {
+
+      requiredFields.forEach((field) => {
         const error = validateField({ value: '', row: 0, prop: field, rows: mockRows, projects, chargeCodes });
         expect(error).toBeTruthy();
         expect(error).toContain('required');
@@ -342,74 +384,169 @@ describe('Validation Rules Unit Tests', () => {
     }
 
     it('should validate date field', () => {
-      const validDate = validateField({ value: randomDateInCurrentQuarter(), row: 0, prop: 'date', rows: mockRows, projects, chargeCodes });
+      const validDate = validateField({
+        value: randomDateInCurrentQuarter(),
+        row: 0,
+        prop: 'date',
+        rows: mockRows,
+        projects,
+        chargeCodes,
+      });
       expect(validDate).toBeNull();
-      
-      const invalidDate = validateField({ value: '2025-01-15', row: 0, prop: 'date', rows: mockRows, projects, chargeCodes });
+
+      const invalidDate = validateField({
+        value: '2025-01-15',
+        row: 0,
+        prop: 'date',
+        rows: mockRows,
+        projects,
+        chargeCodes,
+      });
       expect(invalidDate).toBeTruthy();
       expect(invalidDate).toContain('like 01/15/2024');
     });
 
     it('should validate timeIn field', () => {
-      const validTime = validateField({ value: '09:00', row: 0, prop: 'timeIn', rows: mockRows, projects, chargeCodes });
+      const validTime = validateField({
+        value: '09:00',
+        row: 0,
+        prop: 'timeIn',
+        rows: mockRows,
+        projects,
+        chargeCodes,
+      });
       expect(validTime).toBeNull();
-      
-      const invalidTime = validateField({ value: '09:01', row: 0, prop: 'timeIn', rows: mockRows, projects, chargeCodes });
+
+      const invalidTime = validateField({
+        value: '09:01',
+        row: 0,
+        prop: 'timeIn',
+        rows: mockRows,
+        projects,
+        chargeCodes,
+      });
       expect(invalidTime).toBeTruthy();
       expect(invalidTime).toContain('15 minute steps');
     });
 
     it('should validate timeOut field', () => {
-      const validTime = validateField({ value: '17:00', row: 0, prop: 'timeOut', rows: mockRows, projects, chargeCodes });
+      const validTime = validateField({
+        value: '17:00',
+        row: 0,
+        prop: 'timeOut',
+        rows: mockRows,
+        projects,
+        chargeCodes,
+      });
       expect(validTime).toBeNull();
-      
-      const invalidTime = validateField({ value: '08:00', row: 0, prop: 'timeOut', rows: mockRows, projects, chargeCodes });
+
+      const invalidTime = validateField({
+        value: '08:00',
+        row: 0,
+        prop: 'timeOut',
+        rows: mockRows,
+        projects,
+        chargeCodes,
+      });
       expect(invalidTime).toBeTruthy();
       expect(invalidTime).toContain('after start time');
     });
 
     it('should validate project field', () => {
-      const validProject = validateField({ value: 'FL-Carver Techs', row: 0, prop: 'project', rows: mockRows, projects, chargeCodes });
+      const validProject = validateField({
+        value: 'FL-Carver Techs',
+        row: 0,
+        prop: 'project',
+        rows: mockRows,
+        projects,
+        chargeCodes,
+      });
       expect(validProject).toBeNull();
-      
-      const invalidProject = validateField({ value: 'Invalid Project', row: 0, prop: 'project', rows: mockRows, projects, chargeCodes });
+
+      const invalidProject = validateField({
+        value: 'Invalid Project',
+        row: 0,
+        prop: 'project',
+        rows: mockRows,
+        projects,
+        chargeCodes,
+      });
       expect(invalidProject).toBeTruthy();
       expect(invalidProject).toContain('from the list');
     });
 
     it('should validate tool field based on project', () => {
       // Project that needs tools
-      const validTool = validateField({ value: '#1 Rinse and 2D marker', row: 0, prop: 'tool', rows: mockRows, projects, chargeCodes });
+      const validTool = validateField({
+        value: '#1 Rinse and 2D marker',
+        row: 0,
+        prop: 'tool',
+        rows: mockRows,
+        projects,
+        chargeCodes,
+      });
       expect(validTool).toBeNull();
-      
+
       // Project that doesn't need tools
-      const rowsWithPTO = [{
-        ...mockRows[0],
-        project: 'PTO/RTO'
-      }];
-        const toolForPTO = validateField({ value: '', row: 0, prop: 'tool', rows: rowsWithPTO, projects, chargeCodes });
+      const rowsWithPTO = [
+        {
+          ...mockRows[0],
+          project: 'PTO/RTO',
+        },
+      ];
+      const toolForPTO = validateField({ value: '', row: 0, prop: 'tool', rows: rowsWithPTO, projects, chargeCodes });
       expect(toolForPTO).toBeNull(); // Should be null (N/A)
     });
 
     it('should validate chargeCode field based on tool', () => {
       // Tool that needs charge code
-      const validChargeCode = validateField({ value: 'EPR1', row: 0, prop: 'chargeCode', rows: mockRows, projects, chargeCodes });
+      const validChargeCode = validateField({
+        value: 'EPR1',
+        row: 0,
+        prop: 'chargeCode',
+        rows: mockRows,
+        projects,
+        chargeCodes,
+      });
       expect(validChargeCode).toBeNull();
-      
+
       // Tool that doesn't need charge code
-      const rowsWithMeeting = [{
-        ...mockRows[0],
-        tool: 'Meeting'
-      }];
-        const chargeCodeForMeeting = validateField({ value: '', row: 0, prop: 'chargeCode', rows: rowsWithMeeting, projects, chargeCodes });
+      const rowsWithMeeting = [
+        {
+          ...mockRows[0],
+          tool: 'Meeting',
+        },
+      ];
+      const chargeCodeForMeeting = validateField({
+        value: '',
+        row: 0,
+        prop: 'chargeCode',
+        rows: rowsWithMeeting,
+        projects,
+        chargeCodes,
+      });
       expect(chargeCodeForMeeting).toBeNull(); // Should be null (N/A)
     });
 
     it('should validate taskDescription field', () => {
-      const validDescription = validateField({ value: 'Test task description', row: 0, prop: 'taskDescription', rows: mockRows, projects, chargeCodes });
+      const validDescription = validateField({
+        value: 'Test task description',
+        row: 0,
+        prop: 'taskDescription',
+        rows: mockRows,
+        projects,
+        chargeCodes,
+      });
       expect(validDescription).toBeNull();
-      
-      const invalidDescription = validateField({ value: '', row: 0, prop: 'taskDescription', rows: mockRows, projects, chargeCodes });
+
+      const invalidDescription = validateField({
+        value: '',
+        row: 0,
+        prop: 'taskDescription',
+        rows: mockRows,
+        projects,
+        chargeCodes,
+      });
       expect(invalidDescription).toBeTruthy();
       expect(invalidDescription).toContain('describe what you did');
     });
@@ -417,9 +554,9 @@ describe('Validation Rules Unit Tests', () => {
 
   describe('Comprehensive Validation Tests', () => {
     it('should validate all valid timesheet entries', () => {
-      validTimesheetEntries.forEach(entry => {
+      validTimesheetEntries.forEach((entry) => {
         assertValidTimesheetRow(entry);
-        
+
         // Test individual validations
         expect(isValidDate(entry.date)).toBe(true);
         expect(isValidTime(entry.timeIn)).toBe(true);
@@ -429,38 +566,41 @@ describe('Validation Rules Unit Tests', () => {
     });
 
     it('should reject all invalid timesheet entries', () => {
-      const actuallyInvalidEntries = invalidTimesheetEntries.filter(entry => {
+      const actuallyInvalidEntries = invalidTimesheetEntries.filter((entry) => {
         const hasInvalidDate = !isValidDate(entry.date || '');
         const hasInvalidTimeIn = !isValidTime(entry.timeIn || '');
         const hasInvalidTimeOut = !isValidTime(entry.timeOut || '');
         const hasInvalidTimeRelationship = !isTimeOutAfterTimeIn(entry.timeIn, entry.timeOut);
-        const hasMissingRequired = !entry.date || !entry.timeIn || !entry.timeOut || !entry.project || !entry.taskDescription;
-        
-        return hasInvalidDate || hasInvalidTimeIn || hasInvalidTimeOut || hasInvalidTimeRelationship || hasMissingRequired;
+        const hasMissingRequired =
+          !entry.date || !entry.timeIn || !entry.timeOut || !entry.project || !entry.taskDescription;
+
+        return (
+          hasInvalidDate || hasInvalidTimeIn || hasInvalidTimeOut || hasInvalidTimeRelationship || hasMissingRequired
+        );
       });
-      
+
       expect(actuallyInvalidEntries.length).toBeGreaterThan(0);
-      
-      actuallyInvalidEntries.forEach(entry => {
+
+      actuallyInvalidEntries.forEach((entry) => {
         assertInvalidTimesheetRow(entry);
       });
     });
 
     it('should handle edge cases correctly', () => {
-      edgeCaseEntries.forEach(entry => {
+      edgeCaseEntries.forEach((entry) => {
         // Edge cases should be handled appropriately
         if (entry.date === '02/29/2024') {
           expect(isValidDate(entry.date)).toBe(true); // Valid leap year
         } else if (entry.date === '02/29/2023') {
           expect(isValidDate(entry.date)).toBe(false); // Invalid non-leap year
         }
-        
+
         if (entry.timeIn === '00:00' && entry.timeOut === '00:15') {
           expect(isValidTime(entry.timeIn)).toBe(true);
           expect(isValidTime(entry.timeOut)).toBe(true);
           expect(isTimeOutAfterTimeIn(entry.timeIn, entry.timeOut)).toBe(true);
         }
-        
+
         if (entry.timeIn === '23:30' && entry.timeOut === '23:45') {
           expect(isValidTime(entry.timeIn)).toBe(true);
           expect(isValidTime(entry.timeOut)).toBe(true);
@@ -473,43 +613,67 @@ describe('Validation Rules Unit Tests', () => {
   describe('Business Rule Validation', () => {
     it('should enforce project-tool relationships', () => {
       const projectsWithoutTools = ['ERT', 'PTO/RTO', 'SWFL-CHEM/GAS', 'Training'];
-      
-      projectsWithoutTools.forEach(project => {
-        const rows = [{
-          date: '01/15/2025',
-          timeIn: '09:00',
-          timeOut: '17:00',
-          project: project,
-          tool: 'Some Tool', // Should be cleared
-          chargeCode: 'EPR1', // Should be cleared
-          taskDescription: 'Test task'
-        }];
-        
+
+      projectsWithoutTools.forEach((project) => {
+        const rows = [
+          {
+            date: '01/15/2025',
+            timeIn: '09:00',
+            timeOut: '17:00',
+            project: project,
+            tool: 'Some Tool', // Should be cleared
+            chargeCode: 'EPR1', // Should be cleared
+            taskDescription: 'Test task',
+          },
+        ];
+
         // Tool should be null for these projects
-        const toolValidation = validateField({ value: '', row: 0, prop: 'tool', rows, projects: ['FL-Carver Techs', ...projectsWithoutTools], chargeCodes: ['EPR1'] });
+        const toolValidation = validateField({
+          value: '',
+          row: 0,
+          prop: 'tool',
+          rows,
+          projects: ['FL-Carver Techs', ...projectsWithoutTools],
+          chargeCodes: ['EPR1'],
+        });
         expect(toolValidation).toBeNull(); // Should be null (N/A)
       });
     });
 
     it('should enforce tool-chargeCode relationships', () => {
       const toolsWithoutCharges = [
-        'Internal Meeting', 'DECA Meeting', 'Logistics', 'Meeting',
-        'Non Tool Related', 'Admin', 'Training', 'N/A'
+        'Internal Meeting',
+        'DECA Meeting',
+        'Logistics',
+        'Meeting',
+        'Non Tool Related',
+        'Admin',
+        'Training',
+        'N/A',
       ];
-      
-      toolsWithoutCharges.forEach(tool => {
-        const rows = [{
-          date: '01/15/2025',
-          timeIn: '09:00',
-          timeOut: '17:00',
-          project: 'FL-Carver Techs',
-          tool: tool,
-          chargeCode: 'EPR1', // Should be cleared
-          taskDescription: 'Test task'
-        }];
-        
+
+      toolsWithoutCharges.forEach((tool) => {
+        const rows = [
+          {
+            date: '01/15/2025',
+            timeIn: '09:00',
+            timeOut: '17:00',
+            project: 'FL-Carver Techs',
+            tool: tool,
+            chargeCode: 'EPR1', // Should be cleared
+            taskDescription: 'Test task',
+          },
+        ];
+
         // Charge code should be null for these tools
-        const chargeCodeValidation = validateField({ value: '', row: 0, prop: 'chargeCode', rows, projects: ['FL-Carver Techs'], chargeCodes: ['EPR1'] });
+        const chargeCodeValidation = validateField({
+          value: '',
+          row: 0,
+          prop: 'chargeCode',
+          rows,
+          projects: ['FL-Carver Techs'],
+          chargeCodes: ['EPR1'],
+        });
         expect(chargeCodeValidation).toBeNull(); // Should be null (N/A)
       });
     });
@@ -523,17 +687,19 @@ describe('Validation Rules Unit Tests', () => {
       };
 
       const availableQuarterDates: string[] = [];
-      
+
       // For each defined quarter, add a valid date
-      QUARTER_DEFINITIONS.forEach(quarter => {
+      QUARTER_DEFINITIONS.forEach((quarter) => {
         const start = parseISODate(quarter.startDate);
         const end = parseISODate(quarter.endDate);
         // Use day 15 of the quarter as a safe middle ground (or end date if quarter is < 15 days)
         const testDay = Math.min(15, end.day);
-        availableQuarterDates.push(`${String(start.month).padStart(2, '0')}/${String(testDay).padStart(2, '0')}/${start.year}`);
+        availableQuarterDates.push(
+          `${String(start.month).padStart(2, '0')}/${String(testDay).padStart(2, '0')}/${start.year}`
+        );
       });
-      
-      availableQuarterDates.forEach(date => {
+
+      availableQuarterDates.forEach((date) => {
         const [month, day, year] = date.split('/').map(Number);
         const isoDate = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
         expect(validateQuarterAvailability(isoDate)).toBeNull();
@@ -552,10 +718,10 @@ describe('Validation Rules Unit Tests', () => {
         'Date must be like 01/15/2024',
         'Time must be like 09:00, 800, or 1430 and in 15 minute steps',
         'End time must be after start time',
-        'Please pick from the list'
+        'Please pick from the list',
       ];
-      
-      errorMessages.forEach(message => {
+
+      errorMessages.forEach((message) => {
         expect(message.length).toBeLessThan(100);
         expect(message).not.toContain('undefined');
         expect(message).not.toContain('null');
@@ -573,9 +739,9 @@ describe('Validation Rules Unit Tests', () => {
         project: 'from the list',
         tool: 'for this project',
         chargeCode: 'for this tool',
-        taskDescription: 'describe what you did'
+        taskDescription: 'describe what you did',
       };
-      
+
       Object.entries(fieldGuidance).forEach(([_field, guidance]) => {
         expect(guidance).toBeDefined();
         expect(typeof guidance).toBe('string');
@@ -631,47 +797,41 @@ describe('Validation Rules Unit Tests', () => {
 
   describe('Edge Cases - Boundary Tests', () => {
     it('should reject times at 14-minute boundary', () => {
-      const fourteenMinuteTimes = [
-        '00:14', '01:14', '09:14', '12:14', '18:14', '23:14'
-      ];
-      
-      fourteenMinuteTimes.forEach(time => {
+      const fourteenMinuteTimes = ['00:14', '01:14', '09:14', '12:14', '18:14', '23:14'];
+
+      fourteenMinuteTimes.forEach((time) => {
         expect(isValidTime(time)).toBe(false);
       });
     });
 
     it('should accept times at 15-minute boundary', () => {
-      const fifteenMinuteTimes = [
-        '00:15', '01:15', '09:15', '12:15', '18:15', '23:15'
-      ];
-      
-      fifteenMinuteTimes.forEach(time => {
+      const fifteenMinuteTimes = ['00:15', '01:15', '09:15', '12:15', '18:15', '23:15'];
+
+      fifteenMinuteTimes.forEach((time) => {
         expect(isValidTime(time)).toBe(true);
       });
     });
 
     it('should reject times at 16-minute boundary', () => {
-      const sixteenMinuteTimes = [
-        '00:16', '01:16', '09:16', '12:16', '18:16', '23:16'
-      ];
-      
-      sixteenMinuteTimes.forEach(time => {
+      const sixteenMinuteTimes = ['00:16', '01:16', '09:16', '12:16', '18:16', '23:16'];
+
+      sixteenMinuteTimes.forEach((time) => {
         expect(isValidTime(time)).toBe(false);
       });
     });
 
     it('should handle time increment boundaries around all valid increments', () => {
       const validIncrements = [0, 15, 30, 45];
-      
-      validIncrements.forEach(minute => {
+
+      validIncrements.forEach((minute) => {
         // One minute before should be invalid (except at 0)
         if (minute > 0) {
           expect(isValidTime(`09:${String(minute - 1).padStart(2, '0')}`)).toBe(false);
         }
-        
+
         // Exact increment should be valid
         expect(isValidTime(`09:${String(minute).padStart(2, '0')}`)).toBe(true);
-        
+
         // One minute after should be invalid (except at 45 which goes to next hour)
         if (minute < 45) {
           expect(isValidTime(`09:${String(minute + 1).padStart(2, '0')}`)).toBe(false);
@@ -693,7 +853,7 @@ describe('Validation Rules Unit Tests', () => {
       expect(isValidDate('10/31/2025')).toBe(true);
       expect(isValidDate('11/30/2025')).toBe(true);
       expect(isValidDate('12/31/2025')).toBe(true);
-      
+
       // One day past should be invalid
       expect(isValidDate('02/29/2025')).toBe(false); // Not a leap year
       expect(isValidDate('04/31/2025')).toBe(false);
@@ -705,17 +865,26 @@ describe('Validation Rules Unit Tests', () => {
 
   describe('Edge Cases - Unicode and Special Characters', () => {
     it('should handle unicode characters in text fields', () => {
-      const mockRows = [{
-        date: '01/15/2025',
-        timeIn: '09:00',
-        timeOut: '17:00',
-        project: 'FL-Carver Techs',
-        tool: '#1 Rinse and 2D marker',
-        chargeCode: 'EPR1',
-        taskDescription: 'Test task with émojis 🚀 and üñïçödé'
-      }];
-      
-      const result = validateField({ value: 'Test task with émojis 🚀 and üñïçödé', row: 0, prop: 'taskDescription', rows: mockRows, projects: ['FL-Carver Techs'], chargeCodes: ['EPR1'] });
+      const mockRows = [
+        {
+          date: '01/15/2025',
+          timeIn: '09:00',
+          timeOut: '17:00',
+          project: 'FL-Carver Techs',
+          tool: '#1 Rinse and 2D marker',
+          chargeCode: 'EPR1',
+          taskDescription: 'Test task with émojis 🚀 and üñïçödé',
+        },
+      ];
+
+      const result = validateField({
+        value: 'Test task with émojis 🚀 and üñïçödé',
+        row: 0,
+        prop: 'taskDescription',
+        rows: mockRows,
+        projects: ['FL-Carver Techs'],
+        chargeCodes: ['EPR1'],
+      });
       expect(result).toBeNull(); // Should accept unicode
     });
 
@@ -739,53 +908,80 @@ describe('Validation Rules Unit Tests', () => {
         'Task with + plus',
         'Task with = equals',
         'Task with ~ tilde',
-        'Task with ` backtick'
+        'Task with ` backtick',
       ];
-      
-      const mockRows = [{
-        date: '01/15/2025',
-        timeIn: '09:00',
-        timeOut: '17:00',
-        project: 'FL-Carver Techs',
-        tool: '#1 Rinse and 2D marker',
-        chargeCode: 'EPR1',
-        taskDescription: ''
-      }];
-      
-      specialCharacters.forEach(description => {
-        const result = validateField({ value: description, row: 0, prop: 'taskDescription', rows: mockRows, projects: ['FL-Carver Techs'], chargeCodes: ['EPR1'] });
+
+      const mockRows = [
+        {
+          date: '01/15/2025',
+          timeIn: '09:00',
+          timeOut: '17:00',
+          project: 'FL-Carver Techs',
+          tool: '#1 Rinse and 2D marker',
+          chargeCode: 'EPR1',
+          taskDescription: '',
+        },
+      ];
+
+      specialCharacters.forEach((description) => {
+        const result = validateField({
+          value: description,
+          row: 0,
+          prop: 'taskDescription',
+          rows: mockRows,
+          projects: ['FL-Carver Techs'],
+          chargeCodes: ['EPR1'],
+        });
         expect(result).toBeNull(); // Should accept special characters
       });
     });
 
     it('should handle multiline text in task description', () => {
-      const mockRows = [{
-        date: '01/15/2025',
-        timeIn: '09:00',
-        timeOut: '17:00',
-        project: 'FL-Carver Techs',
-        tool: '#1 Rinse and 2D marker',
-        chargeCode: 'EPR1',
-        taskDescription: 'Line 1\nLine 2\nLine 3'
-      }];
-      
-      const result = validateField({ value: 'Line 1\nLine 2\nLine 3', row: 0, prop: 'taskDescription', rows: mockRows, projects: ['FL-Carver Techs'], chargeCodes: ['EPR1'] });
+      const mockRows = [
+        {
+          date: '01/15/2025',
+          timeIn: '09:00',
+          timeOut: '17:00',
+          project: 'FL-Carver Techs',
+          tool: '#1 Rinse and 2D marker',
+          chargeCode: 'EPR1',
+          taskDescription: 'Line 1\nLine 2\nLine 3',
+        },
+      ];
+
+      const result = validateField({
+        value: 'Line 1\nLine 2\nLine 3',
+        row: 0,
+        prop: 'taskDescription',
+        rows: mockRows,
+        projects: ['FL-Carver Techs'],
+        chargeCodes: ['EPR1'],
+      });
       expect(result).toBeNull(); // Should accept multiline text
     });
 
     it('should handle very long text in task description', () => {
       const longText = 'A'.repeat(10000);
-      const mockRows = [{
-        date: '01/15/2025',
-        timeIn: '09:00',
-        timeOut: '17:00',
-        project: 'FL-Carver Techs',
-        tool: '#1 Rinse and 2D marker',
-        chargeCode: 'EPR1',
-        taskDescription: longText
-      }];
-      
-      const result = validateField({ value: longText, row: 0, prop: 'taskDescription', rows: mockRows, projects: ['FL-Carver Techs'], chargeCodes: ['EPR1'] });
+      const mockRows = [
+        {
+          date: '01/15/2025',
+          timeIn: '09:00',
+          timeOut: '17:00',
+          project: 'FL-Carver Techs',
+          tool: '#1 Rinse and 2D marker',
+          chargeCode: 'EPR1',
+          taskDescription: longText,
+        },
+      ];
+
+      const result = validateField({
+        value: longText,
+        row: 0,
+        prop: 'taskDescription',
+        rows: mockRows,
+        projects: ['FL-Carver Techs'],
+        chargeCodes: ['EPR1'],
+      });
       expect(result).toBeNull(); // Should accept long text (database will handle limits)
     });
   });
@@ -804,47 +1000,62 @@ describe('Validation Rules Unit Tests', () => {
         "' OR 'a'='a",
         "'; EXEC sp_MSForEachTable 'DROP TABLE ?'; --",
         "SELECT * FROM timesheet WHERE '1'='1",
-        "UNION SELECT NULL, NULL, NULL--",
-        "1'; UPDATE timesheet SET status='Complete' WHERE '1'='1'; --"
+        'UNION SELECT NULL, NULL, NULL--',
+        "1'; UPDATE timesheet SET status='Complete' WHERE '1'='1'; --",
       ];
-      
-      const mockRows = [{
-        date: '01/15/2025',
-        timeIn: '09:00',
-        timeOut: '17:00',
-        project: 'FL-Carver Techs',
-        tool: '#1 Rinse and 2D marker',
-        chargeCode: 'EPR1',
-        taskDescription: ''
-      }];
-      
-      sqlInjectionAttempts.forEach(attempt => {
+
+      const mockRows = [
+        {
+          date: '01/15/2025',
+          timeIn: '09:00',
+          timeOut: '17:00',
+          project: 'FL-Carver Techs',
+          tool: '#1 Rinse and 2D marker',
+          chargeCode: 'EPR1',
+          taskDescription: '',
+        },
+      ];
+
+      sqlInjectionAttempts.forEach((attempt) => {
         // Validation should still pass (we treat it as text)
         // The database layer should handle parameterization
-        const result = validateField({ value: attempt, row: 0, prop: 'taskDescription', rows: mockRows, projects: ['FL-Carver Techs'], chargeCodes: ['EPR1'] });
+        const result = validateField({
+          value: attempt,
+          row: 0,
+          prop: 'taskDescription',
+          rows: mockRows,
+          projects: ['FL-Carver Techs'],
+          chargeCodes: ['EPR1'],
+        });
         expect(result).toBeNull(); // Validation treats it as regular text
       });
     });
 
     it('should handle SQL injection patterns in project names', () => {
-      const sqlInjectionProjects = [
-        "Project'; DROP TABLE--",
-        "Project' OR '1'='1"
+      const sqlInjectionProjects = ["Project'; DROP TABLE--", "Project' OR '1'='1"];
+
+      const mockRows = [
+        {
+          date: '01/15/2025',
+          timeIn: '09:00',
+          timeOut: '17:00',
+          project: '',
+          tool: '#1 Rinse and 2D marker',
+          chargeCode: 'EPR1',
+          taskDescription: 'Test task',
+        },
       ];
-      
-      const mockRows = [{
-        date: '01/15/2025',
-        timeIn: '09:00',
-        timeOut: '17:00',
-        project: '',
-        tool: '#1 Rinse and 2D marker',
-        chargeCode: 'EPR1',
-        taskDescription: 'Test task'
-      }];
-      
+
       // These should fail validation because they're not in the project list
-      sqlInjectionProjects.forEach(project => {
-        const result = validateField({ value: project, row: 0, prop: 'project', rows: mockRows, projects: ['FL-Carver Techs'], chargeCodes: ['EPR1'] });
+      sqlInjectionProjects.forEach((project) => {
+        const result = validateField({
+          value: project,
+          row: 0,
+          prop: 'project',
+          rows: mockRows,
+          projects: ['FL-Carver Techs'],
+          chargeCodes: ['EPR1'],
+        });
         expect(result).toBeTruthy(); // Should fail - not in allowed list
         expect(result).toContain('from the list');
       });
@@ -856,23 +1067,32 @@ describe('Validation Rules Unit Tests', () => {
         '<img src=x onerror=alert("XSS")>',
         '<iframe src="javascript:alert(\'XSS\')">',
         '"><script>alert(String.fromCharCode(88,83,83))</script>',
-        '<body onload=alert("XSS")>'
+        '<body onload=alert("XSS")>',
       ];
-      
-      const mockRows = [{
-        date: '01/15/2025',
-        timeIn: '09:00',
-        timeOut: '17:00',
-        project: 'FL-Carver Techs',
-        tool: '#1 Rinse and 2D marker',
-        chargeCode: 'EPR1',
-        taskDescription: ''
-      }];
-      
-      xssAttempts.forEach(attempt => {
+
+      const mockRows = [
+        {
+          date: '01/15/2025',
+          timeIn: '09:00',
+          timeOut: '17:00',
+          project: 'FL-Carver Techs',
+          tool: '#1 Rinse and 2D marker',
+          chargeCode: 'EPR1',
+          taskDescription: '',
+        },
+      ];
+
+      xssAttempts.forEach((attempt) => {
         // Validation should pass (we treat it as text)
         // The rendering layer should handle escaping
-        const result = validateField({ value: attempt, row: 0, prop: 'taskDescription', rows: mockRows, projects: ['FL-Carver Techs'], chargeCodes: ['EPR1'] });
+        const result = validateField({
+          value: attempt,
+          row: 0,
+          prop: 'taskDescription',
+          rows: mockRows,
+          projects: ['FL-Carver Techs'],
+          chargeCodes: ['EPR1'],
+        });
         expect(result).toBeNull(); // Validation treats it as regular text
       });
     });

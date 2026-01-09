@@ -7,8 +7,9 @@ import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
-import UserManual from '../UserManual';
+
 import { type UserGuideDialogProps } from '../SettingsTypes';
+import UserManual from '../UserManual';
 
 export function UserGuideDialog({ open, onClose }: UserGuideDialogProps) {
   return (

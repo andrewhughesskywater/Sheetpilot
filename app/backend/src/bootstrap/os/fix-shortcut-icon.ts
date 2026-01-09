@@ -1,13 +1,10 @@
+import type { App } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
-import type { App } from 'electron';
+
 import type { LoggerLike } from '../logging/logger-contract';
 
-export function fixDesktopShortcutIcon(params: {
-  app: App;
-  logger: LoggerLike;
-  packagedLike: boolean;
-}): void {
+export function fixDesktopShortcutIcon(params: { app: App; logger: LoggerLike; packagedLike: boolean }): void {
   if (process.platform !== 'win32' || !params.packagedLike) {
     return; // Only run on Windows in packaged mode
   }
@@ -26,21 +23,18 @@ export function fixDesktopShortcutIcon(params: {
   } catch (err: unknown) {
     params.logger.debug('Could not extract shortcut fix script', {
       error: err instanceof Error ? err.message : String(err),
-      scriptPath
+      scriptPath,
     });
     return;
   }
 
   // Run PowerShell script in background
   const { spawn } = require('child_process') as typeof import('child_process');
-  const ps = spawn(
-    'powershell.exe',
-    ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', tempScriptPath],
-    { detached: true, stdio: 'ignore' }
-  );
+  const ps = spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', tempScriptPath], {
+    detached: true,
+    stdio: 'ignore',
+  });
 
   ps.unref(); // Don't wait for completion
   params.logger.debug('Started desktop shortcut icon fix', { tempScriptPath });
 }
-
-

@@ -1,4 +1,5 @@
 import type { TimesheetValidationPlugin } from '@sheetpilot/shared/plugin-types';
+
 import type { TimesheetRow } from '@/components/timesheet/timesheet.schema';
 
 /**
@@ -10,7 +11,7 @@ export class BasicTimesheetValidationPlugin implements TimesheetValidationPlugin
     name: 'basic-timesheet-validation',
     version: '1.0.0',
     author: 'Sheetpilot',
-    description: 'Basic validation for timesheet rows'
+    description: 'Basic validation for timesheet rows',
   };
 
   initialize(): void {}

@@ -23,7 +23,7 @@ describe('Frontend Plugin Registration', () => {
 
   it('should successfully register UI plugin', async () => {
     const { registerDefaultFrontendPlugins } = await import('../../src/plugins/register-default-plugins');
-    
+
     await registerDefaultFrontendPlugins();
 
     const registry = PluginRegistry.getInstance();
@@ -35,7 +35,7 @@ describe('Frontend Plugin Registration', () => {
 
   it('should register HandsontableTimesheetUIPlugin with correct methods', async () => {
     const { registerDefaultFrontendPlugins } = await import('../../src/plugins/register-default-plugins');
-    
+
     await registerDefaultFrontendPlugins();
 
     const registry = PluginRegistry.getInstance();
@@ -50,7 +50,7 @@ describe('Frontend Plugin Registration', () => {
 
   it('should set active UI plugin to handsontable by default', async () => {
     const { registerDefaultFrontendPlugins } = await import('../../src/plugins/register-default-plugins');
-    
+
     await registerDefaultFrontendPlugins();
 
     const registry = PluginRegistry.getInstance();
@@ -62,7 +62,7 @@ describe('Frontend Plugin Registration', () => {
 
   it('should build columns with proper structure', async () => {
     const { registerDefaultFrontendPlugins } = await import('../../src/plugins/register-default-plugins');
-    
+
     await registerDefaultFrontendPlugins();
 
     const registry = PluginRegistry.getInstance();
@@ -73,7 +73,7 @@ describe('Frontend Plugin Registration', () => {
     expect(columns).toBeDefined();
     expect(Array.isArray(columns)).toBe(true);
     expect(columns).toHaveLength(7);
-    
+
     // Verify each column has required properties
     const expectedColumns = ['date', 'timeIn', 'timeOut', 'project', 'tool', 'chargeCode', 'taskDescription'];
     columns?.forEach((col: any, index: number) => {
@@ -86,7 +86,7 @@ describe('Frontend Plugin Registration', () => {
 
   it('should include column headers in buildColumns output', async () => {
     const { registerDefaultFrontendPlugins } = await import('../../src/plugins/register-default-plugins');
-    
+
     await registerDefaultFrontendPlugins();
 
     const registry = PluginRegistry.getInstance();
@@ -95,20 +95,12 @@ describe('Frontend Plugin Registration', () => {
     const columns = uiPlugin?.buildColumns?.([]);
 
     const headers = columns?.map((col: any) => col.title);
-    expect(headers).toEqual([
-      'Date',
-      'Start Time',
-      'End Time',
-      'Project',
-      'Tool',
-      'Charge Code',
-      'What You Did'
-    ]);
+    expect(headers).toEqual(['Date', 'Start Time', 'End Time', 'Project', 'Tool', 'Charge Code', 'What You Did']);
   });
 
   it('should include placeholders in buildColumns output', async () => {
     const { registerDefaultFrontendPlugins } = await import('../../src/plugins/register-default-plugins');
-    
+
     await registerDefaultFrontendPlugins();
 
     const registry = PluginRegistry.getInstance();

@@ -1,12 +1,13 @@
-import { useState, useCallback, useEffect } from 'react';
-import Dialog from '@mui/material/Dialog';
-import DialogTitle from '@mui/material/DialogTitle';
-import DialogContent from '@mui/material/DialogContent';
-import DialogActions from '@mui/material/DialogActions';
-import FormControlLabel from '@mui/material/FormControlLabel';
-import Checkbox from '@mui/material/Checkbox';
-import Button from '@mui/material/Button';
 import './KeyboardShortcutsHintDialog.css';
+
+import Button from '@mui/material/Button';
+import Checkbox from '@mui/material/Checkbox';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogTitle from '@mui/material/DialogTitle';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import { useCallback, useEffect,useState } from 'react';
 
 interface KeyboardShortcutsHintDialogProps {
   open: boolean;
@@ -30,14 +31,14 @@ export default function KeyboardShortcutsHintDialog({ open, onClose }: KeyboardS
 
     const lastShownStr = localStorage.getItem('sheetpilot-shortcuts-hint-last-shown');
     const now = Date.now();
-    
+
     if (!lastShownStr) {
       // First time - save the timestamp
       localStorage.setItem('sheetpilot-shortcuts-hint-last-shown', now.toString());
     } else {
       const lastShown = parseInt(lastShownStr, 10);
       const threeDaysInMs = 3 * 24 * 60 * 60 * 1000;
-      
+
       if (now - lastShown < threeDaysInMs) {
         // Less than 3 days - don't show (unless it's the forced demo mode)
         // onClose();
@@ -83,7 +84,7 @@ export default function KeyboardShortcutsHintDialog({ open, onClose }: KeyboardS
           backgroundColor: 'var(--md-sys-color-surface-container-high)',
           color: 'var(--md-sys-color-on-surface)',
           borderRadius: 'var(--md-sys-shape-corner-large)',
-        }
+        },
       }}
     >
       <DialogTitle
@@ -97,37 +98,49 @@ export default function KeyboardShortcutsHintDialog({ open, onClose }: KeyboardS
       >
         Helpful Hints
       </DialogTitle>
-      
+
       <DialogContent className="shortcuts-hint-content">
         {currentPage === 0 && (
           <div className="hint-page">
             <p className="hint-story">
-              Save time and speed through your timesheet! These date shortcuts help you quickly fill in entries 
-              without reaching for your mouse. Perfect for when you&apos;re entering multiple days in a row.
+              Save time and speed through your timesheet! These date shortcuts help you quickly fill in entries without
+              reaching for your mouse. Perfect for when you&apos;re entering multiple days in a row.
             </p>
             <div className="shortcuts-section">
               <strong>Date Entry Shortcuts:</strong>
               <ul>
-                <li><strong>Tab</strong> - Accept the smart date placeholder</li>
-                <li><strong>Shift+Tab</strong> - Insert day after the placeholder</li>
-                <li><strong>Ctrl+Tab</strong> - Insert day after your last entry</li>
-                <li><strong>Ctrl+T</strong> - Insert today&apos;s date</li>
+                <li>
+                  <strong>Tab</strong> - Accept the smart date placeholder
+                </li>
+                <li>
+                  <strong>Shift+Tab</strong> - Insert day after the placeholder
+                </li>
+                <li>
+                  <strong>Ctrl+Tab</strong> - Insert day after your last entry
+                </li>
+                <li>
+                  <strong>Ctrl+T</strong> - Insert today&apos;s date
+                </li>
               </ul>
             </div>
           </div>
         )}
-        
+
         {currentPage === 1 && (
           <div className="hint-page">
             <p className="hint-story">
-              Work smarter, not harder! Use these shortcuts to duplicate rows and apply saved macros. 
-              They&apos;re especially handy when you have repetitive entries or common task patterns.
+              Work smarter, not harder! Use these shortcuts to duplicate rows and apply saved macros. They&apos;re
+              especially handy when you have repetitive entries or common task patterns.
             </p>
             <div className="shortcuts-section">
               <strong>Other Shortcuts:</strong>
               <ul>
-                <li><strong>Ctrl+D</strong> - Duplicate selected row</li>
-                <li><strong>Ctrl+1 through Ctrl+5</strong> - Apply saved macros</li>
+                <li>
+                  <strong>Ctrl+D</strong> - Duplicate selected row
+                </li>
+                <li>
+                  <strong>Ctrl+1 through Ctrl+5</strong> - Apply saved macros
+                </li>
               </ul>
             </div>
           </div>
@@ -139,7 +152,7 @@ export default function KeyboardShortcutsHintDialog({ open, onClose }: KeyboardS
           ))}
         </div>
       </DialogContent>
-      
+
       <DialogActions
         sx={{
           padding: 'var(--sp-space-3)',
@@ -160,17 +173,17 @@ export default function KeyboardShortcutsHintDialog({ open, onClose }: KeyboardS
               }}
             />
           }
-          label="Don&apos;t show again"
-          sx={{ 
+          label="Don't show again"
+          sx={{
             color: 'var(--md-sys-color-on-surface-variant)',
             fontFamily: 'var(--md-sys-typescale-body-medium-font)',
             fontSize: 'var(--md-sys-typescale-body-medium-size)',
           }}
         />
-        
+
         <div className="navigation-buttons">
           {currentPage > 0 && (
-            <Button 
+            <Button
               onClick={handleBack}
               variant="text"
               sx={{
@@ -185,9 +198,9 @@ export default function KeyboardShortcutsHintDialog({ open, onClose }: KeyboardS
               Back
             </Button>
           )}
-          
+
           {currentPage < totalPages - 1 ? (
-            <Button 
+            <Button
               onClick={handleNext}
               variant="contained"
               sx={{
@@ -207,7 +220,7 @@ export default function KeyboardShortcutsHintDialog({ open, onClose }: KeyboardS
               Next
             </Button>
           ) : (
-            <Button 
+            <Button
               onClick={handleClose}
               variant="contained"
               sx={{
@@ -232,4 +245,3 @@ export default function KeyboardShortcutsHintDialog({ open, onClose }: KeyboardS
     </Dialog>
   );
 }
-

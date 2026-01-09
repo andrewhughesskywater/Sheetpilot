@@ -1,25 +1,26 @@
 import { contextBridge } from 'electron';
-import { apiBridge } from './bridges/api';
-import { timesheetBridge } from './bridges/timesheet';
-import { credentialsBridge } from './bridges/credentials';
-import { authBridge } from './bridges/auth';
+
 import { adminBridge } from './bridges/admin';
-import { databaseBridge } from './bridges/database';
-import { logsBridge } from './bridges/logs';
-import { loggerBridge } from './bridges/logger';
-import { updatesBridge } from './bridges/updates';
-import { settingsBridge } from './bridges/settings';
+import { apiBridge } from './bridges/api';
+import { authBridge } from './bridges/auth';
+import { credentialsBridge } from './bridges/credentials';
 import { cspBridge } from './bridges/csp';
+import { databaseBridge } from './bridges/database';
+import { loggerBridge } from './bridges/logger';
+import { logsBridge } from './bridges/logs';
+import { settingsBridge } from './bridges/settings';
+import { timesheetBridge } from './bridges/timesheet';
+import { updatesBridge } from './bridges/updates';
 
 export function exposePreloadBridges(): void {
   // Log that preload script is executing
   console.log('[Preload] Preload script executing');
-  
+
   try {
     if (!contextBridge) {
       throw new Error('contextBridge is not available');
     }
-    
+
     contextBridge.exposeInMainWorld('api', apiBridge);
     contextBridge.exposeInMainWorld('timesheet', timesheetBridge);
     contextBridge.exposeInMainWorld('credentials', credentialsBridge);
@@ -31,7 +32,7 @@ export function exposePreloadBridges(): void {
     contextBridge.exposeInMainWorld('updates', updatesBridge);
     contextBridge.exposeInMainWorld('settings', settingsBridge);
     contextBridge.exposeInMainWorld('csp', cspBridge);
-    
+
     // Verify auth bridge was exposed
     if (typeof window !== 'undefined' && (window as unknown as { auth?: unknown }).auth) {
       console.log('[Preload] All bridges exposed successfully - auth API verified');
@@ -42,7 +43,7 @@ export function exposePreloadBridges(): void {
     const errorMsg = error instanceof Error ? error.message : String(error);
     const errorStack = error instanceof Error ? error.stack : undefined;
     console.error('[Preload] Failed to expose bridges:', errorMsg, errorStack);
-    
+
     // Try to expose at least auth bridge even if others fail
     try {
       contextBridge.exposeInMainWorld('auth', authBridge);
@@ -54,5 +55,3 @@ export function exposePreloadBridges(): void {
     }
   }
 }
-
-

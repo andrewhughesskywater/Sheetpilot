@@ -10,6 +10,7 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import Typography from '@mui/material/Typography';
 import { APP_VERSION } from '@sheetpilot/shared/constants';
+
 import logoImage from '../../assets/images/logo.svg';
 import { type AboutDialogProps } from '../SettingsTypes';
 

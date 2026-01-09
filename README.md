@@ -56,13 +56,16 @@ Sheetpilot/
 For security purposes, certain configuration options should be set via environment variables:
 
 **Required for Production:**
+
 - `SHEETPILOT_ADMIN_PASSWORD` - Admin account password (admin login disabled if not set)
 
 **Optional:**
+
 - `SHEETPILOT_ADMIN_USERNAME` - Admin account username (default: "Admin")
 - `SHEETPILOT_MASTER_KEY` - Master encryption key for password storage (default: machine-specific)
 
 **Example .env file:**
+
 ```bash
 SHEETPILOT_ADMIN_USERNAME=Admin
 SHEETPILOT_ADMIN_PASSWORD=your_secure_password_here
@@ -129,6 +132,7 @@ npm run build:dir
 Artifacts land in `release/`.
 
 Notes:
+
 - Builds rely on the shared `compile` step (main + renderer); it runs once via `validate:quick` before packaging.
 - If validation fails, packaging is skipped with clear errors.
 
@@ -152,9 +156,11 @@ Some enterprise antivirus solutions may flag Sheetpilot due to browser automatio
 ## Documentation
 
 ### For Users
+
 - [User Guide](docs/USER_GUIDE.md) - Comprehensive guide for end users
 
 ### For Developers
+
 - [Developer Wiki](docs/DEVELOPER_WIKI.md) - Complete developer reference
 - [Auto Updates](docs/AUTO_UPDATES.md)
 - [Dependency Validation Guide](docs/DEPENDENCY_VALIDATION.md)

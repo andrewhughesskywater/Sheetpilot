@@ -1,8 +1,8 @@
 /**
  * @fileoverview MacroManagerDialog Component Tests
- * 
+ *
  * Tests for macro creation, editing, deletion, and application functionality.
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025
@@ -17,8 +17,8 @@ const mockMacros = [
     project: 'FL-Carver Techs',
     tool: '#1 Rinse and 2D marker',
     chargeCode: 'EPR1',
-    taskDescription: 'Daily equipment maintenance'
-  }
+    taskDescription: 'Daily equipment maintenance',
+  },
 ];
 
 describe('MacroManagerDialog Component', () => {
@@ -26,30 +26,30 @@ describe('MacroManagerDialog Component', () => {
     it('should load macros when dialog opens', () => {
       const loadMacros = vi.fn(() => mockMacros);
       const open = true;
-      
+
       if (open) {
         const macros = loadMacros();
         expect(macros).toEqual(mockMacros);
       }
-      
+
       expect(loadMacros).toHaveBeenCalled();
     });
 
     it('should not load macros when dialog closed', () => {
       const loadMacros = vi.fn();
       const open = false;
-      
+
       if (open) {
         loadMacros();
       }
-      
+
       expect(loadMacros).not.toHaveBeenCalled();
     });
 
     it('should handle empty macro list', () => {
       const loadMacros = vi.fn(() => []);
       const macros = loadMacros();
-      
+
       expect(macros).toEqual([]);
       expect(Array.isArray(macros)).toBe(true);
     });
@@ -63,7 +63,7 @@ describe('MacroManagerDialog Component', () => {
           return [];
         }
       });
-      
+
       const macros = loadMacros();
       expect(macros).toEqual([]);
     });
@@ -76,30 +76,30 @@ describe('MacroManagerDialog Component', () => {
         project: 'FL-Carver Techs',
         tool: '#1 Rinse and 2D marker',
         chargeCode: 'EPR1',
-        taskDescription: 'Test task'
+        taskDescription: 'Test task',
       };
-      
+
       expect(newMacro.name).toBeDefined();
       expect(newMacro.project).toBeDefined();
       expect(newMacro.taskDescription).toBeDefined();
     });
 
     it('should validate required fields for macro', () => {
-      const validateMacro = (macro: {name?: string; project?: string; taskDescription?: string}) => {
+      const validateMacro = (macro: { name?: string; project?: string; taskDescription?: string }) => {
         return !!(macro.name && macro.project && macro.taskDescription);
       };
-      
+
       const validMacro = {
         name: 'Test',
         project: 'Test Project',
-        taskDescription: 'Test Task'
+        taskDescription: 'Test Task',
       };
-      
+
       const invalidMacro = {
         name: 'Test',
-        project: ''
+        project: '',
       };
-      
+
       expect(validateMacro(validMacro)).toBe(true);
       expect(validateMacro(invalidMacro)).toBeFalsy();
     });
@@ -110,9 +110,9 @@ describe('MacroManagerDialog Component', () => {
         project: 'PTO/RTO',
         tool: null,
         chargeCode: null,
-        taskDescription: 'Time off'
+        taskDescription: 'Time off',
       };
-      
+
       expect(macro.tool).toBeNull();
       expect(macro.chargeCode).toBeNull();
     });
@@ -122,11 +122,11 @@ describe('MacroManagerDialog Component', () => {
     it('should update macro on cell change', () => {
       const macros: any[] = [...mockMacros];
       const changes: Array<[number, string, string, string]> = [[0, 'name', 'Daily Entry', 'Updated Entry']];
-      
+
       for (const [rowIdx, prop, , newVal] of changes) {
         macros[rowIdx] = { ...macros[rowIdx], [prop]: newVal };
       }
-      
+
       expect(macros[0].name).toBe('Updated Entry');
     });
 
@@ -136,7 +136,7 @@ describe('MacroManagerDialog Component', () => {
         if (time === '1730') return '17:30';
         return time;
       };
-      
+
       expect(formatTime('900')).toBe('09:00');
       expect(formatTime('1730')).toBe('17:30');
     });
@@ -147,17 +147,17 @@ describe('MacroManagerDialog Component', () => {
         project: 'FL-Carver Techs',
         tool: '#1 Rinse and 2D marker',
         chargeCode: 'EPR1',
-        taskDescription: 'Task'
+        taskDescription: 'Task',
       };
-      
+
       // Change to project without tools
       const newProject = 'PTO/RTO';
       const projectNeedsTools = !['PTO/RTO', 'Training', 'SWFL-CHEM/GAS', 'ERT'].includes(newProject);
-      
+
       if (!projectNeedsTools) {
         macro = { ...macro, project: newProject, tool: null, chargeCode: null };
       }
-      
+
       expect(macro.tool).toBeNull();
       expect(macro.chargeCode).toBeNull();
     });
@@ -168,17 +168,17 @@ describe('MacroManagerDialog Component', () => {
         project: 'FL-Carver Techs',
         tool: '#1 Rinse and 2D marker',
         chargeCode: 'EPR1',
-        taskDescription: 'Task'
+        taskDescription: 'Task',
       };
-      
+
       // Change to tool without charge code
       const newTool = 'Meeting';
       const toolNeedsChargeCode = !['Meeting', 'DECA Meeting', 'Admin', 'Training', 'Logistics'].includes(newTool);
-      
+
       if (!toolNeedsChargeCode) {
         macro = { ...macro, tool: newTool, chargeCode: null };
       }
-      
+
       expect(macro.tool).toBe('Meeting');
       expect(macro.chargeCode).toBeNull();
     });
@@ -188,9 +188,9 @@ describe('MacroManagerDialog Component', () => {
     it('should delete macro row', () => {
       const macros = [...mockMacros];
       const indexToDelete = 0;
-      
+
       macros.splice(indexToDelete, 1);
-      
+
       expect(macros.length).toBe(0);
     });
 
@@ -198,11 +198,11 @@ describe('MacroManagerDialog Component', () => {
       const macros = [
         { name: 'Macro 1', project: 'Test', taskDescription: 'Task 1' },
         { name: 'Macro 2', project: 'Test', taskDescription: 'Task 2' },
-        { name: 'Macro 3', project: 'Test', taskDescription: 'Task 3' }
+        { name: 'Macro 3', project: 'Test', taskDescription: 'Task 3' },
       ];
-      
+
       macros.splice(1, 1); // Delete middle
-      
+
       expect(macros.length).toBe(2);
       expect(macros[0].name).toBe('Macro 1');
       expect(macros[1].name).toBe('Macro 3');
@@ -210,9 +210,9 @@ describe('MacroManagerDialog Component', () => {
 
     it('should handle deleting last macro', () => {
       const macros = [{ name: 'Last Macro', project: 'Test', taskDescription: 'Task' }];
-      
+
       macros.splice(0, 1);
-      
+
       expect(macros.length).toBe(0);
     });
   });
@@ -221,30 +221,30 @@ describe('MacroManagerDialog Component', () => {
     it('should apply macro to timesheet grid', () => {
       const macro = mockMacros[0];
       const onSave = vi.fn();
-      
+
       onSave([macro]);
-      
+
       expect(onSave).toHaveBeenCalledWith([macro]);
     });
 
     it('should apply multiple macros', () => {
       const macros = [
         mockMacros[0],
-        { name: 'Macro 2', project: 'Test', tool: 'Tool', chargeCode: 'EPR2', taskDescription: 'Task 2' }
+        { name: 'Macro 2', project: 'Test', tool: 'Tool', chargeCode: 'EPR2', taskDescription: 'Task 2' },
       ];
-      
+
       const onSave = vi.fn();
       onSave(macros);
-      
+
       expect(onSave).toHaveBeenCalledWith(macros);
     });
 
     it('should save macros to storage', () => {
       const saveMacros = vi.fn();
       const macros = mockMacros;
-      
+
       saveMacros(macros);
-      
+
       expect(saveMacros).toHaveBeenCalledWith(macros);
     });
   });
@@ -252,23 +252,23 @@ describe('MacroManagerDialog Component', () => {
   describe('Dialog Management', () => {
     it('should call onClose when cancel clicked', () => {
       const onClose = vi.fn();
-      
+
       onClose();
-      
+
       expect(onClose).toHaveBeenCalledTimes(1);
     });
 
     it('should call onSave and onClose when save clicked', () => {
       const onSave = vi.fn();
       const onClose = vi.fn();
-      
+
       const handleSave = () => {
         onSave(mockMacros);
         onClose();
       };
-      
+
       handleSave();
-      
+
       expect(onSave).toHaveBeenCalled();
       expect(onClose).toHaveBeenCalled();
     });
@@ -279,9 +279,9 @@ describe('MacroManagerDialog Component', () => {
       const macro = {
         name: '',
         project: 'Test',
-        taskDescription: 'Task'
+        taskDescription: 'Task',
       };
-      
+
       const isValid = macro.name.length > 0;
       expect(isValid).toBe(false);
     });
@@ -289,10 +289,10 @@ describe('MacroManagerDialog Component', () => {
     it('should handle duplicate macro names', () => {
       const macros = [
         { name: 'Same Name', project: 'Test1', taskDescription: 'Task1' },
-        { name: 'Same Name', project: 'Test2', taskDescription: 'Task2' }
+        { name: 'Same Name', project: 'Test2', taskDescription: 'Task2' },
       ];
-      
-      const hasDuplicates = macros.length !== new Set(macros.map(m => m.name)).size;
+
+      const hasDuplicates = macros.length !== new Set(macros.map((m) => m.name)).size;
       expect(hasDuplicates).toBe(true);
     });
 
@@ -301,9 +301,9 @@ describe('MacroManagerDialog Component', () => {
       const macro = {
         name: longName,
         project: 'Test',
-        taskDescription: 'Task'
+        taskDescription: 'Task',
       };
-      
+
       expect(macro.name.length).toBe(500);
     });
 
@@ -312,9 +312,9 @@ describe('MacroManagerDialog Component', () => {
       const macro = {
         name: specialName,
         project: 'Test',
-        taskDescription: 'Task'
+        taskDescription: 'Task',
       };
-      
+
       expect(macro.name).toContain('#');
       expect(macro.name).toContain('[');
       expect(macro.name).toContain(']');
@@ -324,19 +324,33 @@ describe('MacroManagerDialog Component', () => {
   describe('Dropdown Behavior', () => {
     it('should provide project dropdown options', () => {
       const projectOptions = [
-        'FL-Carver Techs', 'FL-Carver Tools', 'OSC-BBB',
-        'PTO/RTO', 'SWFL-CHEM/GAS', 'SWFL-EQUIP', 'Training'
+        'FL-Carver Techs',
+        'FL-Carver Tools',
+        'OSC-BBB',
+        'PTO/RTO',
+        'SWFL-CHEM/GAS',
+        'SWFL-EQUIP',
+        'Training',
       ];
-      
+
       expect(projectOptions.length).toBe(7);
     });
 
     it('should provide charge code dropdown options', () => {
       const chargeCodeOptions = [
-        'Admin', 'EPR1', 'EPR2', 'EPR3', 'EPR4', 'Repair',
-        'Meeting', 'Other', 'PM', 'Training', 'Upgrade'
+        'Admin',
+        'EPR1',
+        'EPR2',
+        'EPR3',
+        'EPR4',
+        'Repair',
+        'Meeting',
+        'Other',
+        'PM',
+        'Training',
+        'Upgrade',
       ];
-      
+
       expect(chargeCodeOptions.length).toBe(11);
     });
 
@@ -346,10 +360,9 @@ describe('MacroManagerDialog Component', () => {
         if (['PTO/RTO', 'Training'].includes(project)) return [];
         return ['Tool 1', 'Tool 2']; // Simplified
       };
-      
+
       expect(getToolsForProject('PTO/RTO')).toEqual([]);
       expect(getToolsForProject('FL-Carver Techs').length).toBeGreaterThanOrEqual(0);
     });
   });
 });
-

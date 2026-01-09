@@ -4,14 +4,14 @@ import { contextBridge, ipcRenderer } from 'electron';
 // Mock electron
 vi.mock('electron', () => ({
   contextBridge: {
-    exposeInMainWorld: vi.fn()
+    exposeInMainWorld: vi.fn(),
   },
   ipcRenderer: {
     invoke: vi.fn(),
     send: vi.fn(),
     on: vi.fn(),
-    removeAllListeners: vi.fn()
-  }
+    removeAllListeners: vi.fn(),
+  },
 }));
 
 describe('preload.ts', () => {
@@ -26,14 +26,14 @@ describe('preload.ts', () => {
     expect(contextBridge.exposeInMainWorld).toHaveBeenCalledWith(
       'api',
       expect.objectContaining({
-        ping: expect.any(Function)
+        ping: expect.any(Function),
       })
     );
 
     // Test ping handler
-    const exposed = vi.mocked(contextBridge.exposeInMainWorld).mock.calls.find(
-      call => call[0] === 'api'
-    )?.[1] as { ping: (msg: string) => Promise<string> };
+    const exposed = vi.mocked(contextBridge.exposeInMainWorld).mock.calls.find((call) => call[0] === 'api')?.[1] as {
+      ping: (msg: string) => Promise<string>;
+    };
 
     vi.mocked(ipcRenderer.invoke).mockResolvedValue('pong');
     const result = await exposed.ping('test');
@@ -54,7 +54,7 @@ describe('preload.ts', () => {
         resetInProgress: expect.any(Function),
         exportToCSV: expect.any(Function),
         onSubmissionProgress: expect.any(Function),
-        removeProgressListener: expect.any(Function)
+        removeProgressListener: expect.any(Function),
       })
     );
   });
@@ -65,7 +65,7 @@ describe('preload.ts', () => {
       expect.objectContaining({
         store: expect.any(Function),
         list: expect.any(Function),
-        delete: expect.any(Function)
+        delete: expect.any(Function),
       })
     );
   });
@@ -77,7 +77,7 @@ describe('preload.ts', () => {
         login: expect.any(Function),
         validateSession: expect.any(Function),
         logout: expect.any(Function),
-        getCurrentSession: expect.any(Function)
+        getCurrentSession: expect.any(Function),
       })
     );
   });
@@ -87,7 +87,7 @@ describe('preload.ts', () => {
       'admin',
       expect.objectContaining({
         clearCredentials: expect.any(Function),
-        rebuildDatabase: expect.any(Function)
+        rebuildDatabase: expect.any(Function),
       })
     );
   });
@@ -97,7 +97,7 @@ describe('preload.ts', () => {
       'database',
       expect.objectContaining({
         getAllTimesheetEntries: expect.any(Function),
-        getAllArchiveData: expect.any(Function)
+        getAllArchiveData: expect.any(Function),
       })
     );
   });
@@ -107,7 +107,7 @@ describe('preload.ts', () => {
       'logs',
       expect.objectContaining({
         getLogPath: expect.any(Function),
-        exportLogs: expect.any(Function)
+        exportLogs: expect.any(Function),
       })
     );
   });
@@ -121,7 +121,7 @@ describe('preload.ts', () => {
         info: expect.any(Function),
         verbose: expect.any(Function),
         debug: expect.any(Function),
-        userAction: expect.any(Function)
+        userAction: expect.any(Function),
       })
     );
   });
@@ -135,7 +135,7 @@ describe('preload.ts', () => {
         onUpdateDownloaded: expect.any(Function),
         cancelUpdate: expect.any(Function),
         quitAndInstall: expect.any(Function),
-        removeAllListeners: expect.any(Function)
+        removeAllListeners: expect.any(Function),
       })
     );
   });
@@ -146,15 +146,15 @@ describe('preload.ts', () => {
       expect.objectContaining({
         get: expect.any(Function),
         set: expect.any(Function),
-        getAll: expect.any(Function)
+        getAll: expect.any(Function),
       })
     );
   });
 
   it('should handle timesheet progress listener setup', async () => {
-    const exposed = vi.mocked(contextBridge.exposeInMainWorld).mock.calls.find(
-      call => call[0] === 'timesheet'
-    )?.[1] as {
+    const exposed = vi
+      .mocked(contextBridge.exposeInMainWorld)
+      .mock.calls.find((call) => call[0] === 'timesheet')?.[1] as {
       onSubmissionProgress: (callback: (progress: unknown) => void) => void;
       removeProgressListener: () => void;
     };
@@ -170,9 +170,7 @@ describe('preload.ts', () => {
   });
 
   it('should handle logger methods correctly', async () => {
-    const exposed = vi.mocked(contextBridge.exposeInMainWorld).mock.calls.find(
-      call => call[0] === 'logger'
-    )?.[1] as {
+    const exposed = vi.mocked(contextBridge.exposeInMainWorld).mock.calls.find((call) => call[0] === 'logger')?.[1] as {
       error: (message: string, data?: unknown) => void;
       warn: (message: string, data?: unknown) => void;
       info: (message: string, data?: unknown) => void;
@@ -188,4 +186,3 @@ describe('preload.ts', () => {
     expect(ipcRenderer.send).toHaveBeenCalledWith('logger:info', 'Info message', { userId: 456 });
   });
 });
-

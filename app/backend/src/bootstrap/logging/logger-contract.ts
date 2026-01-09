@@ -9,5 +9,3 @@ export interface LoggerLike {
   security: (eventType: string, message: string, data?: unknown) => void;
   startTimer: (operation: string) => { done: (metadata?: unknown) => void };
 }
-
-

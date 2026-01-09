@@ -6,18 +6,18 @@ import * as repositories from '@/repositories';
 // Mock electron
 vi.mock('electron', () => ({
   ipcMain: {
-    handle: vi.fn()
-  }
+    handle: vi.fn(),
+  },
 }));
 
 vi.mock('@/ipc/handlers/timesheet/main-window', () => ({
-  isTrustedIpcSender: vi.fn(() => true)
+  isTrustedIpcSender: vi.fn(() => true),
 }));
 
 // Mock repositories
 vi.mock('@/repositories', () => ({
   getDb: vi.fn(),
-  validateSession: vi.fn()
+  validateSession: vi.fn(),
 }));
 
 // Mock logger
@@ -27,8 +27,8 @@ vi.mock('../../../shared/logger', () => ({
     verbose: vi.fn(),
     audit: vi.fn(),
     warn: vi.fn(),
-    error: vi.fn()
-  }
+    error: vi.fn(),
+  },
 }));
 
 describe('database-handlers', () => {
@@ -41,7 +41,7 @@ describe('database-handlers', () => {
     vi.clearAllMocks();
     mockDb = {
       prepare: vi.fn(),
-      exec: vi.fn()
+      exec: vi.fn(),
     };
     vi.mocked(repositories.getDb).mockReturnValue(mockDb as never);
   });
@@ -62,18 +62,18 @@ describe('database-handlers', () => {
       vi.mocked(repositories.validateSession).mockReturnValue({
         valid: true,
         email: 'user@example.com',
-        isAdmin: false
+        isAdmin: false,
       });
 
       const mockCountStmt = {
-        get: vi.fn().mockReturnValue({ total: 150 })
+        get: vi.fn().mockReturnValue({ total: 150 }),
       };
 
       const mockGetAllStmt = {
         all: vi.fn().mockReturnValue([
           { id: 1, date: '2025-01-15', status: 'Complete' },
-          { id: 2, date: '2025-01-16', status: 'Complete' }
-        ])
+          { id: 2, date: '2025-01-16', status: 'Complete' },
+        ]),
       };
 
       mockDb.prepare.mockImplementation((sql: string) => {
@@ -81,9 +81,20 @@ describe('database-handlers', () => {
         return mockGetAllStmt;
       });
 
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'database:getAllTimesheetEntries'
-      )?.[1] as (event: unknown, token: string, options?: { page?: number; pageSize?: number }) => Promise<{ success: boolean; entries: unknown[]; totalCount: number; page: number; pageSize: number; totalPages: number }>;
+      const handler = vi
+        .mocked(ipcMain.handle)
+        .mock.calls.find((call) => call[0] === 'database:getAllTimesheetEntries')?.[1] as (
+        event: unknown,
+        token: string,
+        options?: { page?: number; pageSize?: number }
+      ) => Promise<{
+        success: boolean;
+        entries: unknown[];
+        totalCount: number;
+        page: number;
+        pageSize: number;
+        totalPages: number;
+      }>;
 
       const result = await handler({}, 'test-token', { page: 0, pageSize: 100 });
 
@@ -96,9 +107,12 @@ describe('database-handlers', () => {
     it('should reject requests without token', async () => {
       registerDatabaseHandlers();
 
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'database:getAllTimesheetEntries'
-      )?.[1] as (event: unknown, token: string) => Promise<{ success: boolean; error?: string }>;
+      const handler = vi
+        .mocked(ipcMain.handle)
+        .mock.calls.find((call) => call[0] === 'database:getAllTimesheetEntries')?.[1] as (
+        event: unknown,
+        token: string
+      ) => Promise<{ success: boolean; error?: string }>;
 
       const result = await handler({}, '');
 
@@ -110,12 +124,15 @@ describe('database-handlers', () => {
       registerDatabaseHandlers();
 
       vi.mocked(repositories.validateSession).mockReturnValue({
-        valid: false
+        valid: false,
       });
 
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'database:getAllTimesheetEntries'
-      )?.[1] as (event: unknown, token: string) => Promise<{ success: boolean; error?: string }>;
+      const handler = vi
+        .mocked(ipcMain.handle)
+        .mock.calls.find((call) => call[0] === 'database:getAllTimesheetEntries')?.[1] as (
+        event: unknown,
+        token: string
+      ) => Promise<{ success: boolean; error?: string }>;
 
       const result = await handler({}, 'invalid-token');
 
@@ -129,16 +146,19 @@ describe('database-handlers', () => {
       vi.mocked(repositories.validateSession).mockReturnValue({
         valid: true,
         email: 'user@example.com',
-        isAdmin: false
+        isAdmin: false,
       });
 
       mockDb.prepare.mockImplementation(() => {
         throw new Error('Database error');
       });
 
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'database:getAllTimesheetEntries'
-      )?.[1] as (event: unknown, token: string) => Promise<{ success: boolean; error?: string }>;
+      const handler = vi
+        .mocked(ipcMain.handle)
+        .mock.calls.find((call) => call[0] === 'database:getAllTimesheetEntries')?.[1] as (
+        event: unknown,
+        token: string
+      ) => Promise<{ success: boolean; error?: string }>;
 
       const result = await handler({}, 'test-token');
 
@@ -154,23 +174,24 @@ describe('database-handlers', () => {
       vi.mocked(repositories.validateSession).mockReturnValue({
         valid: true,
         email: 'user@example.com',
-        isAdmin: false
+        isAdmin: false,
       });
 
       const mockTimesheet = [{ id: 1, date: '2025-01-15', status: 'Complete' }];
       const mockCredentials = [{ id: 1, service: 'smartsheet', email: 'user@example.com' }];
 
       const mockStmt = {
-        all: vi.fn()
-          .mockReturnValueOnce(mockTimesheet)
-          .mockReturnValueOnce(mockCredentials)
+        all: vi.fn().mockReturnValueOnce(mockTimesheet).mockReturnValueOnce(mockCredentials),
       };
 
       mockDb.prepare.mockReturnValue(mockStmt);
 
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'database:getAllArchiveData'
-      )?.[1] as (event: unknown, token: string) => Promise<{ success: boolean; timesheet?: unknown[]; credentials?: unknown[] }>;
+      const handler = vi
+        .mocked(ipcMain.handle)
+        .mock.calls.find((call) => call[0] === 'database:getAllArchiveData')?.[1] as (
+        event: unknown,
+        token: string
+      ) => Promise<{ success: boolean; timesheet?: unknown[]; credentials?: unknown[] }>;
 
       const result = await handler({}, 'test-token');
 
@@ -182,9 +203,12 @@ describe('database-handlers', () => {
     it('should reject requests without token', async () => {
       registerDatabaseHandlers();
 
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'database:getAllArchiveData'
-      )?.[1] as (event: unknown, token: string) => Promise<{ success: boolean; error?: string }>;
+      const handler = vi
+        .mocked(ipcMain.handle)
+        .mock.calls.find((call) => call[0] === 'database:getAllArchiveData')?.[1] as (
+        event: unknown,
+        token: string
+      ) => Promise<{ success: boolean; error?: string }>;
 
       const result = await handler({}, '');
 
@@ -193,4 +217,3 @@ describe('database-handlers', () => {
     });
   });
 });
-

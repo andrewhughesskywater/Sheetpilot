@@ -1,8 +1,8 @@
 /**
  * @fileoverview Middleware Logger Utility
- * 
+ *
  * Internal logger for the middleware module.
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025

@@ -22,12 +22,7 @@ import type { LoggerLike } from '../logging/logger-contract';
  * @param isPackaged - App is packaged (production build)
  * @param logger - Logger instance for tracking initialization
  */
-export function initializeSentry(
-  isDev: boolean,
-  isSmoke: boolean,
-  isPackaged: boolean,
-  logger: LoggerLike
-): void {
+export function initializeSentry(isDev: boolean, isSmoke: boolean, isPackaged: boolean, logger: LoggerLike): void {
   // Disable Sentry for smoke tests and debug builds
   if (isSmoke || (isPackaged && process.env['NODE_ENV'] !== 'production')) {
     logger.verbose('Sentry disabled (smoke test or debug build)');
@@ -43,7 +38,7 @@ export function initializeSentry(
 
   try {
     // Dynamic import to avoid hard dependency on @sentry/electron
-     
+
     const Sentry = require('@sentry/electron');
 
     const tracesSampleRate = isDev ? 1.0 : 0.05;
@@ -61,22 +56,16 @@ export function initializeSentry(
         // Filter out chrome extensions
         /extensions\//i,
         // Filter out inline scripts
-        /<anonymous>/i
+        /<anonymous>/i,
       ],
       // Capture breadcrumbs for startup sequence
       integrations: (integrations: Array<{ name: string }>) => {
         return integrations.filter((integration: { name: string }) => {
           // Remove integrations that don't make sense in Electron main process
           const name = integration.name;
-          return ![
-            'Breadcrumbs',
-            'GlobalHandlers',
-            'TryCatch',
-            'Replay',
-            'SessionReplay'
-          ].includes(name);
+          return !['Breadcrumbs', 'GlobalHandlers', 'TryCatch', 'Replay', 'SessionReplay'].includes(name);
         });
-      }
+      },
     });
 
     // Attach Sentry to globalThis for access in error handlers
@@ -86,11 +75,11 @@ export function initializeSentry(
     logger.info('Sentry initialized', {
       environment: isDev ? 'development' : 'production',
       tracesSampleRate,
-      dsnConfigured: Boolean(dsn)
+      dsnConfigured: Boolean(dsn),
     });
   } catch (err: unknown) {
     logger.warn('Could not initialize Sentry', {
-      error: err instanceof Error ? err.message : String(err)
+      error: err instanceof Error ? err.message : String(err),
     });
   }
 }

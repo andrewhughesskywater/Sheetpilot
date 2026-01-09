@@ -16,10 +16,13 @@
       "@/ipc/*": ["app/backend/src/ipc/*"],
       "@/repositories": ["app/backend/src/repositories/index.ts"],
       "@/repositories/*": ["app/backend/src/repositories/*"],
+      "@/services": ["app/backend/src/services/index.ts"],
       "@/services/*": ["app/backend/src/services/*"],
+      "@/logic": ["app/backend/src/logic/index.ts"],
       "@/logic/*": ["app/backend/src/logic/*"],
       "@/middleware": ["app/backend/src/middleware/index.ts"],
       "@/middleware/*": ["app/backend/src/middleware/*"],
+      "@/validation": ["app/backend/src/validation/index.ts"],
       "@/validation/*": ["app/backend/src/validation/*"],
       "@/preload": ["app/backend/src/preload/index.ts"],
       "@/preload/*": ["app/backend/src/preload/*"]
@@ -39,6 +42,7 @@
     "noImplicitOverride": true,
     "noPropertyAccessFromIndexSignature": true,
     "noUncheckedIndexedAccess": true,
+    "noFallthroughCasesInSwitch": true,
     "allowUnusedLabels": false,
     "allowUnreachableCode": false,
     "declaration": true,
@@ -54,9 +58,7 @@
     "incremental": true,
     "tsBuildInfoFile": "build/dist/.tsbuildinfo"
   },
-  "include": [
-    "app/**/*.ts"
-  ],
+  "include": ["app/**/*.ts"],
   "exclude": [
     "node_modules",
     "build",

@@ -2,6 +2,7 @@
  * @fileoverview Application Settings Dialog component
  */
 
+import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
@@ -11,7 +12,7 @@ import DialogTitle from '@mui/material/DialogTitle';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Switch from '@mui/material/Switch';
 import Typography from '@mui/material/Typography';
-import Alert from '@mui/material/Alert';
+
 import { type ApplicationSettingsDialogProps } from '../SettingsTypes';
 
 export function ApplicationSettingsDialog({
@@ -20,7 +21,7 @@ export function ApplicationSettingsDialog({
   headlessMode,
   isLoadingSettings,
   onClose,
-  onHeadlessModeToggle
+  onHeadlessModeToggle,
 }: ApplicationSettingsDialogProps) {
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth disableRestoreFocus>

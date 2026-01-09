@@ -4,7 +4,7 @@ import {
   registerDefaultPlugins,
   getDataService,
   getCredentialService,
-  getSubmissionService
+  getSubmissionService,
 } from '@/middleware/bootstrap-plugins';
 import { PluginRegistry } from '@sheetpilot/shared/plugin-registry';
 import { loadPluginConfig } from '@sheetpilot/shared/plugin-config';
@@ -30,7 +30,7 @@ vi.mock('@sheetpilot/shared/logger', () => {
     verbose: vi.fn(),
     debug: vi.fn(),
     warn: vi.fn(),
-    error: vi.fn()
+    error: vi.fn(),
   };
 
   appLogger.child.mockReturnValue(appLogger);
@@ -46,7 +46,7 @@ vi.mock('path', async (importOriginal) => {
   const actual = await importOriginal<typeof import('path')>();
   return {
     ...actual,
-    join: vi.fn((...args: string[]) => args.join('/'))
+    join: vi.fn((...args: string[]) => args.join('/')),
   };
 });
 
@@ -68,11 +68,11 @@ describe('bootstrap-plugins', () => {
         const names: Record<string, string> = {
           data: 'sqlite',
           credentials: 'sqlite',
-          submission: 'electron'
+          submission: 'electron',
         };
         return names[type] || null;
       }),
-      getPlugin: vi.fn()
+      getPlugin: vi.fn(),
     };
 
     vi.mocked(PluginRegistry.getInstance).mockReturnValue(mockRegistry as unknown as PluginRegistry);
@@ -91,16 +91,8 @@ describe('bootstrap-plugins', () => {
     it('should register all data services', async () => {
       await registerDefaultPlugins();
 
-      expect(mockRegistry.registerPlugin).toHaveBeenCalledWith(
-        'data',
-        'sqlite',
-        expect.any(SQLiteDataService)
-      );
-      expect(mockRegistry.registerPlugin).toHaveBeenCalledWith(
-        'data',
-        'memory',
-        expect.any(MemoryDataService)
-      );
+      expect(mockRegistry.registerPlugin).toHaveBeenCalledWith('data', 'sqlite', expect.any(SQLiteDataService));
+      expect(mockRegistry.registerPlugin).toHaveBeenCalledWith('data', 'memory', expect.any(MemoryDataService));
     });
 
     it('should register credential service', async () => {
@@ -121,11 +113,7 @@ describe('bootstrap-plugins', () => {
         'electron',
         expect.any(ElectronBotService)
       );
-      expect(mockRegistry.registerPlugin).toHaveBeenCalledWith(
-        'submission',
-        'mock',
-        expect.any(MockSubmissionService)
-      );
+      expect(mockRegistry.registerPlugin).toHaveBeenCalledWith('submission', 'mock', expect.any(MockSubmissionService));
     });
 
     it('should log success message', async () => {
@@ -137,14 +125,11 @@ describe('bootstrap-plugins', () => {
     it('should log active plugins configuration', async () => {
       await registerDefaultPlugins();
 
-      expect(appLogger.verbose).toHaveBeenCalledWith(
-        'Active plugins configured',
-        {
-          data: 'sqlite',
-          credentials: 'sqlite',
-          submission: 'electron'
-        }
-      );
+      expect(appLogger.verbose).toHaveBeenCalledWith('Active plugins configured', {
+        data: 'sqlite',
+        credentials: 'sqlite',
+        submission: 'electron',
+      });
     });
   });
 
@@ -187,4 +172,3 @@ describe('bootstrap-plugins', () => {
     });
   });
 });
-

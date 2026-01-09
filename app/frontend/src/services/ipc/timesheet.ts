@@ -71,14 +71,16 @@ function buildDraftPayload(row: TimesheetRow): {
   return payload;
 }
 
-export async function saveDraft(row: TimesheetRow): Promise<{ success: boolean; entry?: TimesheetRow; error?: string }> {
+export async function saveDraft(
+  row: TimesheetRow
+): Promise<{ success: boolean; entry?: TimesheetRow; error?: string }> {
   if (!window.timesheet?.saveDraft) {
     return { success: false, error: TIMESHEET_API_UNAVAILABLE_ERROR };
   }
-  
+
   const payload = buildDraftPayload(row);
   const res = await window.timesheet.saveDraft(payload);
-  
+
   if (res.success && res.entry) {
     return { success: true, entry: res.entry };
   }
@@ -113,19 +115,25 @@ export async function resetInProgress(): Promise<{ success: boolean; count?: num
   return window.timesheet.resetInProgress();
 }
 
-export async function exportToCSV(): Promise<{ success: boolean; csvContent?: string; entryCount?: number; filename?: string; error?: string }> {
+export async function exportToCSV(): Promise<{
+  success: boolean;
+  csvContent?: string;
+  entryCount?: number;
+  filename?: string;
+  error?: string;
+}> {
   if (!window.timesheet?.exportToCSV) {
     return { success: false, error: TIMESHEET_API_UNAVAILABLE_ERROR };
   }
   return window.timesheet.exportToCSV();
 }
 
-export function onSubmissionProgress(callback: (progress: { percent: number; current: number; total: number; message: string }) => void): void {
+export function onSubmissionProgress(
+  callback: (progress: { percent: number; current: number; total: number; message: string }) => void
+): void {
   window.timesheet?.onSubmissionProgress?.(callback);
 }
 
 export function removeProgressListener(): void {
   window.timesheet?.removeProgressListener?.();
 }
-
-

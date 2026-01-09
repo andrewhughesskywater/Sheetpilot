@@ -1,6 +1,6 @@
 /**
  * IPC Bridge Tests
- * 
+ *
  * These tests verify that the IPC bridge is properly set up
  * and that the renderer can communicate with the main process.
  */
@@ -11,22 +11,22 @@ describe('IPC Bridge Tests', () => {
   beforeEach(() => {
     // Clear any existing mocks
     vi.clearAllMocks();
-    
+
     // Ensure clean state
     Object.defineProperty(window, 'timesheet', {
       value: undefined,
       writable: true,
-      configurable: true
+      configurable: true,
     });
     Object.defineProperty(window, 'credentials', {
       value: undefined,
       writable: true,
-      configurable: true
+      configurable: true,
     });
     Object.defineProperty(window, 'logger', {
       value: undefined,
       writable: true,
-      configurable: true
+      configurable: true,
     });
   });
 
@@ -50,13 +50,13 @@ describe('IPC Bridge Tests', () => {
       saveDraft: vi.fn(),
       loadDraft: vi.fn(),
       deleteDraft: vi.fn(),
-      exportToCSV: vi.fn()
+      exportToCSV: vi.fn(),
     };
 
     Object.defineProperty(window, 'timesheet', {
       value: mockTimesheet,
       writable: true,
-      configurable: true
+      configurable: true,
     });
 
     expect(window.timesheet).toBeDefined();
@@ -72,13 +72,13 @@ describe('IPC Bridge Tests', () => {
     const mockCredentials = {
       store: vi.fn(),
       list: vi.fn(),
-      delete: vi.fn()
+      delete: vi.fn(),
     };
 
     Object.defineProperty(window, 'credentials', {
       value: mockCredentials,
       writable: true,
-      configurable: true
+      configurable: true,
     });
 
     expect(window.credentials).toBeDefined();
@@ -95,13 +95,13 @@ describe('IPC Bridge Tests', () => {
       info: vi.fn(),
       verbose: vi.fn(),
       debug: vi.fn(),
-      userAction: vi.fn()
+      userAction: vi.fn(),
     };
 
     Object.defineProperty(window, 'logger', {
       value: mockLogger,
       writable: true,
-      configurable: true
+      configurable: true,
     });
 
     expect(window.logger).toBeDefined();
@@ -147,29 +147,29 @@ describe('IPC Bridge Tests', () => {
   it('should work with mocked IPC bridge', () => {
     // Mock all IPC bridges
     const mockTimesheet = {
-      submit: vi.fn().mockResolvedValue({ success: true })
+      submit: vi.fn().mockResolvedValue({ success: true }),
     };
     const mockCredentials = {
-      store: vi.fn().mockResolvedValue({ success: true })
+      store: vi.fn().mockResolvedValue({ success: true }),
     };
     const mockLogger = {
-      info: vi.fn()
+      info: vi.fn(),
     };
 
     Object.defineProperty(window, 'timesheet', {
       value: mockTimesheet,
       writable: true,
-      configurable: true
+      configurable: true,
     });
     Object.defineProperty(window, 'credentials', {
       value: mockCredentials,
       writable: true,
-      configurable: true
+      configurable: true,
     });
     Object.defineProperty(window, 'logger', {
       value: mockLogger,
       writable: true,
-      configurable: true
+      configurable: true,
     });
 
     // Test IPC bridge detection
@@ -182,7 +182,7 @@ describe('IPC Bridge Tests', () => {
     expect(hasLogger).toBe(true);
 
     // Test IPC bridge usage
-  expect(() => {
+    expect(() => {
       window.timesheet.submit('');
       window.credentials.store('test', 'test@example.com', 'password');
       window.logger.info('Test message');

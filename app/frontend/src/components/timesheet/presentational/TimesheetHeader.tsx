@@ -1,7 +1,7 @@
-import Button from '@mui/material/Button';
-import Alert from '@mui/material/Alert';
-import CircularProgress from '@mui/material/CircularProgress';
 import SaveIcon from '@mui/icons-material/Save';
+import Alert from '@mui/material/Alert';
+import Button from '@mui/material/Button';
+import CircularProgress from '@mui/material/CircularProgress';
 
 type SaveState = 'neutral' | 'saving' | 'saved';
 
@@ -20,27 +20,23 @@ export function TimesheetHeader({ saveButtonState, onSave, isAdmin }: TimesheetH
         onClick={onSave}
         disabled={saveButtonState === 'saving' || saveButtonState === 'saved'}
         startIcon={
-          saveButtonState === 'saving' ? (
-            <CircularProgress size={16} sx={{ color: 'inherit' }} />
-          ) : (
-            <SaveIcon />
-          )
+          saveButtonState === 'saving' ? <CircularProgress size={16} sx={{ color: 'inherit' }} /> : <SaveIcon />
         }
         sx={{
           backgroundColor:
             saveButtonState === 'saved'
               ? '#4CAF50'
               : saveButtonState === 'saving'
-              ? 'var(--md-sys-color-primary)'
-              : '#2196F3',
+                ? 'var(--md-sys-color-primary)'
+                : '#2196F3',
           color: '#FFFFFF',
           '&:disabled': {
             backgroundColor:
               saveButtonState === 'saved'
                 ? '#4CAF50'
                 : saveButtonState === 'saving'
-                ? 'var(--md-sys-color-primary)'
-                : '#2196F3',
+                  ? 'var(--md-sys-color-primary)'
+                  : '#2196F3',
             color: '#FFFFFF',
           },
           textTransform: 'none',

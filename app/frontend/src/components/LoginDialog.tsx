@@ -1,10 +1,10 @@
 /**
  * @fileoverview Login Dialog Component
- * 
+ *
  * Non-modal authentication card for SmartSheet credential entry.
  * Adapts UI based on first-time vs returning user state.
  * Uses Card instead of Dialog to avoid aria-hidden issues with Navigation.
- * 
+ *
  * Features:
  * - Auto-completion for company email domain
  * - "Stay logged in" option for session persistence
@@ -13,23 +13,25 @@
  * - Error handling with user-friendly messages
  */
 
-import React, { useState, useEffect, useRef } from 'react';
-import Card from '@mui/material/Card';
-import CardContent from '@mui/material/CardContent';
-import CardActions from '@mui/material/CardActions';
-import TextField from '@mui/material/TextField';
-import Button from '@mui/material/Button';
-import Checkbox from '@mui/material/Checkbox';
-import FormControlLabel from '@mui/material/FormControlLabel';
-import Typography from '@mui/material/Typography';
-import Alert from '@mui/material/Alert';
-import CircularProgress from '@mui/material/CircularProgress';
-import Box from '@mui/material/Box';
 import './LoginDialog.css';
-import { autoCompleteEmailDomain } from '@/utils/emailAutoComplete';
+
+import Alert from '@mui/material/Alert';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Card from '@mui/material/Card';
+import CardActions from '@mui/material/CardActions';
+import CardContent from '@mui/material/CardContent';
+import Checkbox from '@mui/material/Checkbox';
+import CircularProgress from '@mui/material/CircularProgress';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
+import React, { useEffect, useRef,useState } from 'react';
+
 import { login as loginIpc } from '@/services/ipc/auth';
 import { listCredentials } from '@/services/ipc/credentials';
 import { logError, logInfo, logUserAction } from '@/services/ipc/logger';
+import { autoCompleteEmailDomain } from '@/utils/emailAutoComplete';
 
 interface LoginDialogProps {
   open: boolean;
@@ -38,11 +40,11 @@ interface LoginDialogProps {
 
 /**
  * Login card component for SmartSheet authentication
- * 
+ *
  * Presents a centered login card that adapts UI based on whether credentials exist.
  * First-time users see "Create Account" messaging, returning users see "Login".
  * Uses Card instead of Dialog to avoid Modal's aria-hidden behavior.
- * 
+ *
  * Features:
  * - Auto-detection of first-time vs returning user
  * - Email domain auto-completion (@skywatertechnology.com)
@@ -50,7 +52,7 @@ interface LoginDialogProps {
  * - Enter key submission support
  * - Error display with dismissible alerts
  * - Loading state during authentication
- * 
+ *
  * @param props - Component props
  * @param props.open - Whether card is visible
  * @param props.onLoginSuccess - Callback fired on successful login with token and user info
@@ -146,7 +148,7 @@ function LoginDialog({ open, onLoginSuccess }: LoginDialogProps) {
           <Typography variant="h5" className="login-dialog-title" sx={{ mb: 2 }}>
             {isFirstTime ? 'Create Account' : 'Login to SheetPilot'}
           </Typography>
-          
+
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
             {isFirstTime
               ? 'Enter your SmartSheet credentials to get started. These will be securely stored on your device.'
@@ -222,4 +224,3 @@ function LoginDialog({ open, onLoginSuccess }: LoginDialogProps) {
 }
 
 export default LoginDialog;
-

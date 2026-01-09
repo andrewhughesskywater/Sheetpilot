@@ -8,5 +8,3 @@ export function configureElectronCommandLine(app: App): void {
   app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
   app.commandLine.appendSwitch('disable-renderer-backgrounding');
 }
-
-

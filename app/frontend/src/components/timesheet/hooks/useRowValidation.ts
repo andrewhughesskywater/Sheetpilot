@@ -1,5 +1,5 @@
 import type { TimesheetRow } from '../timesheet.schema';
-import { isValidDate, isValidTime, isTimeOutAfterTimeIn } from '../timesheet.schema';
+import { isTimeOutAfterTimeIn,isValidDate, isValidTime } from '../timesheet.schema';
 
 export function useRowValidation() {
   function validateRequiredFields(row: TimesheetRow, rowNum: number): string[] {
@@ -7,9 +7,11 @@ export function useRowValidation() {
     if (!row.date) errors.push(`Row ${rowNum}: Missing date`);
     else if (!isValidDate(row.date)) errors.push(`Row ${rowNum}: Invalid date format "${row.date}"`);
     if (!row.timeIn) errors.push(`Row ${rowNum}: Missing start time`);
-    else if (!isValidTime(row.timeIn)) errors.push(`Row ${rowNum}: Invalid start time "${row.timeIn}" (must be HH:MM in 15-min increments)`);
+    else if (!isValidTime(row.timeIn))
+      errors.push(`Row ${rowNum}: Invalid start time "${row.timeIn}" (must be HH:MM in 15-min increments)`);
     if (!row.timeOut) errors.push(`Row ${rowNum}: Missing end time`);
-    else if (!isValidTime(row.timeOut)) errors.push(`Row ${rowNum}: Invalid end time "${row.timeOut}" (must be HH:MM in 15-min increments)`);
+    else if (!isValidTime(row.timeOut))
+      errors.push(`Row ${rowNum}: Invalid end time "${row.timeOut}" (must be HH:MM in 15-min increments)`);
     if (!row.project) errors.push(`Row ${rowNum}: Missing project`);
     if (!row.taskDescription) errors.push(`Row ${rowNum}: Missing task description`);
     return errors;

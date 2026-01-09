@@ -1,9 +1,9 @@
 /**
  * @fileoverview Screen Reader Accessibility Tests
- * 
+ *
  * Tests for ARIA labels, semantic HTML, and screen reader announcements.
  * Ensures compatibility with assistive technologies.
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025
@@ -16,7 +16,7 @@ describe('Screen Reader Accessibility', () => {
     it('should have aria-label for interactive elements', () => {
       const gridLabel = 'Timesheet data grid';
       const buttonLabel = 'Submit timesheet';
-      
+
       expect(gridLabel).toBeDefined();
       expect(buttonLabel).toBeDefined();
     });
@@ -24,29 +24,29 @@ describe('Screen Reader Accessibility', () => {
     it('should have aria-describedby for additional context', () => {
       const inputId = 'date-field';
       const describedBy = 'date-field-description';
-      
+
       expect(describedBy).toContain(inputId);
     });
 
     it('should use aria-invalid for validation errors', () => {
       const hasError = true;
       const ariaInvalid = hasError ? 'true' : 'false';
-      
+
       expect(ariaInvalid).toBe('true');
     });
 
     it('should provide aria-errormessage for errors', () => {
       const errorId = 'date-field-error';
       const errorMessage = 'Please enter a valid date';
-      
+
       expect(errorId).toBeDefined();
       expect(errorMessage).toBeDefined();
     });
 
     it('should use aria-required for required fields', () => {
       const requiredFields = ['date', 'timeIn', 'timeOut', 'project', 'taskDescription'];
-      
-      requiredFields.forEach(_field => {
+
+      requiredFields.forEach((_field) => {
         const ariaRequired = 'true';
         expect(ariaRequired).toBe('true');
       });
@@ -55,7 +55,7 @@ describe('Screen Reader Accessibility', () => {
     it('should use aria-disabled for disabled state', () => {
       const isDisabled = true;
       const ariaDisabled = isDisabled ? 'true' : 'false';
-      
+
       expect(ariaDisabled).toBe('true');
     });
   });
@@ -63,21 +63,21 @@ describe('Screen Reader Accessibility', () => {
   describe('Semantic HTML', () => {
     it('should use semantic heading hierarchy', () => {
       const headings = ['h1', 'h2', 'h3'];
-      
+
       // Should not skip levels
       expect(headings).toEqual(['h1', 'h2', 'h3']);
     });
 
     it('should use buttons for actions', () => {
       const submitElement = 'button'; // Not div with onclick
-      
+
       expect(submitElement).toBe('button');
     });
 
     it('should use proper form controls', () => {
       const controls = ['input', 'select', 'textarea'];
-      
-      controls.forEach(control => {
+
+      controls.forEach((control) => {
         expect(typeof control).toBe('string');
       });
     });
@@ -85,7 +85,7 @@ describe('Screen Reader Accessibility', () => {
     it('should use fieldset and legend for grouped inputs', () => {
       const usesFieldset = true;
       const hasLegend = true;
-      
+
       expect(usesFieldset).toBe(true);
       expect(hasLegend).toBe(true);
     });
@@ -93,7 +93,7 @@ describe('Screen Reader Accessibility', () => {
     it('should associate labels with inputs', () => {
       const inputId = 'email-input';
       const labelFor = 'email-input';
-      
+
       expect(labelFor).toBe(inputId);
     });
   });
@@ -101,7 +101,7 @@ describe('Screen Reader Accessibility', () => {
   describe('Live Regions and Announcements', () => {
     it('should use aria-live for dynamic updates', () => {
       const ariaLive = 'polite';
-      
+
       expect(['off', 'polite', 'assertive']).toContain(ariaLive);
     });
 
@@ -109,9 +109,9 @@ describe('Screen Reader Accessibility', () => {
       const announcement = {
         role: 'alert',
         ariaLive: 'assertive',
-        message: 'Please enter a valid date'
+        message: 'Please enter a valid date',
       };
-      
+
       expect(announcement.role).toBe('alert');
       expect(announcement.ariaLive).toBe('assertive');
     });
@@ -119,9 +119,9 @@ describe('Screen Reader Accessibility', () => {
     it('should announce successful operations', () => {
       const announcement = {
         ariaLive: 'polite',
-        message: 'Timesheet saved successfully'
+        message: 'Timesheet saved successfully',
       };
-      
+
       expect(announcement.ariaLive).toBe('polite');
     });
 
@@ -129,9 +129,9 @@ describe('Screen Reader Accessibility', () => {
       const progressAnnouncement = {
         ariaLive: 'polite',
         ariaAtomic: 'true',
-        message: 'Processing 5 of 10 entries'
+        message: 'Processing 5 of 10 entries',
       };
-      
+
       expect(progressAnnouncement.ariaLive).toBe('polite');
       expect(progressAnnouncement.ariaAtomic).toBe('true');
     });
@@ -144,9 +144,9 @@ describe('Screen Reader Accessibility', () => {
         dialog: 'dialog',
         navigation: 'navigation',
         main: 'main',
-        complementary: 'complementary'
+        complementary: 'complementary',
       };
-      
+
       Object.entries(roles).forEach(([_element, role]) => {
         expect(role).toBeDefined();
       });
@@ -154,14 +154,14 @@ describe('Screen Reader Accessibility', () => {
 
     it('should use grid role for timesheet table', () => {
       const role = 'grid';
-      
+
       expect(role).toBe('grid');
     });
 
     it('should use dialog role for modal dialogs', () => {
       const role = 'dialog';
       const ariaModal = 'true';
-      
+
       expect(role).toBe('dialog');
       expect(ariaModal).toBe('true');
     });
@@ -170,7 +170,7 @@ describe('Screen Reader Accessibility', () => {
   describe('Alternative Text', () => {
     it('should provide alt text for images', () => {
       const altText = 'SheetPilot logo';
-      
+
       expect(altText).toBeDefined();
       expect(altText.length).toBeGreaterThan(0);
     });
@@ -179,10 +179,10 @@ describe('Screen Reader Accessibility', () => {
       const iconButtons = [
         { icon: 'download', label: 'Export logs' },
         { icon: 'delete', label: 'Delete entry' },
-        { icon: 'settings', label: 'Open settings' }
+        { icon: 'settings', label: 'Open settings' },
       ];
-      
-      iconButtons.forEach(btn => {
+
+      iconButtons.forEach((btn) => {
         expect(btn.label).toBeDefined();
         expect(btn.label.length).toBeGreaterThan(0);
       });
@@ -194,10 +194,10 @@ describe('Screen Reader Accessibility', () => {
       const formControls = [
         { id: 'email', labelFor: 'email' },
         { id: 'password', labelFor: 'password' },
-        { id: 'stay-logged-in', labelFor: 'stay-logged-in' }
+        { id: 'stay-logged-in', labelFor: 'stay-logged-in' },
       ];
-      
-      formControls.forEach(control => {
+
+      formControls.forEach((control) => {
         expect(control.id).toBe(control.labelFor);
       });
     });
@@ -206,10 +206,10 @@ describe('Screen Reader Accessibility', () => {
       const errorMessages = {
         date: 'Please enter a date like 01/15/2024',
         timeIn: 'Please enter start time like 09:00',
-        email: 'Please enter a valid email address'
+        email: 'Please enter a valid email address',
       };
-      
-      Object.values(errorMessages).forEach(msg => {
+
+      Object.values(errorMessages).forEach((msg) => {
         expect(msg).toContain('Please');
         expect(msg.length).toBeGreaterThan(10);
       });
@@ -218,7 +218,7 @@ describe('Screen Reader Accessibility', () => {
     it('should indicate required fields', () => {
       const requiredIndicator = 'required';
       const ariaRequired = 'true';
-      
+
       expect(ariaRequired).toBe('true');
       expect(requiredIndicator).toBe('required');
     });
@@ -229,9 +229,9 @@ describe('Screen Reader Accessibility', () => {
       const loadingMessage = {
         ariaLive: 'polite',
         ariaBusy: 'true',
-        message: 'Loading data...'
+        message: 'Loading data...',
       };
-      
+
       expect(loadingMessage.ariaLive).toBe('polite');
       expect(loadingMessage.ariaBusy).toBe('true');
     });
@@ -240,9 +240,9 @@ describe('Screen Reader Accessibility', () => {
       const completionMessage = {
         ariaLive: 'polite',
         ariaBusy: 'false',
-        message: 'Data loaded successfully'
+        message: 'Data loaded successfully',
       };
-      
+
       expect(completionMessage.ariaBusy).toBe('false');
     });
 
@@ -251,9 +251,9 @@ describe('Screen Reader Accessibility', () => {
         role: 'progressbar',
         ariaValueNow: 50,
         ariaValueMin: 0,
-        ariaValueMax: 100
+        ariaValueMax: 100,
       };
-      
+
       expect(progress.ariaValueNow).toBe(50);
       expect(progress.ariaValueMin).toBe(0);
       expect(progress.ariaValueMax).toBe(100);
@@ -263,21 +263,21 @@ describe('Screen Reader Accessibility', () => {
   describe('Navigation Landmarks', () => {
     it('should use main landmark for primary content', () => {
       const mainRole = 'main';
-      
+
       expect(mainRole).toBe('main');
     });
 
     it('should use navigation landmark for nav menus', () => {
       const navRole = 'navigation';
       const ariaLabel = 'Main navigation';
-      
+
       expect(navRole).toBe('navigation');
       expect(ariaLabel).toBeDefined();
     });
 
     it('should use complementary for sidebars', () => {
       const sidebarRole = 'complementary';
-      
+
       expect(sidebarRole).toBe('complementary');
     });
   });
@@ -286,23 +286,22 @@ describe('Screen Reader Accessibility', () => {
     it('should trap focus within open dialog', () => {
       const dialogOpen = true;
       const trapFocus = dialogOpen;
-      
+
       expect(trapFocus).toBe(true);
     });
 
     it('should cycle focus within dialog', () => {
       const dialogElements = ['title', 'content', 'cancel-button', 'submit-button'];
-      
+
       const getNextFocusable = (current: number, direction: 1 | -1) => {
         let next = current + direction;
         if (next >= dialogElements.length) next = 0;
         if (next < 0) next = dialogElements.length - 1;
         return next;
       };
-      
+
       expect(getNextFocusable(3, 1)).toBe(0); // Wrap to first
       expect(getNextFocusable(0, -1)).toBe(3); // Wrap to last
     });
   });
 });
-

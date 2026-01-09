@@ -1,9 +1,9 @@
 /**
  * @fileoverview Repositories Index
- * 
+ *
  * Re-exports all repository functions for convenient importing.
  * Provides a facade over the repository layer.
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025
@@ -11,60 +11,59 @@
 
 // Connection Management
 export {
-    setDbPath,
-    getDbPath,
-    getDb,
-    openDb,
-    closeConnection,
-    closeConnectionForTesting,
-    resetPreventReconnectionFlag,
-    shutdownDatabase,
-    ensureSchema,
-    rebuildDatabase
+  closeConnection,
+  closeConnectionForTesting,
+  ensureSchema,
+  getDb,
+  getDbPath,
+  openDb,
+  rebuildDatabase,
+  resetPreventReconnectionFlag,
+  setDbPath,
+  shutdownDatabase,
 } from './connection-manager';
 
 // Timesheet Repository
 export {
-    insertTimesheetEntry,
-    insertTimesheetEntries,
-    checkDuplicateEntry,
-    getDuplicateEntries,
-    getPendingTimesheetEntries,
-    markTimesheetEntriesAsInProgress,
-    resetTimesheetEntriesStatus,
-    resetInProgressTimesheetEntries,
-    markTimesheetEntriesAsSubmitted,
-    removeFailedTimesheetEntries,
-    getTimesheetEntriesByIds,
-    getSubmittedTimesheetEntriesForExport,
-    type TimesheetDbRow
+  checkDuplicateEntry,
+  getDuplicateEntries,
+  getPendingTimesheetEntries,
+  getSubmittedTimesheetEntriesForExport,
+  getTimesheetEntriesByIds,
+  insertTimesheetEntries,
+  insertTimesheetEntry,
+  markTimesheetEntriesAsInProgress,
+  markTimesheetEntriesAsSubmitted,
+  removeFailedTimesheetEntries,
+  resetInProgressTimesheetEntries,
+  resetTimesheetEntriesStatus,
+  type TimesheetDbRow,
 } from './timesheet-repository';
 
 // Credentials Repository
 export {
-    storeCredentials,
-    getCredentials,
-    listCredentials,
-    deleteCredentials,
-    clearAllCredentials
+  clearAllCredentials,
+  deleteCredentials,
+  getCredentials,
+  listCredentials,
+  storeCredentials,
 } from './credentials-repository';
 
 // Session Repository
 export {
-    createSession,
-    validateSession,
-    clearSession,
-    clearUserSessions,
-    getSessionByEmail
+  clearSession,
+  clearUserSessions,
+  createSession,
+  getSessionByEmail,
+  validateSession,
 } from './session-repository';
 
 // Migrations
 export {
-    CURRENT_SCHEMA_VERSION,
-    getCurrentSchemaVersion,
-    setSchemaVersion,
-    createBackup,
-    runMigrations,
-    needsMigration
+  createBackup,
+  CURRENT_SCHEMA_VERSION,
+  getCurrentSchemaVersion,
+  needsMigration,
+  runMigrations,
+  setSchemaVersion,
 } from './migrations';
-

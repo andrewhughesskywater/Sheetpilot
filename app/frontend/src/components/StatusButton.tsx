@@ -39,7 +39,7 @@ export function StatusButton({
   isProcessing = false,
   icon,
   disabled = false,
-  size = 'large'
+  size = 'large',
 }: StatusButtonProps) {
   // Determine if button should be disabled
   const isDisabled = isProcessing || disabled || status === 'neutral' || status === 'warning';
@@ -72,4 +72,3 @@ export function StatusButton({
     </Button>
   );
 }
-

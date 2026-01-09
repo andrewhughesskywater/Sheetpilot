@@ -1,27 +1,22 @@
 import { ipcMain } from 'electron';
-import { isTrustedIpcSender } from './main-window';
-import { ipcLogger } from '../../utils/logger';
+
 import {
   deleteDraftRequest,
   loadDraftByIdRequest,
   loadDraftRequest,
+  type SaveDraftInput,
   saveDraftRequest,
-  type SaveDraftInput
 } from '../../services/timesheet-drafts-service';
+import { ipcLogger } from '../../utils/logger';
+import { isTrustedIpcSender } from './main-window';
 
 export function registerTimesheetDraftHandlers(): void {
-  ipcMain.handle(
-    'timesheet:saveDraft',
-    async (
-      event,
-      row: SaveDraftInput
-    ) => {
-      if (!isTrustedIpcSender(event)) {
-        return { success: false, error: 'Could not save draft: unauthorized request' };
-      }
-      return saveDraftRequest(row);
+  ipcMain.handle('timesheet:saveDraft', async (event, row: SaveDraftInput) => {
+    if (!isTrustedIpcSender(event)) {
+      return { success: false, error: 'Could not save draft: unauthorized request' };
     }
-  );
+    return saveDraftRequest(row);
+  });
 
   ipcMain.handle('timesheet:deleteDraft', async (event, id: number) => {
     if (!isTrustedIpcSender(event)) {
@@ -46,5 +41,3 @@ export function registerTimesheetDraftHandlers(): void {
 
   ipcLogger.verbose('Timesheet draft handlers registered');
 }
-
-

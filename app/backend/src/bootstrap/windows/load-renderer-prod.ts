@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+
 import type { RendererLoadParams } from './load-renderer.types';
 
 const SPLASH_HASH_SCRIPT = 'window.location.hash = "splash";';
@@ -38,17 +39,17 @@ function buildPathInfo(params: RendererLoadParams): PathInfo {
       relativePath: HTML_RELATIVE_PATH,
       absolutePath: absoluteHtmlPath,
       exists: htmlStats.exists,
-      fileStats: htmlStats.fileStats
+      fileStats: htmlStats.fileStats,
     },
     unpacked: {
       path: unpackedDir,
-      exists: unpackedInfo.exists,
-      contents: unpackedInfo.contents
+      ...(unpackedInfo.exists !== undefined && { exists: unpackedInfo.exists }),
+      ...(unpackedInfo.contents !== undefined && { contents: unpackedInfo.contents }),
     },
     assets: {
       path: assetsDir,
-      exists: assetsExists
-    }
+      exists: assetsExists,
+    },
   };
 }
 
@@ -100,7 +101,7 @@ async function loadHtml(params: RendererLoadParams, paths: PathInfo): Promise<vo
     unpackedDirInfo: paths.unpacked,
     backendDirname: params.backendDirname,
     isPackaged: params.app.isPackaged,
-    resourcesPath: process.resourcesPath
+    resourcesPath: process.resourcesPath,
   });
 
   try {
@@ -108,11 +109,9 @@ async function loadHtml(params: RendererLoadParams, paths: PathInfo): Promise<vo
     params.logger.info('loadFile promise resolved successfully');
     setTimeout(() => {
       if (!params.window.isDestroyed()) {
-        params.window.webContents
-          .executeJavaScript(SPLASH_HASH_SCRIPT)
-          .catch((err: unknown) => {
-            params.logger.debug('Could not set splash hash', { error: err instanceof Error ? err.message : String(err) });
-          });
+        params.window.webContents.executeJavaScript(SPLASH_HASH_SCRIPT).catch((err: unknown) => {
+          params.logger.debug('Could not set splash hash', { error: err instanceof Error ? err.message : String(err) });
+        });
       }
     }, 100);
   } catch (err: unknown) {
@@ -125,7 +124,7 @@ async function loadHtml(params: RendererLoadParams, paths: PathInfo): Promise<vo
       assetsDir: paths.assets.path,
       assetsDirExists: paths.assets.exists,
       isPackaged: params.app.isPackaged,
-      resourcesPath: process.resourcesPath
+      resourcesPath: process.resourcesPath,
     });
 
     try {
@@ -136,7 +135,7 @@ async function loadHtml(params: RendererLoadParams, paths: PathInfo): Promise<vo
       );
     } catch (dialogErr: unknown) {
       params.logger.error('Could not show error dialog', {
-        error: dialogErr instanceof Error ? dialogErr.message : String(dialogErr)
+        error: dialogErr instanceof Error ? dialogErr.message : String(dialogErr),
       });
     }
   }
@@ -147,20 +146,25 @@ function forceShowWindow(params: RendererLoadParams): void {
     if (!params.window.isDestroyed() && !params.window.isVisible()) {
       params.logger.warn('Window not shown after timeout, forcing show', {
         isVisible: params.window.isVisible(),
-        readyToShow: false
+        readyToShow: false,
       });
       params.window.show();
     }
   }, 5000);
 }
 
-function showErrorAndExit(params: RendererLoadParams, paths: PathInfo, logMessage: string, dialogMessage: string): void {
+function showErrorAndExit(
+  params: RendererLoadParams,
+  paths: PathInfo,
+  logMessage: string,
+  dialogMessage: string
+): void {
   params.logger.error(logMessage, {
     htmlPath: paths.html.relativePath,
     absoluteHtmlPath: paths.html.absolutePath,
     backendDirname: params.backendDirname,
     resourcesPath: process.resourcesPath,
-    isPackaged: params.app.isPackaged
+    isPackaged: params.app.isPackaged,
   });
 
   const { dialog } = require('electron') as typeof import('electron');
@@ -186,7 +190,7 @@ function logPathDiagnostics(params: RendererLoadParams, paths: PathInfo): void {
     appPath: params.app.getAppPath(),
     backendDirname: params.backendDirname,
     resourcesPath: process.resourcesPath,
-    isPackaged: params.app.isPackaged
+    isPackaged: params.app.isPackaged,
   });
 }
 

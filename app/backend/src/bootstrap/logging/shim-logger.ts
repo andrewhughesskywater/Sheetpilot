@@ -11,8 +11,6 @@ export function createShimLogger(component: string): LoggerLike {
     silly: (message: string, data?: unknown) => console.debug(prefix, message, data ?? ''),
     audit: (_action: string, message: string, data?: unknown) => console.log(prefix, message, data ?? ''),
     security: (_eventType: string, message: string, data?: unknown) => console.warn(prefix, message, data ?? ''),
-    startTimer: (_operation: string) => ({ done: (_metadata?: unknown) => void 0 })
+    startTimer: (_operation: string) => ({ done: (_metadata?: unknown) => void 0 }),
   };
 }
-
-

@@ -56,5 +56,3 @@ describe('Navigation', () => {
     expect(tabs).toHaveAttribute('aria-label', 'navigation tabs');
   });
 });
-
-

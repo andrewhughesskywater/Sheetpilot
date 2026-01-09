@@ -1,9 +1,9 @@
 /**
  * @fileoverview Quarter Routing Integration Tests
- * 
+ *
  * Tests the integration of quarter routing with BotOrchestrator and LoginManager
  * to ensure entries are submitted to the correct quarterly form based on their dates.
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025
@@ -16,14 +16,14 @@ import { createFormConfig } from '@/services/bot/src/config/automation_config';
 import * as Cfg from '@/services/bot/src/config/automation_config';
 import { QUARTER_DEFINITIONS } from '@/services/bot/src/config/quarter_config';
 
-// Mock the logger
-vi.mock('../../shared/logger', () => ({
+// Mock the logger (match real import path)
+vi.mock('@sheetpilot/shared/logger', () => ({
   botLogger: {
     info: vi.fn(),
     error: vi.fn(),
     warn: vi.fn(),
     verbose: vi.fn(),
-    debug: vi.fn()
+    debug: vi.fn(),
   },
   authLogger: {
     info: vi.fn(),
@@ -32,9 +32,9 @@ vi.mock('../../shared/logger', () => ({
     verbose: vi.fn(),
     debug: vi.fn(),
     startTimer: vi.fn(() => ({
-      done: vi.fn()
-    }))
-  }
+      done: vi.fn(),
+    })),
+  },
 }));
 
 // Mock WebformFiller
@@ -51,38 +51,44 @@ vi.mock('@/services/bot/src/browser/webform_flow', () => ({
       locator: vi.fn(() => ({
         fill: vi.fn(() => Promise.resolve()),
         type: vi.fn(() => Promise.resolve()),
-        click: vi.fn(() => Promise.resolve())
+        click: vi.fn(() => Promise.resolve()),
       })),
-      url: vi.fn(() => 'https://app.smartsheet.com/b/form/123')
+      url: vi.fn(() => 'https://app.smartsheet.com/b/form/123'),
     }));
     formConfig = {
       BASE_URL: '',
       FORM_ID: '',
       SUBMISSION_ENDPOINT: '',
-      SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: []
+      SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: [],
     };
     // Add constructor to accept args without error
     constructor() {}
-  }
+  },
 }));
 
 // Mock Electron browser
 vi.mock('@/services/bot/src/electron-browser', () => ({
   chromium: vi.fn(() => ({
-    launch: vi.fn(() => Promise.resolve({
-      newContext: vi.fn(() => Promise.resolve({
-        newPage: vi.fn(() => Promise.resolve({
-          goto: vi.fn(() => Promise.resolve()),
-          locator: vi.fn(() => ({
-            fill: vi.fn(() => Promise.resolve()),
-            type: vi.fn(() => Promise.resolve()),
-            click: vi.fn(() => Promise.resolve())
-          })),
-          url: vi.fn(() => 'https://app.smartsheet.com/b/form/123')
-        }))
-      }))
-    }))
-  }))
+    launch: vi.fn(() =>
+      Promise.resolve({
+        newContext: vi.fn(() =>
+          Promise.resolve({
+            newPage: vi.fn(() =>
+              Promise.resolve({
+                goto: vi.fn(() => Promise.resolve()),
+                locator: vi.fn(() => ({
+                  fill: vi.fn(() => Promise.resolve()),
+                  type: vi.fn(() => Promise.resolve()),
+                  click: vi.fn(() => Promise.resolve()),
+                })),
+                url: vi.fn(() => 'https://app.smartsheet.com/b/form/123'),
+              })
+            ),
+          })
+        ),
+      })
+    ),
+  })),
 }));
 
 describe('Quarter Routing Integration', () => {
@@ -91,18 +97,12 @@ describe('Quarter Routing Integration', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     // Create Q3 form config
-    q3FormConfig = createFormConfig(
-      QUARTER_DEFINITIONS[0].formUrl,
-      QUARTER_DEFINITIONS[0].formId
-    );
+    q3FormConfig = createFormConfig(QUARTER_DEFINITIONS[0].formUrl, QUARTER_DEFINITIONS[0].formId);
 
     // Create Q4 form config
-    q4FormConfig = createFormConfig(
-      QUARTER_DEFINITIONS[1].formUrl,
-      QUARTER_DEFINITIONS[1].formId
-    );
+    q4FormConfig = createFormConfig(QUARTER_DEFINITIONS[1].formUrl, QUARTER_DEFINITIONS[1].formId);
   });
 
   describe('BotOrchestrator with formConfig', () => {
@@ -134,64 +134,52 @@ describe('Quarter Routing Integration', () => {
 
     it('should pass formConfig to WebformFiller', () => {
       const orchestrator = new BotOrchestrator({ injected_config: Cfg, formConfig: q3FormConfig, headless: false });
-      
+
       // Verify that the WebformFiller instance was created and has the config
       // Note: Since we are using a class mock, we can't easily spy on the constructor call itself
       // without risking "is not a constructor" errors. Checking the instance property is sufficient.
-      expect(orchestrator.webform_filler).toBeDefined();
-      expect(orchestrator.webform_filler.formConfig).toBeDefined();
+      expect(orchestrator.webformFiller).toBeDefined();
+      expect(orchestrator.webformFiller.formConfig).toBeDefined();
     });
   });
 
   describe('LoginManager uses dynamic formConfig', () => {
     it('should create LoginManager with formConfig from WebformFiller', () => {
-      const q3FormConfig = createFormConfig(
-        QUARTER_DEFINITIONS[0].formUrl,
-        QUARTER_DEFINITIONS[0].formId
-      );
+      const q3FormConfig = createFormConfig(QUARTER_DEFINITIONS[0].formUrl, QUARTER_DEFINITIONS[0].formId);
 
       const orchestrator = new BotOrchestrator({ injected_config: Cfg, formConfig: q3FormConfig, headless: false });
-      const loginManager = orchestrator.login_manager;
+      const loginManager = orchestrator.loginManager;
 
       // LoginManager should have access to formConfig through WebformFiller
       expect(loginManager).toBeDefined();
     });
 
     it('should navigate to correct Q3 form URL', async () => {
-      const q3Config = createFormConfig(
-        QUARTER_DEFINITIONS[0].formUrl,
-        QUARTER_DEFINITIONS[0].formId
-      );
+      const q3Config = createFormConfig(QUARTER_DEFINITIONS[0].formUrl, QUARTER_DEFINITIONS[0].formId);
 
       const orchestrator = new BotOrchestrator({ injected_config: Cfg, formConfig: q3Config, headless: false });
-      
+
       // Mock the page.goto method to verify it's called with correct URL
       const mockGoto = vi.fn(() => Promise.resolve());
       const _page = { goto: mockGoto, url: vi.fn(() => QUARTER_DEFINITIONS[0].formUrl) };
-      
-      // The LoginManager should use orchestrator.webform_filler.require_page()
+
+      // The LoginManager should use orchestrator.webformFiller.require_page()
       // which has access to formConfig
       expect(orchestrator.formConfig.BASE_URL).toBe(QUARTER_DEFINITIONS[0].formUrl);
     });
 
     it('should navigate to correct Q4 form URL', async () => {
-      const q4Config = createFormConfig(
-        QUARTER_DEFINITIONS[1].formUrl,
-        QUARTER_DEFINITIONS[1].formId
-      );
+      const q4Config = createFormConfig(QUARTER_DEFINITIONS[1].formUrl, QUARTER_DEFINITIONS[1].formId);
 
       const orchestrator = new BotOrchestrator({ injected_config: Cfg, formConfig: q4Config, headless: false });
-      
+
       expect(orchestrator.formConfig.BASE_URL).toBe(QUARTER_DEFINITIONS[1].formUrl);
     });
   });
 
   describe('createFormConfig function', () => {
     it('should create valid config with custom URL and ID', () => {
-      const config = createFormConfig(
-        'https://example.com/form/123',
-        'form-123'
-      );
+      const config = createFormConfig('https://example.com/form/123', 'form-123');
 
       expect(config.BASE_URL).toBe('https://example.com/form/123');
       expect(config.FORM_ID).toBe('form-123');
@@ -199,15 +187,12 @@ describe('Quarter Routing Integration', () => {
       expect(config.SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS).toEqual([
         '**forms.smartsheet.com/api/submit/form-123',
         '**forms.smartsheet.com/**',
-        '**app.smartsheet.com/**'
+        '**app.smartsheet.com/**',
       ]);
     });
 
     it('should generate correct SUBMISSION_ENDPOINT', () => {
-      const q3Config = createFormConfig(
-        QUARTER_DEFINITIONS[0].formUrl,
-        QUARTER_DEFINITIONS[0].formId
-      );
+      const q3Config = createFormConfig(QUARTER_DEFINITIONS[0].formUrl, QUARTER_DEFINITIONS[0].formId);
 
       expect(q3Config.SUBMISSION_ENDPOINT).toBe(
         `https://forms.smartsheet.com/api/submit/${QUARTER_DEFINITIONS[0].formId}`
@@ -218,9 +203,7 @@ describe('Quarter Routing Integration', () => {
       const testFormId = 'test-form-id-123';
       const config = createFormConfig('https://example.com', testFormId);
 
-      expect(config.SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS).toContain(
-        `**forms.smartsheet.com/api/submit/${testFormId}`
-      );
+      expect(config.SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS).toContain(`**forms.smartsheet.com/api/submit/${testFormId}`);
       expect(config.SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS).toContain('**forms.smartsheet.com/**');
       expect(config.SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS).toContain('**app.smartsheet.com/**');
     });
@@ -228,10 +211,7 @@ describe('Quarter Routing Integration', () => {
 
   describe('Quarter validation in BotOrchestrator', () => {
     it('should validate that Q3 dates use Q3 form config', () => {
-      const q3Config = createFormConfig(
-        QUARTER_DEFINITIONS[0].formUrl,
-        QUARTER_DEFINITIONS[0].formId
-      );
+      const q3Config = createFormConfig(QUARTER_DEFINITIONS[0].formUrl, QUARTER_DEFINITIONS[0].formId);
 
       const orchestrator = new BotOrchestrator({ injected_config: Cfg, formConfig: q3Config, headless: false });
 
@@ -240,10 +220,7 @@ describe('Quarter Routing Integration', () => {
     });
 
     it('should validate that Q4 dates use Q4 form config', () => {
-      const q4Config = createFormConfig(
-        QUARTER_DEFINITIONS[1].formUrl,
-        QUARTER_DEFINITIONS[1].formId
-      );
+      const q4Config = createFormConfig(QUARTER_DEFINITIONS[1].formUrl, QUARTER_DEFINITIONS[1].formId);
 
       const orchestrator = new BotOrchestrator({ injected_config: Cfg, formConfig: q4Config, headless: false });
 
@@ -254,10 +231,7 @@ describe('Quarter Routing Integration', () => {
     it('should detect mismatch between Q3 date and Q4 form config', async () => {
       // This will be tested in the actual submission flow
       // where entries are validated before processing
-      const q4Config = createFormConfig(
-        QUARTER_DEFINITIONS[1].formUrl,
-        QUARTER_DEFINITIONS[1].formId
-      );
+      const q4Config = createFormConfig(QUARTER_DEFINITIONS[1].formUrl, QUARTER_DEFINITIONS[1].formId);
 
       const orchestrator = new BotOrchestrator({ injected_config: Cfg, formConfig: q4Config, headless: false });
 
@@ -267,10 +241,7 @@ describe('Quarter Routing Integration', () => {
     });
 
     it('should detect mismatch between Q4 date and Q3 form config', async () => {
-      const q3Config = createFormConfig(
-        QUARTER_DEFINITIONS[0].formUrl,
-        QUARTER_DEFINITIONS[0].formId
-      );
+      const q3Config = createFormConfig(QUARTER_DEFINITIONS[0].formUrl, QUARTER_DEFINITIONS[0].formId);
 
       const orchestrator = new BotOrchestrator({ injected_config: Cfg, formConfig: q3Config, headless: false });
 
@@ -307,7 +278,7 @@ describe('Quarter Routing Integration', () => {
         { input: '09/30/2025', expected: '2025-09-30' },
         { input: '10/01/2025', expected: '2025-10-01' },
         { input: '12/31/2025', expected: '2025-12-31' },
-        { input: '01/15/2025', expected: '2025-01-15' }
+        { input: '01/15/2025', expected: '2025-01-15' },
       ];
 
       testCases.forEach(({ input, expected }) => {
@@ -321,7 +292,7 @@ describe('Quarter Routing Integration', () => {
       const testCases = [
         { input: '7/1/2025', expected: '2025-07-01' },
         { input: '9/5/2025', expected: '2025-09-05' },
-        { input: '1/1/2025', expected: '2025-01-01' }
+        { input: '1/1/2025', expected: '2025-01-01' },
       ];
 
       testCases.forEach(({ input, expected }) => {
@@ -334,52 +305,33 @@ describe('Quarter Routing Integration', () => {
 
   describe('Quarter routing in timesheet submission', () => {
     it('should create separate form configs for Q3 and Q4', () => {
-      const q3Config = createFormConfig(
-        QUARTER_DEFINITIONS[0].formUrl,
-        QUARTER_DEFINITIONS[0].formId
-      );
+      const q3Config = createFormConfig(QUARTER_DEFINITIONS[0].formUrl, QUARTER_DEFINITIONS[0].formId);
 
-      const q4Config = createFormConfig(
-        QUARTER_DEFINITIONS[1].formUrl,
-        QUARTER_DEFINITIONS[1].formId
-      );
+      const q4Config = createFormConfig(QUARTER_DEFINITIONS[1].formUrl, QUARTER_DEFINITIONS[1].formId);
 
       expect(q3Config.FORM_ID).not.toBe(q4Config.FORM_ID);
       expect(q3Config.BASE_URL).not.toBe(q4Config.BASE_URL);
     });
 
     it('should use correct form URL for Q3 entries', () => {
-      const q3Config = createFormConfig(
-        QUARTER_DEFINITIONS[0].formUrl,
-        QUARTER_DEFINITIONS[0].formId
-      );
+      const q3Config = createFormConfig(QUARTER_DEFINITIONS[0].formUrl, QUARTER_DEFINITIONS[0].formId);
 
       expect(q3Config.BASE_URL).toBe(QUARTER_DEFINITIONS[0].formUrl);
     });
 
     it('should use correct form URL for Q4 entries', () => {
-      const q4Config = createFormConfig(
-        QUARTER_DEFINITIONS[1].formUrl,
-        QUARTER_DEFINITIONS[1].formId
-      );
+      const q4Config = createFormConfig(QUARTER_DEFINITIONS[1].formUrl, QUARTER_DEFINITIONS[1].formId);
 
       expect(q4Config.BASE_URL).toBe(QUARTER_DEFINITIONS[1].formUrl);
     });
 
     it('should generate correct submission endpoints for each quarter', () => {
-      const q3Config = createFormConfig(
-        QUARTER_DEFINITIONS[0].formUrl,
-        QUARTER_DEFINITIONS[0].formId
-      );
+      const q3Config = createFormConfig(QUARTER_DEFINITIONS[0].formUrl, QUARTER_DEFINITIONS[0].formId);
 
-      const q4Config = createFormConfig(
-        QUARTER_DEFINITIONS[1].formUrl,
-        QUARTER_DEFINITIONS[1].formId
-      );
+      const q4Config = createFormConfig(QUARTER_DEFINITIONS[1].formUrl, QUARTER_DEFINITIONS[1].formId);
 
       expect(q3Config.SUBMISSION_ENDPOINT).toContain(QUARTER_DEFINITIONS[0].formId);
       expect(q4Config.SUBMISSION_ENDPOINT).toContain(QUARTER_DEFINITIONS[1].formId);
     });
   });
 });
-

@@ -10,6 +10,7 @@ import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import TextField from '@mui/material/TextField';
+
 import { type UpdateCredentialsDialogProps } from '../SettingsTypes';
 
 export function UpdateCredentialsDialog({
@@ -21,7 +22,7 @@ export function UpdateCredentialsDialog({
   onClose,
   onSave,
   onEmailChange,
-  onPasswordChange
+  onPasswordChange,
 }: UpdateCredentialsDialogProps) {
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth disableRestoreFocus>

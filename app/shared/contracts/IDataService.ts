@@ -1,9 +1,9 @@
 /**
  * @fileoverview Data Service Contract
- * 
+ *
  * Defines the interface for data persistence operations.
  * Any data storage implementation (SQLite, PostgreSQL, memory, etc.) must implement this interface.
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025
@@ -135,4 +135,3 @@ export interface IDataService extends IPlugin {
    */
   getAllTimesheetEntries(): Promise<{ success: boolean; entries?: DbTimesheetEntry[]; error?: string }>;
 }
-

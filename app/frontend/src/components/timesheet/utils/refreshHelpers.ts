@@ -1,13 +1,15 @@
-import type { TimesheetRow } from '../timesheet.schema';
-import { loadDraft as loadDraftIpc, resetInProgress as resetInProgressIpc } from '../../../services/ipc/timesheet';
 import { logError, logInfo, logWarn } from '../../../services/ipc/logger';
+import { loadDraft as loadDraftIpc, resetInProgress as resetInProgressIpc } from '../../../services/ipc/timesheet';
+import type { TimesheetRow } from '../timesheet.schema';
 
 async function handleResetInProgress(): Promise<void> {
   const resetResult = await resetInProgressIpc();
   if (resetResult.success) {
     logInfo('Reset in-progress entries', { count: resetResult.count || 0 });
     if (resetResult.count && resetResult.count > 0) {
-      window.alert(`✅ Reset ${resetResult.count} in-progress ${resetResult.count === 1 ? 'entry' : 'entries'} to pending status.`);
+      window.alert(
+        `✅ Reset ${resetResult.count} in-progress ${resetResult.count === 1 ? 'entry' : 'entries'} to pending status.`
+      );
     }
   } else if (resetResult.error) {
     logWarn('Could not reset in-progress entries', { error: resetResult.error });
@@ -34,9 +36,7 @@ async function handleLoadDraft(setTimesheetDraftData: (rows: TimesheetRow[]) => 
   }
 }
 
-export function createRefreshHandler(
-  setTimesheetDraftData: (rows: TimesheetRow[]) => void
-) {
+export function createRefreshHandler(setTimesheetDraftData: (rows: TimesheetRow[]) => void) {
   return async () => {
     logInfo('Refresh button clicked - resetting in-progress entries and reloading table');
     try {

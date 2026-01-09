@@ -1,23 +1,23 @@
 /**
  * @fileoverview Dropdown Cascading Logic
- * 
+ *
  * Business logic for cascading dropdowns (project -> tool -> charge code).
  * Now uses shared business configuration for consistency across frontend/backend.
- * 
+ *
  * @author Andrew Hughes
  * @version 2.0.0
  * @since 2025-10-01
  */
 
 import {
-  PROJECTS_WITHOUT_TOOLS,
-  TOOLS_WITHOUT_CHARGES,
-  PROJECTS,
-  TOOLS_BY_PROJECT,
   CHARGE_CODES,
-  getToolsForProject as getToolsForProjectShared,
   doesProjectNeedTools,
-  doesToolNeedChargeCode
+  doesToolNeedChargeCode,
+  getToolsForProject as getToolsForProjectShared,
+  PROJECTS,
+  PROJECTS_WITHOUT_TOOLS,
+  TOOLS_BY_PROJECT,
+  TOOLS_WITHOUT_CHARGES,
 } from '@sheetpilot/shared/business-config';
 
 /**
@@ -85,4 +85,3 @@ export function projectNeedsTools(project?: string): boolean {
   if (typeof project === 'string' && project.trim() === '') return false;
   return doesProjectNeedTools(project);
 }
-

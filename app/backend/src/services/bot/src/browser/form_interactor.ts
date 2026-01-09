@@ -10,8 +10,9 @@
  * - optionally observe validation state (without hard-failing on UI variability)
  */
 import type { Locator, Page } from 'playwright';
-import * as cfg from '../automation_config';
+
 import { botLogger } from '../../utils/logger';
+import * as cfg from '../config/automation_config';
 
 export type FieldSpec = {
   label?: string;
@@ -46,12 +47,10 @@ export class FormInteractor {
       locatorSel,
       'visible',
       cfg.DYNAMIC_WAIT_BASE_TIMEOUT,
-      cfg.GLOBAL_TIMEOUT,
+      cfg.GLOBAL_TIMEOUT
     );
     if (!ok) {
-      throw new Error(
-        `Field '${fieldName}' did not become visible within timeout`,
-      );
+      throw new Error(`Field '${fieldName}' did not become visible within timeout`);
     }
 
     await field.fill('');
@@ -70,10 +69,7 @@ export class FormInteractor {
 
   // --- helpers (split same logic you already have) ---
 
-  private async _isDropdownField(
-    spec: FieldSpec,
-    field: Locator,
-  ): Promise<boolean> {
+  private async _isDropdownField(spec: FieldSpec, field: Locator): Promise<boolean> {
     const explicitType = (spec.type ?? '').toLowerCase();
     if (explicitType === 'dropdown' || explicitType === 'select') return true;
 
@@ -97,10 +93,7 @@ export class FormInteractor {
     return looksLikeDropdown;
   }
 
-  private async _handleSmartsheetsDropdown(
-    field: Locator,
-    fieldName: string,
-  ): Promise<void> {
+  private async _handleSmartsheetsDropdown(field: Locator, fieldName: string): Promise<void> {
     const page = this.getPage();
     botLogger.debug('Handling dropdown selection', { fieldName });
 
@@ -109,7 +102,7 @@ export class FormInteractor {
       page,
       '[role="listbox"]',
       cfg.DYNAMIC_WAIT_BASE_TIMEOUT,
-      cfg.DYNAMIC_WAIT_MAX_TIMEOUT,
+      cfg.DYNAMIC_WAIT_MAX_TIMEOUT
     );
 
     await field.press('Enter').catch((err: unknown) => {
@@ -120,20 +113,12 @@ export class FormInteractor {
     });
   }
 
-  private async _checkValidationErrors(
-    field: Locator,
-    fieldName: string,
-  ): Promise<void> {
+  private async _checkValidationErrors(field: Locator, fieldName: string): Promise<void> {
     const page = this.getPage();
 
     // Wait briefly for validation to settle. We intentionally avoid throwing here
     // because validation patterns vary across Smartsheet forms.
-    await cfg.wait_for_validation_stability(
-      page,
-      'form',
-      cfg.DYNAMIC_WAIT_BASE_TIMEOUT,
-      cfg.DYNAMIC_WAIT_MAX_TIMEOUT,
-    );
+    await cfg.wait_for_validation_stability(page, 'form', cfg.DYNAMIC_WAIT_BASE_TIMEOUT, cfg.DYNAMIC_WAIT_MAX_TIMEOUT);
 
     const ariaInvalid = await field.getAttribute('aria-invalid').catch(() => null);
     if (ariaInvalid && ariaInvalid !== 'false') {

@@ -34,6 +34,7 @@ A mock website that simulates the real timesheet website for testing the bot aut
 ### Installation
 
 1. Navigate to the mock website directory:
+
    ```bash
    cd app/backend/tests/mock-website
    ```
@@ -52,6 +53,7 @@ npm start
 ```
 
 Or for development with auto-reload:
+
 ```bash
 npm run dev
 ```
@@ -67,6 +69,7 @@ You can configure the server using environment variables:
 - `NODE_ENV`: Environment mode (development/production)
 
 Example:
+
 ```bash
 MOCK_WEBSITE_PORT=8080 MOCK_FORM_ID=your-form-id npm start
 ```
@@ -89,14 +92,15 @@ Update your bot configuration to point to the mock website:
 import { createFormConfig } from './automation_config';
 
 const formConfig = createFormConfig(
-  'http://localhost:3000/form',  // Base URL
-  '0197cbae7daf72bdb96b3395b500d414'  // Form ID
+  'http://localhost:3000/form', // Base URL
+  '0197cbae7daf72bdb96b3395b500d414' // Form ID
 );
 ```
 
 ### 3. Run the Bot
 
 The bot will now:
+
 1. Navigate to `http://localhost:3000`
 2. Complete the login flow automatically
 3. Fill out the form
@@ -133,15 +137,15 @@ The bot will now:
 
 The form matches the bot's expected field locators:
 
-| Field | Locator | Type |
-|-------|---------|------|
-| Project | `input[aria-label='Project']` | Text input |
-| Date | `input[placeholder='mm/dd/yyyy']` | Text input |
-| Hours | `input[aria-label='Hours']` | Number input |
-| Tool | `input[aria-label*='Tool']` | Text input (optional) |
-| Task Description | `role=textbox[name='Task Description']` | Textarea |
-| Detail Charge Code | `input[aria-label='Detail Charge Code']` | Text input (optional) |
-| Submit Button | `button[data-client-id='form_submit_btn']` | Button |
+| Field              | Locator                                    | Type                  |
+| ------------------ | ------------------------------------------ | --------------------- |
+| Project            | `input[aria-label='Project']`              | Text input            |
+| Date               | `input[placeholder='mm/dd/yyyy']`          | Text input            |
+| Hours              | `input[aria-label='Hours']`                | Number input          |
+| Tool               | `input[aria-label*='Tool']`                | Text input (optional) |
+| Task Description   | `role=textbox[name='Task Description']`    | Textarea              |
+| Detail Charge Code | `input[aria-label='Detail Charge Code']`   | Text input (optional) |
+| Submit Button      | `button[data-client-id='form_submit_btn']` | Button                |
 
 ## Submission Response Format
 
@@ -160,6 +164,7 @@ The submission endpoint returns JSON in the format the bot expects:
 ## Session Management
 
 The server uses simple in-memory session storage. Each session tracks:
+
 - Authentication status
 - Email address
 - Form ID
@@ -205,6 +210,7 @@ MOCK_WEBSITE_PORT=8080 npm start
 ### Bot Can't Connect
 
 Make sure:
+
 1. The mock website is running
 2. The bot is configured with the correct base URL (`http://localhost:3000`)
 3. No firewall is blocking the connection
@@ -212,6 +218,7 @@ Make sure:
 ### Authentication Not Working
 
 Check:
+
 1. Session cookies are enabled
 2. The login flow URLs match what the bot expects
 3. Session state is being maintained (check `/session` endpoint)
@@ -219,6 +226,7 @@ Check:
 ### Form Submission Failing
 
 Verify:
+
 1. The form ID matches in both the bot config and the server
 2. The submission endpoint returns HTTP 200
 3. The response format matches what the bot expects

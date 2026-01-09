@@ -1,8 +1,8 @@
 import { ipcMain } from 'electron';
-import { ipcLogger } from '../../utils/logger';
+
 import { cancelTimesheetSubmission, submitTimesheetWorkflow } from '../../../services/timesheet/submission-workflow';
-import { emitSubmissionProgress } from './main-window';
-import { isTrustedIpcSender } from './main-window';
+import { ipcLogger } from '../../utils/logger';
+import { emitSubmissionProgress , isTrustedIpcSender } from './main-window';
 
 export function registerTimesheetSubmissionHandlers(): void {
   ipcMain.handle('timesheet:submit', async (event, token: string, useMockWebsite?: boolean) => {
@@ -19,10 +19,10 @@ export function registerTimesheetSubmissionHandlers(): void {
           percent: safePercent,
           current: Math.floor((safePercent / 100) * pendingCount),
           total: pendingCount,
-          message
+          message,
         };
         emitSubmissionProgress(progressData);
-      }
+      },
     });
 
     return result;
@@ -37,5 +37,3 @@ export function registerTimesheetSubmissionHandlers(): void {
 
   ipcLogger.verbose('Timesheet submission handlers registered');
 }
-
-

@@ -8,7 +8,7 @@ export default defineConfig({
       { find: /^@sheetpilot\/shared\/(.+)$/, replacement: path.resolve(__dirname, '../../shared/$1') },
       { find: '@sheetpilot/shared', replacement: path.resolve(__dirname, '../../shared/index.ts') },
       { find: '@', replacement: path.resolve(__dirname, '../src') },
-    ]
+    ],
   },
   test: {
     name: 'backend-smoke',
@@ -23,15 +23,15 @@ export default defineConfig({
     pool: 'forks',
     poolOptions: {
       forks: {
-        singleFork: true
-      }
+        singleFork: true,
+      },
     },
     reporters: [
       'default',
-      new MarkdownReporter({ 
+      new MarkdownReporter({
         outputFile: 'smoke-test-results.md',
-        outputDir: path.resolve(__dirname, '../../..', 'test-results')
-      })
-    ]
-  }
+        outputDir: path.resolve(__dirname, '../../..', 'test-results'),
+      }),
+    ],
+  },
 });

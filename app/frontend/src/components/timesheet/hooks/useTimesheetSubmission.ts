@@ -21,13 +21,13 @@ export function useTimesheetSubmission(_config: UseTimesheetSubmissionConfig) {
       if (typeof window.timesheet?.submit !== 'function') {
         throw new Error('Submission API not available');
       }
-      
+
       await window.timesheet.submit({
         entries: _config.timesheetDraftData,
         token: _config.token,
-        isAdmin: _config.isAdmin
+        isAdmin: _config.isAdmin,
       });
-      
+
       await _config.refreshTimesheetDraft();
       await _config.refreshArchiveData();
     } finally {

@@ -1,10 +1,11 @@
 import type { BrowserWindow } from 'electron';
-import { setMainWindow } from './main-window';
-import { registerTimesheetDraftHandlers } from './drafts';
-import { registerTimesheetSubmissionHandlers } from './submission';
+
 import { registerTimesheetDevHandlers } from './dev';
-import { registerTimesheetResetHandlers } from './reset';
+import { registerTimesheetDraftHandlers } from './drafts';
 import { registerTimesheetExportHandlers } from './export';
+import { setMainWindow } from './main-window';
+import { registerTimesheetResetHandlers } from './reset';
+import { registerTimesheetSubmissionHandlers } from './submission';
 
 export function registerTimesheetHandlers(): void {
   registerTimesheetSubmissionHandlers();
@@ -17,5 +18,3 @@ export function registerTimesheetHandlers(): void {
 export function setMainWindowRef(window: BrowserWindow | null): void {
   setMainWindow(window);
 }
-
-

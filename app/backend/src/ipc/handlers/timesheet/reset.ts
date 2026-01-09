@@ -1,6 +1,7 @@
 import { ipcMain } from 'electron';
-import { ipcLogger } from '../../utils/logger';
+
 import { resetInProgressTimesheetEntries } from '../../../repositories';
+import { ipcLogger } from '../../utils/logger';
 import { isTrustedIpcSender } from './main-window';
 
 export function registerTimesheetResetHandlers(): void {
@@ -26,5 +27,3 @@ export function registerTimesheetResetHandlers(): void {
 
   ipcLogger.verbose('Timesheet reset handlers registered');
 }
-
-

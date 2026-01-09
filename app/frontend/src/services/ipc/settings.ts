@@ -11,5 +11,3 @@ export async function setSetting(key: string, value: unknown): Promise<{ success
   }
   return window.settings.set(key, value);
 }
-
-

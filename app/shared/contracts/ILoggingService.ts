@@ -1,9 +1,9 @@
 /**
  * @fileoverview Logging Service Contract
- * 
+ *
  * Defines the interface for logging operations.
  * Any logging implementation must implement this interface.
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025
@@ -20,7 +20,7 @@ export enum LogLevel {
   INFO = 'info',
   VERBOSE = 'verbose',
   DEBUG = 'debug',
-  SILLY = 'silly'
+  SILLY = 'silly',
 }
 
 /**
@@ -86,4 +86,3 @@ export interface ILoggingService extends IPlugin {
    */
   startTimer(label: string): Timer;
 }
-

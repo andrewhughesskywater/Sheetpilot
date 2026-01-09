@@ -1,9 +1,9 @@
 /**
  * @fileoverview IPC Contract Validation Tests
- * 
+ *
  * Validates that IPC handler signatures match renderer expectations.
  * Prevents AI from breaking communication contracts between layers.
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025
@@ -16,14 +16,14 @@ import { assertValidIPCPayload, assertUserFriendlyErrorMessage } from '../helper
 // Mock Electron modules
 vi.mock('electron', () => {
   const handlers: Record<string, (...args: unknown[]) => unknown> = {};
-  
+
   const ipcMain = {
     handle: vi.fn((channel: string, fn: (...args: unknown[]) => unknown) => {
       handlers[channel] = fn;
     }),
     on: vi.fn(),
     once: vi.fn(),
-    removeListener: vi.fn()
+    removeListener: vi.fn(),
   };
 
   return {
@@ -33,7 +33,7 @@ vi.mock('electron', () => {
       isPackaged: false,
       whenReady: vi.fn(() => Promise.resolve()),
       on: vi.fn(),
-      quit: vi.fn()
+      quit: vi.fn(),
     },
     BrowserWindow: vi.fn().mockImplementation(() => ({
       loadURL: vi.fn(),
@@ -42,8 +42,8 @@ vi.mock('electron', () => {
       on: vi.fn(),
       show: vi.fn(),
       getBounds: vi.fn(() => ({ x: 0, y: 0, width: 1200, height: 800 })),
-      isMaximized: vi.fn(() => false)
-    }))
+      isMaximized: vi.fn(() => false),
+    })),
   };
 });
 
@@ -56,11 +56,11 @@ vi.mock('@/repositories', () => ({
     prepare: vi.fn(() => ({
       all: vi.fn(() => []),
       run: vi.fn(() => ({ changes: 1, lastInsertRowid: 1 })),
-      get: vi.fn(() => ({}))
+      get: vi.fn(() => ({})),
     })),
     exec: vi.fn(),
-    close: vi.fn()
-  }))
+    close: vi.fn(),
+  })),
 }));
 
 vi.mock('@/services/timesheet-importer', () => ({
@@ -70,8 +70,8 @@ vi.mock('@/services/timesheet-importer', () => ({
     removedIds: [],
     totalProcessed: 1,
     successCount: 1,
-    removedCount: 0
-  }))
+    removedCount: 0,
+  })),
 }));
 
 vi.mock('@sheetpilot/shared/logger', () => ({
@@ -84,7 +84,7 @@ vi.mock('@sheetpilot/shared/logger', () => ({
     verbose: vi.fn(),
     silly: vi.fn(),
     audit: vi.fn(),
-    startTimer: vi.fn(() => ({ done: vi.fn() }))
+    startTimer: vi.fn(() => ({ done: vi.fn() })),
   },
   ipcLogger: {
     info: vi.fn(),
@@ -94,8 +94,8 @@ vi.mock('@sheetpilot/shared/logger', () => ({
     verbose: vi.fn(),
     silly: vi.fn(),
     audit: vi.fn(),
-    startTimer: vi.fn(() => ({ done: vi.fn() }))
-  }
+    startTimer: vi.fn(() => ({ done: vi.fn() })),
+  },
 }));
 
 describe('IPC Contract Validation', () => {
@@ -116,28 +116,24 @@ describe('IPC Contract Validation', () => {
         .build();
 
       assertValidIPCPayload(payload);
-      
+
       // Verify required fields
       expect(payload['date']).toBe('01/15/2025');
       expect(payload['timeIn']).toBe('09:00');
       expect(payload['timeOut']).toBe('17:00');
       expect(payload['project']).toBe('FL-Carver Techs');
       expect(payload['taskDescription']).toBe('Test task');
-      
+
       // Verify optional fields
       expect(payload['tool']).toBe('#1 Rinse and 2D marker');
       expect(payload['chargeCode']).toBe('EPR1');
     });
 
     it('should accept saveDraft payload with null optional fields', async () => {
-      const payload = IPCPayloadBuilder.create()
-        .withProject('PTO/RTO')
-        .withTool(null)
-        .withChargeCode(null)
-        .build();
+      const payload = IPCPayloadBuilder.create().withProject('PTO/RTO').withTool(null).withChargeCode(null).build();
 
       assertValidIPCPayload(payload);
-      
+
       expect(payload['tool']).toBeNull();
       expect(payload['chargeCode']).toBeNull();
     });
@@ -146,7 +142,7 @@ describe('IPC Contract Validation', () => {
       const invalidPayloads = [
         IPCPayloadBuilder.create().withMissingDate().build(),
         IPCPayloadBuilder.create().withMissingProject().build(),
-        IPCPayloadBuilder.create().withMissingTaskDescription().build()
+        IPCPayloadBuilder.create().withMissingTaskDescription().build(),
       ];
 
       invalidPayloads.forEach((payload, index) => {
@@ -161,10 +157,8 @@ describe('IPC Contract Validation', () => {
     });
 
     it('should validate date format in saveDraft payload', async () => {
-      const validDatePayload = IPCPayloadBuilder.create()
-        .withDate('01/15/2025')
-        .build();
-      
+      const validDatePayload = IPCPayloadBuilder.create().withDate('01/15/2025').build();
+
       const invalidDatePayload = IPCPayloadBuilder.create()
         .withDate('2025-01-15') // Wrong format
         .build();
@@ -174,11 +168,8 @@ describe('IPC Contract Validation', () => {
     });
 
     it('should validate time format in saveDraft payload', async () => {
-      const validTimePayload = IPCPayloadBuilder.create()
-        .withTimeIn('09:00')
-        .withTimeOut('17:00')
-        .build();
-      
+      const validTimePayload = IPCPayloadBuilder.create().withTimeIn('09:00').withTimeOut('17:00').build();
+
       const invalidTimePayload = IPCPayloadBuilder.create()
         .withTimeIn('09:01') // Not 15-minute increment
         .withTimeOut('17:00')
@@ -186,14 +177,14 @@ describe('IPC Contract Validation', () => {
 
       expect(validTimePayload['timeIn']).toMatch(/^([01]?[0-9]|2[0-3]):([0-5][0-9])$/);
       expect(invalidTimePayload['timeIn']).toMatch(/^([01]?[0-9]|2[0-3]):([0-5][0-9])$/);
-      
+
       // Check 15-minute increment
       const parts = String(validTimePayload['timeIn']).split(':');
       expect(parts.length).toBe(2);
       const [hours, minutes] = parts.map(Number) as [number, number];
       const totalMinutes = hours * 60 + minutes;
       expect(totalMinutes % 15).toBe(0);
-      
+
       const badParts = String(invalidTimePayload['timeIn']).split(':');
       expect(badParts.length).toBe(2);
       const [invalidHours, invalidMinutes] = badParts.map(Number) as [number, number];
@@ -213,14 +204,14 @@ describe('IPC Contract Validation', () => {
           project: 'FL-Carver Techs',
           tool: '#1 Rinse and 2D marker',
           chargeCode: 'EPR1',
-          taskDescription: 'Test task'
-        }
+          taskDescription: 'Test task',
+        },
       ];
 
       expect(Array.isArray(expectedStructure)).toBe(true);
       expect(expectedStructure.length).toBeGreaterThan(0);
-      
-      expectedStructure.forEach(entry => {
+
+      expectedStructure.forEach((entry) => {
         assertValidIPCPayload(entry);
         expect(entry.id).toBeDefined();
         expect(typeof entry.id).toBe('number');
@@ -229,7 +220,7 @@ describe('IPC Contract Validation', () => {
 
     it('should handle empty draft data', async () => {
       const emptyData: unknown[] = [];
-      
+
       expect(Array.isArray(emptyData)).toBe(true);
       expect(emptyData.length).toBe(0);
     });
@@ -239,7 +230,7 @@ describe('IPC Contract Validation', () => {
     it('should accept numeric ID parameter', async () => {
       const validId = 1;
       const invalidId = 'not-a-number';
-      
+
       expect(typeof validId).toBe('number');
       expect(typeof invalidId).not.toBe('number');
     });
@@ -247,10 +238,10 @@ describe('IPC Contract Validation', () => {
     it('should return success/error response structure', async () => {
       const successResponse = { success: true };
       const errorResponse = { success: false, error: 'Entry not found' };
-      
+
       expect(successResponse).toHaveProperty('success');
       expect(successResponse.success).toBe(true);
-      
+
       expect(errorResponse).toHaveProperty('success');
       expect(errorResponse).toHaveProperty('error');
       expect(errorResponse.success).toBe(false);
@@ -262,9 +253,9 @@ describe('IPC Contract Validation', () => {
     it('should accept credentials parameter', async () => {
       const credentials = {
         email: 'test@example.com',
-        password: 'password123'
+        password: 'password123',
       };
-      
+
       expect(credentials).toHaveProperty('email');
       expect(credentials).toHaveProperty('password');
       expect(typeof credentials.email).toBe('string');
@@ -278,16 +269,16 @@ describe('IPC Contract Validation', () => {
         removedIds: [],
         totalProcessed: 2,
         successCount: 2,
-        removedCount: 0
+        removedCount: 0,
       };
-      
+
       expect(submissionResult).toHaveProperty('ok');
       expect(submissionResult).toHaveProperty('submittedIds');
       expect(submissionResult).toHaveProperty('removedIds');
       expect(submissionResult).toHaveProperty('totalProcessed');
       expect(submissionResult).toHaveProperty('successCount');
       expect(submissionResult).toHaveProperty('removedCount');
-      
+
       expect(Array.isArray(submissionResult.submittedIds)).toBe(true);
       expect(Array.isArray(submissionResult.removedIds)).toBe(true);
       expect(typeof submissionResult.totalProcessed).toBe('number');
@@ -309,9 +300,9 @@ describe('IPC Contract Validation', () => {
         detail_charge_code: 'EPR1',
         task_description: 'Test task',
         status: 'Complete',
-        submitted_at: '2025-01-15T10:00:00Z'
+        submitted_at: '2025-01-15T10:00:00Z',
       };
-      
+
       expect(dbEntry).toHaveProperty('id');
       expect(dbEntry).toHaveProperty('date');
       expect(dbEntry).toHaveProperty('time_in');
@@ -319,7 +310,7 @@ describe('IPC Contract Validation', () => {
       expect(dbEntry).toHaveProperty('hours');
       expect(dbEntry).toHaveProperty('project');
       expect(dbEntry).toHaveProperty('task_description');
-      
+
       expect(typeof dbEntry['id']).toBe('number');
       expect(typeof dbEntry['date']).toBe('string');
       expect(typeof dbEntry['time_in']).toBe('number');
@@ -338,10 +329,10 @@ describe('IPC Contract Validation', () => {
         'Times must be in 15-minute increments',
         'Please enter a date in the current quarter',
         'Please pick a project',
-        'Task Description is required'
+        'Task Description is required',
       ];
-      
-      errorMessages.forEach(message => {
+
+      errorMessages.forEach((message) => {
         assertUserFriendlyErrorMessage(message);
       });
     });
@@ -351,10 +342,10 @@ describe('IPC Contract Validation', () => {
         'Error: Cannot read property of undefined',
         'TypeError: Invalid input',
         'Error: Database connection failed: ECONNREFUSED',
-        'Error: SQLITE_ERROR: no such table'
+        'Error: SQLITE_ERROR: no such table',
       ];
-      
-      badErrorMessages.forEach(message => {
+
+      badErrorMessages.forEach((message) => {
         expect(message).toContain('Error:');
         if (message.includes('TypeError:')) {
           expect(message).toContain('TypeError:');
@@ -373,14 +364,14 @@ describe('IPC Contract Validation', () => {
     it('should maintain consistent data types across IPC calls', async () => {
       const savePayload = IPCPayloadBuilder.create().build();
       const loadResponse = [IPCPayloadBuilder.create().withId(1).build()];
-      
+
       // Save and load should have same structure
       expect(typeof savePayload['date']).toBe('string');
       expect(typeof savePayload['timeIn']).toBe('string');
       expect(typeof savePayload['timeOut']).toBe('string');
       expect(typeof savePayload['project']).toBe('string');
       expect(typeof savePayload['taskDescription']).toBe('string');
-      
+
       expect(typeof loadResponse[0]?.['date']).toBe('string');
       expect(typeof loadResponse[0]?.['timeIn']).toBe('string');
       expect(typeof loadResponse[0]?.['timeOut']).toBe('string');
@@ -389,14 +380,11 @@ describe('IPC Contract Validation', () => {
     });
 
     it('should handle null values consistently', async () => {
-      const payloadWithNulls = IPCPayloadBuilder.create()
-        .withTool(null)
-        .withChargeCode(null)
-        .build();
-      
+      const payloadWithNulls = IPCPayloadBuilder.create().withTool(null).withChargeCode(null).build();
+
       expect(payloadWithNulls['tool']).toBeNull();
       expect(payloadWithNulls['chargeCode']).toBeNull();
-      
+
       // Null should not be converted to undefined or empty string
       expect(payloadWithNulls['tool']).not.toBeUndefined();
       expect(payloadWithNulls['tool']).not.toBe('');
@@ -411,9 +399,9 @@ describe('IPC Contract Validation', () => {
         { input: '09:00', expected: 540 },
         { input: '17:30', expected: 1050 },
         { input: '00:00', expected: 0 },
-        { input: '23:45', expected: 1425 }
+        { input: '23:45', expected: 1425 },
       ];
-      
+
       timeFormats.forEach(({ input, expected }) => {
         const parts = input.split(':');
         expect(parts.length).toBe(2);
@@ -428,9 +416,9 @@ describe('IPC Contract Validation', () => {
         { time: '00:00', minutes: 0 },
         { time: '00:15', minutes: 15 },
         { time: '23:45', minutes: 1425 },
-        { time: '23:59', minutes: 1439 }
+        { time: '23:59', minutes: 1439 },
       ];
-      
+
       edgeCases.forEach(({ time, minutes }) => {
         const parts = time.split(':');
         expect(parts.length).toBe(2);
@@ -446,9 +434,9 @@ describe('IPC Contract Validation', () => {
       const dateConversions = [
         { input: '01/15/2025', expected: '2025-01-15' },
         { input: '12/31/2024', expected: '2024-12-31' },
-        { input: '02/29/2024', expected: '2024-02-29' }
+        { input: '02/29/2024', expected: '2024-02-29' },
       ];
-      
+
       dateConversions.forEach(({ input, expected }) => {
         const parts = input.split('/');
         expect(parts.length).toBe(3);
@@ -463,9 +451,9 @@ describe('IPC Contract Validation', () => {
         { input: '01/01/2025', expected: '2025-01-01' },
         { input: '03/31/2025', expected: '2025-03-31' },
         { input: '04/01/2025', expected: '2025-04-01' },
-        { input: '12/31/2025', expected: '2025-12-31' }
+        { input: '12/31/2025', expected: '2025-12-31' },
       ];
-      
+
       edgeCases.forEach(({ input, expected }) => {
         const parts = input.split('/');
         expect(parts.length).toBe(3);

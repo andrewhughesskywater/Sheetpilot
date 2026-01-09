@@ -1,9 +1,9 @@
 /**
  * @fileoverview Submission Progress Integration Test
- * 
+ *
  * End-to-end test that mocks timesheet submission and verifies
  * progress bar updates are correctly sent from backend to frontend.
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025
@@ -14,7 +14,7 @@ import type { BrowserWindow } from 'electron';
 
 declare global {
   // Storage for mocked IPC handlers used by tests
-   
+
   var __test_handlers: Record<string, (...args: unknown[]) => unknown> | undefined;
 }
 
@@ -36,7 +36,7 @@ const mockMainWindow: Partial<BrowserWindow> = {
     on: vi.fn(),
     once: vi.fn(),
     executeJavaScript: vi.fn(),
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   isDestroyed: vi.fn(() => false) as any,
@@ -45,11 +45,13 @@ const mockMainWindow: Partial<BrowserWindow> = {
 // Mock electron modules
 vi.mock('electron', () => {
   const handlers: Record<string, (...args: unknown[]) => unknown> = {};
-  
+
   const ipcMain = {
     handle: vi.fn((channel: string, fn: (...args: unknown[]) => unknown) => {
       handlers[channel] = fn;
-      (globalThis.__test_handlers as Record<string, (...args: unknown[]) => unknown>)[channel] = async (...args: unknown[]) => {
+      (globalThis.__test_handlers as Record<string, (...args: unknown[]) => unknown>)[channel] = async (
+        ...args: unknown[]
+      ) => {
         // Create a mock IPC event with proper sender
         const mockEvent = {
           sender: {
@@ -177,11 +179,11 @@ const createMockSubmissionService = () => {
 
       // Initial progress (10%)
       progressCallback?.(10, 'Logging in');
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await new Promise((resolve) => setTimeout(resolve, 50));
 
       // Login complete (20%)
       progressCallback?.(20, 'Login complete');
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await new Promise((resolve) => setTimeout(resolve, 50));
 
       // Process each entry with progress updates
       for (let i = 0; i < totalEntries; i++) {
@@ -194,9 +196,9 @@ const createMockSubmissionService = () => {
         const progress = 20 + Math.floor((60 * (i + 1)) / totalEntries);
         const message = `Processed ${i + 1}/${totalEntries} rows`;
         progressCallback?.(progress, message);
-        
+
         // Simulate processing time
-        await new Promise(resolve => setTimeout(resolve, 50));
+        await new Promise((resolve) => setTimeout(resolve, 50));
       }
 
       // Completion (100%)
@@ -218,36 +220,42 @@ const createMockSubmissionService = () => {
 
 // Mock the timesheet-importer service
 vi.mock('@/services/timesheet-importer', () => ({
-  submitTimesheets: vi.fn(async (config: { email: string; password: string; progressCallback?: (percent: number, message: string) => void }) => {
-    const { progressCallback } = config;
-    // Simulate progress updates
-    progressCallback?.(10, 'Logging in');
-    await new Promise(resolve => setTimeout(resolve, 50));
-    
-    progressCallback?.(20, 'Login complete');
-    await new Promise(resolve => setTimeout(resolve, 50));
-    
-    // Simulate processing 3 entries
-    progressCallback?.(40, 'Processing entry 1/3');
-    await new Promise(resolve => setTimeout(resolve, 50));
-    
-    progressCallback?.(60, 'Processing entry 2/3');
-    await new Promise(resolve => setTimeout(resolve, 50));
-    
-    progressCallback?.(80, 'Processing entry 3/3');
-    await new Promise(resolve => setTimeout(resolve, 50));
-    
-    progressCallback?.(100, 'Submission complete');
-    
-    return {
-      ok: true,
-      submittedIds: [1, 2, 3],
-      removedIds: [],
-      totalProcessed: 3,
-      successCount: 3,
-      removedCount: 0,
-    };
-  }),
+  submitTimesheets: vi.fn(
+    async (config: {
+      email: string;
+      password: string;
+      progressCallback?: (percent: number, message: string) => void;
+    }) => {
+      const { progressCallback } = config;
+      // Simulate progress updates
+      progressCallback?.(10, 'Logging in');
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      progressCallback?.(20, 'Login complete');
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Simulate processing 3 entries
+      progressCallback?.(40, 'Processing entry 1/3');
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      progressCallback?.(60, 'Processing entry 2/3');
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      progressCallback?.(80, 'Processing entry 3/3');
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      progressCallback?.(100, 'Submission complete');
+
+      return {
+        ok: true,
+        submittedIds: [1, 2, 3],
+        removedIds: [],
+        totalProcessed: 3,
+        successCount: 3,
+        removedCount: 0,
+      };
+    }
+  ),
 }));
 
 // Mock the plugin system
@@ -261,7 +269,7 @@ describe('Submission Progress Integration Test', () => {
     // Clear progress events
     progressEvents.length = 0;
     vi.clearAllMocks();
-    
+
     // Reset handler storage
     globalThis.__test_handlers = {};
   });
@@ -273,10 +281,10 @@ describe('Submission Progress Integration Test', () => {
   it('should send progress updates during submission', async () => {
     // Import and register handlers after mocks are set up
     const { registerTimesheetHandlers, setMainWindow } = await import('@/ipc/timesheet-handlers');
-    
+
     // Set main window reference
     setMainWindow(mockMainWindow as BrowserWindow);
-    
+
     // Register handlers
     registerTimesheetHandlers();
 
@@ -299,7 +307,7 @@ describe('Submission Progress Integration Test', () => {
 
     // Verify progress events were sent
     expect(progressEvents.length).toBeGreaterThan(0);
-    
+
     // Verify initial progress event (10% - Logging in)
     expect(progressEvents[0]).toMatchObject({
       percent: 10,
@@ -315,7 +323,7 @@ describe('Submission Progress Integration Test', () => {
     // Verify processing progress events (20% to 80%)
     const processingEvents = progressEvents.slice(2, -1);
     expect(processingEvents.length).toBeGreaterThan(0);
-    
+
     // Check that progress increases
     for (let i = 1; i < processingEvents.length; i++) {
       expect(processingEvents[i]?.percent).toBeGreaterThanOrEqual(processingEvents[i - 1]?.percent || 0);
@@ -348,31 +356,50 @@ describe('Submission Progress Integration Test', () => {
 
     // Get the submission handler
     const submitHandler = globalThis.__test_handlers?.['timesheet:submit'];
-    
+
     // Call the submit handler
     await submitHandler?.('valid-token');
 
     // Verify that current/total are calculated correctly
-    const processingEvents = progressEvents.filter(e => e.percent > 20 && e.percent < 100);
-    
-    processingEvents.forEach(event => {
+    const processingEvents = progressEvents.filter((e) => e.percent > 20 && e.percent < 100);
+
+    processingEvents.forEach((event) => {
       // Verify current is within valid range
       expect(event.current).toBeGreaterThanOrEqual(0);
       expect(event.current).toBeLessThanOrEqual(event.total);
-      
+
       // Verify total matches the number of pending entries
       expect(event.total).toBe(3);
-      
+
       // Verify message format
       expect(event.message).toBeTruthy();
     });
   });
 
   it('should handle submission with no pending entries', async () => {
-    // This test would require complex mock reloading which is difficult with dynamic imports
-    // The main scenario (with entries) is well covered in other tests
-    // Skip to avoid flakiness with mock state
-    expect(true).toBe(true);
+    // Override repository mock to return no pending entries for this test
+    const repos = await import('@/repositories');
+    vi.mocked(repos.getPendingTimesheetEntries as unknown as jest.Mock).mockReturnValueOnce([] as any);
+
+    const { registerTimesheetHandlers, setMainWindow } = await import('@/ipc/timesheet-handlers');
+    setMainWindow(mockMainWindow as BrowserWindow);
+    registerTimesheetHandlers();
+
+    progressEvents.length = 0;
+
+    const submitHandler = globalThis.__test_handlers?.['timesheet:submit'];
+    const result = await submitHandler?.('valid-token');
+    const submissionResult = result as any;
+
+    expect(submissionResult).toBeDefined();
+    expect(submissionResult.submitResult).toBeDefined();
+
+    // Progress should still emit and complete to 100% with total=0
+    expect(progressEvents.length).toBeGreaterThan(0);
+    const finalEvent = progressEvents[progressEvents.length - 1];
+    expect(finalEvent.percent).toBe(100);
+    expect(finalEvent.total).toBe(0);
+    expect(finalEvent.current).toBe(0);
   });
 
   it('should handle window destroyed during submission', async () => {
@@ -390,7 +417,7 @@ describe('Submission Progress Integration Test', () => {
 
     // Get the submission handler
     const submitHandler = globalThis.__test_handlers?.['timesheet:submit'];
-    
+
     // Call the submit handler - should not throw
     const result = await submitHandler?.('valid-token');
     const submissionResult = result as any;
@@ -408,12 +435,12 @@ describe('Submission Progress Integration Test', () => {
 
     // Get the submission handler
     const submitHandler = globalThis.__test_handlers?.['timesheet:submit'];
-    
+
     // Call the submit handler
     await submitHandler?.('valid-token');
 
     // Verify all progress events have required structure
-    progressEvents.forEach(event => {
+    progressEvents.forEach((event) => {
       expect(event).toHaveProperty('percent');
       expect(event).toHaveProperty('current');
       expect(event).toHaveProperty('total');
@@ -439,7 +466,7 @@ describe('Submission Progress Integration Test', () => {
 
     // Get the submission handler
     const submitHandler = globalThis.__test_handlers?.['timesheet:submit'];
-    
+
     // Call the submit handler
     await submitHandler?.('valid-token');
 
@@ -447,7 +474,7 @@ describe('Submission Progress Integration Test', () => {
     for (let i = 1; i < progressEvents.length; i++) {
       const prevPercent = progressEvents[i - 1]?.percent || 0;
       const currentPercent = progressEvents[i]?.percent || 0;
-      
+
       expect(currentPercent).toBeGreaterThanOrEqual(prevPercent);
     }
   });
@@ -460,12 +487,12 @@ describe('Submission Progress Integration Test', () => {
 
     // Get the submission handler
     const submitHandler = globalThis.__test_handlers?.['timesheet:submit'];
-    
+
     // Call the submit handler
     await submitHandler?.('valid-token');
 
     // Verify progress events match what SubmitProgressBar component expects
-    progressEvents.forEach(event => {
+    progressEvents.forEach((event) => {
       // Component expects these exact properties
       expect(event).toEqual(
         expect.objectContaining({
@@ -493,4 +520,3 @@ describe('Submission Progress Integration Test', () => {
     });
   });
 });
-

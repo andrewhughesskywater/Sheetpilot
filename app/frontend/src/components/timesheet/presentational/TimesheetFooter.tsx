@@ -1,10 +1,11 @@
-import Button from '@mui/material/Button';
-import RefreshIcon from '@mui/icons-material/Refresh';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import StopIcon from '@mui/icons-material/Stop';
+import Button from '@mui/material/Button';
+
 import { SubmitProgressBar } from '../../SubmitProgressBar';
-import { ValidationErrors } from '../ValidationErrors';
 import type { ValidationError } from '../utils/timesheetGridUtils';
+import { ValidationErrors } from '../ValidationErrors';
 
 type ButtonStatus = 'neutral' | 'ready' | 'warning';
 
@@ -45,11 +46,24 @@ export function TimesheetFooter({
         >
           Refresh
         </Button>
-        <SubmitProgressBar status={buttonStatus} onSubmit={onSubmit} isSubmitting={isSubmitting} icon={<PlayArrowIcon />} disabled={isAdmin}>
+        <SubmitProgressBar
+          status={buttonStatus}
+          onSubmit={onSubmit}
+          isSubmitting={isSubmitting}
+          icon={<PlayArrowIcon />}
+          disabled={isAdmin}
+        >
           Submit Timesheet
         </SubmitProgressBar>
         {isSubmitting && (
-          <Button variant="contained" size="large" color="error" startIcon={<StopIcon />} onClick={onStop} sx={{ minWidth: 200 }}>
+          <Button
+            variant="contained"
+            size="large"
+            color="error"
+            startIcon={<StopIcon />}
+            onClick={onStop}
+            sx={{ minWidth: 200 }}
+          >
             Stop
           </Button>
         )}

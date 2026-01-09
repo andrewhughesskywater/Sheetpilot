@@ -18,14 +18,15 @@
  * immediate browser cleanup (via `setupAbortHandler`).
  */
 
-import * as Cfg from '../config/automation_config';
-import { WebformFiller } from '../browser/webform_flow';
-import { LoginManager } from '../utils/authentication_flow';
-import { botLogger } from '../../utils/logger';
-import { getQuarterForDate } from '../config/quarter_config';
 import { appSettings } from '@sheetpilot/shared/constants';
+
+import { botLogger } from '../../utils/logger';
+import { WebformFiller } from '../browser/webform_flow';
+import * as Cfg from '../config/automation_config';
+import { getQuarterForDate } from '../config/quarter_config';
 import { checkAborted, setupAbortHandler } from '../utils/abort-utils';
-import { FieldProcessor, type FieldProcessingContext } from './field-processor';
+import { LoginManager } from '../utils/authentication_flow';
+import { type FieldProcessingContext,FieldProcessor } from './field-processor';
 
 /**
  * Result object returned after automation execution
@@ -48,7 +49,12 @@ export type AutomationResult = {
 
 interface BotOrchestratorConfig {
   injected_config: typeof Cfg;
-  formConfig: { BASE_URL: string; FORM_ID: string; SUBMISSION_ENDPOINT: string; SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[] };
+  formConfig: {
+    BASE_URL: string;
+    FORM_ID: string;
+    SUBMISSION_ENDPOINT: string;
+    SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[];
+  };
   headless?: boolean | null;
   browser?: string | null;
   progress_callback?: (pct: number, msg: string) => void;
@@ -88,7 +94,12 @@ export class BotOrchestrator {
   /** Optional callback for progress updates during automation */
   progress_callback: ((pct: number, msg: string) => void) | undefined;
   /** Dynamic form configuration */
-  formConfig: { BASE_URL: string; FORM_ID: string; SUBMISSION_ENDPOINT: string; SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[] };
+  formConfig: {
+    BASE_URL: string;
+    FORM_ID: string;
+    SUBMISSION_ENDPOINT: string;
+    SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[];
+  };
 
   /**
    * Creates a new BotOrchestrator instance
@@ -107,10 +118,10 @@ export class BotOrchestrator {
     botLogger.debug('BotOrchestrator initialized with headless setting', {
       headlessParam: actualHeadless,
       resolvedHeadless: this.headless,
-      appSettingsBrowserHeadless: appSettings.browserHeadless
+      appSettingsBrowserHeadless: appSettings.browserHeadless,
     });
 
-    this.browserKind = config.browser ?? (this.cfg as Record<string, unknown>)['BROWSER'] as string ?? 'chromium';
+    this.browserKind = config.browser ?? ((this.cfg as Record<string, unknown>)['BROWSER'] as string) ?? 'chromium';
     this.progress_callback = config.progress_callback;
     this.formConfig = config.formConfig;
     this.webformFiller = new WebformFiller(this.cfg, this.headless, this.browserKind, this.formConfig);
@@ -121,13 +132,17 @@ export class BotOrchestrator {
    * Initializes the browser and starts the automation session
    * @returns Promise that resolves when browser is ready
    */
-  async start(): Promise<void> { await this.webformFiller.start(); }
-  
+  async start(): Promise<void> {
+    await this.webformFiller.start();
+  }
+
   /**
    * Closes the browser and cleans up resources
    * @returns Promise that resolves when cleanup is complete
    */
-  async close(): Promise<void> { await this.webformFiller.close(); }
+  async close(): Promise<void> {
+    await this.webformFiller.close();
+  }
 
   /**
    * Runs the automation workflow for a batch of rows.
@@ -137,7 +152,11 @@ export class BotOrchestrator {
    * - The return value uses **indices into `df`**, not external IDs.
    * - The method supports cancellation through `AbortSignal`.
    */
-  async runAutomation(df: Array<Record<string, unknown>>, creds: [string, string], abortSignal?: AbortSignal): Promise<[boolean, number[], Array<[number,string]>]> {
+  async runAutomation(
+    df: Array<Record<string, unknown>>,
+    creds: [string, string],
+    abortSignal?: AbortSignal
+  ): Promise<[boolean, number[], Array<[number, string]>]> {
     const result = await this._runAutomationInternal(df, creds, abortSignal);
     return [result.success, result.submitted_indices, result.errors];
   }
@@ -148,14 +167,18 @@ export class BotOrchestrator {
    * @param password - User password for authentication
    * @returns Promise that resolves when login is complete
    */
-  runLoginSteps(email: string, password: string): Promise<void> { return this.loginManager.runLoginSteps(email, password); }
+  runLoginSteps(email: string, password: string): Promise<void> {
+    return this.loginManager.runLoginSteps(email, password);
+  }
 
   /**
    * Gets the current browser page instance
    * @returns Playwright Page object
    * @throws BotNotStartedError if browser is not started
    */
-  requirePage() { return this.webformFiller.requirePage(); }
+  requirePage() {
+    return this.webformFiller.requirePage();
+  }
 
   /**
    * Waits for an element to become visible and returns its locator
@@ -165,7 +188,13 @@ export class BotOrchestrator {
    */
   async waitVisible(sel: string) {
     const page = this.webformFiller.requirePage();
-    const ok = await Cfg.dynamic_wait_for_element(page, sel, 'visible', Cfg.DYNAMIC_WAIT_BASE_TIMEOUT, Cfg.GLOBAL_TIMEOUT);
+    const ok = await Cfg.dynamic_wait_for_element(
+      page,
+      sel,
+      'visible',
+      Cfg.DYNAMIC_WAIT_BASE_TIMEOUT,
+      Cfg.GLOBAL_TIMEOUT
+    );
     if (!ok) throw new Error(`Element '${sel}' did not become visible within timeout`);
     return page.locator(sel);
   }
@@ -174,14 +203,20 @@ export class BotOrchestrator {
    * Clicks an element identified by selector
    * @param sel - CSS selector for the element to click
    */
-  async click(sel: string) { const page = this.webformFiller.requirePage(); await page.locator(sel).click(); }
-  
+  async click(sel: string) {
+    const page = this.webformFiller.requirePage();
+    await page.locator(sel).click();
+  }
+
   /**
    * Types text into an element identified by selector
    * @param sel - CSS selector for the input element
    * @param text - Text to type into the element
    */
-  async type(sel: string, text: string) { const page = this.webformFiller.requirePage(); await page.locator(sel).type(text); }
+  async type(sel: string, text: string) {
+    const page = this.webformFiller.requirePage();
+    await page.locator(sel).type(text);
+  }
 
   /**
    * Determines if a field should be processed based on its value
@@ -195,21 +230,19 @@ export class BotOrchestrator {
     if (fieldValue === null || fieldValue === undefined) {
       return false;
     }
-    
+
     // Skip if field has NaN value (check for NaN specifically)
     if (typeof fieldValue === 'number' && isNaN(fieldValue)) {
       return false;
     }
-    
+
     // Cache string conversion and lowercase to avoid repeated conversions
-    const stringValue = typeof fieldValue === 'string' 
-      ? fieldValue.toLowerCase() 
-      : String(fieldValue).toLowerCase();
-    
+    const stringValue = typeof fieldValue === 'string' ? fieldValue.toLowerCase() : String(fieldValue).toLowerCase();
+
     if (stringValue === 'nan' || stringValue === 'none' || stringValue === '') {
       return false;
     }
-    
+
     return true;
   }
 
@@ -233,7 +266,7 @@ export class BotOrchestrator {
    * @returns Progress percentage (0-100)
    */
   private _calculateProgress(currentRow: number, totalRows: number): number {
-    return 20 + Math.floor(60 * (currentRow + 1) / totalRows);
+    return 20 + Math.floor((60 * (currentRow + 1)) / totalRows);
   }
 
   /**
@@ -266,10 +299,10 @@ export class BotOrchestrator {
 
       return null;
     } catch (dateError) {
-      botLogger.error('Error parsing date', { 
-        rowIndex, 
+      botLogger.error('Error parsing date', {
+        rowIndex,
         date: dateValue,
-        error: dateError instanceof Error ? dateError.message : String(dateError)
+        error: dateError instanceof Error ? dateError.message : String(dateError),
       });
       return `Could not parse date: ${String(dateValue)}`;
     }
@@ -307,7 +340,6 @@ export class BotOrchestrator {
     return null;
   }
 
-
   /**
    * Processes one row through the workflow: validate → fill → (optional) submit.
    *
@@ -328,7 +360,7 @@ export class BotOrchestrator {
     const { row, rowIndex, totalRows, status_col, complete_val, abortSignal } = config;
     // Check if aborted before processing each row
     checkAborted(abortSignal, `Automation (row ${rowIndex + 1}/${totalRows})`);
-    
+
     // Skip completed rows: callers can pass a sheet export that already includes
     // status for prior submissions.
     if (status_col in row && String(row[status_col] ?? '').trim() === complete_val) {
@@ -342,66 +374,66 @@ export class BotOrchestrator {
     let rowOutcome: 'success' | 'error' | 'skipped' = 'error';
 
     try {
-    const progress = this._calculateProgress(rowIndex, totalRows);
-    botLogger.verbose('Processing row', { rowIndex: rowIndex + 1, totalRows, progress });
+      const progress = this._calculateProgress(rowIndex, totalRows);
+      botLogger.verbose('Processing row', { rowIndex: rowIndex + 1, totalRows, progress });
 
-    // Build fields from row
-    const fields = this._buildFieldsFromRow(row);
-    
-    // Validate required fields early to avoid partial UI interactions that can leave
-    // the form in an unexpected state.
-    if (!this._validateRequiredFields(fields, rowIndex)) {
-      botLogger.warn('Row skipped', { rowIndex, reason: 'Missing required fields' });
-      rowOutcome = 'skipped';
-      return [false, 'Missing required fields'];
-    }
+      // Build fields from row
+      const fields = this._buildFieldsFromRow(row);
 
-    // Validate quarter match before filling: submitting a Q3 entry to a Q4 form is
-    // difficult to detect after the fact.
-    if (fields['date']) {
-      const quarterError = this._validateQuarterMatch(fields['date'], rowIndex);
-      if (quarterError) {
-        botLogger.error('Quarter validation failed', { rowIndex, error: quarterError });
-        rowOutcome = 'error';
-        return [false, quarterError];
+      // Validate required fields early to avoid partial UI interactions that can leave
+      // the form in an unexpected state.
+      if (!this._validateRequiredFields(fields, rowIndex)) {
+        botLogger.warn('Row skipped', { rowIndex, reason: 'Missing required fields' });
+        rowOutcome = 'skipped';
+        return [false, 'Missing required fields'];
       }
-    }
 
-    // Ensure the form has loaded and the network has settled before interacting.
-    await this.webformFiller.waitForFormReady();
-
-    // Fill fields
-    botLogger.verbose('Filling form fields', { rowIndex });
-    const fillTimer = botLogger.startTimer('row-fill');
-    await this._fillFields(fields);
-    fillTimer.done({ rowIndex });
-
-    // Submit is optional: tests and debugging sometimes run in “fill-only” mode.
-    if (Cfg.SUBMIT_FORM_AFTER_FILLING) {
-      botLogger.verbose('Waiting for form to stabilize before submission', { rowIndex });
-      // Wait for form to be stable (no ongoing animations or changes)
-      await Cfg.wait_for_dom_stability(
-        this.webformFiller.requirePage(),
-        'form',
-        'visible',
-        Cfg.SUBMIT_DELAY_AFTER_FILLING,
-        Cfg.SUBMIT_DELAY_AFTER_FILLING * 2
-      );
-      
-      // Submit with retry (Initial + Level 1 + Level 2 = 3 attempts)
-      const submitTimer = botLogger.startTimer('row-submit');
-      const submissionSuccess = await this._submitWithRetryWithFields(rowIndex, fields);
-      submitTimer.done({ rowIndex, success: submissionSuccess });
-      if (!submissionSuccess) {
-        rowOutcome = 'error';
-        return [false, 'Form submission failed after 3 attempts (initial + Level 1 retry + Level 2 retry)'];
+      // Validate quarter match before filling: submitting a Q3 entry to a Q4 form is
+      // difficult to detect after the fact.
+      if (fields['date']) {
+        const quarterError = this._validateQuarterMatch(fields['date'], rowIndex);
+        if (quarterError) {
+          botLogger.error('Quarter validation failed', { rowIndex, error: quarterError });
+          rowOutcome = 'error';
+          return [false, quarterError];
+        }
       }
-    }
 
-    botLogger.info('Row completed successfully', { rowIndex });
-    this.progress_callback?.(this._calculateProgress(rowIndex, totalRows), `Completed row ${rowIndex + 1}`);
-    rowOutcome = 'success';
-    return [true, null];
+      // Ensure the form has loaded and the network has settled before interacting.
+      await this.webformFiller.waitForFormReady();
+
+      // Fill fields
+      botLogger.verbose('Filling form fields', { rowIndex });
+      const fillTimer = botLogger.startTimer('row-fill');
+      await this._fillFields(fields);
+      fillTimer.done({ rowIndex });
+
+      // Submit is optional: tests and debugging sometimes run in “fill-only” mode.
+      if (Cfg.SUBMIT_FORM_AFTER_FILLING) {
+        botLogger.verbose('Waiting for form to stabilize before submission', { rowIndex });
+        // Wait for form to be stable (no ongoing animations or changes)
+        await Cfg.wait_for_dom_stability(
+          this.webformFiller.requirePage(),
+          'form',
+          'visible',
+          Cfg.SUBMIT_DELAY_AFTER_FILLING,
+          Cfg.SUBMIT_DELAY_AFTER_FILLING * 2
+        );
+
+        // Submit with retry (Initial + Level 1 + Level 2 = 3 attempts)
+        const submitTimer = botLogger.startTimer('row-submit');
+        const submissionSuccess = await this._submitWithRetryWithFields(rowIndex, fields);
+        submitTimer.done({ rowIndex, success: submissionSuccess });
+        if (!submissionSuccess) {
+          rowOutcome = 'error';
+          return [false, 'Form submission failed after 3 attempts (initial + Level 1 retry + Level 2 retry)'];
+        }
+      }
+
+      botLogger.info('Row completed successfully', { rowIndex });
+      this.progress_callback?.(this._calculateProgress(rowIndex, totalRows), `Completed row ${rowIndex + 1}`);
+      rowOutcome = 'success';
+      return [true, null];
     } finally {
       rowTimer.done({ rowIndex, outcome: rowOutcome });
     }
@@ -411,9 +443,9 @@ export class BotOrchestrator {
    * Submits form with two-level retry logic:
    * - Level 1 retry: Quick retry - just click submit again after 1s delay (no form re-fill)
    * - Level 2 retry: Full retry - re-fill form and submit after 2s delay
-   * 
+   *
    * Flow: Initial → failed → Level 1 retry → failed → Level 2 retry → failed → give up
-   * 
+   *
    * @private
    * @param rowIndex - Row index for logging
    * @param fields - Fields to fill if Level 2 retry is needed
@@ -423,66 +455,65 @@ export class BotOrchestrator {
     // Attempt 1: Initial submit
     botLogger.info('Attempting initial submission', { rowIndex, attempt: 1, retryLevel: 'initial' });
     let success = await this.webformFiller.submitForm();
-    
+
     if (success) {
-      botLogger.info('Initial submission succeeded', { rowIndex, attempt: 1, retryLevel: 'initial', result: 'success' });
+      botLogger.info('Initial submission succeeded', {
+        rowIndex,
+        attempt: 1,
+        retryLevel: 'initial',
+        result: 'success',
+      });
       return true;
     }
-    
+
     botLogger.warn('Initial submission failed', { rowIndex, attempt: 1, retryLevel: 'initial', result: 'failed' });
-    
+
     // Attempt 2: Level 1 retry - quick retry, just click submit again (no form re-fill)
     const level1Delay = Cfg.SUBMIT_CLICK_RETRY_DELAY_S;
-    botLogger.info('Starting Level 1 retry (quick re-click, no form re-fill)', { 
-      rowIndex, 
-      attempt: 2, 
-      retryLevel: 'level-1', 
-      delaySeconds: level1Delay 
+    botLogger.info('Starting Level 1 retry (quick re-click, no form re-fill)', {
+      rowIndex,
+      attempt: 2,
+      retryLevel: 'level-1',
+      delaySeconds: level1Delay,
     });
-    await new Promise(resolve => setTimeout(resolve, level1Delay * 1000));
-    
+    await new Promise((resolve) => setTimeout(resolve, level1Delay * 1000));
+
     botLogger.info('Attempting Level 1 retry submission', { rowIndex, attempt: 2, retryLevel: 'level-1' });
     success = await this.webformFiller.submitForm();
-    
+
     if (success) {
       botLogger.info('Level 1 retry succeeded', { rowIndex, attempt: 2, retryLevel: 'level-1', result: 'success' });
       return true;
     }
-    
+
     botLogger.warn('Level 1 retry failed', { rowIndex, attempt: 2, retryLevel: 'level-1', result: 'failed' });
-    
+
     // Attempt 3: Level 2 retry - re-fill form and submit
     const level2Delay = Cfg.SUBMIT_RETRY_DELAY;
-    botLogger.info('Starting Level 2 retry (re-fill form and submit)', { 
-      rowIndex, 
-      attempt: 3, 
-      retryLevel: 'level-2', 
-      delaySeconds: level2Delay 
+    botLogger.info('Starting Level 2 retry (re-fill form and submit)', {
+      rowIndex,
+      attempt: 3,
+      retryLevel: 'level-2',
+      delaySeconds: level2Delay,
     });
-    await Cfg.wait_for_dom_stability(
-      this.webformFiller.requirePage(),
-      'body',
-      'visible',
-      level2Delay,
-      level2Delay * 2
-    );
-    
+    await Cfg.wait_for_dom_stability(this.webformFiller.requirePage(), 'body', 'visible', level2Delay, level2Delay * 2);
+
     botLogger.verbose('Re-filling form fields for Level 2 retry', { rowIndex, retryLevel: 'level-2' });
     await this._fillFields(fields);
-    
+
     botLogger.info('Attempting Level 2 retry submission', { rowIndex, attempt: 3, retryLevel: 'level-2' });
     success = await this.webformFiller.submitForm();
-    
+
     if (success) {
       botLogger.info('Level 2 retry succeeded', { rowIndex, attempt: 3, retryLevel: 'level-2', result: 'success' });
       return true;
     }
-    
-    botLogger.error('All submission attempts exhausted', { 
-      rowIndex, 
-      totalAttempts: 3, 
+
+    botLogger.error('All submission attempts exhausted', {
+      rowIndex,
+      totalAttempts: 3,
       retryLevels: ['initial', 'level-1', 'level-2'],
-      result: 'failed'
+      result: 'failed',
     });
     return false;
   }
@@ -493,15 +524,13 @@ export class BotOrchestrator {
    * @param config - Configuration object containing df, statusCol, completeVal, totalRows, and optional abortSignal
    * @returns Promise resolving to [submitted indices, failed rows]
    */
-  private async _processRowBatch(
-    config: {
-      df: Array<Record<string, unknown>>;
-      statusCol: string;
-      completeVal: unknown;
-      totalRows: number;
-      abortSignal?: AbortSignal;
-    }
-  ): Promise<[number[], Array<[number, string]>]> {
+  private async _processRowBatch(config: {
+    df: Array<Record<string, unknown>>;
+    statusCol: string;
+    completeVal: unknown;
+    totalRows: number;
+    abortSignal?: AbortSignal;
+  }): Promise<[number[], Array<[number, string]>]> {
     const { df, statusCol, completeVal, totalRows, abortSignal } = config;
     const submitted: number[] = [];
     const failed_rows: Array<[number, string]> = [];
@@ -518,7 +547,7 @@ export class BotOrchestrator {
           totalRows,
           status_col: statusCol,
           complete_val: completeVal,
-          ...(abortSignal && { abortSignal })
+          ...(abortSignal && { abortSignal }),
         });
 
         if (!success) {
@@ -539,7 +568,7 @@ export class BotOrchestrator {
         } catch (recoveryError) {
           botLogger.warn('Recovery navigation failed', {
             rowIndex: idx,
-            error: String(recoveryError)
+            error: String(recoveryError),
           });
         }
       }
@@ -563,7 +592,11 @@ export class BotOrchestrator {
    * @param abortSignal - Optional abort signal for cancellation support
    * @returns Promise resolving to detailed automation results
    */
-  private async _runAutomationInternal(df: Array<Record<string, unknown>>, creds: [string, string], abortSignal?: AbortSignal): Promise<AutomationResult> {
+  private async _runAutomationInternal(
+    df: Array<Record<string, unknown>>,
+    creds: [string, string],
+    abortSignal?: AbortSignal
+  ): Promise<AutomationResult> {
     const [email, password] = creds;
     const submitted: number[] = [];
     const failed_rows: Array<[number, string]> = [];
@@ -572,35 +605,35 @@ export class BotOrchestrator {
     // Register an abort handler that closes the browser immediately.
     // This limits “zombie” Chromium processes when a caller cancels mid-run.
     const cleanupAbortHandler = setupAbortHandler(abortSignal, () => this.close(), 'browser');
-    
+
     try {
       // Check if aborted before starting
       checkAborted(abortSignal, 'Automation');
-      
-      botLogger.info('Starting automation workflow', { 
-        totalRows: total_rows, 
-        email
+
+      botLogger.info('Starting automation workflow', {
+        totalRows: total_rows,
+        email,
       });
-      
+
       // Log in once (context 0). Row processing relies on the authenticated session.
       botLogger.info('Logging in to primary context', { progress: 10 });
       this.progress_callback?.(10, 'Logging in');
       const loginTimer = botLogger.startTimer('login');
       await this.loginManager.runLoginSteps(email, password, 0);
       loginTimer.done({ contextIndex: 0 });
-      
+
       // Check if aborted after login
       checkAborted(abortSignal, 'Automation');
-      
+
       botLogger.info('Login complete', { progress: 20 });
       this.progress_callback?.(20, 'Login complete');
 
       const status_col = ((this.cfg as Record<string, unknown>)['STATUS_COLUMN_NAME'] as string) ?? 'Status';
       const complete_val = (this.cfg as Record<string, unknown>)['STATUS_COMPLETE'] ?? 'Complete';
-      botLogger.info('Processing rows', { 
-        totalRows: total_rows, 
-        statusColumn: status_col, 
-        completeValue: complete_val
+      botLogger.info('Processing rows', {
+        totalRows: total_rows,
+        statusColumn: status_col,
+        completeValue: complete_val,
       });
 
       // Process rows sequentially: each row expects a stable form state and
@@ -622,12 +655,12 @@ export class BotOrchestrator {
       // Log final results
       const success_count = submitted.length;
       const failure_count = failed_rows.length;
-      const successRate = total_rows > 0 ? (success_count/total_rows*100).toFixed(1) : 'N/A';
-      botLogger.info('Automation workflow completed', { 
-        totalRows: total_rows, 
-        successCount: success_count, 
+      const successRate = total_rows > 0 ? ((success_count / total_rows) * 100).toFixed(1) : 'N/A';
+      botLogger.info('Automation workflow completed', {
+        totalRows: total_rows,
+        successCount: success_count,
         failureCount: failure_count,
-        successRate: successRate + '%'
+        successRate: `${successRate  }%`,
       });
 
       return {
@@ -682,7 +715,7 @@ export class BotOrchestrator {
   private async _fillFields(fields: Record<string, unknown>): Promise<void> {
     botLogger.verbose('Processing fields for form filling', {
       fieldCount: Object.keys(fields).length,
-      fields
+      fields,
     });
 
     for (const [fieldKey, value] of Object.entries(fields)) {
@@ -692,7 +725,7 @@ export class BotOrchestrator {
         value,
         allFields: fields,
         shouldProcessField: this._shouldProcessField.bind(this),
-        getProjectSpecificToolLocator: this.getProjectSpecificToolLocator.bind(this)
+        getProjectSpecificToolLocator: this.getProjectSpecificToolLocator.bind(this),
       };
 
       await FieldProcessor.processField(context);
@@ -707,7 +740,7 @@ export class BotOrchestrator {
    * @returns True if all required fields are valid, false otherwise
    */
   private _validateRequiredFields(fields: Record<string, unknown>, _idx: number): boolean {
-    for (const field_key of ['hours','project_code','date']) {
+    for (const field_key of ['hours', 'project_code', 'date']) {
       if (!(field_key in fields)) return false;
       const v = fields[field_key];
       if (v === null || v === undefined) return false;

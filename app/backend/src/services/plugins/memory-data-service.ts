@@ -1,22 +1,22 @@
 /**
  * @fileoverview Memory Data Service Plugin
- * 
+ *
  * In-memory implementation of IDataService for testing and development.
  * Data is stored in memory and lost when the application closes.
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025
  */
 
 import type {
-  IDataService,
-  TimesheetEntry,
-  SaveResult,
-  LoadResult,
-  DeleteResult,
   ArchiveResult,
-  DbTimesheetEntry
+  DbTimesheetEntry,
+  DeleteResult,
+  IDataService,
+  LoadResult,
+  SaveResult,
+  TimesheetEntry,
 } from '@sheetpilot/shared/contracts/IDataService';
 import type { PluginMetadata } from '@sheetpilot/shared/plugin-types';
 
@@ -28,7 +28,7 @@ export class MemoryDataService implements IDataService {
     name: 'memory',
     version: '1.1.2',
     author: 'Andrew Hughes',
-    description: 'In-memory data persistence service for testing'
+    description: 'In-memory data persistence service for testing',
   };
 
   private draftEntries: TimesheetEntry[] = [];
@@ -50,10 +50,10 @@ export class MemoryDataService implements IDataService {
       if (!entry.taskDescription) {
         return { success: false, error: 'Task description is required' };
       }
-      
+
       // If entry has an id, update existing entry
       if (entry.id !== undefined && entry.id !== null) {
-        const index = this.draftEntries.findIndex(e => e.id === entry.id);
+        const index = this.draftEntries.findIndex((e) => e.id === entry.id);
         if (index >= 0) {
           this.draftEntries[index] = { ...entry };
           return { success: true, changes: 1 };
@@ -69,7 +69,7 @@ export class MemoryDataService implements IDataService {
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       };
     }
   }
@@ -80,16 +80,14 @@ export class MemoryDataService implements IDataService {
   public async loadDraft(): Promise<LoadResult> {
     try {
       // Return one blank row if no entries, otherwise return the entries
-      const entriesToReturn = this.draftEntries.length > 0 
-        ? [...this.draftEntries] 
-        : [{}] as TimesheetEntry[];
-      
+      const entriesToReturn = this.draftEntries.length > 0 ? [...this.draftEntries] : ([{}] as TimesheetEntry[]);
+
       return { success: true, entries: entriesToReturn };
     } catch (error) {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Could not load draft timesheet entries',
-        entries: []
+        entries: [],
       };
     }
   }
@@ -103,24 +101,31 @@ export class MemoryDataService implements IDataService {
         return { success: false, error: 'Valid ID is required' };
       }
 
-      const index = this.draftEntries.findIndex(e => e.id === id);
+      const index = this.draftEntries.findIndex((e) => e.id === id);
       if (index < 0) {
         return { success: false, error: 'Entry not found' };
       }
-      
+
       this.draftEntries.splice(index, 1);
       return { success: true, changes: 1 };
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Could not delete draft timesheet entry'
+        error: error instanceof Error ? error.message : 'Could not delete draft timesheet entry',
       };
     }
   }
 
   private validateArchiveEntry(entry: TimesheetEntry | undefined): { valid: boolean; error?: string } {
-    if (!entry || !entry.id || !entry.date || !entry.timeIn || !entry.timeOut || 
-        !entry.project || !entry.taskDescription) {
+    if (
+      !entry ||
+      !entry.id ||
+      !entry.date ||
+      !entry.timeIn ||
+      !entry.timeOut ||
+      !entry.project ||
+      !entry.taskDescription
+    ) {
       return { valid: false, error: 'Entry missing required fields' };
     }
     return { valid: true };
@@ -138,7 +143,7 @@ export class MemoryDataService implements IDataService {
       detail_charge_code: entry.chargeCode || null,
       task_description: entry.taskDescription,
       status: 'submitted',
-      submitted_at: new Date().toISOString()
+      submitted_at: new Date().toISOString(),
     };
   }
 
@@ -151,18 +156,22 @@ export class MemoryDataService implements IDataService {
         return { success: false, error: 'Valid ID is required' };
       }
 
-      const index = this.draftEntries.findIndex(e => e.id === id);
+      const index = this.draftEntries.findIndex((e) => e.id === id);
       if (index < 0) {
         return { success: false, error: 'Entry not found' };
       }
-      
+
       const entry = this.draftEntries[index];
-      
+
       const validation = this.validateArchiveEntry(entry);
       if (!validation.valid) {
         return { success: false, error: validation.error! };
       }
-      
+
+      if (!entry) {
+        return { success: false, error: 'Entry not found' };
+      }
+
       const dbEntry = this.convertToDbEntry(entry);
       this.archiveEntries.push(dbEntry);
       this.draftEntries.splice(index, 1);
@@ -170,7 +179,7 @@ export class MemoryDataService implements IDataService {
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Could not archive entry'
+        error: error instanceof Error ? error.message : 'Could not archive entry',
       };
     }
   }
@@ -185,7 +194,7 @@ export class MemoryDataService implements IDataService {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Could not load archive',
-        entries: []
+        entries: [],
       };
     }
   }
@@ -218,13 +227,13 @@ export class MemoryDataService implements IDataService {
         success: true,
         data: {
           timesheet: [...this.archiveEntries],
-          credentials: []
-        }
+          credentials: [],
+        },
       };
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Could not load archive data'
+        error: error instanceof Error ? error.message : 'Could not load archive data',
       };
     }
   }
@@ -239,7 +248,7 @@ export class MemoryDataService implements IDataService {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Could not get timesheet entries',
-        entries: []
+        entries: [],
       };
     }
   }
@@ -260,4 +269,3 @@ export class MemoryDataService implements IDataService {
     this.nextId = 1;
   }
 }
-

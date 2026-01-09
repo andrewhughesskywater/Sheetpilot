@@ -1,16 +1,16 @@
 /**
  * @fileoverview Timesheet Validation Logic
- * 
+ *
  * Pure validation functions for timesheet entries.
  * Extracted from TimesheetGrid component for reusability.
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025
  */
 
-import { projectNeedsTools, toolNeedsChargeCode } from './dropdown-logic';
 import { validateQuarterAvailability } from '../services/bot/src/config/quarter_config';
+import { projectNeedsTools, toolNeedsChargeCode } from './dropdown-logic';
 
 /**
  * Timesheet row interface
@@ -41,11 +41,11 @@ function isValidYear(year: number): boolean {
 function parseUSDateFormat(dateStr: string): { month: number; day: number; year: number } | null {
   const usFormatMatch = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if (!usFormatMatch) return null;
-  
+
   const month = parseInt(usFormatMatch[1]!, 10);
   const day = parseInt(usFormatMatch[2]!, 10);
   const year = parseInt(usFormatMatch[3]!, 10);
-  
+
   return { month, day, year };
 }
 
@@ -57,29 +57,29 @@ export function isValidDate(dateStr?: string): boolean {
   // Check if input is a string type
   if (typeof dateStr !== 'string') return false;
   if (!dateStr) return false;
-  
+
   // Check for MM/DD/YYYY or M/D/YYYY format (slash-separated only)
   const parsed = parseUSDateFormat(dateStr);
   if (!parsed) return false;
-  
+
   // Validate ranges
   if (!isValidMonth(parsed.month)) return false;
   if (!isValidDay(parsed.day)) return false;
   if (!isValidYear(parsed.year)) return false;
-  
+
   // Create date object using ISO format to avoid locale issues
   // Note: month is 0-indexed in Date constructor
   const date = new Date(parsed.year, parsed.month - 1, parsed.day);
-  
+
   // Check if the date is valid
   if (isNaN(date.getTime())) return false;
-  
+
   // Verify the date components match what we parsed
   // This catches issues like Feb 29 in non-leap years
   const actualMonth = date.getMonth() + 1; // getMonth() returns 0-11
   const actualDay = date.getDate();
   const actualYear = date.getFullYear();
-  
+
   return actualMonth === parsed.month && actualDay === parsed.day && actualYear === parsed.year;
 }
 
@@ -87,10 +87,13 @@ export function isValidDate(dateStr?: string): boolean {
  * Check if time string has invalid characters
  */
 function hasInvalidTimeCharacters(timeStr: string): boolean {
-  return timeStr.includes('-') || // Negative values
-         timeStr.includes('.') || // Decimal notation
-         timeStr.includes('e') || timeStr.includes('E') || // Scientific notation
-         timeStr.length > 5; // Too long (likely invalid)
+  return (
+    timeStr.includes('-') || // Negative values
+    timeStr.includes('.') || // Decimal notation
+    timeStr.includes('e') ||
+    timeStr.includes('E') || // Scientific notation
+    timeStr.length > 5
+  ); // Too long (likely invalid)
 }
 
 /**
@@ -99,16 +102,16 @@ function hasInvalidTimeCharacters(timeStr: string): boolean {
 function normalizeTimeFormat(timeStr: string): string | null {
   const parts = timeStr.split(':');
   if (parts.length !== 2) return null;
-  
+
   const [hours, minutes] = parts;
   if (!hours || minutes === undefined) return null;
-  
+
   const hoursNum = parseInt(hours, 10);
   const minutesNum = parseInt(minutes, 10);
   if (isNaN(hoursNum) || isNaN(minutesNum) || hoursNum >= 24 || minutesNum >= 60) {
     return null;
   }
-  
+
   const normalizedHours = hours.padStart(2, '0');
   const normalizedMinutes = minutes.padStart(2, '0');
   return `${normalizedHours}:${normalizedMinutes}`;
@@ -131,7 +134,7 @@ function formatFourDigitTime(numericOnly: string, original: string): string {
   const minutes = numericOnly.substring(2, 4);
   const hoursNum = parseInt(hours, 10);
   const minutesNum = parseInt(minutes, 10);
-  
+
   if (hoursNum >= 24 || minutesNum >= 60) {
     return original; // Invalid time, return original
   }
@@ -165,26 +168,26 @@ function formatNumericTime(numericOnly: string, original: string): string {
 export function formatTimeInput(timeStr: unknown): string {
   // Convert numbers to strings first
   const timeString = typeof timeStr === 'number' ? String(timeStr) : timeStr;
-  
+
   if (typeof timeString !== 'string') return String(timeString || '');
-  
+
   // Handle special edge cases - return original for invalid inputs
   if (hasInvalidTimeCharacters(timeString)) {
     return timeString;
   }
-  
+
   // If already in HH:MM format, normalize it to ensure proper padding
   if (timeString.includes(':')) {
     const normalized = normalizeTimeFormat(timeString);
     return normalized || timeString;
   }
-  
+
   // Remove any non-numeric characters for pure numeric input
   const numericOnly = timeString.replace(/\D/g, '');
-  
+
   // If no numeric content, return original
   if (!numericOnly) return timeString;
-  
+
   return formatNumericTime(numericOnly, timeString);
 }
 
@@ -193,18 +196,18 @@ export function formatTimeInput(timeStr: unknown): string {
  */
 export function isValidTime(timeStr?: string): boolean {
   if (!timeStr) return false;
-  
+
   // First try to format the input
   const formattedTime = formatTimeInput(timeStr);
-  
+
   // Check if it matches HH:MM format
   const timeRegex = /^([01]?[0-9]|2[0-3]):([0-5][0-9])$/;
   if (!timeRegex.test(formattedTime)) return false;
-  
+
   const [hours, minutes] = formattedTime.split(':').map(Number);
   if (hours === undefined || minutes === undefined) return false;
   const totalMinutes = hours * 60 + minutes;
-  
+
   // Check if it's a multiple of 15 minutes
   return totalMinutes % 15 === 0;
 }
@@ -214,17 +217,17 @@ export function isValidTime(timeStr?: string): boolean {
  */
 export function isTimeOutAfterTimeIn(timeIn?: string, timeOut?: string): boolean {
   if (!timeIn || !timeOut) return true; // Let other validations handle missing values
-  
+
   const [inHours, inMinutes] = timeIn.split(':').map(Number);
   const [outHours, outMinutes] = timeOut.split(':').map(Number);
-  
+
   if (inHours === undefined || inMinutes === undefined || outHours === undefined || outMinutes === undefined) {
     return true; // Let other validations handle invalid time formats
   }
-  
+
   const inTotalMinutes = inHours * 60 + inMinutes;
   const outTotalMinutes = outHours * 60 + outMinutes;
-  
+
   return outTotalMinutes > inTotalMinutes;
 }
 
@@ -246,13 +249,13 @@ interface ValidateFieldConfig {
 function validateDateField(value: unknown): string | null {
   if (!value) return 'Date is required - please enter a date';
   if (!isValidDate(String(value))) return 'Date must be like 01/15/2024 or 2024-01-15';
-  
+
   // Convert mm/dd/yyyy to yyyy-mm-dd for quarter validation
   const dateStr = String(value);
   const [month, day, year] = dateStr.split('/');
   if (!month || !day || !year) return 'Date must be like 01/15/2024';
   const isoDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-  
+
   // Validate quarter availability
   const quarterError = validateQuarterAvailability(isoDate);
   return quarterError || null;
@@ -302,7 +305,11 @@ function validateToolField(value: unknown, project?: string): string | null {
 /**
  * Validate chargeCode field
  */
-function validateChargeCodeField(value: unknown, tool: string | null | undefined, chargeCodes: string[]): string | null {
+function validateChargeCodeField(
+  value: unknown,
+  tool: string | null | undefined,
+  chargeCodes: string[]
+): string | null {
   if (!toolNeedsChargeCode(tool || undefined)) {
     // Charge code is N/A for this tool, normalize to null
     return null;
@@ -350,4 +357,3 @@ function validateFieldInternal(config: ValidateFieldConfig): string | null {
 export function validateField(config: ValidateFieldConfig): string | null {
   return validateFieldInternal(config);
 }
-

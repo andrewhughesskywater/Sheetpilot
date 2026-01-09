@@ -1,9 +1,9 @@
 /**
  * @fileoverview Credential Service Contract
- * 
+ *
  * Defines the interface for credential management operations.
  * Any credential storage implementation must implement this interface.
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025
@@ -92,4 +92,3 @@ export interface ICredentialService extends IPlugin {
    */
   delete(service: string): Promise<CredentialResult>;
 }
-

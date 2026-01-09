@@ -5,7 +5,7 @@ import { ipcMain } from 'electron';
 vi.mock('@/ipc/handlers/timesheet/main-window', () => ({
   isTrustedIpcSender: vi.fn(() => true),
   setMainWindow: vi.fn(),
-  emitSubmissionProgress: vi.fn()
+  emitSubmissionProgress: vi.fn(),
 }));
 
 import { registerAdminHandlers } from '@/ipc/admin-handlers';
@@ -14,15 +14,15 @@ import * as repositories from '@/repositories';
 // Mock electron
 vi.mock('electron', () => ({
   ipcMain: {
-    handle: vi.fn()
-  }
+    handle: vi.fn(),
+  },
 }));
 
 // Mock repositories
 vi.mock('@/repositories', () => ({
   validateSession: vi.fn(),
   clearAllCredentials: vi.fn(),
-  rebuildDatabase: vi.fn()
+  rebuildDatabase: vi.fn(),
 }));
 
 // Mock logger
@@ -31,13 +31,13 @@ vi.mock('../../../shared/logger', () => ({
     security: vi.fn(),
     audit: vi.fn(),
     info: vi.fn(),
-    error: vi.fn()
-  }
+    error: vi.fn(),
+  },
 }));
 
 // Mock validation
 vi.mock('@/validation/validate-ipc-input', () => ({
-  validateInput: vi.fn((schema, data) => ({ success: true, data }))
+  validateInput: vi.fn((schema, data) => ({ success: true, data })),
 }));
 
 describe('admin-handlers', () => {
@@ -61,14 +61,17 @@ describe('admin-handlers', () => {
       vi.mocked(repositories.validateSession).mockReturnValue({
         valid: true,
         email: 'admin@example.com',
-        isAdmin: true
+        isAdmin: true,
       });
 
       vi.mocked(repositories.clearAllCredentials).mockReturnValue(undefined);
 
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'admin:clearCredentials'
-      )?.[1] as (event: unknown, token: string) => Promise<{ success: boolean; error?: string }>;
+      const handler = vi
+        .mocked(ipcMain.handle)
+        .mock.calls.find((call) => call[0] === 'admin:clearCredentials')?.[1] as (
+        event: unknown,
+        token: string
+      ) => Promise<{ success: boolean; error?: string }>;
 
       const result = await handler({}, 'admin-token');
 
@@ -82,12 +85,15 @@ describe('admin-handlers', () => {
       vi.mocked(repositories.validateSession).mockReturnValue({
         valid: true,
         email: 'user@example.com',
-        isAdmin: false
+        isAdmin: false,
       });
 
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'admin:clearCredentials'
-      )?.[1] as (event: unknown, token: string) => Promise<{ success: boolean; error?: string }>;
+      const handler = vi
+        .mocked(ipcMain.handle)
+        .mock.calls.find((call) => call[0] === 'admin:clearCredentials')?.[1] as (
+        event: unknown,
+        token: string
+      ) => Promise<{ success: boolean; error?: string }>;
 
       const result = await handler({}, 'user-token');
 
@@ -100,12 +106,15 @@ describe('admin-handlers', () => {
       registerAdminHandlers();
 
       vi.mocked(repositories.validateSession).mockReturnValue({
-        valid: false
+        valid: false,
       });
 
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'admin:clearCredentials'
-      )?.[1] as (event: unknown, token: string) => Promise<{ success: boolean; error?: string }>;
+      const handler = vi
+        .mocked(ipcMain.handle)
+        .mock.calls.find((call) => call[0] === 'admin:clearCredentials')?.[1] as (
+        event: unknown,
+        token: string
+      ) => Promise<{ success: boolean; error?: string }>;
 
       const result = await handler({}, 'invalid-token');
 
@@ -119,16 +128,19 @@ describe('admin-handlers', () => {
       vi.mocked(repositories.validateSession).mockReturnValue({
         valid: true,
         email: 'admin@example.com',
-        isAdmin: true
+        isAdmin: true,
       });
 
       vi.mocked(repositories.clearAllCredentials).mockImplementation(() => {
         throw new Error('Clear failed');
       });
 
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'admin:clearCredentials'
-      )?.[1] as (event: unknown, token: string) => Promise<{ success: boolean; error?: string }>;
+      const handler = vi
+        .mocked(ipcMain.handle)
+        .mock.calls.find((call) => call[0] === 'admin:clearCredentials')?.[1] as (
+        event: unknown,
+        token: string
+      ) => Promise<{ success: boolean; error?: string }>;
 
       const result = await handler({}, 'admin-token');
 
@@ -144,14 +156,15 @@ describe('admin-handlers', () => {
       vi.mocked(repositories.validateSession).mockReturnValue({
         valid: true,
         email: 'admin@example.com',
-        isAdmin: true
+        isAdmin: true,
       });
 
       vi.mocked(repositories.rebuildDatabase).mockReturnValue(undefined);
 
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'admin:rebuildDatabase'
-      )?.[1] as (event: unknown, token: string) => Promise<{ success: boolean; error?: string }>;
+      const handler = vi.mocked(ipcMain.handle).mock.calls.find((call) => call[0] === 'admin:rebuildDatabase')?.[1] as (
+        event: unknown,
+        token: string
+      ) => Promise<{ success: boolean; error?: string }>;
 
       const result = await handler({}, 'admin-token');
 
@@ -165,12 +178,13 @@ describe('admin-handlers', () => {
       vi.mocked(repositories.validateSession).mockReturnValue({
         valid: true,
         email: 'user@example.com',
-        isAdmin: false
+        isAdmin: false,
       });
 
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'admin:rebuildDatabase'
-      )?.[1] as (event: unknown, token: string) => Promise<{ success: boolean; error?: string }>;
+      const handler = vi.mocked(ipcMain.handle).mock.calls.find((call) => call[0] === 'admin:rebuildDatabase')?.[1] as (
+        event: unknown,
+        token: string
+      ) => Promise<{ success: boolean; error?: string }>;
 
       const result = await handler({}, 'user-token');
 
@@ -185,16 +199,17 @@ describe('admin-handlers', () => {
       vi.mocked(repositories.validateSession).mockReturnValue({
         valid: true,
         email: 'admin@example.com',
-        isAdmin: true
+        isAdmin: true,
       });
 
       vi.mocked(repositories.rebuildDatabase).mockImplementation(() => {
         throw new Error('Rebuild failed');
       });
 
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'admin:rebuildDatabase'
-      )?.[1] as (event: unknown, token: string) => Promise<{ success: boolean; error?: string }>;
+      const handler = vi.mocked(ipcMain.handle).mock.calls.find((call) => call[0] === 'admin:rebuildDatabase')?.[1] as (
+        event: unknown,
+        token: string
+      ) => Promise<{ success: boolean; error?: string }>;
 
       const result = await handler({}, 'admin-token');
 
@@ -203,4 +218,3 @@ describe('admin-handlers', () => {
     });
   });
 });
-

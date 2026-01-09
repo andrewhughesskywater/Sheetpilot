@@ -1,12 +1,13 @@
-import Dialog from '@mui/material/Dialog';
-import DialogTitle from '@mui/material/DialogTitle';
-import DialogContent from '@mui/material/DialogContent';
-import DialogActions from '@mui/material/DialogActions';
-import Typography from '@mui/material/Typography';
-import LinearProgress from '@mui/material/LinearProgress';
+import './UpdateDialog.css';
+
 import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
-import './UpdateDialog.css';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogTitle from '@mui/material/DialogTitle';
+import LinearProgress from '@mui/material/LinearProgress';
+import Typography from '@mui/material/Typography';
 
 interface UpdateDialogProps {
   open: boolean;
@@ -17,8 +18,8 @@ interface UpdateDialogProps {
 
 function UpdateDialog({ open, version, progress, status }: UpdateDialogProps) {
   return (
-    <Dialog 
-      open={open} 
+    <Dialog
+      open={open}
       disableEscapeKeyDown
       disableRestoreFocus
       onClose={(_event, reason) => {
@@ -32,21 +33,15 @@ function UpdateDialog({ open, version, progress, status }: UpdateDialogProps) {
       fullWidth
       PaperProps={{
         style: {
-          pointerEvents: 'auto'
-        }
+          pointerEvents: 'auto',
+        },
       }}
     >
       <DialogTitle>
         <Box display="flex" alignItems="center" gap={2}>
-          {status === 'downloading' && (
-            <CircularProgress size={24} />
-          )}
-          {status === 'installing' && (
-            <CircularProgress size={24} />
-          )}
-          <Typography variant="h6">
-            {status === 'downloading' ? 'Downloading Update' : 'Installing Update'}
-          </Typography>
+          {status === 'downloading' && <CircularProgress size={24} />}
+          {status === 'installing' && <CircularProgress size={24} />}
+          <Typography variant="h6">{status === 'downloading' ? 'Downloading Update' : 'Installing Update'}</Typography>
         </Box>
       </DialogTitle>
       <DialogContent>
@@ -57,24 +52,20 @@ function UpdateDialog({ open, version, progress, status }: UpdateDialogProps) {
             </Typography>
           )}
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            {status === 'downloading' 
+            {status === 'downloading'
               ? 'Please wait while the update is downloaded. Do not close this window.'
               : 'The update is being installed. The application will restart shortly.'}
           </Typography>
-          
+
           {status === 'downloading' && progress !== undefined && (
             <>
-              <LinearProgress 
-                variant="determinate" 
-                value={progress} 
-                sx={{ height: 8, borderRadius: 4, mb: 1 }}
-              />
+              <LinearProgress variant="determinate" value={progress} sx={{ height: 8, borderRadius: 4, mb: 1 }} />
               <Typography variant="caption" color="text.secondary" align="center" display="block">
                 {progress.toFixed(1)}%
               </Typography>
             </>
           )}
-          
+
           {status === 'installing' && (
             <Box display="flex" justifyContent="center" alignItems="center" sx={{ my: 2 }}>
               <CircularProgress size={40} />
@@ -89,7 +80,6 @@ function UpdateDialog({ open, version, progress, status }: UpdateDialogProps) {
       </DialogActions>
     </Dialog>
   );
-};
+}
 
 export default UpdateDialog;
-

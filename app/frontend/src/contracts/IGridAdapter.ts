@@ -1,9 +1,9 @@
 /**
  * @fileoverview Grid Adapter Contract
- * 
+ *
  * Adapter pattern for different grid library implementations.
  * Provides a common interface for grid library operations.
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025
@@ -128,4 +128,3 @@ export interface IGridAdapter {
    */
   getInstance?(): unknown;
 }
-

@@ -62,7 +62,7 @@ export class PerWindowConsoleFilter {
           line,
           sourceId,
           webContentsId: this.webContentsId,
-          deduplicatedCount: entry.count
+          deduplicatedCount: entry.count,
         });
       }
 
@@ -73,7 +73,7 @@ export class PerWindowConsoleFilter {
     this.cache.set(key, {
       key,
       timestamp: Date.now(),
-      count: 1
+      count: 1,
     });
 
     // Evict oldest entry if cache is full (LRU)

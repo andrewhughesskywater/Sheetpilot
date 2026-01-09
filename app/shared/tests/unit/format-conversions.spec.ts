@@ -4,7 +4,7 @@ import {
   formatMinutesToTime,
   convertDateToUSFormat,
   convertDateToISOFormat,
-  normalizeDateToISO
+  normalizeDateToISO,
 } from '@/utils/format-conversions';
 
 describe('format-conversions', () => {
@@ -132,5 +132,3 @@ describe('format-conversions', () => {
     });
   });
 });
-
-

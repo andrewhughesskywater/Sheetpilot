@@ -1,10 +1,10 @@
-import { ipcMain } from 'electron';
-import * as path from 'path';
-import * as fs from 'fs';
-import { app } from 'electron';
-import { ipcLogger } from './utils/logger';
 import { setBrowserHeadless } from '@sheetpilot/shared/constants';
+import { app,ipcMain  } from 'electron';
+import * as fs from 'fs';
+import * as path from 'path';
+
 import { isTrustedIpcSender } from './handlers/timesheet/main-window';
+import { ipcLogger } from './utils/logger';
 
 /**
  * Settings Handlers
@@ -28,9 +28,9 @@ const loadSettings = (): AppSettings => {
       return JSON.parse(data);
     }
   } catch (err) {
-    ipcLogger.error('Could not load settings', { 
-      settingsPath, 
-      error: err instanceof Error ? err.message : String(err) 
+    ipcLogger.error('Could not load settings', {
+      settingsPath,
+      error: err instanceof Error ? err.message : String(err),
     });
   }
   return {};
@@ -41,9 +41,9 @@ const saveSettings = (settings: AppSettings): void => {
   try {
     fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2), 'utf-8');
   } catch (err) {
-    ipcLogger.error('Could not save settings', { 
-      settingsPath, 
-      error: err instanceof Error ? err.message : String(err) 
+    ipcLogger.error('Could not save settings', {
+      settingsPath,
+      error: err instanceof Error ? err.message : String(err),
     });
   }
 };
@@ -54,21 +54,21 @@ export function registerSettingsHandlers(): void {
     const settings = loadSettings();
     // Default to false (headless OFF = visible browser) for better user experience
     const headlessValue = settings.browserHeadless ?? false;
-    
+
     // Update the shared constant
     setBrowserHeadless(headlessValue);
-    
+
     // Log initialization message
-    ipcLogger.info('Initialized browserHeadless setting on startup', { 
-      savedValue: settings.browserHeadless, 
-      effectiveValue: headlessValue
+    ipcLogger.info('Initialized browserHeadless setting on startup', {
+      savedValue: settings.browserHeadless,
+      effectiveValue: headlessValue,
     });
   } catch (err) {
-    ipcLogger.error('Could not initialize settings on startup', { 
-      error: err instanceof Error ? err.message : String(err) 
+    ipcLogger.error('Could not initialize settings on startup', {
+      error: err instanceof Error ? err.message : String(err),
     });
   }
-  
+
   ipcMain.handle('settings:get', async (event, key: string) => {
     if (!isTrustedIpcSender(event)) {
       return { success: false, error: 'Could not get setting: unauthorized request' };
@@ -77,9 +77,9 @@ export function registerSettingsHandlers(): void {
       const settings = loadSettings();
       return { success: true, value: settings[key as keyof AppSettings] };
     } catch (err) {
-      return { 
-        success: false, 
-        error: err instanceof Error ? err.message : 'Unknown error' 
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Unknown error',
       };
     }
   });
@@ -93,44 +93,44 @@ export function registerSettingsHandlers(): void {
       const settings = loadSettings();
       (settings as Record<string, unknown>)[key] = value;
       saveSettings(settings);
-      
+
       // Verify the setting was saved by reloading
       const verifiedSettings = loadSettings();
       const savedCorrectly = verifiedSettings[key as keyof AppSettings] === value;
-      
-      ipcLogger.info('Setting saved successfully', { 
-        key, 
-        value, 
+
+      ipcLogger.info('Setting saved successfully', {
+        key,
+        value,
         savedValue: verifiedSettings[key as keyof AppSettings],
         verified: savedCorrectly,
-        settingsPath 
+        settingsPath,
       });
-      
+
       // If headless mode changed, update the shared constant immediately
       if (key === 'browserHeadless') {
         setBrowserHeadless(Boolean(value));
-        ipcLogger.info('Updated browserHeadless setting', { 
+        ipcLogger.info('Updated browserHeadless setting', {
           toggleValue: value,
-          meaning: value ? 'Browser will be INVISIBLE (headless)' : 'Browser will be VISIBLE (non-headless)'
+          meaning: value ? 'Browser will be INVISIBLE (headless)' : 'Browser will be VISIBLE (non-headless)',
         });
       }
-      
+
       if (!savedCorrectly) {
         throw new Error(
           `Setting was not saved correctly. Expected ${String(value)}, got ${String(verifiedSettings[key as keyof AppSettings])}`
         );
       }
-      
+
       return { success: true };
     } catch (err) {
-      ipcLogger.error('Could not save setting', { 
-        key, 
-        value, 
-        error: err instanceof Error ? err.message : String(err) 
+      ipcLogger.error('Could not save setting', {
+        key,
+        value,
+        error: err instanceof Error ? err.message : String(err),
       });
-      return { 
-        success: false, 
-        error: err instanceof Error ? err.message : 'Unknown error' 
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Unknown error',
       };
     }
   });
@@ -143,11 +143,10 @@ export function registerSettingsHandlers(): void {
       const settings = loadSettings();
       return { success: true, settings };
     } catch (err) {
-      return { 
-        success: false, 
-        error: err instanceof Error ? err.message : 'Unknown error' 
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : 'Unknown error',
       };
     }
   });
 }
-

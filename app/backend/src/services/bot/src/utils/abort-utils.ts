@@ -1,8 +1,8 @@
 /**
  * @fileoverview Abort Signal Utilities
- * 
+ *
  * Shared utilities for handling abort signals in bot operations.
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025
@@ -16,7 +16,10 @@ import { botLogger } from '../../utils/logger';
  * @param context - Context string for logging (e.g., 'submission', 'automation')
  * @throws Error if signal is aborted
  */
-export function checkAborted(abortSignal: AbortSignal | {aborted: boolean; reason?: unknown} | undefined, context: string): void {
+export function checkAborted(
+  abortSignal: AbortSignal | { aborted: boolean; reason?: unknown } | undefined,
+  context: string
+): void {
   if (abortSignal?.aborted) {
     const message = `${context} was cancelled`;
     botLogger.info(`${context} aborted before starting`);
@@ -37,7 +40,7 @@ export function createCancelledResult(entryCount: number) {
     totalProcessed: entryCount,
     successCount: 0,
     removedCount: 0,
-    error: 'Submission was cancelled'
+    error: 'Submission was cancelled',
   };
 }
 
@@ -59,10 +62,10 @@ export function setupAbortHandler(
 
   const abortHandler = () => {
     botLogger.info('Abort signal received, closing resource immediately', { resourceName });
-    closeResource().catch(err => {
-      botLogger.error('Could not close resource during abort', { 
+    closeResource().catch((err) => {
+      botLogger.error('Could not close resource during abort', {
         resourceName,
-        error: err instanceof Error ? err.message : String(err) 
+        error: err instanceof Error ? err.message : String(err),
       });
     });
   };
@@ -73,4 +76,3 @@ export function setupAbortHandler(
     abortSignal.removeEventListener('abort', abortHandler);
   };
 }
-

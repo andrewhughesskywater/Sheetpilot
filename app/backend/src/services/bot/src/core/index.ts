@@ -29,17 +29,19 @@
  */
 
 // Core automation classes
-export { BotOrchestrator, TimesheetBot, type AutomationResult } from './bot_orchestation';
-import { BotOrchestrator } from './bot_orchestation';
-import * as Cfg from '../config/automation_config';
 import { appSettings } from '@sheetpilot/shared/constants';
+
 import { botLogger } from '../../utils/logger';
+import * as Cfg from '../config/automation_config';
+import { BotOrchestrator } from './bot_orchestation';
+
+export { type AutomationResult,BotOrchestrator, TimesheetBot } from './bot_orchestation';
 
 // Authentication and login management
-export { LoginManager, BotNavigationError } from '../utils/authentication_flow';
+export { BotNavigationError,LoginManager } from '../utils/authentication_flow';
 
 // Browser automation and form interaction
-export { WebformFiller, BotNotStartedError } from '../browser/webform_flow';
+export { BotNotStartedError,WebformFiller } from '../browser/webform_flow';
 
 // Configuration constants and utilities
 export * from '../config/automation_config';
@@ -51,10 +53,15 @@ interface RunTimesheetConfig {
   rows: Array<Record<string, unknown>>;
   email: string;
   password: string;
-  formConfig: { BASE_URL: string; FORM_ID: string; SUBMISSION_ENDPOINT: string; SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[] };
+  formConfig: {
+    BASE_URL: string;
+    FORM_ID: string;
+    SUBMISSION_ENDPOINT: string;
+    SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[];
+  };
   progressCallback?: (percent: number, message: string) => void;
   headless?: boolean;
-  abortSignal?: AbortSignal | {aborted: boolean; reason?: unknown};
+  abortSignal?: AbortSignal | { aborted: boolean; reason?: unknown };
 }
 
 type RunTimesheetResult = {
@@ -140,20 +147,20 @@ export async function runTimesheet(config: RunTimesheetConfig): Promise<{
   // Prefer the explicit parameter, otherwise use the UI-controlled setting.
   // `appSettings.browserHeadless` updates at runtime when a user changes Settings.
   const useHeadless = headless !== undefined ? headless : appSettings.browserHeadless;
-  botLogger.info('Initializing bot orchestrator', { 
+  botLogger.info('Initializing bot orchestrator', {
     headlessParam: headless,
-    useHeadless, 
+    useHeadless,
     appSettingsBrowserHeadless: appSettings.browserHeadless,
-    hasProgressCallback: !!progressCallback 
+    hasProgressCallback: Boolean(progressCallback),
   });
   const bot = new BotOrchestrator({
     injected_config: Cfg,
     formConfig,
     headless: useHeadless,
     browser: null,
-    progress_callback: progressCallback
+    ...(progressCallback && { progress_callback: progressCallback }),
   });
-  
+
   try {
     if (isAborted(abortSignal)) {
       botLogger.info('Automation aborted before starting');
@@ -164,22 +171,26 @@ export async function runTimesheet(config: RunTimesheetConfig): Promise<{
       botLogger.info('No rows to process, returning success immediately');
       return emptyRunResult();
     }
-    
+
     // Initialize the browser before running automation
     botLogger.info('Starting browser initialization', { rowCount: rows.length });
     await bot.start();
     botLogger.info('Browser started successfully');
-    
+
     if (isAborted(abortSignal)) {
       botLogger.info('Automation aborted after browser start');
       return cancelledRunResult('Automation was cancelled');
     }
-    
+
     botLogger.info('Starting automation', { rowCount: rows.length });
     const actualAbortSignal = resolveAbortSignal(abortSignal);
     const [success, submitted_indices, errors] = await bot.runAutomation(rows, [email, password], actualAbortSignal);
-    botLogger.info('Automation completed', { success, submittedCount: submitted_indices.length, errorCount: errors.length });
-    
+    botLogger.info('Automation completed', {
+      success,
+      submittedCount: submitted_indices.length,
+      errorCount: errors.length,
+    });
+
     return { ok: success, submitted: submitted_indices, errors };
   } catch (error) {
     if (isCancellationLikeError(error)) {
@@ -192,7 +203,7 @@ export async function runTimesheet(config: RunTimesheetConfig): Promise<{
       botLogger.info('Automation was cancelled');
       return cancelledRunResult('Automation was cancelled');
     }
-    
+
     botLogger.error('Error during automation', { error: error instanceof Error ? error.message : String(error) });
     // Re-throw the error so it can be properly handled by the calling code
     throw error;

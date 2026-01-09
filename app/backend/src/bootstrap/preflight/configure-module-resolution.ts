@@ -30,11 +30,16 @@ export function configureBackendNodeModuleResolution(params: {
   // This allows the compiled main.js to load the compiled shared code
   const Module = require('module');
   type ResolveFilenameOptions = { paths?: string[] };
-  type ResolveFilename = (request: string, parent: unknown, isMain: boolean, options?: ResolveFilenameOptions) => string;
+  type ResolveFilename = (
+    request: string,
+    parent: unknown,
+    isMain: boolean,
+    options?: ResolveFilenameOptions
+  ) => string;
   const originalResolveFilename = Module._resolveFilename as unknown as ResolveFilename;
   const fs = require('fs') as typeof import('fs');
-  
-  Module._resolveFilename = function(
+
+  Module._resolveFilename = function (
     request: string,
     parent: unknown,
     isMain: boolean,
@@ -46,9 +51,16 @@ export function configureBackendNodeModuleResolution(params: {
       // Map @/ aliases to backend/src paths in compiled output
       const compiledDir = pathModule.resolve(
         params.backendDirname,
-        '..', '..', '..', '..', 'build', 'dist', 'backend', 'src'
+        '..',
+        '..',
+        '..',
+        '..',
+        'build',
+        'dist',
+        'backend',
+        'src'
       );
-      
+
       // Handle specific aliases that map to index files
       let targetPath: string;
       if (subpath === 'bootstrap') {
@@ -63,32 +75,29 @@ export function configureBackendNodeModuleResolution(params: {
         targetPath = pathModule.join(compiledDir, 'preload', 'index.js');
       } else {
         // Handle subpaths like @/bootstrap/env, @/ipc/handlers, etc.
-        targetPath = pathModule.join(compiledDir, subpath + '.js');
+        targetPath = pathModule.join(compiledDir, `${subpath  }.js`);
       }
-      
+
       if (fs.existsSync(targetPath)) {
         return targetPath;
       }
-      
+
       // Try as directory with index.js
       const indexPath = pathModule.join(compiledDir, subpath, 'index.js');
       if (fs.existsSync(indexPath)) {
         return indexPath;
       }
     }
-    
+
     // If requesting @sheetpilot/shared, redirect to compiled output
     if (request.startsWith('@sheetpilot/shared')) {
       const subpath = request.replace('@sheetpilot/shared', '') || '/index';
       // Remove leading slash if present
       const cleanSubpath = subpath.startsWith('/') ? subpath.slice(1) : subpath;
       // Resolve to compiled output directory
-      const compiledDir = pathModule.resolve(
-        params.backendDirname,
-        '..', '..', '..', '..', 'build', 'dist', 'shared'
-      );
+      const compiledDir = pathModule.resolve(params.backendDirname, '..', '..', '..', '..', 'build', 'dist', 'shared');
       // Try with .js extension first
-      let compiledPath = pathModule.join(compiledDir, cleanSubpath + '.js');
+      let compiledPath = pathModule.join(compiledDir, `${cleanSubpath  }.js`);
       if (fs.existsSync(compiledPath)) {
         return compiledPath;
       }
@@ -98,7 +107,7 @@ export function configureBackendNodeModuleResolution(params: {
         return compiledPath;
       }
     }
-    
+
     // Try original resolution first
     let resolvedPath: string;
     try {
@@ -109,9 +118,16 @@ export function configureBackendNodeModuleResolution(params: {
         const subpath = request.replace('@/', '');
         const compiledDir = pathModule.resolve(
           params.backendDirname,
-          '..', '..', '..', '..', 'build', 'dist', 'backend', 'src'
+          '..',
+          '..',
+          '..',
+          '..',
+          'build',
+          'dist',
+          'backend',
+          'src'
         );
-        
+
         // Try to find the compiled file
         let targetPath: string;
         if (subpath === 'bootstrap') {
@@ -125,23 +141,25 @@ export function configureBackendNodeModuleResolution(params: {
         } else if (subpath === 'preload') {
           targetPath = pathModule.join(compiledDir, 'preload', 'index.js');
         } else {
-          targetPath = pathModule.join(compiledDir, subpath + '.js');
+          targetPath = pathModule.join(compiledDir, `${subpath  }.js`);
         }
-        
+
         if (fs.existsSync(targetPath)) {
           return targetPath;
         }
-        
+
         // Try as directory with index.js
         const indexPath = pathModule.join(compiledDir, subpath, 'index.js');
         if (fs.existsSync(indexPath)) {
           return indexPath;
         }
-        
+
         // Log warning if compiled file doesn't exist
-        console.warn(`[Module Resolution] Compiled file not found for ${request}, expected at ${targetPath} or ${indexPath}`);
+        console.warn(
+          `[Module Resolution] Compiled file not found for ${request}, expected at ${targetPath} or ${indexPath}`
+        );
       }
-      
+
       // If resolution fails and it's @sheetpilot/shared, the compiled file might not exist
       // In that case, we need to ensure the shared code is compiled
       if (request.startsWith('@sheetpilot/shared')) {
@@ -149,11 +167,8 @@ export function configureBackendNodeModuleResolution(params: {
         const cleanSubpath = subpath.startsWith('/') ? subpath.slice(1) : subpath;
         // If compiled file doesn't exist, we need to compile it or use source with a loader
         // For now, try to use the source file directly (will require TypeScript execution)
-        const sourceDir = pathModule.resolve(
-          params.backendDirname,
-          '..', '..', '..', '..', 'app', 'shared'
-        );
-        const sourcePath = pathModule.join(sourceDir, cleanSubpath + '.ts');
+        const sourceDir = pathModule.resolve(params.backendDirname, '..', '..', '..', '..', 'app', 'shared');
+        const sourcePath = pathModule.join(sourceDir, `${cleanSubpath  }.ts`);
         if (fs.existsSync(sourcePath)) {
           // Use source file - this will fail unless there's a TypeScript loader
           // But it's better than nothing for now
@@ -162,7 +177,7 @@ export function configureBackendNodeModuleResolution(params: {
       }
       throw err;
     }
-    
+
     // If resolved path is a .ts file in app/backend/src, redirect to compiled output
     // Use normalized paths for cross-platform compatibility
     const normalizedResolvedPath = pathModule.normalize(resolvedPath);
@@ -173,7 +188,14 @@ export function configureBackendNodeModuleResolution(params: {
       const relativePath = pathModule.relative(backendSourceDir, normalizedResolvedPath);
       const compiledPath = pathModule.resolve(
         params.backendDirname,
-        '..', '..', '..', '..', 'build', 'dist', 'backend', 'src',
+        '..',
+        '..',
+        '..',
+        '..',
+        'build',
+        'dist',
+        'backend',
+        'src',
         relativePath.replace(/\.ts$/, '.js')
       );
       if (fs.existsSync(compiledPath)) {
@@ -183,7 +205,7 @@ export function configureBackendNodeModuleResolution(params: {
       // This will cause an error, but it's better than silently failing
       console.warn(`[Module Resolution] Compiled file not found for ${request}, expected at ${compiledPath}`);
     }
-    
+
     // If resolved path is a .ts file in app/shared, redirect to compiled output
     // Use normalized paths for cross-platform compatibility
     const sharedSourceDir = pathModule.normalize(
@@ -193,7 +215,13 @@ export function configureBackendNodeModuleResolution(params: {
       const relativePath = pathModule.relative(sharedSourceDir, normalizedResolvedPath);
       const compiledPath = pathModule.resolve(
         params.backendDirname,
-        '..', '..', '..', '..', 'build', 'dist', 'shared',
+        '..',
+        '..',
+        '..',
+        '..',
+        'build',
+        'dist',
+        'shared',
         relativePath.replace(/\.ts$/, '.js')
       );
       if (fs.existsSync(compiledPath)) {
@@ -203,9 +231,7 @@ export function configureBackendNodeModuleResolution(params: {
       // This will cause an error, but it's better than silently failing
       console.warn(`[Module Resolution] Compiled file not found for ${request}, expected at ${compiledPath}`);
     }
-    
+
     return resolvedPath;
   };
 }
-
-

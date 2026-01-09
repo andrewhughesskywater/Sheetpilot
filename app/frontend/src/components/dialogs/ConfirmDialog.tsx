@@ -9,6 +9,7 @@ import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
+
 import { type ConfirmDialogProps } from '../SettingsTypes';
 
 export function ConfirmDialog({
@@ -21,7 +22,7 @@ export function ConfirmDialog({
   isLoading,
   onClose,
   onConfirm,
-  children
+  children,
 }: ConfirmDialogProps) {
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth disableRestoreFocus>

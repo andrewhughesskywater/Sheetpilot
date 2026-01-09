@@ -8,17 +8,20 @@ interface SelectionData {
 }
 
 export function useSelectionHandler() {
-  const updateSelectedRows = useCallback((selection: SelectionData, setSelectedRows: (rows: Set<number>) => void): void => {
-    const rows = new Set<number>();
-    const startRow = Math.min(selection.r1, selection.r2);
-    const endRow = Math.max(selection.r1, selection.r2);
+  const updateSelectedRows = useCallback(
+    (selection: SelectionData, setSelectedRows: (rows: Set<number>) => void): void => {
+      const rows = new Set<number>();
+      const startRow = Math.min(selection.r1, selection.r2);
+      const endRow = Math.max(selection.r1, selection.r2);
 
-    for (let r = startRow; r <= endRow; r++) {
-      rows.add(r);
-    }
+      for (let r = startRow; r <= endRow; r++) {
+        rows.add(r);
+      }
 
-    setSelectedRows(rows);
-  }, []);
+      setSelectedRows(rows);
+    },
+    []
+  );
 
   const handleAfterSelection = useCallback(
     (

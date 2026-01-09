@@ -20,7 +20,5 @@ export const updatesBridge = {
     ipcRenderer.removeAllListeners('update-available');
     ipcRenderer.removeAllListeners('download-progress');
     ipcRenderer.removeAllListeners('update-downloaded');
-  }
+  },
 };
-
-

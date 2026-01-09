@@ -7,28 +7,32 @@ let mockUseData: any;
 // Mock the DataContext to provide test data
 vi.mock('@/contexts/DataContext', () => ({
   useData: () => mockUseData(),
-  DataProvider: ({ children }: { children: React.ReactNode }) => React.createElement('div', {}, children)
+  DataProvider: ({ children }: { children: React.ReactNode }) => React.createElement('div', {}, children),
 }));
 
 // Default mock implementation
 const defaultMockUseData = () => ({
   archiveData: {
     timesheet: [],
-    credentials: []
+    credentials: [],
   },
   isArchiveDataLoading: false,
   archiveDataError: null,
-  refreshArchiveData: vi.fn().mockResolvedValue(undefined)
+  refreshArchiveData: vi.fn().mockResolvedValue(undefined),
 });
 
 // Mock Handsontable to avoid complex rendering issues
 vi.mock('@handsontable/react-wrapper', () => ({
-  HotTable: ({ data, columns }: { data: unknown[]; columns: unknown[] }) => 
-    React.createElement('div', { 
-      'data-testid': 'hot-table',
-      'data-rows': data.length,
-      'data-columns': columns.length 
-    }, 'Mocked Handsontable')
+  HotTable: ({ data, columns }: { data: unknown[]; columns: unknown[] }) =>
+    React.createElement(
+      'div',
+      {
+        'data-testid': 'hot-table',
+        'data-rows': data.length,
+        'data-columns': columns.length,
+      },
+      'Mocked Handsontable'
+    ),
 }));
 
 import Archive from '@/components/archive/DatabaseViewer';
@@ -54,15 +58,15 @@ describe('DatabaseViewer', () => {
     mockUseData = vi.fn(() => ({
       archiveData: {
         timesheet: [],
-        credentials: []
+        credentials: [],
       },
       isArchiveDataLoading: true,
       archiveDataError: null,
-      refreshArchiveData: vi.fn().mockResolvedValue(undefined)
+      refreshArchiveData: vi.fn().mockResolvedValue(undefined),
     }));
 
     render(<Archive />);
-    
+
     expect(screen.getByText(/Loading archive/)).toBeInTheDocument();
   });
 
@@ -71,15 +75,15 @@ describe('DatabaseViewer', () => {
     mockUseData = vi.fn(() => ({
       archiveData: {
         timesheet: [],
-        credentials: []
+        credentials: [],
       },
       isArchiveDataLoading: false,
       archiveDataError: errorMessage,
-      refreshArchiveData: vi.fn().mockResolvedValue(undefined)
+      refreshArchiveData: vi.fn().mockResolvedValue(undefined),
     }));
 
     render(<Archive />);
-    
+
     expect(screen.getByText(/Error loading archive/)).toBeInTheDocument();
     expect(screen.getByText(errorMessage)).toBeInTheDocument();
   });
@@ -87,20 +91,16 @@ describe('DatabaseViewer', () => {
   it('should render data when isArchiveDataLoading is false with data available', () => {
     mockUseData = vi.fn(() => ({
       archiveData: {
-        timesheet: [
-          { id: 1, date: '2024-01-15', hours: 8 }
-        ],
-        credentials: [
-          { id: 1, name: 'Test Credential' }
-        ]
+        timesheet: [{ id: 1, date: '2024-01-15', hours: 8 }],
+        credentials: [{ id: 1, name: 'Test Credential' }],
       },
       isArchiveDataLoading: false,
       archiveDataError: null,
-      refreshArchiveData: vi.fn().mockResolvedValue(undefined)
+      refreshArchiveData: vi.fn().mockResolvedValue(undefined),
     }));
 
     render(<Archive />);
-    
+
     // Should NOT show loading or error messages
     expect(screen.queryByText(/Loading archive/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Error loading archive/)).not.toBeInTheDocument();
@@ -110,7 +110,7 @@ describe('DatabaseViewer', () => {
 
   it('should NOT show content when loading even with data count > 0 (regression test)', () => {
     // This is the specific regression test for the bug where isArchiveDataLoading was never set to false
-    // Even with data present (timesheetCount: 19, credentialsCount: 1), 
+    // Even with data present (timesheetCount: 19, credentialsCount: 1),
     // if isArchiveDataLoading is true, only loading message should show
     mockUseData = vi.fn(() => ({
       archiveData: {
@@ -120,17 +120,15 @@ describe('DatabaseViewer', () => {
           { id: 3, date: '2024-01-17', hours: 8 },
           // ... 19 total entries
         ],
-        credentials: [
-          { id: 1, name: 'Test Credential' }
-        ]
+        credentials: [{ id: 1, name: 'Test Credential' }],
       },
       isArchiveDataLoading: true, // BUG: This should have been set to false
       archiveDataError: null,
-      refreshArchiveData: vi.fn().mockResolvedValue(undefined)
+      refreshArchiveData: vi.fn().mockResolvedValue(undefined),
     }));
 
     render(<Archive />);
-    
+
     // Loading state takes precedence - should show loading screen
     expect(screen.getByText(/Loading archive/)).toBeInTheDocument();
     // Should NOT show the data, even though it exists in state
@@ -151,9 +149,9 @@ describe('Archive Non-Editability', () => {
       disableVisualSelection: true,
       contextMenu: false,
       fillHandle: false,
-      outsideClickDeselects: true
+      outsideClickDeselects: true,
     };
-    
+
     expect(archiveTableConfig.readOnly).toBe(true);
     expect(archiveTableConfig.disableVisualSelection).toBe(true);
     expect(archiveTableConfig.contextMenu).toBe(false);
@@ -167,9 +165,9 @@ describe('Archive Non-Editability', () => {
       selectionMode: 'none',
       currentRowClassName: '',
       currentColClassName: '',
-      activeHeaderClassName: ''
+      activeHeaderClassName: '',
     };
-    
+
     expect(selectionConfig.selectionMode).toBe('none');
     expect(selectionConfig.currentRowClassName).toBe('');
     expect(selectionConfig.currentColClassName).toBe('');
@@ -181,9 +179,9 @@ describe('Archive Non-Editability', () => {
     const cellInteractionConfig = {
       readOnly: true,
       disableVisualSelection: true,
-      fillHandle: false
+      fillHandle: false,
     };
-    
+
     expect(cellInteractionConfig.readOnly).toBe(true);
     expect(cellInteractionConfig.disableVisualSelection).toBe(true);
     expect(cellInteractionConfig.fillHandle).toBe(false);
@@ -192,9 +190,9 @@ describe('Archive Non-Editability', () => {
   it('validates that archive has no context menu', () => {
     // Test that context menu is disabled
     const contextMenuConfig = {
-      contextMenu: false
+      contextMenu: false,
     };
-    
+
     expect(contextMenuConfig.contextMenu).toBe(false);
   });
 
@@ -202,9 +200,9 @@ describe('Archive Non-Editability', () => {
     // Test CSS configuration for non-interactive cells
     const cellStyleConfig = {
       cursor: 'default',
-      userSelect: 'none'
+      userSelect: 'none',
     };
-    
+
     expect(cellStyleConfig.cursor).toBe('default');
     expect(cellStyleConfig.userSelect).toBe('none');
   });
@@ -214,9 +212,9 @@ describe('Archive Non-Editability', () => {
     const visualFeedbackConfig = {
       hideSelectionArea: true,
       hideCurrentCell: true,
-      hideHighlight: true
+      hideHighlight: true,
     };
-    
+
     expect(visualFeedbackConfig.hideSelectionArea).toBe(true);
     expect(visualFeedbackConfig.hideCurrentCell).toBe(true);
     expect(visualFeedbackConfig.hideHighlight).toBe(true);
@@ -234,10 +232,10 @@ describe('Archive Non-Editability', () => {
         tool: '#1 Rinse and 2D marker',
         detail_charge_code: 'EPR1',
         task_description: 'Equipment maintenance',
-        status: 'Complete'
-      }
+        status: 'Complete',
+      },
     ];
-    
+
     // Data is read-only, no modifications allowed
     const readOnlyData = mockArchiveData;
     expect(readOnlyData[0].status).toBe('Complete');
@@ -251,17 +249,17 @@ describe('Archive Non-Editability', () => {
       disableVisualSelection: true,
       contextMenu: false,
       fillHandle: false,
-      selectionMode: 'none'
+      selectionMode: 'none',
     };
-    
+
     const credentialsArchiveConfig = {
       readOnly: true,
       disableVisualSelection: true,
       contextMenu: false,
       fillHandle: false,
-      selectionMode: 'none'
+      selectionMode: 'none',
     };
-    
+
     expect(timesheetArchiveConfig).toEqual(credentialsArchiveConfig);
   });
 
@@ -269,9 +267,9 @@ describe('Archive Non-Editability', () => {
     // While copy might be allowed for viewing, editing operations should be prevented
     const copyPasteConfig = {
       contextMenu: false, // No context menu means no paste
-      readOnly: true // No editing even if copied
+      readOnly: true, // No editing even if copied
     };
-    
+
     expect(copyPasteConfig.contextMenu).toBe(false);
     expect(copyPasteConfig.readOnly).toBe(true);
   });
@@ -287,9 +285,9 @@ describe('Archive Non-Editability', () => {
       selectionMode: 'none',
       currentRowClassName: '',
       currentColClassName: '',
-      activeHeaderClassName: ''
+      activeHeaderClassName: '',
     };
-    
+
     // Verify all properties are set correctly
     expect(completeNonEditableConfig.readOnly).toBe(true);
     expect(completeNonEditableConfig.disableVisualSelection).toBe(true);
@@ -302,5 +300,3 @@ describe('Archive Non-Editability', () => {
     expect(completeNonEditableConfig.activeHeaderClassName).toBe('');
   });
 });
-
-

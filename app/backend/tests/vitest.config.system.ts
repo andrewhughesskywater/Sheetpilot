@@ -6,15 +6,13 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, '../src'),
-    }
+    },
   },
   test: {
     name: 'system-tests',
     environment: 'node',
     root: path.resolve(__dirname, '../../..'),
-    include: [
-      'app/tests/system/**/*.spec.ts'
-    ],
+    include: ['app/tests/system/**/*.spec.ts'],
     passWithNoTests: false,
     globals: true,
     setupFiles: [path.resolve(__dirname, 'setup.ts')],
@@ -23,15 +21,15 @@ export default defineConfig({
     pool: 'forks',
     poolOptions: {
       forks: {
-        singleFork: true
-      }
+        singleFork: true,
+      },
     },
     reporters: [
       'default',
-      new MarkdownReporter({ 
+      new MarkdownReporter({
         outputFile: 'system-test-results.md',
-        outputDir: path.resolve(__dirname, '../../..', 'test-results')
-      })
-    ]
-  }
+        outputDir: path.resolve(__dirname, '../../..', 'test-results'),
+      }),
+    ],
+  },
 });

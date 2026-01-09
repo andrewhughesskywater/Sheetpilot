@@ -1,14 +1,15 @@
-import { ipcLogger } from './utils/logger';
+import { createUserFriendlyMessage, extractErrorCode } from '@sheetpilot/shared/errors';
+
 import {
+  getCredentials,
   getDbPath,
   getPendingTimesheetEntries,
-  getCredentials,
   resetInProgressTimesheetEntries,
   resetTimesheetEntriesStatus,
-  validateSession
+  validateSession,
 } from '../../repositories';
 import { submitTimesheets } from '../timesheet-importer';
-import { createUserFriendlyMessage, extractErrorCode } from '@sheetpilot/shared/errors';
+import { ipcLogger } from './utils/logger';
 
 export interface SubmitWorkflowResult {
   submitResult?: { ok: boolean; successCount: number; removedCount: number; totalProcessed: number };
@@ -50,7 +51,10 @@ export function cancelTimesheetSubmission(): { success: boolean; message?: strin
   }
 }
 
-function validateSubmissionRequest(token: string, timer: ReturnType<typeof ipcLogger.startTimer>): { valid: boolean; session?: ReturnType<typeof validateSession>; error?: string } {
+function validateSubmissionRequest(
+  token: string,
+  timer: ReturnType<typeof ipcLogger.startTimer>
+): { valid: boolean; session?: ReturnType<typeof validateSession>; error?: string } {
   if (!token) {
     timer.done({ outcome: 'error', reason: 'no-session' });
     return { valid: false, error: 'Session token is required. Please log in to submit timesheets.' };
@@ -74,14 +78,20 @@ function validateSubmissionRequest(token: string, timer: ReturnType<typeof ipcLo
 function getSubmissionCredentials(): { credentials: ReturnType<typeof getCredentials>; error?: string } {
   ipcLogger.verbose('Checking credentials for submission', { service: 'smartsheet' });
   const credentials = getCredentials('smartsheet');
-  ipcLogger.verbose('Credentials check result', { service: 'smartsheet', found: !!credentials });
+  ipcLogger.verbose('Credentials check result', { service: 'smartsheet', found: Boolean(credentials) });
 
   if (!credentials) {
     ipcLogger.warn('Submission: credentials not found', { service: 'smartsheet' });
-    return { credentials: null, error: 'SmartSheet credentials not found. Please add your credentials to submit timesheets.' };
+    return {
+      credentials: null,
+      error: 'SmartSheet credentials not found. Please add your credentials to submit timesheets.',
+    };
   }
 
-  ipcLogger.verbose('Credentials retrieved, proceeding with submission', { service: 'smartsheet', email: credentials.email });
+  ipcLogger.verbose('Credentials retrieved, proceeding with submission', {
+    service: 'smartsheet',
+    email: credentials.email,
+  });
   return { credentials };
 }
 
@@ -98,7 +108,7 @@ function setupTimeoutMonitor(
       submissionAbortedRef.current = true;
       ipcLogger.error('Submission timeout: no progress for 5 minutes', {
         timeSinceLastProgress,
-        lastProgressTime: new Date(lastProgressTimeRef.current).toISOString()
+        lastProgressTime: new Date(lastProgressTimeRef.current).toISOString(),
       });
 
       if (pendingEntryIds.length > 0) {
@@ -119,8 +129,8 @@ async function executeSubmission(
     email: credentials.email,
     password: credentials.password,
     progressCallback,
-    abortSignal,
-    useMockWebsite
+    ...(abortSignal && { abortSignal }),
+    ...(useMockWebsite !== undefined && { useMockWebsite }),
   });
 }
 
@@ -158,7 +168,7 @@ export async function submitTimesheetWorkflow(params: {
     const lastProgressTimeRef = { current: Date.now() };
     const submissionAbortedRef = { current: false };
     const pendingEntries = getPendingTimesheetEntries() as Array<{ id: number }>;
-    const pendingEntryIds = pendingEntries.map(e => e.id);
+    const pendingEntryIds = pendingEntries.map((e) => e.id);
 
     const progressCallback = (percent: number, message: string) => {
       lastProgressTimeRef.current = Date.now();
@@ -166,7 +176,7 @@ export async function submitTimesheetWorkflow(params: {
       ipcLogger.verbose('Submission progress update', {
         percent,
         message,
-        total: pendingEntryIds.length
+        total: pendingEntryIds.length,
       });
     };
 
@@ -183,7 +193,7 @@ export async function submitTimesheetWorkflow(params: {
       ipcLogger.info('submitTimesheets completed', {
         ok: submitResult.ok,
         successCount: submitResult.successCount,
-        totalProcessed: submitResult.totalProcessed
+        totalProcessed: submitResult.totalProcessed,
       });
 
       clearInterval(timeoutCheckInterval);
@@ -191,7 +201,8 @@ export async function submitTimesheetWorkflow(params: {
       if (submissionAbortedRef.current) {
         ipcLogger.warn('Submission was aborted by timeout', { submitResult });
         return {
-          error: 'Submission timed out after 5 minutes of no progress. Entries have been reset to pending status. Please try again.'
+          error:
+            'Submission timed out after 5 minutes of no progress. Entries have been reset to pending status. Please try again.',
         };
       }
 
@@ -200,7 +211,7 @@ export async function submitTimesheetWorkflow(params: {
           submitResult,
           successCount: submitResult.successCount,
           removedCount: submitResult.removedCount,
-          totalProcessed: submitResult.totalProcessed
+          totalProcessed: submitResult.totalProcessed,
         });
       }
 
@@ -214,9 +225,10 @@ export async function submitTimesheetWorkflow(params: {
   } catch (err: unknown) {
     const errorCode = extractErrorCode(err);
     const errorMessage = createUserFriendlyMessage(err);
-    const errorDetails = err instanceof Error
-      ? { code: errorCode, message: errorMessage, name: err.name, stack: err.stack }
-      : { code: errorCode, message: errorMessage };
+    const errorDetails =
+      err instanceof Error
+        ? { code: errorCode, message: errorMessage, name: err.name, stack: err.stack }
+        : { code: errorCode, message: errorMessage };
 
     ipcLogger.error('Timesheet submission failed', errorDetails);
     timer.done({ outcome: 'error', errorCode });
@@ -226,5 +238,3 @@ export async function submitTimesheetWorkflow(params: {
     currentSubmissionAbortController = null;
   }
 }
-
-

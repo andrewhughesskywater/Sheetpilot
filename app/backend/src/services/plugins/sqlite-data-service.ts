@@ -1,29 +1,27 @@
 /**
  * @fileoverview SQLite Data Service Plugin
- * 
+ *
  * Implementation of IDataService using SQLite database.
  * Wraps existing database functions with the plugin interface.
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025
  */
 
 import type {
-  IDataService,
-  TimesheetEntry,
-  SaveResult,
-  LoadResult,
-  DeleteResult,
   ArchiveResult,
-  DbTimesheetEntry
+  DbTimesheetEntry,
+  DeleteResult,
+  IDataService,
+  LoadResult,
+  SaveResult,
+  TimesheetEntry,
 } from '@sheetpilot/shared/contracts/IDataService';
 import type { PluginMetadata } from '@sheetpilot/shared/plugin-types';
+import { formatMinutesToTime,parseTimeToMinutes } from '@sheetpilot/shared/utils/format-conversions';
+
 import { getDb } from '../../repositories';
-import {
-  parseTimeToMinutes,
-  formatMinutesToTime
-} from '@sheetpilot/shared/utils/format-conversions';
 
 /**
  * SQLite implementation of the data service
@@ -33,9 +31,8 @@ export class SQLiteDataService implements IDataService {
     name: 'sqlite',
     version: '1.1.2',
     author: 'Andrew Hughes',
-    description: 'SQLite-based data persistence service'
+    description: 'SQLite-based data persistence service',
   };
-
 
   private validateDraftEntry(entry: TimesheetEntry): { valid: boolean; error?: string } {
     if (!entry.date) {
@@ -50,17 +47,20 @@ export class SQLiteDataService implements IDataService {
     return { valid: true };
   }
 
-  private validateTimes(timeIn: string | undefined, timeOut: string | undefined): { valid: boolean; timeInMinutes?: number; timeOutMinutes?: number; error?: string } {
+  private validateTimes(
+    timeIn: string | undefined,
+    timeOut: string | undefined
+  ): { valid: boolean; timeInMinutes?: number; timeOutMinutes?: number; error?: string } {
     if (!timeIn || !timeOut) {
       return { valid: false, error: 'Time In and Time Out are required' };
     }
     const timeInMinutes = parseTimeToMinutes(timeIn);
     const timeOutMinutes = parseTimeToMinutes(timeOut);
-    
+
     if (timeInMinutes % 15 !== 0 || timeOutMinutes % 15 !== 0) {
       return { valid: false, error: 'Times must be in 15-minute increments' };
     }
-    
+
     if (timeOutMinutes <= timeInMinutes) {
       return { valid: false, error: 'Time Out must be after Time In' };
     }
@@ -85,10 +85,10 @@ export class SQLiteDataService implements IDataService {
 
       const timeInMinutes = timeValidation.timeInMinutes!;
       const timeOutMinutes = timeValidation.timeOutMinutes!;
-      
+
       const db = getDb();
       let result;
-      
+
       // Prepare statements outside transaction for better performance and to avoid scope issues
       const updateStmt = db.prepare(`
         UPDATE timesheet
@@ -103,7 +103,7 @@ export class SQLiteDataService implements IDataService {
         WHERE id = ?
       `);
       const checkExistsStmt = db.prepare('SELECT id FROM timesheet WHERE id = ?');
-      
+
       // If entry has an id, check if it exists BEFORE attempting update
       if (entry.id !== undefined && entry.id !== null) {
         const exists = checkExistsStmt.get(entry.id);
@@ -111,7 +111,7 @@ export class SQLiteDataService implements IDataService {
           return { success: false, error: 'Entry not found' };
         }
       }
-      
+
       // Wrap save operation in transaction for atomicity
       const saveTransaction = db.transaction(() => {
         // If entry has an id, UPDATE; otherwise INSERT
@@ -119,7 +119,7 @@ export class SQLiteDataService implements IDataService {
           // Explicitly convert undefined to null for optional fields
           const toolValue = entry.tool !== undefined ? entry.tool : null;
           const chargeCodeValue = entry.chargeCode !== undefined ? entry.chargeCode : null;
-          
+
           result = updateStmt.run(
             entry.date,
             timeInMinutes,
@@ -130,7 +130,7 @@ export class SQLiteDataService implements IDataService {
             entry.taskDescription,
             entry.id
           );
-          
+
           // SQLite UPDATE returns 0 changes if all values are identical to existing values
           // Since we checked existence above, if changes === 0, it's an idempotent update (success)
           // We'll handle the 0->1 conversion after the transaction returns
@@ -147,11 +147,11 @@ export class SQLiteDataService implements IDataService {
               detail_charge_code = excluded.detail_charge_code,
               status = NULL
           `);
-          
+
           // Explicitly convert undefined to null for optional fields
           const toolValue = entry.tool !== undefined ? entry.tool : null;
           const chargeCodeValue = entry.chargeCode !== undefined ? entry.chargeCode : null;
-          
+
           result = insertStmt.run(
             entry.date,
             timeInMinutes,
@@ -161,17 +161,17 @@ export class SQLiteDataService implements IDataService {
             chargeCodeValue,
             entry.taskDescription
           );
-          
+
           // ON CONFLICT DO UPDATE may return 0 changes if values are identical,
           // but the operation still succeeded (upsert found matching row with correct values)
           // We'll handle the 0->1 conversion after the transaction returns
         }
-        
+
         return result;
       });
-      
+
       result = saveTransaction();
-      
+
       // Handle 0 changes case: SQLite returns 0 if no values changed
       // Since we checked existence for UPDATEs, 0 changes means idempotent operation (success)
       // For INSERTs with ON CONFLICT, 0 changes also means successful upsert with identical values
@@ -182,7 +182,7 @@ export class SQLiteDataService implements IDataService {
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       };
     }
   }
@@ -193,13 +193,13 @@ export class SQLiteDataService implements IDataService {
   public async loadDraft(): Promise<LoadResult> {
     try {
       const db = getDb();
-      
+
       const getPending = db.prepare(`
         SELECT * FROM timesheet 
         WHERE status IS NULL
         ORDER BY date ASC, time_in ASC
       `);
-      
+
       const entries = getPending.all() as Array<{
         id: number;
         date: string;
@@ -210,7 +210,7 @@ export class SQLiteDataService implements IDataService {
         detail_charge_code?: string;
         task_description: string;
       }>;
-      
+
       // Convert database format to grid format
       const gridData: TimesheetEntry[] = entries.map((entry) => {
         // Helper to safely convert SQLite NULL (undefined) to null
@@ -219,7 +219,7 @@ export class SQLiteDataService implements IDataService {
           if (typeof value === 'string' && value.trim() !== '') return value;
           return null;
         };
-        
+
         return {
           id: entry.id,
           date: entry.date,
@@ -230,19 +230,19 @@ export class SQLiteDataService implements IDataService {
           // SQLite returns undefined for NULL columns, so we explicitly convert to null
           tool: toNull(entry.tool),
           chargeCode: toNull(entry.detail_charge_code),
-          taskDescription: entry.task_description
+          taskDescription: entry.task_description,
         };
       });
-      
+
       // Return one blank row if no entries, otherwise return the entries
-      const entriesToReturn = gridData.length > 0 ? gridData : [{}] as TimesheetEntry[];
+      const entriesToReturn = gridData.length > 0 ? gridData : ([{}] as TimesheetEntry[]);
       return { success: true, entries: entriesToReturn };
       // Note: Do NOT close db connection here - singleton pattern manages lifecycle
     } catch (error) {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Could not load draft timesheet entries',
-        entries: []
+        entries: [],
       };
     }
   }
@@ -257,33 +257,33 @@ export class SQLiteDataService implements IDataService {
       }
 
       const db = getDb();
-      
+
       // Check if entry exists and is a draft (status IS NULL) in one query
       const checkExists = db.prepare('SELECT id FROM timesheet WHERE id = ? AND status IS NULL');
       const exists = checkExists.get(id) as { id: number } | undefined;
-      
+
       if (!exists) {
         return { success: false, error: 'Draft entry not found' };
       }
-      
+
       const deleteStmt = db.prepare(`
         DELETE FROM timesheet 
         WHERE id = ? AND status IS NULL
       `);
-      
+
       const result = deleteStmt.run(id);
-      
+
       if (result.changes === 0) {
         // This shouldn't happen since we checked existence, but handle it anyway
         return { success: false, error: 'Draft entry not found' };
       }
-      
+
       return { success: true };
       // Note: Do NOT close db connection here - singleton pattern manages lifecycle
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Could not delete draft timesheet entry'
+        error: error instanceof Error ? error.message : 'Could not delete draft timesheet entry',
       };
     }
   }
@@ -294,7 +294,7 @@ export class SQLiteDataService implements IDataService {
   public async getArchiveData(): Promise<ArchiveResult> {
     try {
       const db = getDb();
-      
+
       // Get completed timesheet entries (compute hours from time_in and time_out)
       const getTimesheet = db.prepare(`
         SELECT *, (time_out - time_in) / 60.0 as hours FROM timesheet 
@@ -302,7 +302,7 @@ export class SQLiteDataService implements IDataService {
         ORDER BY date ASC, time_in ASC
       `);
       const timesheetEntries = getTimesheet.all() as DbTimesheetEntry[];
-      
+
       // Get credentials (without passwords)
       const getCredentials = db.prepare(`
         SELECT id, service, email, created_at, updated_at 
@@ -316,19 +316,19 @@ export class SQLiteDataService implements IDataService {
         created_at: string;
         updated_at: string;
       }>;
-      
+
       return {
         success: true,
         data: {
           timesheet: timesheetEntries,
-          credentials: credentials
-        }
+          credentials: credentials,
+        },
       };
       // Note: Do NOT close db connection here - singleton pattern manages lifecycle
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Could not load archive data'
+        error: error instanceof Error ? error.message : 'Could not load archive data',
       };
     }
   }
@@ -339,23 +339,22 @@ export class SQLiteDataService implements IDataService {
   public async getAllTimesheetEntries(): Promise<{ success: boolean; entries?: DbTimesheetEntry[]; error?: string }> {
     try {
       const db = getDb();
-      
+
       const getAll = db.prepare(`
         SELECT *, (time_out - time_in) / 60.0 as hours FROM timesheet 
         WHERE status = 'Complete'
         ORDER BY date DESC, time_in DESC
       `);
       const entries = getAll.all() as DbTimesheetEntry[];
-      
+
       return { success: true, entries };
       // Note: Do NOT close db connection here - singleton pattern manages lifecycle
     } catch (error) {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Could not get timesheet entries',
-        entries: []
+        entries: [],
       };
     }
   }
 }
-

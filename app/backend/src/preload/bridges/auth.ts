@@ -11,7 +11,5 @@ export const authBridge = {
     ipcRenderer.invoke('auth:validateSession', token),
   logout: (token: string): Promise<{ success: boolean; error?: string }> => ipcRenderer.invoke('auth:logout', token),
   getCurrentSession: (token: string): Promise<{ email: string; token: string; isAdmin: boolean } | null> =>
-    ipcRenderer.invoke('auth:getCurrentSession', token)
+    ipcRenderer.invoke('auth:getCurrentSession', token),
 };
-
-

@@ -21,5 +21,3 @@ export function logDebug(message: string, data?: unknown): void {
 export function logUserAction(action: string, data?: unknown): void {
   window.logger?.userAction?.(action, data);
 }
-
-

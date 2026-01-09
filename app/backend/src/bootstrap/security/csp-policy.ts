@@ -34,7 +34,6 @@ export interface CspPolicy {
 export function buildCspHeader(policy: CspPolicy): string {
   const lines: string[] = [];
 
-   
   const { 'upgrade-insecure-requests': _upgrade, ...directives } = policy.directives;
 
   for (const [key, values] of Object.entries(directives)) {
@@ -68,8 +67,8 @@ export function createProductionCspPolicy(): CspPolicy {
       'base-uri': ["'self'"],
       'form-action': ["'self'"],
       'frame-ancestors': ["'none'"],
-      'upgrade-insecure-requests': true
-    }
+      'upgrade-insecure-requests': true,
+    },
   };
 }
 
@@ -91,8 +90,8 @@ export function createDevelopmentCspPolicy(): CspPolicy {
       'object-src': ["'none'"],
       'base-uri': ["'self'"],
       'form-action': ["'self'"],
-      'frame-ancestors': ["'none'"]
-    }
+      'frame-ancestors': ["'none'"],
+    },
   };
 }
 

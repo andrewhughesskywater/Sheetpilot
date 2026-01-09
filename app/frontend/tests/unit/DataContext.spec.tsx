@@ -8,15 +8,15 @@ import * as credentialsService from '@/services/ipc/credentials';
 // Mock dependencies
 vi.mock('@/contexts/SessionContext', () => ({
   useSession: vi.fn(),
-  SessionProvider: ({ children }: { children: React.ReactNode }) => children
+  SessionProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 
 vi.mock('@/services/ipc/timesheet', () => ({
-  loadDraft: vi.fn()
+  loadDraft: vi.fn(),
 }));
 
 vi.mock('@/services/ipc/credentials', () => ({
-  getAllArchiveData: vi.fn()
+  getAllArchiveData: vi.fn(),
 }));
 
 describe('DataContext - Archive Loading State Regression Tests', () => {
@@ -28,7 +28,7 @@ describe('DataContext - Archive Loading State Regression Tests', () => {
       token: 'test-token',
       username: 'testuser',
       login: vi.fn(),
-      logout: vi.fn()
+      logout: vi.fn(),
     } as any);
   });
 
@@ -36,16 +36,14 @@ describe('DataContext - Archive Loading State Regression Tests', () => {
     vi.clearAllMocks();
   });
 
-  const wrapper = ({ children }: { children: React.ReactNode }) => (
-    <DataProvider>{children}</DataProvider>
-  );
+  const wrapper = ({ children }: { children: React.ReactNode }) => <DataProvider>{children}</DataProvider>;
 
   describe('Loading state reset after successful load', () => {
     it('should set isArchiveDataLoading to false after successful data load', async () => {
       vi.mocked(credentialsService.getAllArchiveData).mockResolvedValue({
         success: true,
         timesheet: [{ id: 1, date: '2024-01-01', hours: 8 }],
-        credentials: [{ id: 1, name: 'Test' }]
+        credentials: [{ id: 1, name: 'Test' }],
       } as any);
 
       const { result } = renderHook(() => useData(), { wrapper });
@@ -62,9 +60,7 @@ describe('DataContext - Archive Loading State Regression Tests', () => {
     });
 
     it('should set isArchiveDataLoading to false on error', async () => {
-      vi.mocked(credentialsService.getAllArchiveData).mockRejectedValue(
-        new Error('API error')
-      );
+      vi.mocked(credentialsService.getAllArchiveData).mockRejectedValue(new Error('API error'));
 
       const { result } = renderHook(() => useData(), { wrapper });
 
@@ -86,7 +82,7 @@ describe('DataContext - Archive Loading State Regression Tests', () => {
         token: null,
         username: null,
         login: vi.fn(),
-        logout: vi.fn()
+        logout: vi.fn(),
       } as any);
 
       const { result } = renderHook(() => useData(), { wrapper });
@@ -107,7 +103,7 @@ describe('DataContext - Archive Loading State Regression Tests', () => {
         success: false,
         error: 'Access denied',
         timesheet: [],
-        credentials: []
+        credentials: [],
       } as any);
 
       const { result } = renderHook(() => useData(), { wrapper });
@@ -128,7 +124,7 @@ describe('DataContext - Archive Loading State Regression Tests', () => {
     it('should set isTimesheetDraftLoading to false after successful data load', async () => {
       vi.mocked(timesheetService.loadDraft).mockResolvedValue({
         success: true,
-        entries: [{ id: 1, date: '2024-01-01', hours: 8 }]
+        entries: [{ id: 1, date: '2024-01-01', hours: 8 }],
       } as any);
 
       const { result } = renderHook(() => useData(), { wrapper });
@@ -145,9 +141,7 @@ describe('DataContext - Archive Loading State Regression Tests', () => {
     });
 
     it('should set isTimesheetDraftLoading to false on error', async () => {
-      vi.mocked(timesheetService.loadDraft).mockRejectedValue(
-        new Error('API error')
-      );
+      vi.mocked(timesheetService.loadDraft).mockRejectedValue(new Error('API error'));
 
       const { result } = renderHook(() => useData(), { wrapper });
 

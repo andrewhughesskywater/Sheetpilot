@@ -18,7 +18,5 @@ export const loggerBridge = {
   },
   userAction: (action: string, data?: unknown): void => {
     ipcRenderer.send('logger:user-action', action, data);
-  }
+  },
 };
-
-

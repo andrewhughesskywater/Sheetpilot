@@ -1,11 +1,12 @@
 import type { App, BrowserWindow } from 'electron';
 import { BrowserWindow as ElectronBrowserWindow } from 'electron';
+
 import type { LoggerLike } from '../logging/logger-contract';
-import type { WindowState } from './window-state';
-import { resolveCspPolicy, buildCspHeader } from '../security/csp-policy';
+import { buildCspHeader,resolveCspPolicy } from '../security/csp-policy';
 import { resolveAppPathsSync, validateIconPathAsync } from '../utils/resolve-app-paths';
-import { showErrorDialog } from './show-error-dialog';
 import { ConsoleLoggerManager, type ConsoleMessageContext } from './console-logger';
+import { showErrorDialog } from './show-error-dialog';
+import type { WindowState } from './window-state';
 
 interface CreateMainWindowParams {
   app: App;
@@ -54,13 +55,17 @@ function setupCspHeaders(window: BrowserWindow, cspHeaderValue: string): void {
     callback({
       responseHeaders: {
         ...details.responseHeaders,
-        'Content-Security-Policy': [cspHeaderValue]
-      }
+        'Content-Security-Policy': [cspHeaderValue],
+      },
     });
   });
 }
 
-function setupConsoleLogging(window: BrowserWindow, consoleLoggerManager: ConsoleLoggerManager, logger: LoggerLike): void {
+function setupConsoleLogging(
+  window: BrowserWindow,
+  consoleLoggerManager: ConsoleLoggerManager,
+  logger: LoggerLike
+): void {
   const handleConsoleMessage = (data: { level: number; message: string; line: number; sourceId: string }): void => {
     const filter = consoleLoggerManager.getFilter(window.webContents.id);
     const consoleData = data;
@@ -71,25 +76,34 @@ function setupConsoleLogging(window: BrowserWindow, consoleLoggerManager: Consol
     }
 
     // Log the first occurrence
-    const context: ConsoleMessageContext = { line: consoleData.line, sourceId: consoleData.sourceId, webContentsId: window.webContents.id };
+    const context: ConsoleMessageContext = {
+      line: consoleData.line,
+      sourceId: consoleData.sourceId,
+      webContentsId: window.webContents.id,
+    };
     const levelName = ConsoleLoggerManager.getLevelName(consoleData.level);
     logger[levelName](`[Renderer] ${consoleData.message}`, context);
   };
-  
+
   window.webContents.on('console-message', (_e, level, message, line, sourceId) => {
     handleConsoleMessage({ level, message, line, sourceId });
   });
 }
 
 function setupErrorHandlers(window: BrowserWindow, params: CreateMainWindowParams): void {
-  const handleLoadFailure = (data: { errorCode: number; errorDescription: string; validatedURL: string; isMainFrame: boolean }): void => {
+  const handleLoadFailure = (data: {
+    errorCode: number;
+    errorDescription: string;
+    validatedURL: string;
+    isMainFrame: boolean;
+  }): void => {
     const loadError = data;
     params.logger.error('Could not load renderer', {
       errorCode: loadError.errorCode,
       errorDescription: loadError.errorDescription,
       validatedURL: loadError.validatedURL,
       isMainFrame: loadError.isMainFrame,
-      webContentsId: window.webContents.id
+      webContentsId: window.webContents.id,
     });
 
     if (loadError.isMainFrame) {
@@ -99,11 +113,11 @@ function setupErrorHandlers(window: BrowserWindow, params: CreateMainWindowParam
         error: new Error(`${loadError.errorCode}: ${loadError.errorDescription}`),
         title: 'Failed to Load Application',
         message: `Could not load the application interface:\n\nError ${loadError.errorCode}: ${loadError.errorDescription}\n\nURL: ${loadError.validatedURL}\n\nPlease check the log file for more details.`,
-        exitCode: 1
+        exitCode: 1,
       });
     }
   };
-  
+
   window.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
     handleLoadFailure({ errorCode, errorDescription, validatedURL, isMainFrame });
   });
@@ -112,12 +126,14 @@ function setupErrorHandlers(window: BrowserWindow, params: CreateMainWindowParam
     if (!window.isDestroyed()) {
       params.logger.info('Renderer loaded successfully', {
         url: window.webContents.getURL(),
-        title: window.webContents.getTitle()
+        title: window.webContents.getTitle(),
       });
-      
+
       // Verify preload script executed by checking if APIs are available
       // This check happens after the page loads, so preload should have run
-      window.webContents.executeJavaScript(`
+      window.webContents
+        .executeJavaScript(
+          `
         (function() {
           const hasAuth = typeof window.auth !== 'undefined';
           const hasTimesheet = typeof window.timesheet !== 'undefined';
@@ -129,21 +145,24 @@ function setupErrorHandlers(window: BrowserWindow, params: CreateMainWindowParam
             allAPIs: hasAuth && hasTimesheet && hasCredentials
           };
         })()
-      `).then((result: { auth: boolean; timesheet: boolean; credentials: boolean; allAPIs: boolean }) => {
-        if (!result.allAPIs) {
-          params.logger.error('Preload script APIs not exposed', {
-            auth: result.auth,
-            timesheet: result.timesheet,
-            credentials: result.credentials
+      `
+        )
+        .then((result: { auth: boolean; timesheet: boolean; credentials: boolean; allAPIs: boolean }) => {
+          if (!result.allAPIs) {
+            params.logger.error('Preload script APIs not exposed', {
+              auth: result.auth,
+              timesheet: result.timesheet,
+              credentials: result.credentials,
+            });
+          } else {
+            params.logger.verbose('Preload script APIs verified', result);
+          }
+        })
+        .catch((err: unknown) => {
+          params.logger.warn('Could not verify preload script APIs', {
+            error: err instanceof Error ? err.message : String(err),
           });
-        } else {
-          params.logger.verbose('Preload script APIs verified', result);
-        }
-      }).catch((err: unknown) => {
-        params.logger.warn('Could not verify preload script APIs', {
-          error: err instanceof Error ? err.message : String(err)
         });
-      });
     } else {
       params.logger.info('Renderer loaded successfully (window already destroyed)');
     }
@@ -152,7 +171,7 @@ function setupErrorHandlers(window: BrowserWindow, params: CreateMainWindowParam
   window.webContents.on('render-process-gone', (_event, details) => {
     params.logger.error('Renderer process crashed', {
       reason: details.reason,
-      exitCode: details.exitCode
+      exitCode: details.exitCode,
     });
 
     void showErrorDialog({
@@ -161,12 +180,16 @@ function setupErrorHandlers(window: BrowserWindow, params: CreateMainWindowParam
       error: new Error(`Renderer crash: ${details.reason}`),
       title: 'Renderer Process Crashed',
       message: `The application interface crashed:\n\nReason: ${details.reason}\nExit Code: ${details.exitCode}\n\nThe application will now exit.`,
-      exitCode: 1
+      exitCode: 1,
     });
   });
 }
 
-function setupWindowStateHandlers(window: BrowserWindow, params: CreateMainWindowParams, consoleLoggerManager: ConsoleLoggerManager): void {
+function setupWindowStateHandlers(
+  window: BrowserWindow,
+  params: CreateMainWindowParams,
+  consoleLoggerManager: ConsoleLoggerManager
+): void {
   window.once('ready-to-show', () => {
     params.logger.info('Window ready-to-show event fired');
     window.show();
@@ -174,11 +197,13 @@ function setupWindowStateHandlers(window: BrowserWindow, params: CreateMainWindo
       width: params.windowState.width,
       height: params.windowState.height,
       isVisible: window.isVisible(),
-      isDestroyed: window.isDestroyed()
+      isDestroyed: window.isDestroyed(),
     });
 
     params.restoreWindowStateAsync(window).catch((err: unknown) => {
-      params.logger.debug('Could not restore window state', { error: err instanceof Error ? err.message : String(err) });
+      params.logger.debug('Could not restore window state', {
+        error: err instanceof Error ? err.message : String(err),
+      });
     });
   });
 
@@ -186,7 +211,7 @@ function setupWindowStateHandlers(window: BrowserWindow, params: CreateMainWindo
     if (!window.isDestroyed()) {
       params.logger.info('Window show event fired', {
         isVisible: window.isVisible(),
-        isFocused: window.isFocused()
+        isFocused: window.isFocused(),
       });
     }
   });
@@ -251,7 +276,7 @@ export function createMainWindow(params: CreateMainWindowParams): BrowserWindow 
       error: err,
       title: 'Application Startup Error',
       message: `${err instanceof Error ? err.message : String(err)}\n\nPlease rebuild the application.`,
-      exitCode: 1
+      exitCode: 1,
     });
     return null;
   }
@@ -277,8 +302,8 @@ export function createMainWindow(params: CreateMainWindowParams): BrowserWindow 
       sandbox: true,
       webSecurity: true,
       allowRunningInsecureContent: false,
-      experimentalFeatures: false
-    }
+      experimentalFeatures: false,
+    },
   };
 
   if (params.windowState.x !== undefined) {
@@ -314,5 +339,3 @@ export function createMainWindow(params: CreateMainWindowParams): BrowserWindow 
 
   return window;
 }
-
-

@@ -6,14 +6,14 @@ import {
   ALLOWED_PREVIOUS_QUARTERS,
   appSettings,
   getBrowserHeadless,
-  setBrowserHeadless
+  setBrowserHeadless,
 } from '@/constants';
 
 // Mock logger to avoid circular dependency issues
 vi.mock('@/logger', () => ({
   appLogger: {
-    info: vi.fn()
-  }
+    info: vi.fn(),
+  },
 }));
 
 describe('constants', () => {
@@ -72,7 +72,7 @@ describe('constants', () => {
     it('should log the change', () => {
       appSettings.browserHeadless = false;
       setBrowserHeadless(true);
-      
+
       // The logger is mocked, so we can't directly verify it was called
       // but the function should complete without error
       expect(appSettings.browserHeadless).toBe(true);
@@ -81,12 +81,10 @@ describe('constants', () => {
     it('should handle logger unavailability gracefully', () => {
       // This tests the catch block in setBrowserHeadless
       appSettings.browserHeadless = false;
-      
+
       // Function should not throw even if logger fails
       expect(() => setBrowserHeadless(true)).not.toThrow();
       expect(appSettings.browserHeadless).toBe(true);
     });
   });
 });
-
-

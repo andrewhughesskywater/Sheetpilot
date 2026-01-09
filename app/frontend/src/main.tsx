@@ -1,13 +1,15 @@
-import { createRoot } from 'react-dom/client'
-import { ThemeProvider, createTheme } from '@mui/material/styles'
-import CssBaseline from '@mui/material/CssBaseline'
-import { useState, useEffect } from 'react'
-import './styles/index.css'
-import App, { Splash } from './App'
-import { initializeLoggerFallback } from './utils/logger-fallback'
-import { runOnce } from './utils/safe-init'
-import { initializeTheme, getCurrentEffectiveTheme, subscribeToThemeChanges } from './utils/theme-manager'
-import { registerDefaultFrontendPlugins } from './plugins/register-default-plugins'
+import './styles/index.css';
+
+import CssBaseline from '@mui/material/CssBaseline';
+import { createTheme,ThemeProvider } from '@mui/material/styles';
+import { useEffect,useState } from 'react';
+import { createRoot } from 'react-dom/client';
+
+import App, { Splash } from './App';
+import { registerDefaultFrontendPlugins } from './plugins/register-default-plugins';
+import { initializeLoggerFallback } from './utils/logger-fallback';
+import { runOnce } from './utils/safe-init';
+import { getCurrentEffectiveTheme, initializeTheme, subscribeToThemeChanges } from './utils/theme-manager';
 
 // Initialize logger fallback for development mode (idempotent with guard)
 runOnce(() => {
@@ -21,14 +23,14 @@ window.addEventListener('error', (event) => {
     filename: event.filename,
     lineno: event.lineno,
     colno: event.colno,
-    error: event.error?.stack || event.error?.message || String(event.error)
+    error: event.error?.stack || event.error?.message || String(event.error),
   });
 });
 
 window.addEventListener('unhandledrejection', (event) => {
   window.logger?.error('Unhandled promise rejection in renderer', {
     reason: event.reason instanceof Error ? event.reason.message : String(event.reason),
-    stack: event.reason instanceof Error ? event.reason.stack : undefined
+    stack: event.reason instanceof Error ? event.reason.stack : undefined,
   });
 });
 
@@ -36,9 +38,9 @@ window.addEventListener('unhandledrejection', (event) => {
 const startupTime = Date.now();
 window.addEventListener('load', () => {
   const loadTime = Date.now() - startupTime;
-  window.logger?.info('Application startup completed', { 
+  window.logger?.info('Application startup completed', {
     loadTimeMs: loadTime,
-    performanceLevel: loadTime < 1000 ? 'fast' : loadTime < 3000 ? 'moderate' : 'slow'
+    performanceLevel: loadTime < 1000 ? 'fast' : loadTime < 3000 ? 'moderate' : 'slow',
   });
 });
 
@@ -47,12 +49,12 @@ window.addEventListener('DOMContentLoaded', () => {
   // Defer non-critical initialization to prevent blocking startup
   requestAnimationFrame(() => {
     window.logger?.info('Renderer process loaded');
-    
+
     // Development-only React DevTools recommendation
     if (import.meta.env.DEV) {
       window.logger?.info('React DevTools available', {
         message: 'For enhanced development experience, install React DevTools browser extension',
-        url: 'https://react.dev/link/react-devtools'
+        url: 'https://react.dev/link/react-devtools',
       });
     }
   });
@@ -139,4 +141,4 @@ function ThemedApp() {
 
 // StrictMode disabled for Handsontable compatibility
 // Handsontable's editor state doesn't survive StrictMode's double-mount in dev
-createRoot(document.getElementById('root')!).render(<ThemedApp />)
+createRoot(document.getElementById('root')!).render(<ThemedApp />);

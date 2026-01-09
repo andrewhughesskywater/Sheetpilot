@@ -17,15 +17,15 @@ vi.stubGlobal('import', {
     env: {
       DEV: true,
       PROD: false,
-      MODE: 'development'
-    }
-  }
+      MODE: 'development',
+    },
+  },
 });
 
 // Mock window.matchMedia
 Object.defineProperty(globalThis.window, 'matchMedia', {
   writable: true,
-  value: vi.fn().mockImplementation(query => ({
+  value: vi.fn().mockImplementation((query) => ({
     matches: query === '(prefers-color-scheme: dark)' ? false : false,
     media: query,
     onchange: null,
@@ -36,8 +36,6 @@ Object.defineProperty(globalThis.window, 'matchMedia', {
     dispatchEvent: vi.fn(),
   })),
 });
-
-
 
 // Mock IntersectionObserver
 global.IntersectionObserver = vi.fn().mockImplementation(() => ({
@@ -62,7 +60,7 @@ const localStorageMock = {
   clear: vi.fn(),
 };
 Object.defineProperty(globalThis.window, 'localStorage', {
-  value: localStorageMock
+  value: localStorageMock,
 });
 
 // Mock sessionStorage
@@ -73,7 +71,7 @@ const sessionStorageMock = {
   clear: vi.fn(),
 };
 Object.defineProperty(globalThis.window, 'sessionStorage', {
-  value: sessionStorageMock
+  value: sessionStorageMock,
 });
 
 // Global test setup
@@ -81,25 +79,21 @@ beforeAll(() => {
   // Suppress console warnings during tests
   const originalWarn = console.warn;
   const originalError = console.error;
-  
+
   console.warn = (...args) => {
     if (
       typeof args[0] === 'string' &&
-      (args[0].includes('Warning:') || 
-       args[0].includes('React DevTools') ||
-       args[0].includes('Material-UI'))
+      (args[0].includes('Warning:') || args[0].includes('React DevTools') || args[0].includes('Material-UI'))
     ) {
       return;
     }
     originalWarn(...args);
   };
-  
+
   console.error = (...args) => {
     if (
       typeof args[0] === 'string' &&
-      (args[0].includes('Warning:') || 
-       args[0].includes('React DevTools') ||
-       args[0].includes('Material-UI'))
+      (args[0].includes('Warning:') || args[0].includes('React DevTools') || args[0].includes('Material-UI'))
     ) {
       return;
     }
@@ -114,24 +108,24 @@ afterAll(() => {
 beforeEach(() => {
   // Clear all mocks before each test
   vi.clearAllMocks();
-  
+
   // Re-install ResizeObserver mock (in case it was cleaned up)
   if (!global.ResizeObserver) {
     // eslint-disable-next-line no-undef
     global.ResizeObserver = ResizeObserverMock as unknown as typeof ResizeObserver;
   }
-  
+
   // Reset localStorage and sessionStorage
   localStorageMock.getItem.mockClear();
   localStorageMock.setItem.mockClear();
   localStorageMock.removeItem.mockClear();
   localStorageMock.clear.mockClear();
-  
+
   sessionStorageMock.getItem.mockClear();
   sessionStorageMock.setItem.mockClear();
   sessionStorageMock.removeItem.mockClear();
   sessionStorageMock.clear.mockClear();
-  
+
   // Clear window object extensions
   if (typeof globalThis.window !== 'undefined') {
     const win = globalThis.window as unknown as Record<string, unknown>;

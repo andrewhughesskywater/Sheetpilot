@@ -14,7 +14,7 @@ declare global {
 /**
  * Ensures initialization code runs only once, even with React StrictMode
  * or Hot Module Replacement (HMR) in development.
- * 
+ *
  * @param initFn - The initialization function to run once
  * @param debugLabel - Label for diagnostic logging
  */
@@ -25,15 +25,17 @@ export function runOnce(initFn: () => void, debugLabel: string): void {
 
   if (!window.__appInitialized) {
     window.__appInitialized = true;
-    
+
     if (import.meta.env.DEV) {
       console.debug(`[app] init:1 ts:${globalThis.performance.now().toFixed(2)}ms label:${debugLabel}`);
     }
-    
+
     initFn();
   } else {
     if (import.meta.env.DEV) {
-      console.debug(`[app] init:skipped ts:${globalThis.performance.now().toFixed(2)}ms label:${debugLabel} (already initialized)`);
+      console.debug(
+        `[app] init:skipped ts:${globalThis.performance.now().toFixed(2)}ms label:${debugLabel} (already initialized)`
+      );
     }
   }
 }
@@ -44,4 +46,3 @@ export function runOnce(initFn: () => void, debugLabel: string): void {
 export function isInitialized(): boolean {
   return typeof window !== 'undefined' && window.__appInitialized === true;
 }
-

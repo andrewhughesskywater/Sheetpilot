@@ -1,30 +1,39 @@
-import { app, screen, type BrowserWindow } from 'electron';
+import { app, type BrowserWindow,screen } from 'electron';
 import { createRequire } from 'module';
-import { getRuntimeFlags } from '@/bootstrap/env';
+
 import { registerCrashHandlers } from '@/bootstrap/crash-handlers/register-crash-handlers';
 import { configureElectronCommandLine } from '@/bootstrap/electron/configure-commandline';
+import { getRuntimeFlags } from '@/bootstrap/env';
 import { setIpcMainWindow } from '@/bootstrap/ipc/register-ipc';
 import { initializeLoggingOrExit } from '@/bootstrap/logging/init-logging';
-import type { LoggerLike } from '@/bootstrap/logging/logger-contract';
 import { loadLoggingModule } from '@/bootstrap/logging/load-logging-module';
+import type { LoggerLike } from '@/bootstrap/logging/logger-contract';
 import { createShimLogger } from '@/bootstrap/logging/shim-logger';
 import { writeStartupLog } from '@/bootstrap/logging/startup-log';
+import { initializeSentry } from '@/bootstrap/observability/sentry-init';
 import { fixDesktopShortcutIcon } from '@/bootstrap/os/fix-shortcut-icon';
 import { setAppUserModelId } from '@/bootstrap/os/set-app-user-model-id';
 import { registerDefaultPluginsBootstrap } from '@/bootstrap/plugins/register-default-plugins';
 import { configureBackendNodeModuleResolution } from '@/bootstrap/preflight/configure-module-resolution';
 import { ensureDevUserDataPath } from '@/bootstrap/preflight/ensure-dev-userdata-path';
 import { preflightResolveCriticalModules } from '@/bootstrap/preflight/resolve-critical-modules';
-import { initializeSentry } from '@/bootstrap/observability/sentry-init';
+import { bootstrapDatabaseOrExit, registerIpcHandlersOrExit } from '@/bootstrap/startup/startup-guards';
 import { createMainWindow } from '@/bootstrap/windows/create-main-window';
 import { loadRenderer } from '@/bootstrap/windows/load-renderer';
-import { bootstrapDatabaseOrExit, registerIpcHandlersOrExit } from '@/bootstrap/startup/startup-guards';
-import { createDebouncedWindowStateSaver, getDefaultWindowState, restoreWindowState } from '@/bootstrap/windows/window-state';
+import {
+  createDebouncedWindowStateSaver,
+  getDefaultWindowState,
+  restoreWindowState,
+} from '@/bootstrap/windows/window-state';
 
 ensureDevUserDataPath(app);
 
 const flags = getRuntimeFlags(app);
-configureBackendNodeModuleResolution({ packagedLike: flags.packagedLike, isSmoke: flags.isSmoke, backendDirname: __dirname });
+configureBackendNodeModuleResolution({
+  packagedLike: flags.packagedLike,
+  isSmoke: flags.isSmoke,
+  backendDirname: __dirname,
+});
 
 // Import shared constants after module resolution is configured
 // This ensures the module resolution override can redirect to compiled output
@@ -53,7 +62,7 @@ let mainWindow: BrowserWindow | null = null;
 const windowStateSaver = createDebouncedWindowStateSaver({
   app,
   logger: appLogger,
-  getWindow: () => mainWindow
+  getWindow: () => mainWindow,
 });
 
 app
@@ -70,7 +79,7 @@ async function onReady(): Promise<void> {
     version: APP_VERSION,
     isPackaged: app.isPackaged,
     execPath: app.getPath('exe'),
-    userDataPath: app.getPath('userData')
+    userDataPath: app.getPath('userData'),
   });
 
   setAppUserModelId(app, appLogger, 'com.sheetpilot.app');
@@ -97,8 +106,7 @@ async function onReady(): Promise<void> {
     backendDirname: __dirname,
     windowState,
     scheduleWindowStateSave: windowStateSaver.scheduleSave,
-    restoreWindowStateAsync: (window: BrowserWindow) =>
-      restoreWindowState({ app, screen, window, logger: appLogger })
+    restoreWindowStateAsync: (window: BrowserWindow) => restoreWindowState({ app, screen, window, logger: appLogger }),
   });
 
   if (!mainWindow) {
@@ -107,7 +115,7 @@ async function onReady(): Promise<void> {
 
   appLogger.verbose('Main window created', {
     width: mainWindow.getBounds().width,
-    height: mainWindow.getBounds().height
+    height: mainWindow.getBounds().height,
   });
 
   setIpcMainWindow(mainWindow, appLogger);
@@ -119,7 +127,7 @@ async function onReady(): Promise<void> {
     isDev: flags.isDev,
     packagedLike: flags.packagedLike,
     isSmoke: flags.isSmoke,
-    backendDirname: __dirname
+    backendDirname: __dirname,
   });
 }
 

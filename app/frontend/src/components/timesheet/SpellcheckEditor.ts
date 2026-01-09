@@ -10,11 +10,10 @@ export class SpellcheckEditor extends TextEditor {
    */
   override createElements() {
     super.createElements();
-    
+
     // Enable spellcheck on the textarea element
     if (this.TEXTAREA) {
       this.TEXTAREA.setAttribute('spellcheck', 'true');
     }
   }
 }
-

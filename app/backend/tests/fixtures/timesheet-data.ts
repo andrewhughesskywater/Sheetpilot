@@ -1,9 +1,9 @@
 /**
  * @fileoverview Test Data Fixtures
- * 
+ *
  * Reusable test data for comprehensive testing across all layers.
  * Provides valid, invalid, and edge case data for timesheet operations.
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025
@@ -25,7 +25,7 @@ export const validTimesheetEntries: TimesheetRow[] = [
     project: 'FL-Carver Techs',
     tool: '#1 Rinse and 2D marker',
     chargeCode: 'EPR1',
-    taskDescription: 'Equipment maintenance and calibration'
+    taskDescription: 'Equipment maintenance and calibration',
   },
   // FL-Carver Tools project with tool not requiring charge code
   {
@@ -36,7 +36,7 @@ export const validTimesheetEntries: TimesheetRow[] = [
     project: 'FL-Carver Tools',
     tool: 'Meeting',
     chargeCode: null,
-    taskDescription: 'Team coordination meeting'
+    taskDescription: 'Team coordination meeting',
   },
   // Project that doesn't require tools
   {
@@ -47,7 +47,7 @@ export const validTimesheetEntries: TimesheetRow[] = [
     project: 'PTO/RTO',
     tool: null,
     chargeCode: null,
-    taskDescription: 'Personal time off'
+    taskDescription: 'Personal time off',
   },
   // OSC-BBB project with tool requiring charge code
   {
@@ -58,7 +58,7 @@ export const validTimesheetEntries: TimesheetRow[] = [
     project: 'OSC-BBB',
     tool: '#1 CSAM101',
     chargeCode: 'EPR2',
-    taskDescription: 'Component testing and validation'
+    taskDescription: 'Component testing and validation',
   },
   // SWFL-EQUIP project with tool requiring charge code
   {
@@ -69,7 +69,7 @@ export const validTimesheetEntries: TimesheetRow[] = [
     project: 'SWFL-EQUIP',
     tool: 'AFM101',
     chargeCode: 'Repair',
-    taskDescription: 'Equipment repair and maintenance'
+    taskDescription: 'Equipment repair and maintenance',
   },
   // Training project (no tools required)
   {
@@ -80,8 +80,8 @@ export const validTimesheetEntries: TimesheetRow[] = [
     project: 'Training',
     tool: null,
     chargeCode: null,
-    taskDescription: 'Safety training and certification'
-  }
+    taskDescription: 'Safety training and certification',
+  },
 ];
 
 /**
@@ -97,7 +97,7 @@ export const invalidTimesheetEntries: TimesheetRow[] = [
     project: 'FL-Carver Techs',
     tool: '#1 Rinse and 2D marker',
     chargeCode: 'EPR1',
-    taskDescription: 'Test task'
+    taskDescription: 'Test task',
   },
   {
     id: 2,
@@ -107,7 +107,7 @@ export const invalidTimesheetEntries: TimesheetRow[] = [
     project: 'FL-Carver Techs',
     tool: '#1 Rinse and 2D marker',
     chargeCode: 'EPR1',
-    taskDescription: 'Test task'
+    taskDescription: 'Test task',
   },
   {
     id: 3,
@@ -117,7 +117,7 @@ export const invalidTimesheetEntries: TimesheetRow[] = [
     project: 'FL-Carver Techs',
     tool: '#1 Rinse and 2D marker',
     chargeCode: 'EPR1',
-    taskDescription: 'Test task'
+    taskDescription: 'Test task',
   },
   {
     id: 4,
@@ -127,7 +127,7 @@ export const invalidTimesheetEntries: TimesheetRow[] = [
     project: '',
     tool: '#1 Rinse and 2D marker',
     chargeCode: 'EPR1',
-    taskDescription: 'Test task'
+    taskDescription: 'Test task',
   },
   {
     id: 5,
@@ -137,7 +137,7 @@ export const invalidTimesheetEntries: TimesheetRow[] = [
     project: 'FL-Carver Techs',
     tool: '#1 Rinse and 2D marker',
     chargeCode: 'EPR1',
-    taskDescription: ''
+    taskDescription: '',
   },
   // Invalid date formats
   {
@@ -148,7 +148,7 @@ export const invalidTimesheetEntries: TimesheetRow[] = [
     project: 'FL-Carver Techs',
     tool: '#1 Rinse and 2D marker',
     chargeCode: 'EPR1',
-    taskDescription: 'Test task'
+    taskDescription: 'Test task',
   },
   {
     id: 7,
@@ -158,7 +158,7 @@ export const invalidTimesheetEntries: TimesheetRow[] = [
     project: 'FL-Carver Techs',
     tool: '#1 Rinse and 2D marker',
     chargeCode: 'EPR1',
-    taskDescription: 'Test task'
+    taskDescription: 'Test task',
   },
   {
     id: 8,
@@ -168,7 +168,7 @@ export const invalidTimesheetEntries: TimesheetRow[] = [
     project: 'FL-Carver Techs',
     tool: '#1 Rinse and 2D marker',
     chargeCode: 'EPR1',
-    taskDescription: 'Test task'
+    taskDescription: 'Test task',
   },
   {
     id: 9,
@@ -178,7 +178,7 @@ export const invalidTimesheetEntries: TimesheetRow[] = [
     project: 'FL-Carver Techs',
     tool: '#1 Rinse and 2D marker',
     chargeCode: 'EPR1',
-    taskDescription: 'Test task'
+    taskDescription: 'Test task',
   },
   // Invalid time formats
   {
@@ -189,7 +189,7 @@ export const invalidTimesheetEntries: TimesheetRow[] = [
     project: 'FL-Carver Techs',
     tool: '#1 Rinse and 2D marker',
     chargeCode: 'EPR1',
-    taskDescription: 'Test task'
+    taskDescription: 'Test task',
   },
   {
     id: 11,
@@ -199,7 +199,7 @@ export const invalidTimesheetEntries: TimesheetRow[] = [
     project: 'FL-Carver Techs',
     tool: '#1 Rinse and 2D marker',
     chargeCode: 'EPR1',
-    taskDescription: 'Test task'
+    taskDescription: 'Test task',
   },
   {
     id: 12,
@@ -209,7 +209,7 @@ export const invalidTimesheetEntries: TimesheetRow[] = [
     project: 'FL-Carver Techs',
     tool: '#1 Rinse and 2D marker',
     chargeCode: 'EPR1',
-    taskDescription: 'Test task'
+    taskDescription: 'Test task',
   },
   {
     id: 13,
@@ -219,7 +219,7 @@ export const invalidTimesheetEntries: TimesheetRow[] = [
     project: 'FL-Carver Techs',
     tool: '#1 Rinse and 2D marker',
     chargeCode: 'EPR1',
-    taskDescription: 'Test task'
+    taskDescription: 'Test task',
   },
   // Time out before time in
   {
@@ -230,7 +230,7 @@ export const invalidTimesheetEntries: TimesheetRow[] = [
     project: 'FL-Carver Techs',
     tool: '#1 Rinse and 2D marker',
     chargeCode: 'EPR1',
-    taskDescription: 'Test task'
+    taskDescription: 'Test task',
   },
   // Invalid project
   {
@@ -241,7 +241,7 @@ export const invalidTimesheetEntries: TimesheetRow[] = [
     project: 'Invalid Project',
     tool: '#1 Rinse and 2D marker',
     chargeCode: 'EPR1',
-    taskDescription: 'Test task'
+    taskDescription: 'Test task',
   },
   // Invalid tool for project
   {
@@ -252,7 +252,7 @@ export const invalidTimesheetEntries: TimesheetRow[] = [
     project: 'FL-Carver Techs',
     tool: 'Invalid Tool',
     chargeCode: 'EPR1',
-    taskDescription: 'Test task'
+    taskDescription: 'Test task',
   },
   // Invalid charge code
   {
@@ -263,7 +263,7 @@ export const invalidTimesheetEntries: TimesheetRow[] = [
     project: 'FL-Carver Techs',
     tool: '#1 Rinse and 2D marker',
     chargeCode: 'Invalid Code',
-    taskDescription: 'Test task'
+    taskDescription: 'Test task',
   },
   // Tool requiring charge code but missing charge code
   {
@@ -274,8 +274,8 @@ export const invalidTimesheetEntries: TimesheetRow[] = [
     project: 'FL-Carver Techs',
     tool: '#1 Rinse and 2D marker',
     chargeCode: '',
-    taskDescription: 'Test task'
-  }
+    taskDescription: 'Test task',
+  },
 ];
 
 /**
@@ -291,7 +291,7 @@ export const edgeCaseEntries: TimesheetRow[] = [
     project: 'FL-Carver Techs',
     tool: '#1 Rinse and 2D marker',
     chargeCode: 'EPR1',
-    taskDescription: 'Leap year test'
+    taskDescription: 'Leap year test',
   },
   // Non-leap year February 29th (invalid)
   {
@@ -302,7 +302,7 @@ export const edgeCaseEntries: TimesheetRow[] = [
     project: 'FL-Carver Techs',
     tool: '#1 Rinse and 2D marker',
     chargeCode: 'EPR1',
-    taskDescription: 'Non-leap year test'
+    taskDescription: 'Non-leap year test',
   },
   // Midnight times
   {
@@ -313,7 +313,7 @@ export const edgeCaseEntries: TimesheetRow[] = [
     project: 'FL-Carver Techs',
     tool: '#1 Rinse and 2D marker',
     chargeCode: 'EPR1',
-    taskDescription: 'Midnight test'
+    taskDescription: 'Midnight test',
   },
   // Late night times
   {
@@ -324,7 +324,7 @@ export const edgeCaseEntries: TimesheetRow[] = [
     project: 'FL-Carver Techs',
     tool: '#1 Rinse and 2D marker',
     chargeCode: 'EPR1',
-    taskDescription: 'Late night test'
+    taskDescription: 'Late night test',
   },
   // Very short duration (15 minutes)
   {
@@ -335,7 +335,7 @@ export const edgeCaseEntries: TimesheetRow[] = [
     project: 'FL-Carver Techs',
     tool: '#1 Rinse and 2D marker',
     chargeCode: 'EPR1',
-    taskDescription: 'Short duration test'
+    taskDescription: 'Short duration test',
   },
   // Long duration (12 hours)
   {
@@ -346,7 +346,7 @@ export const edgeCaseEntries: TimesheetRow[] = [
     project: 'FL-Carver Techs',
     tool: '#1 Rinse and 2D marker',
     chargeCode: 'EPR1',
-    taskDescription: 'Long duration test'
+    taskDescription: 'Long duration test',
   },
   // Quarter boundary dates
   {
@@ -357,7 +357,7 @@ export const edgeCaseEntries: TimesheetRow[] = [
     project: 'FL-Carver Techs',
     tool: '#1 Rinse and 2D marker',
     chargeCode: 'EPR1',
-    taskDescription: 'Q1 boundary test'
+    taskDescription: 'Q1 boundary test',
   },
   {
     id: 8,
@@ -367,8 +367,8 @@ export const edgeCaseEntries: TimesheetRow[] = [
     project: 'FL-Carver Techs',
     tool: '#1 Rinse and 2D marker',
     chargeCode: 'EPR1',
-    taskDescription: 'Q2 boundary test'
-  }
+    taskDescription: 'Q2 boundary test',
+  },
 ];
 
 /**
@@ -384,7 +384,7 @@ export const validDbEntries: DbTimesheetEntry[] = [
     project: 'FL-Carver Techs',
     tool: '#1 Rinse and 2D marker',
     detail_charge_code: 'EPR1',
-    task_description: 'Equipment maintenance and calibration'
+    task_description: 'Equipment maintenance and calibration',
   },
   {
     id: 2,
@@ -396,7 +396,7 @@ export const validDbEntries: DbTimesheetEntry[] = [
     tool: 'Meeting',
     task_description: 'Team coordination meeting',
     status: 'Complete',
-    submitted_at: '2025-01-16T16:30:00Z'
+    submitted_at: '2025-01-16T16:30:00Z',
   },
   {
     id: 3,
@@ -407,8 +407,8 @@ export const validDbEntries: DbTimesheetEntry[] = [
     project: 'PTO/RTO',
     task_description: 'Personal time off',
     status: 'Complete',
-    submitted_at: '2025-01-17T18:00:00Z'
-  }
+    submitted_at: '2025-01-17T18:00:00Z',
+  },
 ];
 
 /**
@@ -421,28 +421,52 @@ export const cascadingTestCases = [
     expectedToolOptions: [],
     expectedChargeCodeOptions: [],
     shouldClearTool: true,
-    shouldClearChargeCode: true
+    shouldClearChargeCode: true,
   },
   // Project that needs tools
   {
     project: 'FL-Carver Techs',
     expectedToolOptions: ['DECA Meeting', 'Logistics', '#1 Rinse and 2D marker'],
-    expectedChargeCodeOptions: ['Admin', 'EPR1', 'EPR2', 'EPR3', 'EPR4', 'Repair', 'Meeting', 'Other', 'PM', 'Training', 'Upgrade'],
+    expectedChargeCodeOptions: [
+      'Admin',
+      'EPR1',
+      'EPR2',
+      'EPR3',
+      'EPR4',
+      'Repair',
+      'Meeting',
+      'Other',
+      'PM',
+      'Training',
+      'Upgrade',
+    ],
     shouldClearTool: false,
-    shouldClearChargeCode: false
+    shouldClearChargeCode: false,
   },
   // Tool that doesn't need charge codes
   {
     tool: 'Meeting',
     expectedChargeCodeOptions: [],
-    shouldClearChargeCode: true
+    shouldClearChargeCode: true,
   },
   // Tool that needs charge codes
   {
     tool: '#1 Rinse and 2D marker',
-    expectedChargeCodeOptions: ['Admin', 'EPR1', 'EPR2', 'EPR3', 'EPR4', 'Repair', 'Meeting', 'Other', 'PM', 'Training', 'Upgrade'],
-    shouldClearChargeCode: false
-  }
+    expectedChargeCodeOptions: [
+      'Admin',
+      'EPR1',
+      'EPR2',
+      'EPR3',
+      'EPR4',
+      'Repair',
+      'Meeting',
+      'Other',
+      'PM',
+      'Training',
+      'Upgrade',
+    ],
+    shouldClearChargeCode: false,
+  },
 ];
 
 /**
@@ -454,20 +478,20 @@ export const timeFormatTestCases = [
   { input: '17:30', expected: '17:30', isValid: true },
   { input: '00:00', expected: '00:00', isValid: true },
   { input: '23:45', expected: '23:45', isValid: true },
-  
+
   // Valid numeric formats
   { input: '900', expected: '09:00', isValid: true },
   { input: '1730', expected: '17:30', isValid: true },
   { input: '800', expected: '08:00', isValid: true },
   { input: '1430', expected: '14:30', isValid: true },
-  
+
   // Invalid formats
   { input: '9:00', expected: '9:00', isValid: false }, // Missing leading zero
   { input: '09:01', expected: '09:01', isValid: false }, // Not 15-minute increment
   { input: '25:00', expected: '25:00', isValid: false }, // Invalid hour
   { input: '09:60', expected: '09:60', isValid: false }, // Invalid minute
   { input: 'abc', expected: 'abc', isValid: false }, // Non-numeric
-  { input: '', expected: '', isValid: false } // Empty
+  { input: '', expected: '', isValid: false }, // Empty
 ];
 
 /**
@@ -478,14 +502,14 @@ export const dateFormatTestCases = [
   { input: '01/15/2025', expected: '2025-01-15', isValid: true },
   { input: '12/31/2024', expected: '2024-12-31', isValid: true },
   { input: '02/29/2024', expected: '2024-02-29', isValid: true }, // Leap year
-  
+
   // Invalid formats
   { input: '2025-01-15', expected: '2025-01-15', isValid: false }, // Wrong format
   { input: '1/15/25', expected: '1/15/25', isValid: false }, // Wrong format
   { input: '13/15/2025', expected: '13/15/2025', isValid: false }, // Invalid month
   { input: '02/30/2025', expected: '02/30/2025', isValid: false }, // Invalid day
   { input: '02/29/2023', expected: '02/29/2023', isValid: false }, // Non-leap year
-  { input: '', expected: '', isValid: false } // Empty
+  { input: '', expected: '', isValid: false }, // Empty
 ];
 
 /**

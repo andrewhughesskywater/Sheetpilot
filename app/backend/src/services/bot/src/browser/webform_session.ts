@@ -11,8 +11,9 @@
  * - Provide a single place to wait for a form to become interactive
  */
 import type { Browser, BrowserContext, Page } from 'playwright';
-import * as cfg from '../automation_config';
+
 import { botLogger } from '../../utils/logger';
+import * as cfg from '../config/automation_config';
 
 export type FormConfig = {
   BASE_URL: string;
@@ -38,7 +39,7 @@ export class WebformSessionManager {
 
   constructor(
     private readonly browser: Browser,
-    private readonly formConfig: FormConfig,
+    private readonly formConfig: FormConfig
   ) {}
 
   async initContexts(count: number = 1): Promise<void> {
@@ -57,8 +58,7 @@ export class WebformSessionManager {
           // These headers aim to mirror a typical interactive browser session.
           'Accept-Language': 'en-US,en;q=0.9',
           'Accept-Encoding': 'gzip, deflate, br',
-          Accept:
-            'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+          Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
           'Upgrade-Insecure-Requests': '1',
           'Sec-Fetch-Dest': 'document',
           'Sec-Fetch-Mode': 'navigate',
@@ -82,26 +82,20 @@ export class WebformSessionManager {
 
   getSession(index: number): BrowserSession {
     if (index < 0 || index >= this.sessions.length) {
-      throw new Error(
-        `Invalid session index ${index}. Available: 0-${
-          this.sessions.length - 1
-        }`,
-      );
+      throw new Error(`Invalid session index ${index}. Available: 0-${this.sessions.length - 1}`);
     }
     return this._requireSession(index);
   }
 
   async navigateToBase(index?: number): Promise<void> {
-    const { page } =
-      index !== undefined ? this.getSession(index) : this._requireSession(0);
+    const { page } = index !== undefined ? this.getSession(index) : this._requireSession(0);
     await page.goto(this.formConfig.BASE_URL, {
       timeout: cfg.GLOBAL_TIMEOUT * 1000,
     });
   }
 
   async waitForFormReady(index?: number): Promise<void> {
-    const { page } =
-      index !== undefined ? this.getSession(index) : this._requireSession(0);
+    const { page } = index !== undefined ? this.getSession(index) : this._requireSession(0);
 
     botLogger.verbose('Waiting for form to be ready', { index });
 
@@ -111,13 +105,13 @@ export class WebformSessionManager {
       'form',
       'visible',
       cfg.DYNAMIC_WAIT_BASE_TIMEOUT,
-      cfg.DYNAMIC_WAIT_MAX_TIMEOUT,
+      cfg.DYNAMIC_WAIT_MAX_TIMEOUT
     );
     await cfg.dynamic_wait_for_network_idle(
       page,
       cfg.DYNAMIC_WAIT_BASE_TIMEOUT,
       cfg.DYNAMIC_WAIT_MAX_TIMEOUT,
-      'form readiness',
+      'form readiness'
     );
 
     // Inputs interactive check (your existing code reused)
@@ -128,10 +122,7 @@ export class WebformSessionManager {
         if (count === 0) return false;
         for (let i = 0; i < Math.min(count, 3); i++) {
           const input = inputs.nth(i);
-          if (
-            (await input.isVisible().catch(() => false)) &&
-            (await input.isEnabled().catch(() => false))
-          ) {
+          if ((await input.isVisible().catch(() => false)) && (await input.isEnabled().catch(() => false))) {
             return true;
           }
         }
@@ -139,8 +130,7 @@ export class WebformSessionManager {
       },
       cfg.DYNAMIC_WAIT_BASE_TIMEOUT,
       cfg.DYNAMIC_WAIT_MAX_TIMEOUT,
-      cfg.DYNAMIC_WAIT_MULTIPLIER,
-      'form inputs ready',
+      cfg.DYNAMIC_WAIT_MULTIPLIER
     );
 
     botLogger.verbose('Form ready', { index });
@@ -148,9 +138,9 @@ export class WebformSessionManager {
 
   async closeAll(): Promise<void> {
     for (const s of this.sessions) {
-      await s.context.close().catch((err: unknown) =>
-        botLogger.warn('Could not close context', { error: String(err) }),
-      );
+      await s.context
+        .close()
+        .catch((err: unknown) => botLogger.warn('Could not close context', { error: String(err) }));
     }
     this.sessions = [];
   }
@@ -171,7 +161,7 @@ export class WebformSessionManager {
       });
 
       const originalQuery = window.navigator.permissions.query;
-      window.navigator.permissions.query = parameters => {
+      window.navigator.permissions.query = (parameters) => {
         if (parameters.name === 'notifications') {
           return Promise.resolve({
             state: Notification.permission,

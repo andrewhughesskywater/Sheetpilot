@@ -10,9 +10,10 @@
  * If you change launch flags here, consider whether you also need the same change in
  * `browser/webform_flow.ts`, which currently launches Chromium directly.
  */
-import { chromium, type Browser } from 'playwright';
-import * as cfg from '../automation_config';
+import { type Browser,chromium } from 'playwright';
+
 import { botLogger } from '../../utils/logger';
+import * as cfg from '../config/automation_config';
 
 type BrowserProcessInfo = {
   spawnfile?: string;
@@ -71,10 +72,7 @@ export class BrowserLauncher {
 
     // Prefer a “real” Chrome channel unless a caller forces something else.
     // This tends to match the user’s installed browser better than bundled Chromium.
-    const channel =
-      cfg.BROWSER_CHANNEL && cfg.BROWSER_CHANNEL !== 'chromium'
-        ? cfg.BROWSER_CHANNEL
-        : 'chrome';
+    const channel = cfg.BROWSER_CHANNEL && cfg.BROWSER_CHANNEL !== 'chromium' ? cfg.BROWSER_CHANNEL : 'chrome';
 
     botLogger.info('Launching browser', { headless: this.headless, channel });
 
@@ -115,12 +113,9 @@ export class BrowserLauncher {
       headless: this.headless,
       channel,
       spawnedExecutablePath: redactUserHomeFromPath(spawnedExecutablePath),
-      playwrightChromiumExecutablePath: redactUserHomeFromPath(
-        playwrightChromiumExecutablePath,
-      ),
+      playwrightChromiumExecutablePath: redactUserHomeFromPath(playwrightChromiumExecutablePath),
       spawnedExecutableMatchesPlaywrightChromium:
-        Boolean(spawnedExecutablePath) &&
-        spawnedExecutablePath === playwrightChromiumExecutablePath,
+        Boolean(spawnedExecutablePath) && spawnedExecutablePath === playwrightChromiumExecutablePath,
     });
 
     return this.browser;
@@ -128,10 +123,10 @@ export class BrowserLauncher {
 
   async closeAll(): Promise<void> {
     if (!this.browser) return;
-    await this.browser.close().catch(err =>
+    await this.browser.close().catch((err) =>
       botLogger.warn('Could not close browser', {
         error: err instanceof Error ? err.message : String(err),
-      }),
+      })
     );
     this.browser = null;
   }

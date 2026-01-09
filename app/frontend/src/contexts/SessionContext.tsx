@@ -1,21 +1,22 @@
 /**
  * @fileoverview Session Context Provider
- * 
+ *
  * Manages user authentication state and session persistence across app lifecycle.
  * Provides login/logout functionality with token-based authentication and role management.
- * 
+ *
  * Session lifecycle:
  * - On mount: Attempts to restore session from localStorage
  * - On login: Stores session token and user info
  * - On logout: Clears session and notifies backend
- * 
+ *
  * Security features:
  * - Token validation on session restore
  * - Automatic session invalidation on validation failure
  * - Admin role tracking for permission-based UI
  */
 
-import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
+import { createContext, type ReactNode,useCallback, useContext, useEffect, useMemo, useState } from 'react';
+
 import { logout as logoutIpc, validateSession as validateSessionIpc } from '@/services/ipc/auth';
 import { logError, logInfo, logVerbose } from '@/services/ipc/logger';
 
@@ -36,10 +37,10 @@ const SessionContext = createContext<SessionContextType | undefined>(undefined);
 
 /**
  * Hook to access session context
- * 
+ *
  * Provides access to authentication state and session management functions.
  * Must be used within a SessionProvider component.
- * 
+ *
  * @returns Session context with auth state and actions
  * @throws Error if used outside SessionProvider
  */
@@ -58,15 +59,15 @@ interface SessionProviderProps {
 
 /**
  * Session provider component
- * 
+ *
  * Manages authentication state and session persistence throughout app lifecycle.
- * 
+ *
  * Initialization flow:
  * 1. Attempts to restore session from localStorage
  * 2. Validates token with backend
  * 3. Either restores session or clears invalid token
  * 4. Sets loading to false when ready
- * 
+ *
  * @param props - Provider props with children
  * @returns Provider component wrapping children with session context
  */
@@ -78,7 +79,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
 
   /**
    * Restore session from localStorage on mount
-   * 
+   *
    * WHY: Implements "stay logged in" feature by persisting tokens.
    * Validates restored tokens to ensure they haven't expired or been invalidated.
    * Critical for UX - users don't want to login every time they open the app.
@@ -113,7 +114,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
 
   /**
    * Log in user and persist session
-   * 
+   *
    * @param newToken - Authentication token from backend
    * @param newEmail - User's email address
    * @param newIsAdmin - Whether user has admin privileges
@@ -128,7 +129,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
 
   /**
    * Log out user and clear session
-   * 
+   *
    * Notifies backend to invalidate token, then clears all local session state.
    * Continues with logout even if backend notification fails (fail-safe).
    */
@@ -141,7 +142,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
         logError('Could not logout', { error: err instanceof Error ? err.message : String(err) });
       }
     }
-    
+
     setToken(null);
     setEmail(null);
     setIsAdmin(false);
@@ -149,16 +150,18 @@ export function SessionProvider({ children }: SessionProviderProps) {
     logInfo('User logged out');
   }, [token]);
 
-  const value: SessionContextType = useMemo(() => ({
-    isLoggedIn: !!token,
-    token,
-    email,
-    isAdmin,
-    login,
-    logout,
-    isLoading
-  }), [token, email, isAdmin, login, logout, isLoading]);
+  const value: SessionContextType = useMemo(
+    () => ({
+      isLoggedIn: Boolean(token),
+      token,
+      email,
+      isAdmin,
+      login,
+      logout,
+      isLoading,
+    }),
+    [token, email, isAdmin, login, logout, isLoading]
+  );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
-};
-
+}

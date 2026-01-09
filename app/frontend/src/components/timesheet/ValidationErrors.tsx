@@ -1,15 +1,15 @@
 /**
  * ValidationErrors Component
- * 
+ *
  * Displays validation errors above the submit button using MUI components.
  * Shows up to 3 individual errors, or a summary button for more.
  */
 
-import Alert from '@mui/material/Alert';
-import Button from '@mui/material/Button';
-import Box from '@mui/material/Box';
-import Chip from '@mui/material/Chip';
 import ErrorIcon from '@mui/icons-material/Error';
+import Alert from '@mui/material/Alert';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Chip from '@mui/material/Chip';
 
 interface ValidationError {
   row: number;
@@ -34,42 +34,28 @@ export function ValidationErrors({ errors, onShowAllErrors }: ValidationErrorsPr
 
   return (
     <Box sx={{ width: '100%', mb: 2 }}>
-      {!hasMoreErrors && visibleErrors.map((error, index) => (
-        <Alert 
-          key={`${error.row}-${error.col}-${index}`} 
-          severity="error" 
-          icon={<ErrorIcon />}
-          sx={{ mb: 1 }}
-        >
-          Row {error.row + 1}: {error.message}
-        </Alert>
-      ))}
-      
+      {!hasMoreErrors &&
+        visibleErrors.map((error, index) => (
+          <Alert key={`${error.row}-${error.col}-${index}`} severity="error" icon={<ErrorIcon />} sx={{ mb: 1 }}>
+            Row {error.row + 1}: {error.message}
+          </Alert>
+        ))}
+
       {hasMoreErrors && (
-        <Alert 
-          severity="error" 
+        <Alert
+          severity="error"
           action={
-            <Button 
-              color="inherit" 
-              size="small" 
-              onClick={onShowAllErrors}
-            >
+            <Button color="inherit" size="small" onClick={onShowAllErrors}>
               View All
             </Button>
           }
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <span>Multiple validation errors found</span>
-            <Chip 
-              label={errors.length} 
-              size="small" 
-              color="error" 
-              sx={{ fontWeight: 'bold' }}
-            />
+            <Chip label={errors.length} size="small" color="error" sx={{ fontWeight: 'bold' }} />
           </Box>
         </Alert>
       )}
     </Box>
   );
 }
-

@@ -1,9 +1,9 @@
 /**
  * @fileoverview Custom Assertion Helpers
- * 
+ *
  * Custom assertion functions for more readable and specific test validations.
  * Provides domain-specific assertions for timesheet data and business rules.
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025
@@ -30,7 +30,7 @@ export function assertValidTimesheetRow(row: TimesheetRow): void {
  */
 export function assertInvalidTimesheetRow(row: TimesheetRow, expectedMissingField?: string): void {
   const invalidFields: string[] = [];
-  
+
   // Check for missing or empty required fields
   if (!row.date || (typeof row.date === 'string' && row.date.trim() === '')) {
     invalidFields.push('date');
@@ -38,36 +38,36 @@ export function assertInvalidTimesheetRow(row: TimesheetRow, expectedMissingFiel
     // Check date validity
     invalidFields.push('date');
   }
-  
+
   if (!row.timeIn || (typeof row.timeIn === 'string' && row.timeIn.trim() === '')) {
     invalidFields.push('timeIn');
   } else if (typeof row.timeIn === 'string' && !isValidTime(row.timeIn)) {
     // Check time validity
     invalidFields.push('timeIn');
   }
-  
+
   if (!row.timeOut || (typeof row.timeOut === 'string' && row.timeOut.trim() === '')) {
     invalidFields.push('timeOut');
   } else if (typeof row.timeOut === 'string' && !isValidTime(row.timeOut)) {
     // Check time validity
     invalidFields.push('timeOut');
   }
-  
+
   if (!row.project || (typeof row.project === 'string' && row.project.trim() === '')) {
     invalidFields.push('project');
   }
-  
+
   if (!row.taskDescription || (typeof row.taskDescription === 'string' && row.taskDescription.trim() === '')) {
     invalidFields.push('taskDescription');
   }
-  
+
   // Check time relationship (time out must be after time in)
   if (row.timeIn && row.timeOut && !isTimeOutAfterTimeIn(row.timeIn, row.timeOut)) {
     invalidFields.push('timeRelationship');
   }
-  
+
   expect(invalidFields.length).toBeGreaterThan(0);
-  
+
   if (expectedMissingField) {
     expect(invalidFields).toContain(expectedMissingField);
   }
@@ -78,12 +78,12 @@ export function assertInvalidTimesheetRow(row: TimesheetRow, expectedMissingFiel
  */
 export function assertValidDateFormat(dateStr: string): void {
   expect(dateStr).toMatch(/^\d{1,2}\/\d{1,2}\/\d{4}$/);
-  
+
   const parts = dateStr.split('/').map(Number);
   const month = parts[0];
   const day = parts[1];
   const year = parts[2];
-  
+
   if (month && day && year) {
     const date = new Date(year, month - 1, day);
     expect(date.getFullYear()).toBe(year);
@@ -97,11 +97,11 @@ export function assertValidDateFormat(dateStr: string): void {
  */
 export function assertValidTimeFormat(timeStr: string): void {
   expect(timeStr).toMatch(/^([01]?[0-9]|2[0-3]):([0-5][0-9])$/);
-  
+
   const parts = timeStr.split(':').map(Number);
   const hours = parts[0];
   const minutes = parts[1];
-  
+
   if (hours !== undefined && minutes !== undefined) {
     const totalMinutes = hours * 60 + minutes;
     expect(totalMinutes % 15).toBe(0);
@@ -118,11 +118,11 @@ export function assertTimeOutAfterTimeIn(timeIn: string, timeOut: string): void 
   const inMinutes = inParts[1];
   const outHours = outParts[0];
   const outMinutes = outParts[1];
-  
+
   if (inHours !== undefined && inMinutes !== undefined && outHours !== undefined && outMinutes !== undefined) {
     const inTotalMinutes = inHours * 60 + inMinutes;
     const outTotalMinutes = outHours * 60 + outMinutes;
-    
+
     expect(outTotalMinutes).toBeGreaterThan(inTotalMinutes);
   }
 }
@@ -148,8 +148,14 @@ export function assertProjectDoesNotNeedTools(project: string): void {
  */
 export function assertToolNeedsChargeCode(tool: string): void {
   const toolsWithoutCharges = [
-    'Internal Meeting', 'DECA Meeting', 'Logistics', 'Meeting', 
-    'Non Tool Related', 'Admin', 'Training', 'N/A'
+    'Internal Meeting',
+    'DECA Meeting',
+    'Logistics',
+    'Meeting',
+    'Non Tool Related',
+    'Admin',
+    'Training',
+    'N/A',
   ];
   expect(toolsWithoutCharges).not.toContain(tool);
 }
@@ -159,8 +165,14 @@ export function assertToolNeedsChargeCode(tool: string): void {
  */
 export function assertToolDoesNotNeedChargeCode(tool: string): void {
   const toolsWithoutCharges = [
-    'Internal Meeting', 'DECA Meeting', 'Logistics', 'Meeting', 
-    'Non Tool Related', 'Admin', 'Training', 'N/A'
+    'Internal Meeting',
+    'DECA Meeting',
+    'Logistics',
+    'Meeting',
+    'Non Tool Related',
+    'Admin',
+    'Training',
+    'N/A',
   ];
   expect(toolsWithoutCharges).toContain(tool);
 }
@@ -171,15 +183,21 @@ export function assertToolDoesNotNeedChargeCode(tool: string): void {
 export function assertCascadingRulesApplied(row: TimesheetRow): void {
   const projectsWithoutTools = ['ERT', 'PTO/RTO', 'SWFL-CHEM/GAS', 'Training'];
   const toolsWithoutCharges = [
-    'Internal Meeting', 'DECA Meeting', 'Logistics', 'Meeting', 
-    'Non Tool Related', 'Admin', 'Training', 'N/A'
+    'Internal Meeting',
+    'DECA Meeting',
+    'Logistics',
+    'Meeting',
+    'Non Tool Related',
+    'Admin',
+    'Training',
+    'N/A',
   ];
-  
+
   if (projectsWithoutTools.includes(row.project || '')) {
     expect(row['tool']).toBeNull();
     expect(row['chargeCode']).toBeNull();
   }
-  
+
   if (toolsWithoutCharges.includes(row['tool'] || '')) {
     expect(row['chargeCode']).toBeNull();
   }
@@ -209,7 +227,7 @@ export function assertTimeConversionConsistency(timeStr: string, minutes: number
   const parts = timeStr.split(':').map(Number);
   const hours = parts[0];
   const minutesFromStr = parts[1];
-  
+
   if (hours !== undefined && minutesFromStr !== undefined) {
     const expectedMinutes = hours * 60 + minutesFromStr;
     expect(minutes).toBe(expectedMinutes);
@@ -224,7 +242,7 @@ export function assertDateConversionConsistency(dateStr: string, isoDate: string
   const month = parts[0];
   const day = parts[1];
   const year = parts[2];
-  
+
   if (month && day && year) {
     const expectedIsoDate = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
     expect(isoDate).toBe(expectedIsoDate);
@@ -240,7 +258,7 @@ export function assertValidIPCPayload(payload: Record<string, unknown>): void {
   expect(payload).toHaveProperty('timeOut');
   expect(payload).toHaveProperty('project');
   expect(payload).toHaveProperty('taskDescription');
-  
+
   // Optional fields can be null
   if (payload['tool'] !== undefined) {
     expect(typeof payload['tool'] === 'string' || payload['tool'] === null).toBe(true);
@@ -260,17 +278,11 @@ export function assertUserFriendlyErrorMessage(errorMessage: string): void {
   expect(errorMessage).not.toContain('null');
   expect(errorMessage).not.toContain('Error:');
   expect(errorMessage).not.toContain('Exception');
-  
+
   // Check for common user-friendly patterns
-  const friendlyPatterns = [
-    /Please enter/,
-    /Please pick/,
-    /must be/,
-    /should be/,
-    /is required/
-  ];
-  
-  const hasFriendlyPattern = friendlyPatterns.some(pattern => pattern.test(errorMessage));
+  const friendlyPatterns = [/Please enter/, /Please pick/, /must be/, /should be/, /is required/];
+
+  const hasFriendlyPattern = friendlyPatterns.some((pattern) => pattern.test(errorMessage));
   expect(hasFriendlyPattern).toBe(true);
 }
 
@@ -282,18 +294,18 @@ export function assertQuarterValidation(dateStr: string, expectedValid: boolean)
   const month = parts[0];
   const day = parts[1];
   const year = parts[2];
-  
+
   if (month && day && year) {
     const date = new Date(year, month - 1, day);
     const currentDate = new Date();
     const currentYear = currentDate.getFullYear();
     const currentQuarter = Math.floor(currentDate.getMonth() / 3) + 1;
-    
+
     const entryYear = date.getFullYear();
     const entryQuarter = Math.floor(date.getMonth() / 3) + 1;
-    
+
     const isValid = entryYear === currentYear && entryQuarter === currentQuarter;
-    
+
     expect(isValid).toBe(expectedValid);
   }
 }
@@ -309,12 +321,12 @@ export function assertDatabaseConstraints(entry: DbTimesheetEntry): void {
   if (entry.time_out < 1 || entry.time_out >= 1440) {
     throw new Error(`Invalid time_out: ${entry.time_out}`);
   }
-  
+
   // Time relationship constraint
   if (entry.time_out <= entry.time_in) {
     throw new Error(`time_out (${entry.time_out}) must be greater than time_in (${entry.time_in})`);
   }
-  
+
   // 15-minute increment constraints
   if (entry.time_in % 15 !== 0) {
     throw new Error(`time_in must be in 15-minute increments: ${entry.time_in}`);
@@ -322,7 +334,7 @@ export function assertDatabaseConstraints(entry: DbTimesheetEntry): void {
   if (entry.time_out % 15 !== 0) {
     throw new Error(`time_out must be in 15-minute increments: ${entry.time_out}`);
   }
-  
+
   // Hours calculation constraint
   const expectedHours = (entry.time_out - entry.time_in) / 60.0;
   if (Math.abs(entry.hours - expectedHours) > 0.001) {
@@ -335,15 +347,15 @@ export function assertDatabaseConstraints(entry: DbTimesheetEntry): void {
  */
 export function assertPluginInterface(plugin: Record<string, unknown>, interfaceName: string): void {
   const requiredMethods = {
-    'IDataService': ['saveDraft', 'loadDraft', 'deleteDraft', 'getArchiveData', 'getAllTimesheetEntries'],
-    'ISubmissionService': ['submit', 'validateEntry', 'isAvailable'],
-    'ICredentialService': ['store', 'get', 'list', 'delete']
+    IDataService: ['saveDraft', 'loadDraft', 'deleteDraft', 'getArchiveData', 'getAllTimesheetEntries'],
+    ISubmissionService: ['submit', 'validateEntry', 'isAvailable'],
+    ICredentialService: ['store', 'get', 'list', 'delete'],
   };
-  
+
   const methods = requiredMethods[interfaceName as keyof typeof requiredMethods];
   expect(methods).toBeDefined();
-  
-  methods.forEach(method => {
+
+  methods.forEach((method) => {
     expect(plugin[method]).toBeDefined();
     expect(typeof plugin[method]).toBe('function');
   });
@@ -355,7 +367,7 @@ export function assertPluginInterface(plugin: Record<string, unknown>, interface
 export function assertTestDataIsolation(entries1: unknown[], entries2: unknown[]): void {
   // Check that arrays are different instances
   expect(entries1).not.toBe(entries2);
-  
+
   // Check that modifying one doesn't affect the other
   if (entries1.length > 0) {
     const originalLength = entries2.length;

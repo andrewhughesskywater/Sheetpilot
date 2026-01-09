@@ -16,10 +16,11 @@
  */
 
 import type { Page } from 'playwright';
-import * as C from '../config/automation_config';
-import type { LoginStep } from '../config/automation_config';
-import type { WebformFiller } from '../browser/webform_flow';
+
 import { authLogger } from '../../utils/logger';
+import type { WebformFiller } from '../browser/webform_flow';
+import type { LoginStep } from '../config/automation_config';
+import * as C from '../config/automation_config';
 
 /**
  * Error thrown when navigation to authentication pages fails
@@ -36,7 +37,7 @@ interface HandleInputActionConfig {
 
 /**
  * Manages authentication and login processes for the automation system
- * 
+ *
  * Handles the complete login workflow including navigation, credential entry,
  * and authentication state validation. Supports retry logic and error handling.
  */
@@ -48,14 +49,17 @@ export class LoginManager {
   /** Wait timeout in seconds for element operations */
   waitSeconds: number;
   /** Dynamic form configuration */
-  private formConfig: { BASE_URL: string; FORM_ID: string; SUBMISSION_ENDPOINT: string; SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[] };
+  private formConfig: {
+    BASE_URL: string;
+    FORM_ID: string;
+    SUBMISSION_ENDPOINT: string;
+    SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[];
+  };
   /** Track login state for each context */
   private loginStates: boolean[] = [];
 
   private _getPageForContext(contextIndex?: number): Page {
-    return contextIndex !== undefined
-      ? this.browserManager.getPage(contextIndex)
-      : this.browserManager.requirePage();
+    return contextIndex !== undefined ? this.browserManager.getPage(contextIndex) : this.browserManager.requirePage();
   }
 
   private async _navigateToBaseWithRetries(contextIndex?: number): Promise<void> {
@@ -78,14 +82,14 @@ export class LoginManager {
         authLogger.warn('Navigation attempt failed', {
           attempt,
           error: String(e),
-          contextIndex
+          contextIndex,
         });
         if (attempt >= maxRetries) {
           authLogger.error('All navigation attempts failed', {
             maxRetries,
             baseUrl: this.formConfig.BASE_URL,
             error: String(e),
-            contextIndex
+            contextIndex,
           });
           throw new BotNavigationError(
             `Could not navigate to ${this.formConfig.BASE_URL} after ${maxRetries} attempts: ${String(e)}`
@@ -119,7 +123,7 @@ export class LoginManager {
         stepIndex: i,
         action,
         selector: step['element_selector'] || step['locator'],
-        contextIndex
+        contextIndex,
       });
 
       switch (action) {
@@ -167,20 +171,22 @@ export class LoginManager {
     const waitCondition = (step['wait_condition'] as 'visible' | 'hidden' | 'attached' | 'detached') ?? 'visible';
     const isOptional = step['optional'] as boolean | undefined;
 
-    await page.waitForSelector(elementSelector, { 
-      state: waitCondition, 
-      timeout: C.GLOBAL_TIMEOUT * 1000 
-    }).catch((err: Error) => {
-      if (!isOptional) {
-        authLogger.error('Required element not found', { 
-          selector: elementSelector,
-          error: err?.message,
-          contextIndex
-        });
-        throw err;
-      }
-      authLogger.verbose('Optional element not found, continuing', { selector: elementSelector, contextIndex });
-    });
+    await page
+      .waitForSelector(elementSelector, {
+        state: waitCondition,
+        timeout: C.GLOBAL_TIMEOUT * 1000,
+      })
+      .catch((err: Error) => {
+        if (!isOptional) {
+          authLogger.error('Required element not found', {
+            selector: elementSelector,
+            error: err?.message,
+            contextIndex,
+          });
+          throw err;
+        }
+        authLogger.verbose('Optional element not found, continuing', { selector: elementSelector, contextIndex });
+      });
   }
 
   /**
@@ -197,16 +203,16 @@ export class LoginManager {
     const locator = page.locator(step['locator'] as string);
     const valueKey = step['value_key'] as string;
     const isSensitive = step['sensitive'] as boolean | undefined;
-    
+
     const val = valueKey === 'email' ? email : valueKey === 'password' ? password : String(valueKey);
-    
-    authLogger.debug('Filling input field', { 
+
+    authLogger.debug('Filling input field', {
       locator: step['locator'],
       valueKey,
       sensitive: isSensitive,
-      contextIndex
+      contextIndex,
     });
-    
+
     // Use fill() even for sensitive values to avoid slow per-keystroke typing during SSO.
     // `sensitive` still controls logging hygiene via the caller and config.
     await locator.fill(val);
@@ -226,10 +232,10 @@ export class LoginManager {
   ): Promise<void> {
     const locator = page.locator(step['locator'] as string);
     const expectsNavigation = step['expects_navigation'] as boolean | undefined;
-    
+
     authLogger.debug('Clicking element', { locator: step['locator'], contextIndex });
     await locator.click();
-    
+
     if (expectsNavigation) {
       authLogger.verbose('Waiting for navigation after click', { contextIndex });
       await C.dynamic_wait_for_page_load(page, undefined, C.GLOBAL_TIMEOUT);
@@ -238,10 +244,10 @@ export class LoginManager {
 
   /**
    * Executes the complete login process with provided credentials for a specific context
-   * 
+   *
    * Performs navigation to login page, credential entry, and authentication
    * following the configured login steps. Includes retry logic for navigation failures.
-   * 
+   *
    * @param email - User email for authentication
    * @param password - User password for authentication
    * @param contextIndex - Target browser context index. When set, `LoginManager`
@@ -255,10 +261,10 @@ export class LoginManager {
       authLogger.verbose('Context already logged in, skipping login', { contextIndex });
       return;
     }
-    
+
     const timer = authLogger.startTimer('login-flow');
     authLogger.info('Starting login process', { email, baseUrl: this.formConfig.BASE_URL, contextIndex });
-    
+
     await this._navigateToBaseWithRetries(contextIndex);
 
     const page = this._getPageForContext(contextIndex);
@@ -267,7 +273,7 @@ export class LoginManager {
       loginConfig.contextIndex = contextIndex;
     }
     await this._executeLoginSteps(page, loginConfig);
-    
+
     // Mark this context as logged in
     if (contextIndex !== undefined) {
       this.loginStates[contextIndex] = true;
@@ -287,19 +293,19 @@ export class LoginManager {
    */
   private async _navigateToBase(page: Page, timeoutMs?: number): Promise<void> {
     const timeout = timeoutMs ?? this.waitSeconds * 1000;
-    authLogger.verbose('Navigating to base URL', { 
+    authLogger.verbose('Navigating to base URL', {
       baseUrl: this.formConfig.BASE_URL,
-      timeoutMs: timeout 
+      timeoutMs: timeout,
     });
     await page.goto(this.formConfig.BASE_URL, { timeout });
   }
 
   /**
    * Validates the current login state by checking URL patterns
-   * 
+   *
    * Uses a minimal heuristic approach to determine if the user is logged in
    * by checking if the current URL contains any success URL patterns.
-   * 
+   *
    * @returns Promise resolving to true if logged in, false otherwise
    */
   validate_login_state = async (): Promise<boolean> => {
@@ -307,10 +313,10 @@ export class LoginManager {
       const page = this.browserManager.requirePage();
       // Check if current URL contains any configured success URL patterns
       const currentUrl = page.url();
-      const successUrls: string[] = (this.cfg as Record<string, unknown>)['LOGIN_SUCCESS_URLS'] as string[] ?? [];
-      authLogger.verbose('Validating login state', { 
+      const successUrls: string[] = ((this.cfg as Record<string, unknown>)['LOGIN_SUCCESS_URLS'] as string[]) ?? [];
+      authLogger.verbose('Validating login state', {
         currentUrl: currentUrl,
-        successUrls: successUrls 
+        successUrls: successUrls,
       });
       if (successUrls.some((u) => currentUrl.includes(u))) {
         authLogger.info('Login state validated successfully');

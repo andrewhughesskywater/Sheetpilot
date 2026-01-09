@@ -21,7 +21,5 @@ export const credentialsBridge = {
     success: boolean;
     message: string;
     changes: number;
-  }> => ipcRenderer.invoke('credentials:delete', service)
+  }> => ipcRenderer.invoke('credentials:delete', service),
 };
-
-

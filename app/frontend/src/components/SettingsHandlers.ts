@@ -2,9 +2,9 @@
  * @fileoverview Async handler functions for Settings operations
  */
 
-import { logError, logInfo, logUserAction, logWarn } from '@/services/ipc/logger';
 import { clearCredentials as clearCredentialsIpc, rebuildDatabase as rebuildDatabaseIpc } from '@/services/ipc/admin';
 import { storeCredentials as storeCredentialsIpc } from '@/services/ipc/credentials';
+import { logError, logInfo, logUserAction, logWarn } from '@/services/ipc/logger';
 import { exportLogs as exportLogsIpc } from '@/services/ipc/logs';
 import { setSetting } from '@/services/ipc/settings';
 
@@ -35,7 +35,13 @@ export async function toggleHeadlessMode(
 
 export async function updateSmartsheetCredentials(
   token: string | null,
-  { email, password, setError, setIsUpdating, onSuccess }: {
+  {
+    email,
+    password,
+    setError,
+    setIsUpdating,
+    onSuccess,
+  }: {
     email: string;
     password: string;
     setError: (value: string) => void;
@@ -149,7 +155,12 @@ export async function adminRebuildDatabase(
 
 export async function exportLogsToFile(
   token: string | null,
-  { logFiles, logPath, setError, setIsExporting }: {
+  {
+    logFiles,
+    logPath,
+    setError,
+    setIsExporting,
+  }: {
     logFiles: string[];
     logPath: string;
     setError: (value: string) => void;
@@ -227,7 +238,7 @@ export async function exportLogsToFile(
       const errorMsg = `Failed to create download: ${blobError instanceof Error ? blobError.message : String(blobError)}`;
       setError(errorMsg);
       logError('Export logs failed - blob creation error', {
-        error: blobError instanceof Error ? blobError.message : String(blobError)
+        error: blobError instanceof Error ? blobError.message : String(blobError),
       });
     }
   } catch (err) {
@@ -240,7 +251,7 @@ export async function exportLogsToFile(
         URL.revokeObjectURL(downloadUrl);
       } catch (revokeError) {
         logWarn('Could not revoke blob URL', {
-          error: revokeError instanceof Error ? revokeError.message : String(revokeError)
+          error: revokeError instanceof Error ? revokeError.message : String(revokeError),
         });
       }
     }

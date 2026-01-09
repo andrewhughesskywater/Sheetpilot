@@ -1,5 +1,6 @@
-import Button from '@mui/material/Button';
 import EditIcon from '@mui/icons-material/Edit';
+import Button from '@mui/material/Button';
+
 import type { MacroRow } from '../../../utils/macroStorage';
 import { isMacroEmpty } from '../../../utils/macroStorage';
 
@@ -21,8 +22,14 @@ export function MacroToolbar({ macros, onApplyMacro, onOpenManager }: MacroToolb
       {macros.map((macro, index) => {
         const empty = isMacroEmpty(macro);
         const displayName = macro.name?.trim() || `Macro ${index + 1}`;
-        const label = empty ? `Macro ${index + 1}` : displayName.length > 30 ? `${displayName.slice(0, 30)}...` : displayName;
-        const tooltipText = empty ? `Macro ${index + 1} not configured` : `${displayName}${macro.taskDescription ? ` - ${macro.taskDescription}` : ''}`;
+        const label = empty
+          ? `Macro ${index + 1}`
+          : displayName.length > 30
+            ? `${displayName.slice(0, 30)}...`
+            : displayName;
+        const tooltipText = empty
+          ? `Macro ${index + 1} not configured`
+          : `${displayName}${macro.taskDescription ? ` - ${macro.taskDescription}` : ''}`;
         return (
           <Button
             key={index}
@@ -40,7 +47,13 @@ export function MacroToolbar({ macros, onApplyMacro, onOpenManager }: MacroToolb
           </Button>
         );
       })}
-      <Button className="macro-edit-button" variant="text" size="small" startIcon={<EditIcon />} onClick={handleOpenManager}>
+      <Button
+        className="macro-edit-button"
+        variant="text"
+        size="small"
+        startIcon={<EditIcon />}
+        onClick={handleOpenManager}
+      >
         Edit Macros...
       </Button>
     </div>

@@ -1,22 +1,23 @@
-import { useMemo, useRef, useState } from 'react';
-import type { MutableRefObject } from 'react';
 import type { HotTableRef } from '@handsontable/react-wrapper';
+import type { MutableRefObject } from 'react';
+import { useMemo, useRef, useState } from 'react';
+
 import { useData } from '../../../contexts/DataContext';
 import { useSession } from '../../../contexts/SessionContext';
-import type { TimesheetRow } from '../timesheet.schema';
 import type { MacroRow } from '../../../utils/macroStorage';
-import { useTimesheetSubmission } from './useTimesheetSubmission';
-import { useMacroSystem } from './useMacroSystem';
-import { useValidationState } from './useValidationState';
-import { useSaveState, type SaveState } from './useSaveState';
-import { useTableHandlers } from './useTableHandlers';
-import { useInitializeMacros } from './useInitializeMacros';
-import { useWeekdayPatternDetection } from './useWeekdayPatternDetection';
-import { useScrollbarFix } from './useScrollbarFix';
-import { useCleanupOnUnmount } from './useCleanupOnUnmount';
-import { useKeyboardShortcuts } from './useKeyboardShortcuts';
+import type { TimesheetRow } from '../timesheet.schema';
 import { createRefreshHandler } from '../utils/refreshHelpers';
 import type { ValidationError } from '../utils/timesheetGridUtils';
+import { useCleanupOnUnmount } from './useCleanupOnUnmount';
+import { useInitializeMacros } from './useInitializeMacros';
+import { useKeyboardShortcuts } from './useKeyboardShortcuts';
+import { useMacroSystem } from './useMacroSystem';
+import { type SaveState,useSaveState } from './useSaveState';
+import { useScrollbarFix } from './useScrollbarFix';
+import { useTableHandlers } from './useTableHandlers';
+import { useTimesheetSubmission } from './useTimesheetSubmission';
+import { useValidationState } from './useValidationState';
+import { useWeekdayPatternDetection } from './useWeekdayPatternDetection';
 
 // Handsontable event handler types
 type BeforeRemoveRowHandler = (index: number, amount: number) => void;
@@ -80,7 +81,14 @@ export interface TimesheetOrchestratorModel {
 
 export function useTimesheetOrchestrator(onChange?: (rows: TimesheetRow[]) => void): TimesheetOrchestratorModel {
   const { token, isAdmin } = useSession();
-  const { timesheetDraftData, setTimesheetDraftData, isTimesheetDraftLoading, timesheetDraftError, refreshTimesheetDraft, refreshArchiveData } = useData();
+  const {
+    timesheetDraftData,
+    setTimesheetDraftData,
+    isTimesheetDraftLoading,
+    timesheetDraftError,
+    refreshTimesheetDraft,
+    refreshArchiveData,
+  } = useData();
 
   const hotTableRef = useRef<HotTableRef | null>(null);
 
@@ -89,25 +97,53 @@ export function useTimesheetOrchestrator(onChange?: (rows: TimesheetRow[]) => vo
     isAdmin,
     timesheetDraftData,
     refreshTimesheetDraft,
-    refreshArchiveData
+    refreshArchiveData,
   });
 
-  const { macros, setMacros, showMacroDialog, setShowMacroDialog, applyMacro, duplicateSelectedRow, handleMacroKeyDown } = useMacroSystem({
+  const {
+    macros,
+    setMacros,
+    showMacroDialog,
+    setShowMacroDialog,
+    applyMacro,
+    duplicateSelectedRow,
+    handleMacroKeyDown,
+  } = useMacroSystem({
     hotTableRef,
     timesheetDraftData,
-    setTimesheetDraftData
+    setTimesheetDraftData,
   });
 
   const { validationErrors, setValidationErrors, showErrorDialog, setShowErrorDialog } = useValidationState();
 
-  const { saveButtonState, setSaveButtonState, unsavedRowsRef, pendingSaveRef, saveTimersRef, inFlightSavesRef, updateSaveButtonState, handleManualSave, saveAndReloadRow } = useSaveState<TimesheetRow>(
-    timesheetDraftData,
-    setTimesheetDraftData,
-    onChange,
-    hotTableRef
-  );
+  const {
+    saveButtonState,
+    setSaveButtonState,
+    unsavedRowsRef,
+    pendingSaveRef,
+    saveTimersRef,
+    inFlightSavesRef,
+    updateSaveButtonState,
+    handleManualSave,
+    saveAndReloadRow,
+  } = useSaveState<TimesheetRow>(timesheetDraftData, setTimesheetDraftData, onChange, hotTableRef);
 
-  const { weekdayPatternRef, /* previousSelectionRef */ handleAfterChange, handleAfterRemoveRow, handleBeforeRemoveRow, handleBeforePaste, handleAfterPaste, handleAfterBeginEditing, handleBeforeKeyDown, handleAfterSelection, handleAfterColumnResize, handleAfterRowResize, savedRowHeight, cellsFunction, columnDefinitions } = useTableHandlers({
+  const {
+    weekdayPatternRef,
+    /* previousSelectionRef */ handleAfterChange,
+    handleAfterRemoveRow,
+    handleBeforeRemoveRow,
+    handleBeforePaste,
+    handleAfterPaste,
+    handleAfterBeginEditing,
+    handleBeforeKeyDown,
+    handleAfterSelection,
+    handleAfterColumnResize,
+    handleAfterRowResize,
+    savedRowHeight,
+    cellsFunction,
+    columnDefinitions,
+  } = useTableHandlers({
     timesheetDraftData,
     setTimesheetDraftData,
     onChange,

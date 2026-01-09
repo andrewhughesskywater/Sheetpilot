@@ -1,17 +1,18 @@
 import type { MutableRefObject } from 'react';
+
+import { doesProjectNeedTools, doesToolNeedChargeCode } from '../../../../../shared/business-config';
+import { formatDateForDisplay,getSmartPlaceholder, incrementDate } from '../../../utils/smartDate';
 import type { TimesheetRow } from '../timesheet.schema';
 import {
+  formatTimeInput,
+  hasTimeOverlapWithPreviousEntries,
+  isTimeOutAfterTimeIn,
   isValidDate,
   isValidTime,
-  isTimeOutAfterTimeIn,
-  hasTimeOverlapWithPreviousEntries,
   normalizeDateFormat,
-  formatTimeInput,
   normalizeRowData,
 } from '../timesheet.schema';
-import { doesProjectNeedTools, doesToolNeedChargeCode } from '../../../../../shared/business-config';
-import { getSmartPlaceholder, incrementDate, formatDateForDisplay } from '../../../utils/smartDate';
-import { clearInvalidIfPresent } from '../utils/hotHelpers';
+import { clearInvalidIfPresent } from "./hotHelpers";
 
 // Types mirrored from Handsontable-related usage
 export type HandsontableChange = [row: number, prop: unknown, oldValue: unknown, newValue: unknown];
@@ -50,7 +51,10 @@ export function validateDateField(dateStr: string): { isValid: boolean; message:
   return { isValid: ok, message: ok ? '' : `Invalid date format "${dateStr}" (must be MM/DD/YYYY or YYYY-MM-DD)` };
 }
 
-export function validateTimeField(timeStr: string, fieldName: 'start time' | 'end time'): { isValid: boolean; message: string } {
+export function validateTimeField(
+  timeStr: string,
+  fieldName: 'start time' | 'end time'
+): { isValid: boolean; message: string } {
   const ok = isValidTime(timeStr);
   return { isValid: ok, message: ok ? '' : `Invalid ${fieldName} "${timeStr}" (must be HH:MM in 15-min increments)` };
 }
@@ -61,7 +65,10 @@ export function validateRequiredField(propStr: string, value: unknown): { isVali
   return { isValid: false, message: `${fieldName} is required` };
 }
 
-export function validateField(propStr: string, newVal: unknown): { isValid: boolean; shouldClear: boolean; message: string } {
+export function validateField(
+  propStr: string,
+  newVal: unknown
+): { isValid: boolean; shouldClear: boolean; message: string } {
   if ((propStr === 'date' || propStr === 'timeIn' || propStr === 'timeOut') && !newVal) {
     return { isValid: true, shouldClear: false, message: '' };
   }
@@ -92,12 +99,15 @@ export function applyProjectUpdate(project: string, currentRow: TimesheetRow): T
 }
 
 export function applyToolUpdate(tool: string, currentRow: TimesheetRow): TimesheetRow {
-  return !doesToolNeedChargeCode(tool)
-    ? { ...currentRow, tool, chargeCode: null }
-    : { ...currentRow, tool };
+  return !doesToolNeedChargeCode(tool) ? { ...currentRow, tool, chargeCode: null } : { ...currentRow, tool };
 }
 
-export function applyValidUpdate(propStr: string, oldVal: unknown, newVal: unknown, currentRow: TimesheetRow): TimesheetRow {
+export function applyValidUpdate(
+  propStr: string,
+  oldVal: unknown,
+  newVal: unknown,
+  currentRow: TimesheetRow
+): TimesheetRow {
   if (newVal === oldVal) return currentRow;
   if (propStr === 'date') {
     return newVal ? { ...currentRow, date: normalizeDateFormat(String(newVal)) } : currentRow;
@@ -118,7 +128,11 @@ export function applyValidUpdate(propStr: string, oldVal: unknown, newVal: unkno
 export function processCellChange(
   change: HandsontableChange,
   currentRow: TimesheetRow,
-  hotInstance: { propToCol: (prop: string) => number | unknown; setDataAtCell: (row: number, col: number, value: unknown, source?: string) => void; setCellMeta: (row: number, col: number, key: string, value: unknown) => void }
+  hotInstance: {
+    propToCol: (prop: string) => number | unknown;
+    setDataAtCell: (row: number, col: number, value: unknown, source?: string) => void;
+    setCellMeta: (row: number, col: number, key: string, value: unknown) => void;
+  }
 ): {
   updatedRow: TimesheetRow;
   isValid: boolean;
@@ -155,7 +169,11 @@ export function processCellChange(
 export function processChangesList(
   changes: HandsontableChange[],
   timesheetDraftData: TimesheetRow[],
-  hotInstance: { propToCol: (prop: string) => number | unknown; setDataAtCell: (row: number, col: number, value: unknown, source?: string) => void; setCellMeta: (row: number, col: number, key: string, value: unknown) => void }
+  hotInstance: {
+    propToCol: (prop: string) => number | unknown;
+    setDataAtCell: (row: number, col: number, value: unknown, source?: string) => void;
+    setCellMeta: (row: number, col: number, key: string, value: unknown) => void;
+  }
 ) {
   const next = [...timesheetDraftData];
   const newErrors: ValidationError[] = [];
@@ -182,7 +200,11 @@ export function processChangesList(
 // Overlap / timeout validations across rows
 export function applyOverlapValidation(
   normalized: TimesheetRow[],
-  hotInstance: { propToCol: (prop: string) => number | unknown; setCellMeta: (row: number, col: number, key: string, value: unknown) => void; getCellMeta: (row: number, col: number) => { className?: string | string[] } }
+  hotInstance: {
+    propToCol: (prop: string) => number | unknown;
+    setCellMeta: (row: number, col: number, key: string, value: unknown) => void;
+    getCellMeta: (row: number, col: number) => { className?: string | string[] };
+  }
 ) {
   const overlapErrors: ValidationError[] = [];
   const overlapClearedRows: number[] = [];
@@ -194,14 +216,21 @@ export function applyOverlapValidation(
       const dateColIdx = hotInstance.propToCol('date');
       const timeInColIdx = hotInstance.propToCol('timeIn');
       const timeOutColIdx = hotInstance.propToCol('timeOut');
-      const cols = [dateColIdx, timeInColIdx, timeOutColIdx].filter((c): c is number => typeof c === 'number' && c >= 0);
+      const cols = [dateColIdx, timeInColIdx, timeOutColIdx].filter(
+        (c): c is number => typeof c === 'number' && c >= 0
+      );
       if (hasOverlap) {
-        cols.forEach(colIdx => hotInstance.setCellMeta(i, colIdx, 'className', 'htInvalid'));
+        cols.forEach((colIdx) => hotInstance.setCellMeta(i, colIdx, 'className', 'htInvalid'));
         if (typeof dateColIdx === 'number' && dateColIdx >= 0) {
-          overlapErrors.push({ row: i, col: dateColIdx, field: 'date', message: `Time overlap detected on ${row.date || 'this date'}` });
+          overlapErrors.push({
+            row: i,
+            col: dateColIdx,
+            field: 'date',
+            message: `Time overlap detected on ${row.date || 'this date'}`,
+          });
         }
       } else {
-        cols.forEach(colIdx => {
+        cols.forEach((colIdx) => {
           clearInvalidIfPresent(hotInstance, i, colIdx);
         });
         overlapClearedRows.push(i);
@@ -213,7 +242,11 @@ export function applyOverlapValidation(
 
 export function applyTimeOutValidation(
   normalized: TimesheetRow[],
-  hotInstance: { propToCol: (prop: string) => number | unknown; setCellMeta: (row: number, col: number, key: string, value: unknown) => void; getCellMeta: (row: number, col: number) => { className?: string | string[] } }
+  hotInstance: {
+    propToCol: (prop: string) => number | unknown;
+    setCellMeta: (row: number, col: number, key: string, value: unknown) => void;
+    getCellMeta: (row: number, col: number) => { className?: string | string[] };
+  }
 ) {
   const timeOutErrors: ValidationError[] = [];
   const timeOutClearedRows: number[] = [];
@@ -226,7 +259,12 @@ export function applyTimeOutValidation(
       if (!isTimeOutAfterTimeIn(row.timeIn, row.timeOut)) {
         if (validCol >= 0) {
           hotInstance.setCellMeta(i, validCol, 'className', 'htInvalid');
-          timeOutErrors.push({ row: i, col: validCol, field: 'timeOut', message: `End time ${row.timeOut} must be after start time ${row.timeIn}` });
+          timeOutErrors.push({
+            row: i,
+            col: validCol,
+            field: 'timeOut',
+            message: `End time ${row.timeOut} must be after start time ${row.timeIn}`,
+          });
         }
       } else if (validCol >= 0) {
         clearInvalidIfPresent(hotInstance, i, validCol);
@@ -244,10 +282,14 @@ export function mergeValidationErrors(
 ): ValidationError[] {
   let filtered = prev;
   if (cellsToClearErrors.length > 0) {
-    filtered = filtered.filter(prevErr => !cellsToClearErrors.some(clear => clear.row === prevErr.row && clear.col === prevErr.col));
+    filtered = filtered.filter(
+      (prevErr) => !cellsToClearErrors.some((clear) => clear.row === prevErr.row && clear.col === prevErr.col)
+    );
   }
   if (newErrors.length > 0) {
-    filtered = filtered.filter(prevErr => !newErrors.some(newErr => newErr.row === prevErr.row && newErr.col === prevErr.col));
+    filtered = filtered.filter(
+      (prevErr) => !newErrors.some((newErr) => newErr.row === prevErr.row && newErr.col === prevErr.col)
+    );
   }
   return [...filtered, ...newErrors];
 }
@@ -269,14 +311,20 @@ export function validateTimesheetRows(rows: TimesheetRow[]): { hasErrors: boolea
   realRows.forEach((row, idx) => {
     const rowNum = idx + 1;
     const checks: Array<{ ok: boolean; msg: string }> = [
-      { ok: !!row.date, msg: `Row ${rowNum}: Missing date` },
+      { ok: Boolean(row.date), msg: `Row ${rowNum}: Missing date` },
       { ok: !row.date || isValidDate(row.date), msg: `Row ${rowNum}: Invalid date format "${row.date}"` },
-      { ok: !!row.timeIn, msg: `Row ${rowNum}: Missing start time` },
-      { ok: !row.timeIn || isValidTime(row.timeIn), msg: `Row ${rowNum}: Invalid start time "${row.timeIn}" (must be HH:MM in 15-min increments)` },
-      { ok: !!row.timeOut, msg: `Row ${rowNum}: Missing end time` },
-      { ok: !row.timeOut || isValidTime(row.timeOut), msg: `Row ${rowNum}: Invalid end time "${row.timeOut}" (must be HH:MM in 15-min increments)` },
-      { ok: !!row.project, msg: `Row ${rowNum}: Missing project` },
-      { ok: !!row.taskDescription, msg: `Row ${rowNum}: Missing task description` },
+      { ok: Boolean(row.timeIn), msg: `Row ${rowNum}: Missing start time` },
+      {
+        ok: !row.timeIn || isValidTime(row.timeIn),
+        msg: `Row ${rowNum}: Invalid start time "${row.timeIn}" (must be HH:MM in 15-min increments)`,
+      },
+      { ok: Boolean(row.timeOut), msg: `Row ${rowNum}: Missing end time` },
+      {
+        ok: !row.timeOut || isValidTime(row.timeOut),
+        msg: `Row ${rowNum}: Invalid end time "${row.timeOut}" (must be HH:MM in 15-min increments)`,
+      },
+      { ok: Boolean(row.project), msg: `Row ${rowNum}: Missing project` },
+      { ok: Boolean(row.taskDescription), msg: `Row ${rowNum}: Missing task description` },
     ];
 
     for (const c of checks) {
@@ -307,7 +355,12 @@ export function validateTimesheetRows(rows: TimesheetRow[]): { hasErrors: boolea
 }
 
 // Date insertion via keyboard shortcuts
-export type DateInsertContext = { row: number; col: number; timesheetDraftData: TimesheetRow[]; weekdayPattern: boolean };
+export type DateInsertContext = {
+  row: number;
+  col: number;
+  timesheetDraftData: TimesheetRow[];
+  weekdayPattern: boolean;
+};
 export function computeDateInsert(
   event: globalThis.KeyboardEvent,
   ctx: DateInsertContext
@@ -319,22 +372,28 @@ export function computeDateInsert(
   const previousRow = row > 0 ? timesheetDraftData[row - 1] : undefined;
   const smartPlaceholder = getSmartPlaceholder(previousRow, timesheetDraftData, weekdayPattern);
 
-  const actions: Array<{ test: () => boolean; compute: () => { dateToInsert: string | null; preventDefault: boolean } }> = [
+  const actions: Array<{
+    test: () => boolean;
+    compute: () => { dateToInsert: string | null; preventDefault: boolean };
+  }> = [
     {
       test: () => event.key === 'Tab' && event.ctrlKey,
       compute: () => {
-        const last = timesheetDraftData.slice(0, row).reverse().find(r => r.date);
+        const last = timesheetDraftData
+          .slice(0, row)
+          .reverse()
+          .find((r) => r.date);
         return last?.date
           ? { dateToInsert: incrementDate(last.date, 1, weekdayPattern), preventDefault: true }
           : { dateToInsert: null, preventDefault: false };
       },
     },
     {
-      test: () => event.key === 'Tab' && event.shiftKey && !currentRow.date && !!smartPlaceholder,
+      test: () => event.key === 'Tab' && event.shiftKey && !currentRow.date && Boolean(smartPlaceholder),
       compute: () => ({ dateToInsert: incrementDate(smartPlaceholder!, 1, weekdayPattern), preventDefault: true }),
     },
     {
-      test: () => event.key === 'Tab' && !event.shiftKey && !event.ctrlKey && !currentRow.date && !!smartPlaceholder,
+      test: () => event.key === 'Tab' && !event.shiftKey && !event.ctrlKey && !currentRow.date && Boolean(smartPlaceholder),
       compute: () => ({ dateToInsert: smartPlaceholder!, preventDefault: true }),
     },
     {
@@ -351,7 +410,10 @@ export function computeDateInsert(
 
 // Pasting helpers
 export function setTempDropdownValue(
-  hotInstance: { setCellMeta: (row: number, col: number, key: string, value: unknown) => void; setDataAtCell: (row: number, col: number, value: unknown, source?: string) => void },
+  hotInstance: {
+    setCellMeta: (row: number, col: number, key: string, value: unknown) => void;
+    setDataAtCell: (row: number, col: number, value: unknown, source?: string) => void;
+  },
   row: number,
   col: number,
   value: unknown
@@ -374,7 +436,11 @@ function hasValue(value: unknown): boolean {
 }
 
 interface ApplyValueConfig {
-  hotInstance: { propToCol: (prop: string) => number | unknown; setCellMeta: (row: number, col: number, key: string, value: unknown) => void; setDataAtCell: (row: number, col: number, value: unknown, source?: string) => void };
+  hotInstance: {
+    propToCol: (prop: string) => number | unknown;
+    setCellMeta: (row: number, col: number, key: string, value: unknown) => void;
+    setDataAtCell: (row: number, col: number, value: unknown, source?: string) => void;
+  };
   targetRow: number;
   col: number | unknown;
   value: unknown;
@@ -393,7 +459,11 @@ export const applyPastedToolAndChargeCode = (
   data: unknown[][],
   startRow: number,
   startCol: number,
-  hotInstance: { propToCol: (prop: string) => number | unknown; setCellMeta: (row: number, col: number, key: string, value: unknown) => void; setDataAtCell: (row: number, col: number, value: unknown, source?: string) => void }
+  hotInstance: {
+    propToCol: (prop: string) => number | unknown;
+    setCellMeta: (row: number, col: number, key: string, value: unknown) => void;
+    setDataAtCell: (row: number, col: number, value: unknown, source?: string) => void;
+  }
 ): void => {
   const toolCol = hotInstance.propToCol('tool');
   const chargeCodeCol = hotInstance.propToCol('chargeCode');
@@ -411,16 +481,24 @@ export const applyPastedToolAndChargeCode = (
 export const normalizePastedRows = (
   pastedRowIndices: number[],
   currentData: TimesheetRow[],
-  hotInstance: { propToCol: (prop: string) => number | unknown; setDataAtCell: (row: number, col: number, value: unknown, source?: string) => void; render: () => void }
+  hotInstance: {
+    propToCol: (prop: string) => number | unknown;
+    setDataAtCell: (row: number, col: number, value: unknown, source?: string) => void;
+    render: () => void;
+  }
 ): { updatedData: TimesheetRow[]; hasChanges: boolean } => {
   const updatedData = [...currentData];
   let hasChanges = false;
 
-  pastedRowIndices.forEach(rowIdx => {
+  pastedRowIndices.forEach((rowIdx) => {
     const row = updatedData[rowIdx];
     if (!row) return;
 
-    const normalizedRow = normalizeRowData(row, (p?: string) => doesProjectNeedTools(p || ''), (t?: string) => doesToolNeedChargeCode(t || ''));
+    const normalizedRow = normalizeRowData(
+      row,
+      (p?: string) => doesProjectNeedTools(p || ''),
+      (t?: string) => doesToolNeedChargeCode(t || '')
+    );
 
     if (normalizedRow.tool !== row.tool || normalizedRow.chargeCode !== row.chargeCode) {
       hasChanges = true;
@@ -455,10 +533,16 @@ export const savePastedRows = (
   normalizedData: TimesheetRow[],
   ctx: PasteSaveContext
 ): void => {
-  pastedRowIndices.forEach(rowIdx => {
+  pastedRowIndices.forEach((rowIdx) => {
     const normalizedRow = normalizedData[rowIdx];
     if (!normalizedRow) return;
-    if (normalizedRow.date && normalizedRow.timeIn && normalizedRow.timeOut && normalizedRow.project && normalizedRow.taskDescription) {
+    if (
+      normalizedRow.date &&
+      normalizedRow.timeIn &&
+      normalizedRow.timeOut &&
+      normalizedRow.project &&
+      normalizedRow.taskDescription
+    ) {
       const existingTimer = ctx.saveTimersRef.current.get(rowIdx);
       if (existingTimer) {
         clearTimeout(existingTimer);

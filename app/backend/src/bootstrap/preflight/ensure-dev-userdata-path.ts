@@ -1,5 +1,5 @@
-import * as path from 'path';
 import type { App } from 'electron';
+import * as path from 'path';
 
 export function ensureDevUserDataPath(app: App): void {
   // Ensure development runs use the same userData folder as packaged builds.
@@ -11,5 +11,3 @@ export function ensureDevUserDataPath(app: App): void {
     app.setPath('userData', devUserDataPath);
   }
 }
-
-

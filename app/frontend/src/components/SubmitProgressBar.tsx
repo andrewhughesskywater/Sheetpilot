@@ -1,11 +1,11 @@
 /**
  * SubmitProgressBar Component
- * 
+ *
  * Simple submit button using MUI Button with loading functionality
  */
 
-import Button from '@mui/material/Button';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import Button from '@mui/material/Button';
 import type { ReactNode } from 'react';
 
 export interface SubmitProgressBarProps {
@@ -39,11 +39,11 @@ export function SubmitProgressBar({
   onSubmit,
   status,
   disabled = false,
-  icon
+  icon,
 }: SubmitProgressBarProps) {
   // Determine if button should be disabled
   const isDisabled = disabled || status === 'neutral' || status === 'warning';
-  
+
   // Map status to MUI color
   const getColor = () => {
     switch (status) {
@@ -73,4 +73,3 @@ export function SubmitProgressBar({
     </Button>
   );
 }
-

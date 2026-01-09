@@ -1,9 +1,9 @@
 /**
  * @fileoverview Plugin Type Definitions
- * 
+ *
  * Core type definitions for the plugin system, including metadata,
  * configuration, and feature flags for A/B testing.
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025
@@ -119,5 +119,3 @@ export const TIMESHEET_PLUGIN_NAMESPACES = {
   ui: 'timesheet.ui',
   validation: 'timesheet.validation',
 } as const;
-
-

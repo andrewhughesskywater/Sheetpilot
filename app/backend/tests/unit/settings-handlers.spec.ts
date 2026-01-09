@@ -9,15 +9,15 @@ import { ipcLogger } from '@sheetpilot/shared/logger';
 // Mock electron
 vi.mock('electron', () => ({
   ipcMain: {
-    handle: vi.fn()
+    handle: vi.fn(),
   },
   app: {
-    getPath: vi.fn(() => '/mock/user/data')
-  }
+    getPath: vi.fn(() => '/mock/user/data'),
+  },
 }));
 
 vi.mock('@/ipc/handlers/timesheet/main-window', () => ({
-  isTrustedIpcSender: vi.fn(() => true)
+  isTrustedIpcSender: vi.fn(() => true),
 }));
 
 // Mock fs
@@ -25,11 +25,11 @@ vi.mock('fs', () => ({
   default: {
     existsSync: vi.fn(),
     readFileSync: vi.fn(),
-    writeFileSync: vi.fn()
+    writeFileSync: vi.fn(),
   },
   existsSync: vi.fn(),
   readFileSync: vi.fn(),
-  writeFileSync: vi.fn()
+  writeFileSync: vi.fn(),
 }));
 
 // Mock path
@@ -37,7 +37,7 @@ vi.mock('path', async (importOriginal) => {
   const actual = await importOriginal<typeof import('path')>();
   return {
     ...actual,
-    join: vi.fn((...args: string[]) => args.join('/'))
+    join: vi.fn((...args: string[]) => args.join('/')),
   };
 });
 
@@ -45,13 +45,13 @@ vi.mock('path', async (importOriginal) => {
 vi.mock('../../../shared/logger', () => ({
   ipcLogger: {
     error: vi.fn(),
-    info: vi.fn()
-  }
+    info: vi.fn(),
+  },
 }));
 
 // Mock constants
 vi.mock('../../../shared/constants', () => ({
-  setBrowserHeadless: vi.fn()
+  setBrowserHeadless: vi.fn(),
 }));
 
 describe('settings-handlers', () => {
@@ -88,10 +88,7 @@ describe('settings-handlers', () => {
       registerSettingsHandlers();
 
       expect(setBrowserHeadless).toHaveBeenCalledWith(true);
-      expect(ipcLogger.info).toHaveBeenCalledWith(
-        'Initialized browserHeadless setting on startup',
-        expect.any(Object)
-      );
+      expect(ipcLogger.info).toHaveBeenCalledWith('Initialized browserHeadless setting on startup', expect.any(Object));
     });
 
     it('should default to false when settings file does not exist', () => {
@@ -129,9 +126,10 @@ describe('settings-handlers', () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
       vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify({ browserHeadless: true }));
 
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'settings:get'
-      )?.[1] as (event: unknown, key: string) => Promise<{ success: boolean; value?: unknown; error?: string }>;
+      const handler = vi.mocked(ipcMain.handle).mock.calls.find((call) => call[0] === 'settings:get')?.[1] as (
+        event: unknown,
+        key: string
+      ) => Promise<{ success: boolean; value?: unknown; error?: string }>;
 
       const result = await handler({}, 'browserHeadless');
 
@@ -146,9 +144,10 @@ describe('settings-handlers', () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
       vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify({}));
 
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'settings:get'
-      )?.[1] as (event: unknown, key: string) => Promise<{ success: boolean; value?: unknown; error?: string }>;
+      const handler = vi.mocked(ipcMain.handle).mock.calls.find((call) => call[0] === 'settings:get')?.[1] as (
+        event: unknown,
+        key: string
+      ) => Promise<{ success: boolean; value?: unknown; error?: string }>;
 
       const result = await handler({}, 'nonExistent');
 
@@ -162,9 +161,10 @@ describe('settings-handlers', () => {
 
       vi.mocked(fs.existsSync).mockReturnValue(false);
 
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'settings:get'
-      )?.[1] as (event: unknown, key: string) => Promise<{ success: boolean; value?: unknown; error?: string }>;
+      const handler = vi.mocked(ipcMain.handle).mock.calls.find((call) => call[0] === 'settings:get')?.[1] as (
+        event: unknown,
+        key: string
+      ) => Promise<{ success: boolean; value?: unknown; error?: string }>;
 
       const result = await handler({}, 'browserHeadless');
 
@@ -185,9 +185,11 @@ describe('settings-handlers', () => {
         savedData = data as string;
       });
 
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'settings:set'
-      )?.[1] as (event: unknown, key: string, value: unknown) => Promise<{ success: boolean; error?: string }>;
+      const handler = vi.mocked(ipcMain.handle).mock.calls.find((call) => call[0] === 'settings:set')?.[1] as (
+        event: unknown,
+        key: string,
+        value: unknown
+      ) => Promise<{ success: boolean; error?: string }>;
 
       const result = await handler({}, 'browserHeadless', true);
 
@@ -202,9 +204,11 @@ describe('settings-handlers', () => {
       vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify({ browserHeadless: false }));
       vi.mocked(fs.writeFileSync).mockImplementation(() => {});
 
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'settings:set'
-      )?.[1] as (event: unknown, key: string, value: unknown) => Promise<{ success: boolean; error?: string }>;
+      const handler = vi.mocked(ipcMain.handle).mock.calls.find((call) => call[0] === 'settings:set')?.[1] as (
+        event: unknown,
+        key: string,
+        value: unknown
+      ) => Promise<{ success: boolean; error?: string }>;
 
       await handler({}, 'browserHeadless', true);
 
@@ -225,9 +229,11 @@ describe('settings-handlers', () => {
         savedData = data as string;
       });
 
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'settings:set'
-      )?.[1] as (event: unknown, key: string, value: unknown) => Promise<{ success: boolean; error?: string }>;
+      const handler = vi.mocked(ipcMain.handle).mock.calls.find((call) => call[0] === 'settings:set')?.[1] as (
+        event: unknown,
+        key: string,
+        value: unknown
+      ) => Promise<{ success: boolean; error?: string }>;
 
       const result = await handler({}, 'browserHeadless', true);
 
@@ -244,9 +250,11 @@ describe('settings-handlers', () => {
         throw new Error('Write error');
       });
 
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'settings:set'
-      )?.[1] as (event: unknown, key: string, value: unknown) => Promise<{ success: boolean; error?: string }>;
+      const handler = vi.mocked(ipcMain.handle).mock.calls.find((call) => call[0] === 'settings:set')?.[1] as (
+        event: unknown,
+        key: string,
+        value: unknown
+      ) => Promise<{ success: boolean; error?: string }>;
 
       const result = await handler({}, 'browserHeadless', true);
 
@@ -263,9 +271,13 @@ describe('settings-handlers', () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
       vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(settings));
 
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'settings:getAll'
-      )?.[1] as () => Promise<{ success: boolean; settings?: unknown; error?: string }>;
+      const handler = vi
+        .mocked(ipcMain.handle)
+        .mock.calls.find((call) => call[0] === 'settings:getAll')?.[1] as () => Promise<{
+        success: boolean;
+        settings?: unknown;
+        error?: string;
+      }>;
 
       const result = await handler();
 
@@ -278,9 +290,13 @@ describe('settings-handlers', () => {
 
       vi.mocked(fs.existsSync).mockReturnValue(false);
 
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'settings:getAll'
-      )?.[1] as () => Promise<{ success: boolean; settings?: unknown; error?: string }>;
+      const handler = vi
+        .mocked(ipcMain.handle)
+        .mock.calls.find((call) => call[0] === 'settings:getAll')?.[1] as () => Promise<{
+        success: boolean;
+        settings?: unknown;
+        error?: string;
+      }>;
 
       const result = await handler();
 
@@ -289,5 +305,3 @@ describe('settings-handlers', () => {
     });
   });
 });
-
-

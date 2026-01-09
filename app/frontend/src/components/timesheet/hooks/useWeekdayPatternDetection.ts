@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
 import type { MutableRefObject } from 'react';
-import type { TimesheetRow } from '../timesheet.schema';
+import { useEffect } from 'react';
+
 import { detectWeekdayPattern } from '../../../utils/smartDate';
+import type { TimesheetRow } from '../timesheet.schema';
 
 export function useWeekdayPatternDetection(
   _timesheetDraftData: TimesheetRow[],

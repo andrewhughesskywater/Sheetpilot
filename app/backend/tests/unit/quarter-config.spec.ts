@@ -1,22 +1,22 @@
 /**
  * @fileoverview Quarter Configuration Tests
- * 
+ *
  * Tests for quarter-based form routing functionality
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025
  */
 
 import { describe, it, expect } from 'vitest';
-import { 
-  QUARTER_DEFINITIONS, 
-  getQuarterForDate, 
-  validateQuarterAvailability, 
+import {
+  QUARTER_DEFINITIONS,
+  getQuarterForDate,
+  validateQuarterAvailability,
   groupEntriesByQuarter,
   getAvailableQuarterIds,
   getQuarterById,
-  getCurrentQuarter
+  getCurrentQuarter,
 } from '@/services/bot/src/config/quarter_config';
 
 describe('Quarter Configuration', () => {
@@ -125,7 +125,7 @@ describe('Quarter Configuration', () => {
       const valid = QUARTER_DEFINITIONS[0];
       const entries = [
         { date: valid.startDate, project: 'Valid' },
-        { date: 'invalid', project: 'Invalid' }
+        { date: 'invalid', project: 'Invalid' },
       ];
       const grouped = groupEntriesByQuarter(entries);
       expect(grouped.size).toBe(1);
@@ -137,7 +137,7 @@ describe('Quarter Configuration', () => {
   describe('Utility Functions', () => {
     it('should return available quarter IDs matching definitions', () => {
       const ids = getAvailableQuarterIds();
-      expect(ids).toEqual(QUARTER_DEFINITIONS.map(q => q.id));
+      expect(ids).toEqual(QUARTER_DEFINITIONS.map((q) => q.id));
     });
 
     it('should get quarter by ID', () => {
@@ -152,7 +152,7 @@ describe('Quarter Configuration', () => {
     it('should get current quarter based on today (if within any active range)', () => {
       const current = getCurrentQuarter();
       if (current) {
-        expect(QUARTER_DEFINITIONS.map(q => q.id)).toContain(current.id);
+        expect(QUARTER_DEFINITIONS.map((q) => q.id)).toContain(current.id);
       }
     });
   });

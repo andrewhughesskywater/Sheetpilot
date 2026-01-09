@@ -1,756 +1,770 @@
-import React, { useState } from 'react';
-import Box from '@mui/material/Box';
-import Card from '@mui/material/Card';
-import Typography from '@mui/material/Typography';
-import Accordion from '@mui/material/Accordion';
-import AccordionSummary from '@mui/material/AccordionSummary';
-import AccordionDetails from '@mui/material/AccordionDetails';
-import List from '@mui/material/List';
-import ListItem from '@mui/material/ListItem';
-import ListItemText from '@mui/material/ListItemText';
-import ListItemIcon from '@mui/material/ListItemIcon';
-import Chip from '@mui/material/Chip';
-import Alert from '@mui/material/Alert';
-import AlertTitle from '@mui/material/AlertTitle';
-import Divider from '@mui/material/Divider';
-import Paper from '@mui/material/Paper';
-import Stepper from '@mui/material/Stepper';
-import Step from '@mui/material/Step';
-import StepLabel from '@mui/material/StepLabel';
-import StepContent from '@mui/material/StepContent';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ArchiveIcon from '@mui/icons-material/Archive';
+import AssignmentIcon from '@mui/icons-material/Assignment';
+import BugReportIcon from '@mui/icons-material/BugReport';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import WarningIcon from '@mui/icons-material/Warning';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import ContactSupportIcon from '@mui/icons-material/ContactSupport';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import InfoIcon from '@mui/icons-material/Info';
 import SecurityIcon from '@mui/icons-material/Security';
 import SpeedIcon from '@mui/icons-material/Speed';
 import StorageIcon from '@mui/icons-material/Storage';
-import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import AssignmentIcon from '@mui/icons-material/Assignment';
-import ArchiveIcon from '@mui/icons-material/Archive';
 import VpnKeyIcon from '@mui/icons-material/VpnKey';
-import BugReportIcon from '@mui/icons-material/BugReport';
-import ContactSupportIcon from '@mui/icons-material/ContactSupport';
+import WarningIcon from '@mui/icons-material/Warning';
+import Accordion from '@mui/material/Accordion';
+import AccordionDetails from '@mui/material/AccordionDetails';
+import AccordionSummary from '@mui/material/AccordionSummary';
+import Alert from '@mui/material/Alert';
+import AlertTitle from '@mui/material/AlertTitle';
+import Box from '@mui/material/Box';
+import Card from '@mui/material/Card';
+import Chip from '@mui/material/Chip';
+import Divider from '@mui/material/Divider';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
+import Paper from '@mui/material/Paper';
+import Step from '@mui/material/Step';
+import StepContent from '@mui/material/StepContent';
+import StepLabel from '@mui/material/StepLabel';
+import Stepper from '@mui/material/Stepper';
+import Typography from '@mui/material/Typography';
+import React, { useState } from 'react';
 
 const MANUAL_BODY_TEXT_CLASS = 'manual-body-text';
 const LIST_ITEM_PRIMARY_FONT_SIZE = '0.875rem';
 
 const MANUAL_SECTIONS = [
-    {
-      id: 'getting-started',
-      title: 'Getting Started',
-      icon: <InfoIcon />,
-      content: (
-        <Box>
-          <Typography variant="h6" gutterBottom className="manual-heading">
-            Welcome to SheetPilot
-          </Typography>
-          <Typography variant="body1" paragraph className={MANUAL_BODY_TEXT_CLASS}>
-            SheetPilot is a comprehensive timesheet management application designed to streamline your workflow 
-            and simplify the process of tracking and submitting time entries to SmartSheet.
-          </Typography>
-          
-          <Alert severity="info" sx={{ mb: 3 }}>
-            <AlertTitle>First Time Setup</AlertTitle>
-            Before you can use SheetPilot, you&apos;ll need to add your SmartSheet credentials. 
-            Navigate to the Home tab and click &quot;Add Credentials&quot; to get started.
-          </Alert>
+  {
+    id: 'getting-started',
+    title: 'Getting Started',
+    icon: <InfoIcon />,
+    content: (
+      <Box>
+        <Typography variant="h6" gutterBottom className="manual-heading">
+          Welcome to SheetPilot
+        </Typography>
+        <Typography variant="body1" paragraph className={MANUAL_BODY_TEXT_CLASS}>
+          SheetPilot is a comprehensive timesheet management application designed to streamline your workflow and
+          simplify the process of tracking and submitting time entries to SmartSheet.
+        </Typography>
 
-          <Typography variant="h6" gutterBottom className="manual-heading manual-spacing-top">
-            Quick Start Guide
-          </Typography>
-          <Stepper orientation="vertical" activeStep={-1} sx={{ mt: 2 }}>
-            <Step>
-              <StepLabel>Add Your Credentials</StepLabel>
-              <StepContent>
-                <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
-                  Store your SmartSheet email and password securely in the application. 
-                  Your credentials are encrypted and stored locally on your device.
-                </Typography>
-              </StepContent>
-            </Step>
-            <Step>
-              <StepLabel>View Your Timesheet</StepLabel>
-              <StepContent>
-                <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
-                  Navigate to the Timesheet tab to see your current entries, add new time entries, 
-                  and manage your weekly timesheet.
-                </Typography>
-              </StepContent>
-            </Step>
-            <Step>
-              <StepLabel>Submit to SmartSheet</StepLabel>
-              <StepContent>
-                <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
-                  Use the &quot;Submit Timesheet&quot; button to automatically send your entries to SmartSheet. 
-                  The application will validate your data before submission.
-                </Typography>
-              </StepContent>
-            </Step>
-            <Step>
-              <StepLabel>Review Your Archive</StepLabel>
-              <StepContent>
-                <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
-                  Check the Archive tab to view all your previously submitted timesheet entries 
-                  and track your submission history.
-                </Typography>
-              </StepContent>
-            </Step>
-          </Stepper>
-        </Box>
-      )
-    },
-    {
-      id: 'features',
-      title: 'Features Overview',
-      icon: <CheckCircleIcon />,
-      content: (
-        <Box>
-          <Typography variant="h6" gutterBottom className="manual-heading">
-            Core Features
-          </Typography>
-          
-          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 2, mb: 3 }}>
-            <Card variant="outlined" sx={{ p: 2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <SecurityIcon className="manual-icon-spacing manual-icon-primary" />
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>Secure Credential Storage</Typography>
-              </Box>
+        <Alert severity="info" sx={{ mb: 3 }}>
+          <AlertTitle>First Time Setup</AlertTitle>
+          Before you can use SheetPilot, you&apos;ll need to add your SmartSheet credentials. Navigate to the Home tab
+          and click &quot;Add Credentials&quot; to get started.
+        </Alert>
+
+        <Typography variant="h6" gutterBottom className="manual-heading manual-spacing-top">
+          Quick Start Guide
+        </Typography>
+        <Stepper orientation="vertical" activeStep={-1} sx={{ mt: 2 }}>
+          <Step>
+            <StepLabel>Add Your Credentials</StepLabel>
+            <StepContent>
               <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
-                Your SmartSheet credentials are encrypted and stored securely on your local device. 
-                No credentials are transmitted to external servers.
+                Store your SmartSheet email and password securely in the application. Your credentials are encrypted and
+                stored locally on your device.
               </Typography>
-            </Card>
-
-            <Card variant="outlined" sx={{ p: 2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <AssignmentIcon className="manual-icon-spacing manual-icon-tertiary" />
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>Timesheet Management</Typography>
-              </Box>
+            </StepContent>
+          </Step>
+          <Step>
+            <StepLabel>View Your Timesheet</StepLabel>
+            <StepContent>
               <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
-                Create, edit, and manage your timesheet entries with an intuitive grid interface. 
-                Real-time validation ensures data accuracy.
+                Navigate to the Timesheet tab to see your current entries, add new time entries, and manage your weekly
+                timesheet.
               </Typography>
-            </Card>
-
-            <Card variant="outlined" sx={{ p: 2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <CloudUploadIcon className="manual-icon-spacing manual-icon-secondary" />
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>SmartSheet Integration</Typography>
-              </Box>
+            </StepContent>
+          </Step>
+          <Step>
+            <StepLabel>Submit to SmartSheet</StepLabel>
+            <StepContent>
               <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
-                Seamlessly submit your timesheet entries directly to SmartSheet with automatic 
-                validation and error handling.
+                Use the &quot;Submit Timesheet&quot; button to automatically send your entries to SmartSheet. The
+                application will validate your data before submission.
               </Typography>
-            </Card>
-
-            <Card variant="outlined" sx={{ p: 2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <ArchiveIcon className="manual-icon-spacing manual-icon-secondary" />
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>Submission Archive</Typography>
-              </Box>
+            </StepContent>
+          </Step>
+          <Step>
+            <StepLabel>Review Your Archive</StepLabel>
+            <StepContent>
               <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
-                Keep track of all your submitted entries with a comprehensive archive that 
-                shows submission history and status.
+                Check the Archive tab to view all your previously submitted timesheet entries and track your submission
+                history.
               </Typography>
-            </Card>
+            </StepContent>
+          </Step>
+        </Stepper>
+      </Box>
+    ),
+  },
+  {
+    id: 'features',
+    title: 'Features Overview',
+    icon: <CheckCircleIcon />,
+    content: (
+      <Box>
+        <Typography variant="h6" gutterBottom className="manual-heading">
+          Core Features
+        </Typography>
 
-            <Card variant="outlined" sx={{ p: 2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <SpeedIcon className="manual-icon-spacing manual-icon-error" />
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>Performance Optimized</Typography>
-              </Box>
-              <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
-                Built with performance in mind, SheetPilot provides fast, responsive 
-                interactions and efficient data processing.
+        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 2, mb: 3 }}>
+          <Card variant="outlined" sx={{ p: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+              <SecurityIcon className="manual-icon-spacing manual-icon-primary" />
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                Secure Credential Storage
               </Typography>
-            </Card>
-
-            <Card variant="outlined" sx={{ p: 2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <StorageIcon className="manual-icon-spacing manual-icon-secondary" />
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>Local Data Storage</Typography>
-              </Box>
-              <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
-                All your data is stored locally using SQLite database, ensuring privacy 
-                and allowing offline access to your timesheet entries.
-              </Typography>
-            </Card>
-          </Box>
-
-          <Typography variant="h6" gutterBottom className="manual-heading manual-spacing-top">
-            Advanced Features
-          </Typography>
-          <List>
-            <ListItem>
-              <ListItemIcon>
-                <CheckCircleIcon color="success" />
-              </ListItemIcon>
-              <ListItemText 
-                primary="Automatic Data Validation"
-                secondary="Real-time validation ensures all timesheet entries meet SmartSheet requirements before submission"
-              />
-            </ListItem>
-            <ListItem>
-              <ListItemIcon>
-                <CheckCircleIcon color="success" />
-              </ListItemIcon>
-              <ListItemText 
-                primary="Batch Submission"
-                secondary="Submit multiple timesheet entries simultaneously with progress tracking and error reporting"
-              />
-            </ListItem>
-            <ListItem>
-              <ListItemIcon>
-                <CheckCircleIcon color="success" />
-              </ListItemIcon>
-              <ListItemText 
-                primary="Error Recovery"
-                secondary="Automatic retry mechanisms and detailed error messages help resolve submission issues"
-              />
-            </ListItem>
-            <ListItem>
-              <ListItemIcon>
-                <CheckCircleIcon color="success" />
-              </ListItemIcon>
-              <ListItemText 
-                primary="Export Capabilities"
-                secondary="Export your timesheet data to CSV format for backup or external analysis (coming soon)"
-              />
-            </ListItem>
-          </List>
-        </Box>
-      )
-    },
-    {
-      id: 'workflows',
-      title: 'Workflows & Best Practices',
-      icon: <AssignmentIcon />,
-      content: (
-        <Box>
-          <Typography variant="h6" gutterBottom className="manual-heading">
-            Daily Workflow
-          </Typography>
-          <Typography variant="body1" paragraph className={MANUAL_BODY_TEXT_CLASS}>
-            Follow these steps for efficient timesheet management:
-          </Typography>
-
-          <Stepper orientation="vertical" activeStep={-1} sx={{ mt: 2 }}>
-            <Step>
-              <StepLabel>Start Your Day</StepLabel>
-              <StepContent>
-                <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
-                  Open SheetPilot and navigate to the Timesheet tab. Review any existing entries 
-                  from previous days to ensure accuracy.
-                </Typography>
-              </StepContent>
-            </Step>
-            <Step>
-              <StepLabel>Log Your Time</StepLabel>
-              <StepContent>
-                <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
-                  Add new time entries as you complete tasks throughout the day. Include project codes, 
-                  descriptions, and accurate time durations.
-                </Typography>
-              </StepContent>
-            </Step>
-            <Step>
-              <StepLabel>Review Before Submission</StepLabel>
-              <StepContent>
-                <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
-                  Before submitting, review all entries for the week to ensure they&apos;re complete 
-                  and accurate. Check for any missing project codes or descriptions.
-                </Typography>
-              </StepContent>
-            </Step>
-            <Step>
-              <StepLabel>Submit Weekly</StepLabel>
-              <StepContent>
-                <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
-                  Submit your timesheet at the end of each week or as required by your organization. 
-                  The application will validate all entries before submission.
-                </Typography>
-              </StepContent>
-            </Step>
-          </Stepper>
-
-          <Alert severity="warning" sx={{ mt: 3, mb: 3 }}>
-            <AlertTitle>Best Practices</AlertTitle>
-            <List dense>
-              <ListItem sx={{ py: 0 }}>
-                <ListItemText 
-                  primary="Log time entries daily to avoid forgetting tasks"
-                  sx={{ '& .MuiListItemText-primary': { fontSize: LIST_ITEM_PRIMARY_FONT_SIZE } }}
-                />
-              </ListItem>
-              <ListItem sx={{ py: 0 }}>
-                <ListItemText 
-                  primary="Use descriptive project names and task descriptions"
-                  sx={{ '& .MuiListItemText-primary': { fontSize: LIST_ITEM_PRIMARY_FONT_SIZE } }}
-                />
-              </ListItem>
-              <ListItem sx={{ py: 0 }}>
-                <ListItemText 
-                  primary="Review and submit timesheets weekly for better accuracy"
-                  sx={{ '& .MuiListItemText-primary': { fontSize: LIST_ITEM_PRIMARY_FONT_SIZE } }}
-                />
-              </ListItem>
-              <ListItem sx={{ py: 0 }}>
-                <ListItemText 
-                  primary="Keep your credentials up to date if your password changes"
-                  sx={{ '& .MuiListItemText-primary': { fontSize: LIST_ITEM_PRIMARY_FONT_SIZE } }}
-                />
-              </ListItem>
-            </List>
-          </Alert>
-
-          <Typography variant="h6" gutterBottom className="manual-heading manual-spacing-top">
-            Weekly Submission Process
-          </Typography>
-          <Paper className="manual-feature-card">
-            <Typography variant="body1" className="manual-body-text manual-spacing-bottom">
-              When you&apos;re ready to submit your weekly timesheet:
-            </Typography>
-            <List>
-              <ListItem>
-                <ListItemIcon>
-                  <CheckCircleIcon color="primary" />
-                </ListItemIcon>
-                <ListItemText 
-                  primary="Navigate to the Timesheet tab"
-                  secondary="Review all entries for the current week"
-                />
-              </ListItem>
-              <ListItem>
-                <ListItemIcon>
-                  <CheckCircleIcon color="primary" />
-                </ListItemIcon>
-                <ListItemText 
-                  primary="Click 'Submit Timesheet'"
-                  secondary="The application will validate all entries before submission"
-                />
-              </ListItem>
-              <ListItem>
-                <ListItemIcon>
-                  <CheckCircleIcon color="primary" />
-                </ListItemIcon>
-                <ListItemText 
-                  primary="Monitor the submission process"
-                  secondary="Watch the status messages for progress and any errors"
-                />
-              </ListItem>
-              <ListItem>
-                <ListItemIcon>
-                  <CheckCircleIcon color="primary" />
-                </ListItemIcon>
-                <ListItemText 
-                  primary="Verify successful submission"
-                  secondary="Check the Archive tab to confirm your entries were submitted"
-                />
-              </ListItem>
-            </List>
-          </Paper>
-        </Box>
-      )
-    },
-    {
-      id: 'troubleshooting',
-      title: 'Troubleshooting',
-      icon: <BugReportIcon />,
-      content: (
-        <Box>
-          <Typography variant="h6" gutterBottom className="manual-heading">
-            Common Issues and Solutions
-          </Typography>
-
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="h6" gutterBottom className="manual-heading manual-spacing-bottom">
-              Authentication Issues
-            </Typography>
-            <List>
-              <ListItem>
-                <ListItemIcon>
-                  <WarningIcon color="warning" />
-                </ListItemIcon>
-                <ListItemText 
-                  primary="Invalid credentials error"
-                  secondary={
-                    <>
-                      <strong>Solution:</strong> Verify your SmartSheet email and password are correct. 
-                      If you recently changed your password, update your stored credentials in the Home tab.
-                    </>
-                  }
-                  secondaryTypographyProps={{ className: MANUAL_BODY_TEXT_CLASS }}
-                />
-              </ListItem>
-              <ListItem>
-                <ListItemIcon>
-                  <WarningIcon color="warning" />
-                </ListItemIcon>
-                <ListItemText 
-                  primary="Connection timeout"
-                  secondary={
-                    <>
-                      <strong>Solution:</strong> Check your internet connection and ensure SmartSheet is accessible. 
-                      Try again in a few minutes if the issue persists.
-                    </>
-                  }
-                  secondaryTypographyProps={{ className: MANUAL_BODY_TEXT_CLASS }}
-                />
-              </ListItem>
-            </List>
-          </Box>
-
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="h6" gutterBottom className="manual-heading">
-              Submission Issues
-            </Typography>
-            <List>
-              <ListItem>
-                <ListItemIcon>
-                  <WarningIcon color="warning" />
-                </ListItemIcon>
-                <ListItemText 
-                  primary="Some entries failed to submit"
-                  secondary={
-                    <>
-                      <strong>Solution:</strong> Check the error messages in the status area. Common causes include 
-                      missing project codes, invalid time formats, or duplicate entries. Fix the issues and try again.
-                    </>
-                  }
-                  secondaryTypographyProps={{ className: MANUAL_BODY_TEXT_CLASS }}
-                />
-              </ListItem>
-              <ListItem>
-                <ListItemIcon>
-                  <WarningIcon color="warning" />
-                </ListItemIcon>
-                <ListItemText 
-                  primary="No entries to submit"
-                  secondary={
-                    <>
-                      <strong>Solution:</strong> Ensure you have timesheet entries for the current week. 
-                      Check that entries are not already submitted (they won&apos;t appear in the submission queue).
-                    </>
-                  }
-                  secondaryTypographyProps={{ className: MANUAL_BODY_TEXT_CLASS }}
-                />
-              </ListItem>
-            </List>
-          </Box>
-
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="h6" gutterBottom className="manual-heading">
-              Application Issues
-            </Typography>
-            <List>
-              <ListItem>
-                <ListItemIcon>
-                  <WarningIcon color="warning" />
-                </ListItemIcon>
-                <ListItemText 
-                  primary="Application won't start"
-                  secondary={
-                    <>
-                      <strong>Solution:</strong> Restart your computer and try again. If the issue persists, 
-                      contact your system administrator for assistance.
-                    </>
-                  }
-                  secondaryTypographyProps={{ className: MANUAL_BODY_TEXT_CLASS }}
-                />
-              </ListItem>
-              <ListItem>
-                <ListItemIcon>
-                  <WarningIcon color="warning" />
-                </ListItemIcon>
-                <ListItemText 
-                  primary="Data not loading"
-                  secondary={
-                    <>
-                      <strong>Solution:</strong> Check if the database file is accessible and not corrupted. 
-                      The application stores data locally in a SQLite database file.
-                    </>
-                  }
-                  secondaryTypographyProps={{ className: MANUAL_BODY_TEXT_CLASS }}
-                />
-              </ListItem>
-            </List>
-          </Box>
-
-          <Alert severity="info" sx={{ mt: 3 }}>
-            <AlertTitle>Getting Additional Help</AlertTitle>
+            </Box>
             <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
-              If you continue to experience issues after trying these solutions:
+              Your SmartSheet credentials are encrypted and stored securely on your local device. No credentials are
+              transmitted to external servers.
             </Typography>
-            <List dense sx={{ mt: 1 }}>
-              <ListItem sx={{ py: 0 }}>
-                <ListItemIcon>
-                  <ContactSupportIcon color="info" />
-                </ListItemIcon>
-                <ListItemText 
-                  primary="Contact your system administrator"
-                  sx={{ '& .MuiListItemText-primary': { fontSize: LIST_ITEM_PRIMARY_FONT_SIZE } }}
-                />
-              </ListItem>
-              <ListItem sx={{ py: 0 }}>
-                <ListItemIcon>
-                  <InfoIcon color="info" />
-                </ListItemIcon>
-                <ListItemText 
-                  primary="Check the application logs for detailed error information"
-                  sx={{ '& .MuiListItemText-primary': { fontSize: LIST_ITEM_PRIMARY_FONT_SIZE } }}
-                />
-              </ListItem>
-              <ListItem sx={{ py: 0 }}>
-                <ListItemIcon>
-                  <VpnKeyIcon color="info" />
-                </ListItemIcon>
-                <ListItemText 
-                  primary="Verify your SmartSheet account has the necessary permissions"
-                  sx={{ '& .MuiListItemText-primary': { fontSize: LIST_ITEM_PRIMARY_FONT_SIZE } }}
-                />
-              </ListItem>
-            </List>
-          </Alert>
-        </Box>
-      )
-    },
-    {
-      id: 'security',
-      title: 'Security & Privacy',
-      icon: <SecurityIcon />,
-      content: (
-        <Box>
-          <Typography variant="h6" gutterBottom className="manual-heading">
-            Data Security
-          </Typography>
-          <Typography variant="body1" paragraph className={MANUAL_BODY_TEXT_CLASS}>
-            SheetPilot is designed with security and privacy as top priorities. Here&apos;s how we protect your data:
-          </Typography>
+          </Card>
 
-          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 2, mb: 3 }}>
-            <Card variant="outlined" className="manual-card-success">
-              <Typography variant="h6" className="manual-card-success-heading">
+          <Card variant="outlined" sx={{ p: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+              <AssignmentIcon className="manual-icon-spacing manual-icon-tertiary" />
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                Timesheet Management
+              </Typography>
+            </Box>
+            <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
+              Create, edit, and manage your timesheet entries with an intuitive grid interface. Real-time validation
+              ensures data accuracy.
+            </Typography>
+          </Card>
+
+          <Card variant="outlined" sx={{ p: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+              <CloudUploadIcon className="manual-icon-spacing manual-icon-secondary" />
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                SmartSheet Integration
+              </Typography>
+            </Box>
+            <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
+              Seamlessly submit your timesheet entries directly to SmartSheet with automatic validation and error
+              handling.
+            </Typography>
+          </Card>
+
+          <Card variant="outlined" sx={{ p: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+              <ArchiveIcon className="manual-icon-spacing manual-icon-secondary" />
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                Submission Archive
+              </Typography>
+            </Box>
+            <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
+              Keep track of all your submitted entries with a comprehensive archive that shows submission history and
+              status.
+            </Typography>
+          </Card>
+
+          <Card variant="outlined" sx={{ p: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+              <SpeedIcon className="manual-icon-spacing manual-icon-error" />
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                Performance Optimized
+              </Typography>
+            </Box>
+            <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
+              Built with performance in mind, SheetPilot provides fast, responsive interactions and efficient data
+              processing.
+            </Typography>
+          </Card>
+
+          <Card variant="outlined" sx={{ p: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+              <StorageIcon className="manual-icon-spacing manual-icon-secondary" />
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>
                 Local Data Storage
               </Typography>
-              <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
-                All your timesheet data and credentials are stored locally on your device using 
-                SQLite database. No data is transmitted to external servers except during SmartSheet submission.
-              </Typography>
-            </Card>
+            </Box>
+            <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
+              All your data is stored locally using SQLite database, ensuring privacy and allowing offline access to
+              your timesheet entries.
+            </Typography>
+          </Card>
+        </Box>
 
-            <Card variant="outlined" className="manual-card-warning">
-              <Typography variant="h6" className="manual-card-warning-heading">
-                Encrypted Credentials
-              </Typography>
-              <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
-                Your SmartSheet credentials are encrypted before being stored locally. 
-                The encryption key is derived from your system and is not stored in the application.
-              </Typography>
-            </Card>
+        <Typography variant="h6" gutterBottom className="manual-heading manual-spacing-top">
+          Advanced Features
+        </Typography>
+        <List>
+          <ListItem>
+            <ListItemIcon>
+              <CheckCircleIcon color="success" />
+            </ListItemIcon>
+            <ListItemText
+              primary="Automatic Data Validation"
+              secondary="Real-time validation ensures all timesheet entries meet SmartSheet requirements before submission"
+            />
+          </ListItem>
+          <ListItem>
+            <ListItemIcon>
+              <CheckCircleIcon color="success" />
+            </ListItemIcon>
+            <ListItemText
+              primary="Batch Submission"
+              secondary="Submit multiple timesheet entries simultaneously with progress tracking and error reporting"
+            />
+          </ListItem>
+          <ListItem>
+            <ListItemIcon>
+              <CheckCircleIcon color="success" />
+            </ListItemIcon>
+            <ListItemText
+              primary="Error Recovery"
+              secondary="Automatic retry mechanisms and detailed error messages help resolve submission issues"
+            />
+          </ListItem>
+          <ListItem>
+            <ListItemIcon>
+              <CheckCircleIcon color="success" />
+            </ListItemIcon>
+            <ListItemText
+              primary="Export Capabilities"
+              secondary="Export your timesheet data to CSV format for backup or external analysis (coming soon)"
+            />
+          </ListItem>
+        </List>
+      </Box>
+    ),
+  },
+  {
+    id: 'workflows',
+    title: 'Workflows & Best Practices',
+    icon: <AssignmentIcon />,
+    content: (
+      <Box>
+        <Typography variant="h6" gutterBottom className="manual-heading">
+          Daily Workflow
+        </Typography>
+        <Typography variant="body1" paragraph className={MANUAL_BODY_TEXT_CLASS}>
+          Follow these steps for efficient timesheet management:
+        </Typography>
 
-            <Card variant="outlined" className="manual-card-info">
-              <Typography variant="h6" className="manual-card-info-heading">
-                Secure Communication
-              </Typography>
+        <Stepper orientation="vertical" activeStep={-1} sx={{ mt: 2 }}>
+          <Step>
+            <StepLabel>Start Your Day</StepLabel>
+            <StepContent>
               <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
-                All communication with SmartSheet uses HTTPS encryption. Your credentials 
-                are only transmitted during the authentication process.
+                Open SheetPilot and navigate to the Timesheet tab. Review any existing entries from previous days to
+                ensure accuracy.
               </Typography>
-            </Card>
-
-            <Card variant="outlined" className="manual-card-secondary">
-              <Typography variant="h6" className="manual-card-secondary-heading">
-                No Data Collection
-              </Typography>
+            </StepContent>
+          </Step>
+          <Step>
+            <StepLabel>Log Your Time</StepLabel>
+            <StepContent>
               <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
-                SheetPilot does not collect, store, or transmit any usage data, analytics, 
-                or personal information to external services.
+                Add new time entries as you complete tasks throughout the day. Include project codes, descriptions, and
+                accurate time durations.
               </Typography>
-            </Card>
-          </Box>
+            </StepContent>
+          </Step>
+          <Step>
+            <StepLabel>Review Before Submission</StepLabel>
+            <StepContent>
+              <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
+                Before submitting, review all entries for the week to ensure they&apos;re complete and accurate. Check
+                for any missing project codes or descriptions.
+              </Typography>
+            </StepContent>
+          </Step>
+          <Step>
+            <StepLabel>Submit Weekly</StepLabel>
+            <StepContent>
+              <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
+                Submit your timesheet at the end of each week or as required by your organization. The application will
+                validate all entries before submission.
+              </Typography>
+            </StepContent>
+          </Step>
+        </Stepper>
 
-          <Typography variant="h6" gutterBottom className="manual-heading manual-spacing-top">
-            Privacy Best Practices
+        <Alert severity="warning" sx={{ mt: 3, mb: 3 }}>
+          <AlertTitle>Best Practices</AlertTitle>
+          <List dense>
+            <ListItem sx={{ py: 0 }}>
+              <ListItemText
+                primary="Log time entries daily to avoid forgetting tasks"
+                sx={{ '& .MuiListItemText-primary': { fontSize: LIST_ITEM_PRIMARY_FONT_SIZE } }}
+              />
+            </ListItem>
+            <ListItem sx={{ py: 0 }}>
+              <ListItemText
+                primary="Use descriptive project names and task descriptions"
+                sx={{ '& .MuiListItemText-primary': { fontSize: LIST_ITEM_PRIMARY_FONT_SIZE } }}
+              />
+            </ListItem>
+            <ListItem sx={{ py: 0 }}>
+              <ListItemText
+                primary="Review and submit timesheets weekly for better accuracy"
+                sx={{ '& .MuiListItemText-primary': { fontSize: LIST_ITEM_PRIMARY_FONT_SIZE } }}
+              />
+            </ListItem>
+            <ListItem sx={{ py: 0 }}>
+              <ListItemText
+                primary="Keep your credentials up to date if your password changes"
+                sx={{ '& .MuiListItemText-primary': { fontSize: LIST_ITEM_PRIMARY_FONT_SIZE } }}
+              />
+            </ListItem>
+          </List>
+        </Alert>
+
+        <Typography variant="h6" gutterBottom className="manual-heading manual-spacing-top">
+          Weekly Submission Process
+        </Typography>
+        <Paper className="manual-feature-card">
+          <Typography variant="body1" className="manual-body-text manual-spacing-bottom">
+            When you&apos;re ready to submit your weekly timesheet:
           </Typography>
           <List>
             <ListItem>
               <ListItemIcon>
-                <CheckCircleIcon color="success" />
+                <CheckCircleIcon color="primary" />
               </ListItemIcon>
-              <ListItemText 
-                primary="Regular Credential Updates"
-                secondary="Change your stored credentials if you update your SmartSheet password"
+              <ListItemText
+                primary="Navigate to the Timesheet tab"
+                secondary="Review all entries for the current week"
               />
             </ListItem>
             <ListItem>
               <ListItemIcon>
-                <CheckCircleIcon color="success" />
+                <CheckCircleIcon color="primary" />
               </ListItemIcon>
-              <ListItemText 
-                primary="Secure Device Access"
-                secondary="Ensure your device is secured with appropriate access controls and antivirus software"
+              <ListItemText
+                primary="Click 'Submit Timesheet'"
+                secondary="The application will validate all entries before submission"
               />
             </ListItem>
             <ListItem>
               <ListItemIcon>
-                <CheckCircleIcon color="success" />
+                <CheckCircleIcon color="primary" />
               </ListItemIcon>
-              <ListItemText 
-                primary="Regular Backups"
-                secondary="Consider backing up your timesheet data regularly for business continuity"
+              <ListItemText
+                primary="Monitor the submission process"
+                secondary="Watch the status messages for progress and any errors"
               />
             </ListItem>
             <ListItem>
               <ListItemIcon>
-                <CheckCircleIcon color="success" />
+                <CheckCircleIcon color="primary" />
               </ListItemIcon>
-              <ListItemText 
-                primary="Logout When Done"
-                secondary="Close the application when not in use to prevent unauthorized access"
+              <ListItemText
+                primary="Verify successful submission"
+                secondary="Check the Archive tab to confirm your entries were submitted"
               />
             </ListItem>
           </List>
+        </Paper>
+      </Box>
+    ),
+  },
+  {
+    id: 'troubleshooting',
+    title: 'Troubleshooting',
+    icon: <BugReportIcon />,
+    content: (
+      <Box>
+        <Typography variant="h6" gutterBottom className="manual-heading">
+          Common Issues and Solutions
+        </Typography>
 
-          <Alert severity="warning" sx={{ mt: 3 }}>
-            <AlertTitle>Important Security Notes</AlertTitle>
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="h6" gutterBottom className="manual-heading manual-spacing-bottom">
+            Authentication Issues
+          </Typography>
+          <List>
+            <ListItem>
+              <ListItemIcon>
+                <WarningIcon color="warning" />
+              </ListItemIcon>
+              <ListItemText
+                primary="Invalid credentials error"
+                secondary={
+                  <>
+                    <strong>Solution:</strong> Verify your SmartSheet email and password are correct. If you recently
+                    changed your password, update your stored credentials in the Home tab.
+                  </>
+                }
+                secondaryTypographyProps={{ className: MANUAL_BODY_TEXT_CLASS }}
+              />
+            </ListItem>
+            <ListItem>
+              <ListItemIcon>
+                <WarningIcon color="warning" />
+              </ListItemIcon>
+              <ListItemText
+                primary="Connection timeout"
+                secondary={
+                  <>
+                    <strong>Solution:</strong> Check your internet connection and ensure SmartSheet is accessible. Try
+                    again in a few minutes if the issue persists.
+                  </>
+                }
+                secondaryTypographyProps={{ className: MANUAL_BODY_TEXT_CLASS }}
+              />
+            </ListItem>
+          </List>
+        </Box>
+
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="h6" gutterBottom className="manual-heading">
+            Submission Issues
+          </Typography>
+          <List>
+            <ListItem>
+              <ListItemIcon>
+                <WarningIcon color="warning" />
+              </ListItemIcon>
+              <ListItemText
+                primary="Some entries failed to submit"
+                secondary={
+                  <>
+                    <strong>Solution:</strong> Check the error messages in the status area. Common causes include
+                    missing project codes, invalid time formats, or duplicate entries. Fix the issues and try again.
+                  </>
+                }
+                secondaryTypographyProps={{ className: MANUAL_BODY_TEXT_CLASS }}
+              />
+            </ListItem>
+            <ListItem>
+              <ListItemIcon>
+                <WarningIcon color="warning" />
+              </ListItemIcon>
+              <ListItemText
+                primary="No entries to submit"
+                secondary={
+                  <>
+                    <strong>Solution:</strong> Ensure you have timesheet entries for the current week. Check that
+                    entries are not already submitted (they won&apos;t appear in the submission queue).
+                  </>
+                }
+                secondaryTypographyProps={{ className: MANUAL_BODY_TEXT_CLASS }}
+              />
+            </ListItem>
+          </List>
+        </Box>
+
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="h6" gutterBottom className="manual-heading">
+            Application Issues
+          </Typography>
+          <List>
+            <ListItem>
+              <ListItemIcon>
+                <WarningIcon color="warning" />
+              </ListItemIcon>
+              <ListItemText
+                primary="Application won't start"
+                secondary={
+                  <>
+                    <strong>Solution:</strong> Restart your computer and try again. If the issue persists, contact your
+                    system administrator for assistance.
+                  </>
+                }
+                secondaryTypographyProps={{ className: MANUAL_BODY_TEXT_CLASS }}
+              />
+            </ListItem>
+            <ListItem>
+              <ListItemIcon>
+                <WarningIcon color="warning" />
+              </ListItemIcon>
+              <ListItemText
+                primary="Data not loading"
+                secondary={
+                  <>
+                    <strong>Solution:</strong> Check if the database file is accessible and not corrupted. The
+                    application stores data locally in a SQLite database file.
+                  </>
+                }
+                secondaryTypographyProps={{ className: MANUAL_BODY_TEXT_CLASS }}
+              />
+            </ListItem>
+          </List>
+        </Box>
+
+        <Alert severity="info" sx={{ mt: 3 }}>
+          <AlertTitle>Getting Additional Help</AlertTitle>
+          <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
+            If you continue to experience issues after trying these solutions:
+          </Typography>
+          <List dense sx={{ mt: 1 }}>
+            <ListItem sx={{ py: 0 }}>
+              <ListItemIcon>
+                <ContactSupportIcon color="info" />
+              </ListItemIcon>
+              <ListItemText
+                primary="Contact your system administrator"
+                sx={{ '& .MuiListItemText-primary': { fontSize: LIST_ITEM_PRIMARY_FONT_SIZE } }}
+              />
+            </ListItem>
+            <ListItem sx={{ py: 0 }}>
+              <ListItemIcon>
+                <InfoIcon color="info" />
+              </ListItemIcon>
+              <ListItemText
+                primary="Check the application logs for detailed error information"
+                sx={{ '& .MuiListItemText-primary': { fontSize: LIST_ITEM_PRIMARY_FONT_SIZE } }}
+              />
+            </ListItem>
+            <ListItem sx={{ py: 0 }}>
+              <ListItemIcon>
+                <VpnKeyIcon color="info" />
+              </ListItemIcon>
+              <ListItemText
+                primary="Verify your SmartSheet account has the necessary permissions"
+                sx={{ '& .MuiListItemText-primary': { fontSize: LIST_ITEM_PRIMARY_FONT_SIZE } }}
+              />
+            </ListItem>
+          </List>
+        </Alert>
+      </Box>
+    ),
+  },
+  {
+    id: 'security',
+    title: 'Security & Privacy',
+    icon: <SecurityIcon />,
+    content: (
+      <Box>
+        <Typography variant="h6" gutterBottom className="manual-heading">
+          Data Security
+        </Typography>
+        <Typography variant="body1" paragraph className={MANUAL_BODY_TEXT_CLASS}>
+          SheetPilot is designed with security and privacy as top priorities. Here&apos;s how we protect your data:
+        </Typography>
+
+        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 2, mb: 3 }}>
+          <Card variant="outlined" className="manual-card-success">
+            <Typography variant="h6" className="manual-card-success-heading">
+              Local Data Storage
+            </Typography>
             <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
-              • Never share your SmartSheet credentials with others<br/>
-              • Keep your device&apos;s operating system and security software up to date<br/>
-              • Be cautious when using SheetPilot on shared or public computers<br/>
-              • Report any suspicious activity or security concerns to your system administrator
+              All your timesheet data and credentials are stored locally on your device using SQLite database. No data
+              is transmitted to external servers except during SmartSheet submission.
             </Typography>
-          </Alert>
+          </Card>
+
+          <Card variant="outlined" className="manual-card-warning">
+            <Typography variant="h6" className="manual-card-warning-heading">
+              Encrypted Credentials
+            </Typography>
+            <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
+              Your SmartSheet credentials are encrypted before being stored locally. The encryption key is derived from
+              your system and is not stored in the application.
+            </Typography>
+          </Card>
+
+          <Card variant="outlined" className="manual-card-info">
+            <Typography variant="h6" className="manual-card-info-heading">
+              Secure Communication
+            </Typography>
+            <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
+              All communication with SmartSheet uses HTTPS encryption. Your credentials are only transmitted during the
+              authentication process.
+            </Typography>
+          </Card>
+
+          <Card variant="outlined" className="manual-card-secondary">
+            <Typography variant="h6" className="manual-card-secondary-heading">
+              No Data Collection
+            </Typography>
+            <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
+              SheetPilot does not collect, store, or transmit any usage data, analytics, or personal information to
+              external services.
+            </Typography>
+          </Card>
         </Box>
-      )
-    },
-    {
-      id: 'support',
-      title: 'Support & Resources',
-      icon: <ContactSupportIcon />,
-      content: (
-        <Box>
-          <Typography variant="h6" gutterBottom className="manual-heading">
-            Getting Help
+
+        <Typography variant="h6" gutterBottom className="manual-heading manual-spacing-top">
+          Privacy Best Practices
+        </Typography>
+        <List>
+          <ListItem>
+            <ListItemIcon>
+              <CheckCircleIcon color="success" />
+            </ListItemIcon>
+            <ListItemText
+              primary="Regular Credential Updates"
+              secondary="Change your stored credentials if you update your SmartSheet password"
+            />
+          </ListItem>
+          <ListItem>
+            <ListItemIcon>
+              <CheckCircleIcon color="success" />
+            </ListItemIcon>
+            <ListItemText
+              primary="Secure Device Access"
+              secondary="Ensure your device is secured with appropriate access controls and antivirus software"
+            />
+          </ListItem>
+          <ListItem>
+            <ListItemIcon>
+              <CheckCircleIcon color="success" />
+            </ListItemIcon>
+            <ListItemText
+              primary="Regular Backups"
+              secondary="Consider backing up your timesheet data regularly for business continuity"
+            />
+          </ListItem>
+          <ListItem>
+            <ListItemIcon>
+              <CheckCircleIcon color="success" />
+            </ListItemIcon>
+            <ListItemText
+              primary="Logout When Done"
+              secondary="Close the application when not in use to prevent unauthorized access"
+            />
+          </ListItem>
+        </List>
+
+        <Alert severity="warning" sx={{ mt: 3 }}>
+          <AlertTitle>Important Security Notes</AlertTitle>
+          <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
+            • Never share your SmartSheet credentials with others
+            <br />
+            • Keep your device&apos;s operating system and security software up to date
+            <br />
+            • Be cautious when using SheetPilot on shared or public computers
+            <br />• Report any suspicious activity or security concerns to your system administrator
           </Typography>
-          <Typography variant="body1" paragraph className={MANUAL_BODY_TEXT_CLASS}>
-            If you need assistance with SheetPilot, here are the resources available to you:
+        </Alert>
+      </Box>
+    ),
+  },
+  {
+    id: 'support',
+    title: 'Support & Resources',
+    icon: <ContactSupportIcon />,
+    content: (
+      <Box>
+        <Typography variant="h6" gutterBottom className="manual-heading">
+          Getting Help
+        </Typography>
+        <Typography variant="body1" paragraph className={MANUAL_BODY_TEXT_CLASS}>
+          If you need assistance with SheetPilot, here are the resources available to you:
+        </Typography>
+
+        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 2, mb: 3 }}>
+          <Card variant="outlined" sx={{ p: 2 }}>
+            <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
+              Documentation
+            </Typography>
+            <Typography variant="body2" className="manual-body-text manual-spacing-bottom">
+              This user manual provides comprehensive information about all SheetPilot features and workflows.
+            </Typography>
+            <Chip label="Always Available" color="primary" size="small" />
+          </Card>
+
+          <Card variant="outlined" sx={{ p: 2 }}>
+            <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
+              System Administrator
+            </Typography>
+            <Typography variant="body2" className="manual-body-text manual-spacing-bottom">
+              Your organization&apos;s system administrator can help with technical issues and account problems.
+            </Typography>
+            <Chip label="Internal Support" color="secondary" size="small" />
+          </Card>
+
+          <Card variant="outlined" sx={{ p: 2 }}>
+            <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
+              Application Logs
+            </Typography>
+            <Typography variant="body2" className="manual-body-text manual-spacing-bottom">
+              Detailed error information is available in the application logs for troubleshooting.
+            </Typography>
+            <Chip label="Technical Details" color="info" size="small" />
+          </Card>
+        </Box>
+
+        <Typography variant="h6" gutterBottom className="manual-heading manual-spacing-top">
+          Frequently Asked Questions
+        </Typography>
+
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="subtitle1" className="manual-heading manual-spacing-bottom-small">
+            Q: How often should I submit my timesheet?
+          </Typography>
+          <Typography variant="body2" className="manual-body-text manual-spacing-bottom manual-padding-left">
+            A: Most organizations require weekly timesheet submissions. Check with your supervisor or HR department for
+            specific requirements.
           </Typography>
 
-          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 2, mb: 3 }}>
-            <Card variant="outlined" sx={{ p: 2 }}>
-              <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
-                Documentation
-              </Typography>
-              <Typography variant="body2" className="manual-body-text manual-spacing-bottom">
-                This user manual provides comprehensive information about all SheetPilot features and workflows.
-              </Typography>
-              <Chip label="Always Available" color="primary" size="small" />
-            </Card>
-
-            <Card variant="outlined" sx={{ p: 2 }}>
-              <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
-                System Administrator
-              </Typography>
-              <Typography variant="body2" className="manual-body-text manual-spacing-bottom">
-                Your organization&apos;s system administrator can help with technical issues and account problems.
-              </Typography>
-              <Chip label="Internal Support" color="secondary" size="small" />
-            </Card>
-
-            <Card variant="outlined" sx={{ p: 2 }}>
-              <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
-                Application Logs
-              </Typography>
-              <Typography variant="body2" className="manual-body-text manual-spacing-bottom">
-                Detailed error information is available in the application logs for troubleshooting.
-              </Typography>
-              <Chip label="Technical Details" color="info" size="small" />
-            </Card>
-          </Box>
-
-          <Typography variant="h6" gutterBottom className="manual-heading manual-spacing-top">
-            Frequently Asked Questions
+          <Typography variant="subtitle1" className="manual-heading manual-spacing-bottom-small">
+            Q: Can I edit entries after they&apos;ve been submitted?
           </Typography>
-          
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="subtitle1" className="manual-heading manual-spacing-bottom-small">
-              Q: How often should I submit my timesheet?
-            </Typography>
-            <Typography variant="body2" className="manual-body-text manual-spacing-bottom manual-padding-left">
-              A: Most organizations require weekly timesheet submissions. Check with your supervisor 
-              or HR department for specific requirements.
-            </Typography>
-
-            <Typography variant="subtitle1" className="manual-heading manual-spacing-bottom-small">
-              Q: Can I edit entries after they&apos;ve been submitted?
-            </Typography>
-            <Typography variant="body2" className="manual-body-text manual-spacing-bottom manual-padding-left">
-              A: Once entries are submitted to SmartSheet, you cannot edit them through SheetPilot. 
-              You would need to make changes directly in SmartSheet or contact your administrator.
-            </Typography>
-
-            <Typography variant="subtitle1" className="manual-heading manual-spacing-bottom-small">
-              Q: What happens if my internet connection is lost during submission?
-            </Typography>
-            <Typography variant="body2" className="manual-body-text manual-spacing-bottom manual-padding-left">
-              A: SheetPilot will show an error message. Check your connection and try submitting again. 
-              The application will only submit entries that haven&apos;t been successfully submitted yet.
-            </Typography>
-
-            <Typography variant="subtitle1" className="manual-heading manual-spacing-bottom-small">
-              Q: Can I use SheetPilot on multiple devices?
-            </Typography>
-            <Typography variant="body2" className="manual-body-text manual-spacing-bottom manual-padding-left">
-              A: SheetPilot stores data locally on each device. You&apos;ll need to add your credentials 
-              and manage timesheet entries separately on each device.
-            </Typography>
-          </Box>
-
-          <Divider sx={{ my: 3 }} />
-
-          <Typography variant="h6" gutterBottom className="manual-heading">
-            Application Information
+          <Typography variant="body2" className="manual-body-text manual-spacing-bottom manual-padding-left">
+            A: Once entries are submitted to SmartSheet, you cannot edit them through SheetPilot. You would need to make
+            changes directly in SmartSheet or contact your administrator.
           </Typography>
-          <Paper className="manual-feature-card">
-            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 2 }}>
-              <Box>
-                <Typography variant="subtitle2" className="manual-heading">
-                  Application Name
-                </Typography>
-                <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
-                  SheetPilot
-                </Typography>
-              </Box>
-              <Box>
-                <Typography variant="subtitle2" className="manual-heading">
-                  Database
-                </Typography>
-                <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
-                  SQLite (Local)
-                </Typography>
-              </Box>
-              <Box>
-                <Typography variant="subtitle2" className="manual-heading">
-                  Platform
-                </Typography>
-                <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
-                  Electron Desktop App
-                </Typography>
-              </Box>
-              <Box>
-                <Typography variant="subtitle2" className="manual-heading">
-                  Integration
-                </Typography>
-                <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
-                  SmartSheet API
-                </Typography>
-              </Box>
+
+          <Typography variant="subtitle1" className="manual-heading manual-spacing-bottom-small">
+            Q: What happens if my internet connection is lost during submission?
+          </Typography>
+          <Typography variant="body2" className="manual-body-text manual-spacing-bottom manual-padding-left">
+            A: SheetPilot will show an error message. Check your connection and try submitting again. The application
+            will only submit entries that haven&apos;t been successfully submitted yet.
+          </Typography>
+
+          <Typography variant="subtitle1" className="manual-heading manual-spacing-bottom-small">
+            Q: Can I use SheetPilot on multiple devices?
+          </Typography>
+          <Typography variant="body2" className="manual-body-text manual-spacing-bottom manual-padding-left">
+            A: SheetPilot stores data locally on each device. You&apos;ll need to add your credentials and manage
+            timesheet entries separately on each device.
+          </Typography>
+        </Box>
+
+        <Divider sx={{ my: 3 }} />
+
+        <Typography variant="h6" gutterBottom className="manual-heading">
+          Application Information
+        </Typography>
+        <Paper className="manual-feature-card">
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 2 }}>
+            <Box>
+              <Typography variant="subtitle2" className="manual-heading">
+                Application Name
+              </Typography>
+              <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
+                SheetPilot
+              </Typography>
             </Box>
-          </Paper>
-        </Box>
-      )
-    }
+            <Box>
+              <Typography variant="subtitle2" className="manual-heading">
+                Database
+              </Typography>
+              <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
+                SQLite (Local)
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant="subtitle2" className="manual-heading">
+                Platform
+              </Typography>
+              <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
+                Electron Desktop App
+              </Typography>
+            </Box>
+            <Box>
+              <Typography variant="subtitle2" className="manual-heading">
+                Integration
+              </Typography>
+              <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
+                SmartSheet API
+              </Typography>
+            </Box>
+          </Box>
+        </Paper>
+      </Box>
+    ),
+  },
 ];
 
 export default function UserManual() {
@@ -765,7 +779,7 @@ export default function UserManual() {
       <Typography variant="h4" gutterBottom className="manual-heading manual-spacing-top">
         SheetPilot User Manual
       </Typography>
-      
+
       {MANUAL_SECTIONS.map((section, index) => (
         <Accordion
           key={section.id}
@@ -787,9 +801,7 @@ export default function UserManual() {
               </Typography>
             </Box>
           </AccordionSummary>
-          <AccordionDetails sx={{ pt: 3, pb: 3 }}>
-            {section.content}
-          </AccordionDetails>
+          <AccordionDetails sx={{ pt: 3, pb: 3 }}>{section.content}</AccordionDetails>
         </Accordion>
       ))}
     </Box>

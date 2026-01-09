@@ -23,5 +23,3 @@ export async function getAllArchiveData(token: string): Promise<ArchiveResponse 
   }
   return window.database.getAllArchiveData(token);
 }
-
-

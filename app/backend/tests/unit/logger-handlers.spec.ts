@@ -6,12 +6,12 @@ import { ipcLogger } from '@sheetpilot/shared/logger';
 // Mock electron
 vi.mock('electron', () => ({
   ipcMain: {
-    on: vi.fn()
-  }
+    on: vi.fn(),
+  },
 }));
 
 vi.mock('@/ipc/handlers/timesheet/main-window', () => ({
-  isTrustedIpcSender: vi.fn(() => true)
+  isTrustedIpcSender: vi.fn(() => true),
 }));
 
 // Mock logger
@@ -21,8 +21,8 @@ vi.mock('../../../shared/logger', () => ({
     warn: vi.fn(),
     info: vi.fn(),
     verbose: vi.fn(),
-    debug: vi.fn()
-  }
+    debug: vi.fn(),
+  },
 }));
 
 describe('logger-handlers', () => {
@@ -46,9 +46,11 @@ describe('logger-handlers', () => {
     it('should route logger:error to ipcLogger.error', () => {
       registerLoggerHandlers();
 
-      const errorHandler = vi.mocked(ipcMain.on).mock.calls.find(
-        call => call[0] === 'logger:error'
-      )?.[1] as (event: unknown, message: string, data?: unknown) => void;
+      const errorHandler = vi.mocked(ipcMain.on).mock.calls.find((call) => call[0] === 'logger:error')?.[1] as (
+        event: unknown,
+        message: string,
+        data?: unknown
+      ) => void;
 
       expect(errorHandler).toBeDefined();
 
@@ -61,9 +63,11 @@ describe('logger-handlers', () => {
     it('should route logger:warn to ipcLogger.warn', () => {
       registerLoggerHandlers();
 
-      const warnHandler = vi.mocked(ipcMain.on).mock.calls.find(
-        call => call[0] === 'logger:warn'
-      )?.[1] as (event: unknown, message: string, data?: unknown) => void;
+      const warnHandler = vi.mocked(ipcMain.on).mock.calls.find((call) => call[0] === 'logger:warn')?.[1] as (
+        event: unknown,
+        message: string,
+        data?: unknown
+      ) => void;
 
       expect(warnHandler).toBeDefined();
 
@@ -76,9 +80,11 @@ describe('logger-handlers', () => {
     it('should route logger:info to ipcLogger.info', () => {
       registerLoggerHandlers();
 
-      const infoHandler = vi.mocked(ipcMain.on).mock.calls.find(
-        call => call[0] === 'logger:info'
-      )?.[1] as (event: unknown, message: string, data?: unknown) => void;
+      const infoHandler = vi.mocked(ipcMain.on).mock.calls.find((call) => call[0] === 'logger:info')?.[1] as (
+        event: unknown,
+        message: string,
+        data?: unknown
+      ) => void;
 
       expect(infoHandler).toBeDefined();
 
@@ -91,9 +97,11 @@ describe('logger-handlers', () => {
     it('should route logger:verbose to ipcLogger.verbose', () => {
       registerLoggerHandlers();
 
-      const verboseHandler = vi.mocked(ipcMain.on).mock.calls.find(
-        call => call[0] === 'logger:verbose'
-      )?.[1] as (event: unknown, message: string, data?: unknown) => void;
+      const verboseHandler = vi.mocked(ipcMain.on).mock.calls.find((call) => call[0] === 'logger:verbose')?.[1] as (
+        event: unknown,
+        message: string,
+        data?: unknown
+      ) => void;
 
       expect(verboseHandler).toBeDefined();
 
@@ -106,9 +114,11 @@ describe('logger-handlers', () => {
     it('should route logger:debug to ipcLogger.debug', () => {
       registerLoggerHandlers();
 
-      const debugHandler = vi.mocked(ipcMain.on).mock.calls.find(
-        call => call[0] === 'logger:debug'
-      )?.[1] as (event: unknown, message: string, data?: unknown) => void;
+      const debugHandler = vi.mocked(ipcMain.on).mock.calls.find((call) => call[0] === 'logger:debug')?.[1] as (
+        event: unknown,
+        message: string,
+        data?: unknown
+      ) => void;
 
       expect(debugHandler).toBeDefined();
 
@@ -121,9 +131,13 @@ describe('logger-handlers', () => {
     it('should route logger:user-action to ipcLogger.info with formatted message', () => {
       registerLoggerHandlers();
 
-      const userActionHandler = vi.mocked(ipcMain.on).mock.calls.find(
-        call => call[0] === 'logger:user-action'
-      )?.[1] as (event: unknown, action: string, data?: unknown) => void;
+      const userActionHandler = vi
+        .mocked(ipcMain.on)
+        .mock.calls.find((call) => call[0] === 'logger:user-action')?.[1] as (
+        event: unknown,
+        action: string,
+        data?: unknown
+      ) => void;
 
       expect(userActionHandler).toBeDefined();
 
@@ -136,9 +150,11 @@ describe('logger-handlers', () => {
     it('should handle handlers without data parameter', () => {
       registerLoggerHandlers();
 
-      const errorHandler = vi.mocked(ipcMain.on).mock.calls.find(
-        call => call[0] === 'logger:error'
-      )?.[1] as (event: unknown, message: string, data?: unknown) => void;
+      const errorHandler = vi.mocked(ipcMain.on).mock.calls.find((call) => call[0] === 'logger:error')?.[1] as (
+        event: unknown,
+        message: string,
+        data?: unknown
+      ) => void;
 
       const mockEvent = {};
       errorHandler(mockEvent, 'Error without data');
@@ -147,5 +163,3 @@ describe('logger-handlers', () => {
     });
   });
 });
-
-

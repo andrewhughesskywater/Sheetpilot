@@ -1,17 +1,13 @@
-import { useCallback } from 'react';
-import type { RefObject } from 'react';
 import type { HotTableRef } from '@handsontable/react-wrapper';
+import type { RefObject } from 'react';
+import { useCallback } from 'react';
+
 import type { TimesheetRow } from '../timesheet.schema';
 import { normalizePastedRows, validatePastedData } from '../utils/pasteNormalizer';
 
 export function usePasteHandler() {
   const setTempDropdownValue = useCallback(
-    (
-      hotRef: RefObject<HotTableRef | null>,
-      rowIdx: number,
-      columnIndex: number,
-      value: string | undefined
-    ): void => {
+    (hotRef: RefObject<HotTableRef | null>, rowIdx: number, columnIndex: number, value: string | undefined): void => {
       if (!value) return;
 
       const hotInstance = hotRef.current?.hotInstance;
@@ -70,7 +66,8 @@ export function usePasteHandler() {
 
   const handlePaste = useCallback(
     (config: HandlePasteConfig): boolean => {
-      const { pastedData, timesheetDraftData, setTimesheetDraftData, hotRef, getChargeCodesForProject, onChange } = config;
+      const { pastedData, timesheetDraftData, setTimesheetDraftData, hotRef, getChargeCodesForProject, onChange } =
+        config;
       const validation = validatePastedData(pastedData);
       if (!validation.isValid) {
         window.logger?.warn('Invalid paste data', { errors: validation.errors });
@@ -90,14 +87,14 @@ export function usePasteHandler() {
           startRowIdx: timesheetDraftData.length,
           pastedRowCount,
           hotRef,
-          getChargeCodesForProject
+          getChargeCodesForProject,
         });
 
         window.logger?.info('Paste data applied successfully', { rowCount: pastedRowCount });
         return true;
       } catch (error) {
         window.logger?.error('Error applying paste data', {
-          error: error instanceof Error ? error.message : String(error)
+          error: error instanceof Error ? error.message : String(error),
         });
         return false;
       }
@@ -108,6 +105,6 @@ export function usePasteHandler() {
   return {
     handlePaste,
     applyPastedToolAndChargeCode,
-    setTempDropdownValue
+    setTempDropdownValue,
   };
 }

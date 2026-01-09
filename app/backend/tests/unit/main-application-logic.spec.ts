@@ -1,9 +1,9 @@
 /**
  * @fileoverview Main Application Logic Tests
- * 
+ *
  * Tests core application logic including window management, time utilities,
  * and validation functions from main.ts.
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025
@@ -20,12 +20,12 @@ vi.mock('electron', () => ({
     isPackaged: false,
     whenReady: vi.fn(() => Promise.resolve()),
     on: vi.fn(),
-    quit: vi.fn()
+    quit: vi.fn(),
   },
   screen: {
     getPrimaryDisplay: vi.fn(() => ({
-      workAreaSize: { width: 1920, height: 1080 }
-    }))
+      workAreaSize: { width: 1920, height: 1080 },
+    })),
   },
   BrowserWindow: vi.fn().mockImplementation(() => ({
     loadURL: vi.fn(),
@@ -34,21 +34,21 @@ vi.mock('electron', () => ({
     on: vi.fn(),
     show: vi.fn(),
     webContents: {
-      send: vi.fn()
-    }
+      send: vi.fn(),
+    },
   })),
   ipcMain: {
     handle: vi.fn(),
     on: vi.fn(),
     once: vi.fn(),
-    removeListener: vi.fn()
+    removeListener: vi.fn(),
   },
   dialog: {
-    showOpenDialog: vi.fn()
+    showOpenDialog: vi.fn(),
   },
   shell: {
-    openPath: vi.fn()
-  }
+    openPath: vi.fn(),
+  },
 }));
 
 // Mock auto-updater
@@ -59,8 +59,8 @@ vi.mock('electron-updater', () => ({
     logger: null,
     on: vi.fn(),
     checkForUpdates: vi.fn(() => Promise.resolve()),
-    downloadUpdate: vi.fn(() => Promise.resolve())
-  }
+    downloadUpdate: vi.fn(() => Promise.resolve()),
+  },
 }));
 
 // Mock fs module for window state tests
@@ -71,8 +71,8 @@ vi.mock('fs', () => ({
   mkdirSync: vi.fn(),
   promises: {
     mkdir: vi.fn(),
-    writeFile: vi.fn()
-  }
+    writeFile: vi.fn(),
+  },
 }));
 
 describe('Main Application Logic Tests', () => {
@@ -135,7 +135,7 @@ describe('Main Application Logic Tests', () => {
         const result2 = parseTimeToMinutes('12:60');
         const result3 = parseTimeToMinutes('-1:30');
         const result4 = parseTimeToMinutes('12:-5');
-        
+
         // Just verify they return numbers (even if invalid)
         expect(typeof result1).toBe('number');
         expect(typeof result2).toBe('number');
@@ -169,8 +169,8 @@ describe('Main Application Logic Tests', () => {
     describe('Time parsing round-trip conversion', () => {
       it('should maintain consistency in round-trip conversion', () => {
         const testTimes = ['09:00', '12:30', '17:45', '00:00', '23:59'];
-        
-        testTimes.forEach(timeStr => {
+
+        testTimes.forEach((timeStr) => {
           const minutes = parseTimeToMinutes(timeStr);
           const convertedBack = formatMinutesToTime(minutes);
           expect(convertedBack).toBe(timeStr);
@@ -186,23 +186,21 @@ describe('Main Application Logic Tests', () => {
       if (!dateRegex.test(dateStr)) {
         return false;
       }
-      
+
       const [year, month, day] = dateStr.split('-').map(Number);
       const date = new Date(year, month - 1, day);
-      
+
       // Check if the date is actually valid (not auto-corrected)
-      if (date.getFullYear() !== year || 
-          date.getMonth() !== month - 1 || 
-          date.getDate() !== day) {
+      if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
         return false;
       }
-      
+
       const now = new Date();
-      
+
       // Get current quarter (1-4)
       const currentQuarter = Math.floor(now.getMonth() / 3) + 1;
       const dateQuarter = Math.floor(date.getMonth() / 3) + 1;
-      
+
       // Check if date is in current quarter and current year
       return date.getFullYear() === now.getFullYear() && dateQuarter === currentQuarter;
     };
@@ -210,7 +208,7 @@ describe('Main Application Logic Tests', () => {
     it('should validate dates in current quarter', () => {
       // Use a fixed date for consistent testing
       const testDate = '2025-01-15'; // January 2025
-      
+
       // Mock the current date to be in Q1 2025
       const originalDate = Date;
       global.Date = class extends Date {
@@ -222,9 +220,9 @@ describe('Main Application Logic Tests', () => {
           }
         }
       } as typeof Date;
-      
+
       expect(isDateInCurrentQuarter(testDate)).toBe(true);
-      
+
       // Restore original Date
       global.Date = originalDate;
     });
@@ -233,11 +231,11 @@ describe('Main Application Logic Tests', () => {
       const now = new Date();
       const currentYear = now.getFullYear();
       const currentMonth = now.getMonth();
-      
+
       // Calculate a month in a different quarter
       const differentQuarterMonth = (currentMonth + 3) % 12;
       const differentDate = `${currentYear}-${String(differentQuarterMonth + 1).padStart(2, '0')}-15`;
-      
+
       expect(isDateInCurrentQuarter(differentDate)).toBe(false);
     });
 
@@ -245,16 +243,16 @@ describe('Main Application Logic Tests', () => {
       const now = new Date();
       const differentYear = now.getFullYear() + 1;
       const currentMonth = now.getMonth();
-      
+
       const differentYearDate = `${differentYear}-${String(currentMonth + 1).padStart(2, '0')}-15`;
-      
+
       expect(isDateInCurrentQuarter(differentYearDate)).toBe(false);
     });
 
     it('should handle edge cases for quarter boundaries', () => {
       const now = new Date();
       const currentYear = now.getFullYear();
-      
+
       // Test quarter boundaries
       const quarterBoundaries = [
         `${currentYear}-01-01`, // Q1 start
@@ -264,10 +262,10 @@ describe('Main Application Logic Tests', () => {
         `${currentYear}-07-01`, // Q3 start
         `${currentYear}-09-30`, // Q3 end
         `${currentYear}-10-01`, // Q4 start
-        `${currentYear}-12-31`  // Q4 end
+        `${currentYear}-12-31`, // Q4 end
       ];
-      
-      quarterBoundaries.forEach(dateStr => {
+
+      quarterBoundaries.forEach((dateStr) => {
         const result = isDateInCurrentQuarter(dateStr);
         // Result depends on current quarter, but should not throw
         expect(typeof result).toBe('boolean');
@@ -275,15 +273,9 @@ describe('Main Application Logic Tests', () => {
     });
 
     it('should handle invalid date strings', () => {
-      const invalidDates = [
-        'invalid-date',
-        '2025-13-01',
-        '2025-02-30',
-        '2025-04-31',
-        'not-a-date'
-      ];
-      
-      invalidDates.forEach(dateStr => {
+      const invalidDates = ['invalid-date', '2025-13-01', '2025-02-30', '2025-04-31', 'not-a-date'];
+
+      invalidDates.forEach((dateStr) => {
         // The function should return false for invalid dates, not throw
         expect(isDateInCurrentQuarter(dateStr)).toBe(false);
       });
@@ -302,60 +294,66 @@ describe('Main Application Logic Tests', () => {
     const getWindowState = (): { width: number; height: number; x?: number; y?: number; isMaximized?: boolean } => {
       const defaultWidth = 1200;
       const defaultHeight = Math.round(defaultWidth * 1.618);
-      
+
       try {
         const userDataPath = '/tmp/sheetpilot-userdata';
         const windowStatePath = path.join(userDataPath, 'window-state.json');
-        
+
         if (mockFs.existsSync(windowStatePath)) {
           const data = mockFs.readFileSync(windowStatePath, 'utf8');
           const savedState = JSON.parse(data);
-          
+
           // Validate saved state and ensure it's within screen bounds
           const { width, height, x, y, isMaximized } = savedState;
           const screenWidth = 1920;
           const screenHeight = 1080;
-          
+
           // Ensure window is not larger than screen
           const validWidth = Math.min(width || defaultWidth, screenWidth);
           const validHeight = Math.min(height || defaultHeight, screenHeight);
-          
+
           // Ensure window position is within screen bounds
           let validX = x;
           let validY = y;
-          
+
           if (validX !== undefined && validY !== undefined) {
             validX = Math.max(0, Math.min(validX, screenWidth - validWidth));
             validY = Math.max(0, Math.min(validY, screenHeight - validHeight));
           }
-          
+
           return {
             width: validWidth,
             height: validHeight,
             x: validX,
             y: validY,
-            isMaximized: isMaximized || false
+            isMaximized: isMaximized || false,
           };
         }
       } catch (error) {
         console.warn('Could not load window state:', error);
       }
-      
+
       return {
         width: defaultWidth,
         height: defaultHeight,
-        isMaximized: false
+        isMaximized: false,
       };
     };
 
     // Simulates the debounced async saveWindowState with a 500ms delay
-    const saveWindowState = async (state: { width: number; height: number; x?: number; y?: number; isMaximized?: boolean }): Promise<void> => {
+    const saveWindowState = async (state: {
+      width: number;
+      height: number;
+      x?: number;
+      y?: number;
+      isMaximized?: boolean;
+    }): Promise<void> => {
       return new Promise((resolve) => {
         setTimeout(async () => {
           try {
             const userDataPath = '/tmp/sheetpilot-userdata';
             await mockFs.promises.mkdir(userDataPath, { recursive: true });
-            
+
             const windowStatePath = path.join(userDataPath, 'window-state.json');
             await mockFs.promises.writeFile(windowStatePath, JSON.stringify(state, null, 2));
             resolve();
@@ -378,9 +376,9 @@ describe('Main Application Logic Tests', () => {
 
     it('should return default window state when no saved state exists', () => {
       mockFs.existsSync.mockReturnValue(false);
-      
+
       const state = getWindowState();
-      
+
       expect(state.width).toBe(1200);
       expect(state.height).toBe(1942); // 1200 * 1.618
       expect(state.isMaximized).toBe(false);
@@ -394,14 +392,14 @@ describe('Main Application Logic Tests', () => {
         height: 800,
         x: 100,
         y: 50,
-        isMaximized: false
+        isMaximized: false,
       };
-      
+
       mockFs.existsSync.mockReturnValue(true);
       mockFs.readFileSync.mockReturnValue(JSON.stringify(savedState));
-      
+
       const state = getWindowState();
-      
+
       expect(state.width).toBe(1000);
       expect(state.height).toBe(800);
       expect(state.x).toBe(100);
@@ -415,14 +413,14 @@ describe('Main Application Logic Tests', () => {
         height: 2000, // Larger than screen
         x: 100,
         y: 50,
-        isMaximized: false
+        isMaximized: false,
       };
-      
+
       mockFs.existsSync.mockReturnValue(true);
       mockFs.readFileSync.mockReturnValue(JSON.stringify(savedState));
-      
+
       const state = getWindowState();
-      
+
       expect(state.width).toBe(1920); // Constrained to screen width
       expect(state.height).toBe(1080); // Constrained to screen height
     });
@@ -433,14 +431,14 @@ describe('Main Application Logic Tests', () => {
         height: 400,
         x: 2000, // Off-screen
         y: 1000, // Off-screen
-        isMaximized: false
+        isMaximized: false,
       };
-      
+
       mockFs.existsSync.mockReturnValue(true);
       mockFs.readFileSync.mockReturnValue(JSON.stringify(savedState));
-      
+
       const state = getWindowState();
-      
+
       expect(state.x).toBe(1420); // 1920 - 500 (constrained to screen bounds)
       expect(state.y).toBe(680); // 1080 - 400 (constrained to screen bounds)
     });
@@ -448,9 +446,9 @@ describe('Main Application Logic Tests', () => {
     it('should handle corrupted saved state gracefully', () => {
       mockFs.existsSync.mockReturnValue(true);
       mockFs.readFileSync.mockReturnValue('invalid-json');
-      
+
       const state = getWindowState();
-      
+
       // Should fall back to defaults
       expect(state.width).toBe(1200);
       expect(state.height).toBe(1942);
@@ -463,17 +461,17 @@ describe('Main Application Logic Tests', () => {
         height: 800,
         x: 100,
         y: 50,
-        isMaximized: true
+        isMaximized: true,
       };
-      
+
       // Mock the async fs.promises methods
       mockFs.promises = {
         mkdir: vi.fn().mockResolvedValue(undefined),
-        writeFile: vi.fn().mockResolvedValue(undefined)
+        writeFile: vi.fn().mockResolvedValue(undefined),
       };
-      
+
       await saveWindowState(state);
-      
+
       expect(mockFs.promises.mkdir).toHaveBeenCalledWith('/tmp/sheetpilot-userdata', { recursive: true });
       expect(mockFs.promises.writeFile).toHaveBeenCalledWith(
         expect.stringMatching(/.*sheetpilot-userdata.*window-state\.json/),
@@ -484,11 +482,11 @@ describe('Main Application Logic Tests', () => {
     it('should handle save errors gracefully (async)', async () => {
       mockFs.promises = {
         mkdir: vi.fn().mockRejectedValue(new Error('Permission denied')),
-        writeFile: vi.fn().mockResolvedValue(undefined)
+        writeFile: vi.fn().mockResolvedValue(undefined),
       };
-      
+
       const state = { width: 1000, height: 800 };
-      
+
       // Should not throw even with async errors
       await expect(saveWindowState(state)).resolves.not.toThrow();
     });
@@ -499,9 +497,9 @@ describe('Main Application Logic Tests', () => {
       // Test the configuration values directly
       const expectedConfig = {
         autoDownload: false,
-        autoInstallOnAppQuit: true
+        autoInstallOnAppQuit: true,
       };
-      
+
       expect(expectedConfig.autoDownload).toBe(false);
       expect(expectedConfig.autoInstallOnAppQuit).toBe(true);
     });
@@ -510,12 +508,12 @@ describe('Main Application Logic Tests', () => {
       // Test the logic directly
       const isDevelopment = true;
       const shouldCheckForUpdates = !isDevelopment;
-      
+
       expect(shouldCheckForUpdates).toBe(false);
-      
+
       const isProduction = false;
       const shouldCheckForUpdatesProd = !isProduction;
-      
+
       expect(shouldCheckForUpdatesProd).toBe(true);
     });
   });
@@ -536,8 +534,8 @@ describe('Main Application Logic Tests', () => {
       };
 
       const invalidTimes = ['abc', '12', '12:', ':30', '25:00', '12:60'];
-      
-      invalidTimes.forEach(timeStr => {
+
+      invalidTimes.forEach((timeStr) => {
         // Test that invalid times either throw or return NaN
         try {
           const result = parseTimeToMinutes(timeStr);
@@ -555,17 +553,15 @@ describe('Main Application Logic Tests', () => {
         if (!dateRegex.test(dateStr)) {
           return false;
         }
-        
+
         const [year, month, day] = dateStr.split('-').map(Number);
         const date = new Date(year, month - 1, day);
-        
+
         // Check if the date is actually valid (not auto-corrected)
-        if (date.getFullYear() !== year || 
-            date.getMonth() !== month - 1 || 
-            date.getDate() !== day) {
+        if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
           return false;
         }
-        
+
         const now = new Date();
         const currentQuarter = Math.floor(now.getMonth() / 3) + 1;
         const dateQuarter = Math.floor(date.getMonth() / 3) + 1;
@@ -573,8 +569,8 @@ describe('Main Application Logic Tests', () => {
       };
 
       const invalidDates = ['invalid', '2025-13-01', '2025-02-30'];
-      
-      invalidDates.forEach(dateStr => {
+
+      invalidDates.forEach((dateStr) => {
         // The function should return false for invalid dates, not throw
         expect(isDateInCurrentQuarter(dateStr)).toBe(false);
       });
@@ -600,7 +596,7 @@ describe('Main Application Logic Tests', () => {
     it('should construct correct SQL for draft deletion', () => {
       // Test that the SQL query includes proper safety checks
       const expectedSql = 'DELETE FROM timesheet WHERE id = ? AND status IS NULL';
-      
+
       // Verify the SQL includes both ID check and status check
       expect(expectedSql).toContain('DELETE FROM timesheet');
       expect(expectedSql).toContain('WHERE id = ?');

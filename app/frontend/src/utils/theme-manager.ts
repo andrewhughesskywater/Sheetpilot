@@ -12,11 +12,11 @@ const THEME_STORAGE_KEY = 'sheetpilot-theme-mode';
  */
 export function getSystemTheme(): 'light' | 'dark' {
   if (typeof window === 'undefined') return 'light';
-  
+
   if (!window.matchMedia) {
     return 'light';
   }
-  
+
   try {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     const prefersDark = mediaQuery?.matches || false;
@@ -32,7 +32,7 @@ export function getSystemTheme(): 'light' | 'dark' {
  */
 export function getStoredTheme(): ThemeMode | null {
   if (typeof window === 'undefined') return null;
-  
+
   try {
     const stored = localStorage.getItem(THEME_STORAGE_KEY);
     if (stored === 'light' || stored === 'dark' || stored === 'auto') {
@@ -41,7 +41,7 @@ export function getStoredTheme(): ThemeMode | null {
   } catch {
     // Ignore localStorage errors
   }
-  
+
   return null;
 }
 
@@ -50,13 +50,13 @@ export function getStoredTheme(): ThemeMode | null {
  */
 export function setStoredTheme(mode: ThemeMode): void {
   if (typeof window === 'undefined') return;
-  
+
   try {
     localStorage.setItem(THEME_STORAGE_KEY, mode);
   } catch (error) {
     const win = window as unknown as { logger?: { error: (msg: string, data?: unknown) => void } };
-    win.logger?.error('Failed to store theme', { 
-      error: error instanceof Error ? error.message : String(error) 
+    win.logger?.error('Failed to store theme', {
+      error: error instanceof Error ? error.message : String(error),
     });
   }
 }
@@ -76,21 +76,21 @@ export function getEffectiveTheme(mode: ThemeMode): 'light' | 'dark' {
  */
 export function applyTheme(mode: ThemeMode): void {
   if (typeof document === 'undefined') return;
-  
+
   const effectiveTheme = getEffectiveTheme(mode);
-  
+
   // Set data-theme attribute on root element
   document.documentElement.setAttribute('data-theme', effectiveTheme);
-  
+
   // Update color-scheme for native form controls
   document.documentElement.style.colorScheme = effectiveTheme;
-  
+
   // Dispatch custom event for components that need to react to theme changes
   const themeChangeEvent = new CustomEvent('theme-change', {
-    detail: { mode, effectiveTheme }
+    detail: { mode, effectiveTheme },
   });
   window.dispatchEvent(themeChangeEvent);
-  
+
   const win = window as unknown as { logger?: { debug: (msg: string, data?: unknown) => void } };
   win.logger?.debug('[ThemeManager] Applied theme', { theme: effectiveTheme, mode });
 }
@@ -102,14 +102,14 @@ export function applyTheme(mode: ThemeMode): void {
 export function initializeTheme(): ThemeMode {
   const stored = getStoredTheme();
   const mode = stored || 'auto';
-  
+
   applyTheme(mode);
-  
+
   // Listen for system theme changes when in auto mode
   if (typeof window !== 'undefined' && window.matchMedia) {
     try {
       const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-      
+
       if (mediaQuery && typeof mediaQuery.addEventListener === 'function') {
         mediaQuery.addEventListener('change', () => {
           const currentMode = getStoredTheme() || 'auto';
@@ -121,12 +121,12 @@ export function initializeTheme(): ThemeMode {
     } catch (error) {
       // Silently fail if media query listener setup fails
       const win = window as unknown as { logger?: { warn: (msg: string, data?: unknown) => void } };
-      win.logger?.warn('Could not set up theme change listener', { 
-        error: error instanceof Error ? error.message : String(error) 
+      win.logger?.warn('Could not set up theme change listener', {
+        error: error instanceof Error ? error.message : String(error),
       });
     }
   }
-  
+
   return mode;
 }
 
@@ -138,10 +138,10 @@ export function toggleTheme(): ThemeMode {
   const current = getStoredTheme() || 'auto';
   const effectiveCurrent = getEffectiveTheme(current);
   const newMode: ThemeMode = effectiveCurrent === 'light' ? 'dark' : 'light';
-  
+
   setStoredTheme(newMode);
   applyTheme(newMode);
-  
+
   return newMode;
 }
 
@@ -179,12 +179,11 @@ export function subscribeToThemeChanges(
     const customEvent = event as CustomEvent;
     callback(customEvent.detail);
   };
-  
+
   window.addEventListener('theme-change', handler);
-  
+
   // Return unsubscribe function
   return () => {
     window.removeEventListener('theme-change', handler);
   };
 }
-

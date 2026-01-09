@@ -7,26 +7,26 @@ import { registerLogsHandlers } from '@/ipc/logs-handlers';
 // Mock electron
 vi.mock('electron', () => ({
   ipcMain: {
-    handle: vi.fn()
+    handle: vi.fn(),
   },
   app: {
-    getPath: vi.fn(() => '/mock/user/data')
-  }
+    getPath: vi.fn(() => '/mock/user/data'),
+  },
 }));
 
 vi.mock('@/ipc/handlers/timesheet/main-window', () => ({
-  isTrustedIpcSender: vi.fn(() => true)
+  isTrustedIpcSender: vi.fn(() => true),
 }));
 
 vi.mock('@/repositories', () => ({
-  validateSession: vi.fn(() => ({ valid: true, email: 'user@example.com', isAdmin: false }))
+  validateSession: vi.fn(() => ({ valid: true, email: 'user@example.com', isAdmin: false })),
 }));
 
 vi.mock('../../../shared/logger', () => ({
   ipcLogger: {
     security: vi.fn(),
-    warn: vi.fn()
-  }
+    warn: vi.fn(),
+  },
 }));
 
 // Mock fs
@@ -34,13 +34,13 @@ vi.mock('fs', () => ({
   default: {
     promises: {
       readdir: vi.fn(),
-      readFile: vi.fn()
-    }
+      readFile: vi.fn(),
+    },
   },
   promises: {
     readdir: vi.fn(),
-    readFile: vi.fn()
-  }
+    readFile: vi.fn(),
+  },
 }));
 
 // Mock path
@@ -48,13 +48,13 @@ vi.mock('path', async (importOriginal) => {
   const actual = await importOriginal<typeof import('path')>();
   return {
     ...actual,
-    join: vi.fn((...args: string[]) => args.join('/'))
+    join: vi.fn((...args: string[]) => args.join('/')),
   };
 });
 
 // Mock validation
 vi.mock('@/validation/validate-ipc-input', () => ({
-  validateInput: vi.fn((schema, data) => ({ success: true, data }))
+  validateInput: vi.fn((schema, data) => ({ success: true, data })),
 }));
 
 describe('logs-handlers', () => {
@@ -78,12 +78,13 @@ describe('logs-handlers', () => {
       vi.mocked(fs.promises.readdir).mockResolvedValue([
         'sheetpilot_2025-01-01.log',
         'sheetpilot_2025-01-02.log',
-        'other-file.txt'
+        'other-file.txt',
       ] as never);
 
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'logs:getLogPath'
-      )?.[1] as (event: unknown, token: string) => Promise<{ success: boolean; logPath?: string; logFiles?: string[] }>;
+      const handler = vi.mocked(ipcMain.handle).mock.calls.find((call) => call[0] === 'logs:getLogPath')?.[1] as (
+        event: unknown,
+        token: string
+      ) => Promise<{ success: boolean; logPath?: string; logFiles?: string[] }>;
 
       const result = await handler({}, 'test-token');
 
@@ -98,9 +99,10 @@ describe('logs-handlers', () => {
 
       vi.mocked(fs.promises.readdir).mockResolvedValue(['other-file.txt'] as never);
 
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'logs:getLogPath'
-      )?.[1] as (event: unknown, token: string) => Promise<{ success: boolean; error?: string }>;
+      const handler = vi.mocked(ipcMain.handle).mock.calls.find((call) => call[0] === 'logs:getLogPath')?.[1] as (
+        event: unknown,
+        token: string
+      ) => Promise<{ success: boolean; error?: string }>;
 
       const result = await handler({}, 'test-token');
 
@@ -113,9 +115,10 @@ describe('logs-handlers', () => {
 
       vi.mocked(fs.promises.readdir).mockRejectedValue(new Error('Read error'));
 
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'logs:getLogPath'
-      )?.[1] as (event: unknown, token: string) => Promise<{ success: boolean; error?: string }>;
+      const handler = vi.mocked(ipcMain.handle).mock.calls.find((call) => call[0] === 'logs:getLogPath')?.[1] as (
+        event: unknown,
+        token: string
+      ) => Promise<{ success: boolean; error?: string }>;
 
       const result = await handler({}, 'test-token');
 
@@ -132,9 +135,12 @@ describe('logs-handlers', () => {
 
       vi.mocked(fs.promises.readFile).mockResolvedValue(mockLogContent);
 
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'logs:exportLogs'
-      )?.[1] as (event: unknown, token: string, logPath: string, exportFormat: 'json' | 'txt') => Promise<{ success: boolean; content?: string; filename?: string; mimeType?: string }>;
+      const handler = vi.mocked(ipcMain.handle).mock.calls.find((call) => call[0] === 'logs:exportLogs')?.[1] as (
+        event: unknown,
+        token: string,
+        logPath: string,
+        exportFormat: 'json' | 'txt'
+      ) => Promise<{ success: boolean; content?: string; filename?: string; mimeType?: string }>;
 
       const result = await handler({}, 'test-token', '/mock/user/data/sheetpilot_2025-01-02.log', 'json');
 
@@ -151,9 +157,12 @@ describe('logs-handlers', () => {
 
       vi.mocked(fs.promises.readFile).mockResolvedValue(mockLogContent);
 
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'logs:exportLogs'
-      )?.[1] as (event: unknown, token: string, logPath: string, exportFormat: 'json' | 'txt') => Promise<{ success: boolean; content?: string; filename?: string; mimeType?: string }>;
+      const handler = vi.mocked(ipcMain.handle).mock.calls.find((call) => call[0] === 'logs:exportLogs')?.[1] as (
+        event: unknown,
+        token: string,
+        logPath: string,
+        exportFormat: 'json' | 'txt'
+      ) => Promise<{ success: boolean; content?: string; filename?: string; mimeType?: string }>;
 
       const result = await handler({}, 'test-token', '/mock/user/data/sheetpilot_2025-01-02.log', 'txt');
 
@@ -170,9 +179,12 @@ describe('logs-handlers', () => {
 
       vi.mocked(fs.promises.readFile).mockResolvedValue(mockLogContent);
 
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'logs:exportLogs'
-      )?.[1] as (event: unknown, token: string, logPath: string, exportFormat?: 'json' | 'txt') => Promise<{ success: boolean; mimeType?: string }>;
+      const handler = vi.mocked(ipcMain.handle).mock.calls.find((call) => call[0] === 'logs:exportLogs')?.[1] as (
+        event: unknown,
+        token: string,
+        logPath: string,
+        exportFormat?: 'json' | 'txt'
+      ) => Promise<{ success: boolean; mimeType?: string }>;
 
       const result = await handler({}, 'test-token', '/mock/user/data/sheetpilot_2025-01-02.log');
 
@@ -185,9 +197,11 @@ describe('logs-handlers', () => {
 
       vi.mocked(fs.promises.readFile).mockRejectedValue(new Error('Read error'));
 
-      const handler = vi.mocked(ipcMain.handle).mock.calls.find(
-        call => call[0] === 'logs:exportLogs'
-      )?.[1] as (event: unknown, token: string, logPath: string) => Promise<{ success: boolean; error?: string }>;
+      const handler = vi.mocked(ipcMain.handle).mock.calls.find((call) => call[0] === 'logs:exportLogs')?.[1] as (
+        event: unknown,
+        token: string,
+        logPath: string
+      ) => Promise<{ success: boolean; error?: string }>;
 
       const result = await handler({}, 'test-token', '/mock/user/data/sheetpilot_2025-01-02.log');
 
@@ -196,4 +210,3 @@ describe('logs-handlers', () => {
     });
   });
 });
-

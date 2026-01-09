@@ -1,9 +1,9 @@
 /**
  * @fileoverview Data Flow Integration Tests
- * 
+ *
  * Tests for data entry → validation → save → load flow, data synchronization,
  * and error recovery.
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025
@@ -29,10 +29,10 @@ describe('Data Flow Integration', () => {
         saveDraft: vi.fn(),
         loadDraft: vi.fn(),
         deleteDraft: vi.fn(),
-        submit: vi.fn()
-      }
+        submit: vi.fn(),
+      },
     };
-    (global as {window?: unknown}).window = mockWindow;
+    (global as { window?: unknown }).window = mockWindow;
   });
 
   describe('Data Entry to Load Flow', () => {
@@ -42,13 +42,13 @@ describe('Data Flow Integration', () => {
         timeIn: '09:00',
         timeOut: '17:00',
         project: 'Test Project',
-        taskDescription: 'Test task'
+        taskDescription: 'Test task',
       };
 
       // Save
       mockWindow.timesheet.saveDraft.mockResolvedValue({
         success: true,
-        changes: 1
+        changes: 1,
       });
 
       const saveResult = await mockWindow.timesheet.saveDraft(testData);
@@ -57,7 +57,7 @@ describe('Data Flow Integration', () => {
       // Load
       mockWindow.timesheet.loadDraft.mockResolvedValue({
         success: true,
-        entries: [{ ...testData, id: 1 }]
+        entries: [{ ...testData, id: 1 }],
       });
 
       const loadResult = await mockWindow.timesheet.loadDraft();
@@ -72,7 +72,7 @@ describe('Data Flow Integration', () => {
         timeIn: '09:00',
         timeOut: '17:00',
         project: 'Test',
-        taskDescription: 'Task'
+        taskDescription: 'Task',
       };
 
       const isValid = !!(data.date && data.timeIn && data.timeOut && data.project && data.taskDescription);
@@ -83,7 +83,7 @@ describe('Data Flow Integration', () => {
     it('should handle save failures gracefully', async () => {
       mockWindow.timesheet.saveDraft.mockResolvedValue({
         success: false,
-        error: 'Database locked'
+        error: 'Database locked',
       });
 
       const result = await mockWindow.timesheet.saveDraft({});
@@ -97,7 +97,7 @@ describe('Data Flow Integration', () => {
     it('should maintain data consistency across tabs', () => {
       const sharedData = {
         timesheetEntries: [1, 2, 3],
-        lastModified: new Date().toISOString()
+        lastModified: new Date().toISOString(),
       };
 
       // Tab 1 modifies
@@ -134,7 +134,7 @@ describe('Data Flow Integration', () => {
       // First attempt fails
       mockWindow.timesheet.saveDraft.mockResolvedValueOnce({
         success: false,
-        error: 'Network error'
+        error: 'Network error',
       });
 
       const firstAttempt = await mockWindow.timesheet.saveDraft({});
@@ -142,7 +142,7 @@ describe('Data Flow Integration', () => {
 
       // Retry succeeds
       mockWindow.timesheet.saveDraft.mockResolvedValueOnce({
-        success: true
+        success: true,
       });
 
       const secondAttempt = await mockWindow.timesheet.saveDraft({});
@@ -170,7 +170,7 @@ describe('Data Flow Integration', () => {
     it('should delete entries successfully', async () => {
       mockWindow.timesheet.deleteDraft.mockResolvedValue({
         success: true,
-        changes: 1
+        changes: 1,
       });
 
       const result = await mockWindow.timesheet.deleteDraft(1);
@@ -182,7 +182,7 @@ describe('Data Flow Integration', () => {
     it('should handle delete of non-existent entry', async () => {
       mockWindow.timesheet.deleteDraft.mockResolvedValue({
         success: false,
-        error: 'Entry not found'
+        error: 'Entry not found',
       });
 
       const result = await mockWindow.timesheet.deleteDraft(999);
@@ -197,7 +197,7 @@ describe('Data Flow Integration', () => {
         ok: true,
         submittedIds: [1, 2],
         totalProcessed: 2,
-        successCount: 2
+        successCount: 2,
       });
 
       const result = await mockWindow.timesheet.submit('token');
@@ -211,7 +211,7 @@ describe('Data Flow Integration', () => {
         ok: false,
         error: 'Network error',
         totalProcessed: 0,
-        successCount: 0
+        successCount: 0,
       });
 
       const result = await mockWindow.timesheet.submit('token');
@@ -221,4 +221,3 @@ describe('Data Flow Integration', () => {
     });
   });
 });
-

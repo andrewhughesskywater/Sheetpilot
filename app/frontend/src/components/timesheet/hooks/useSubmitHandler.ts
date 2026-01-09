@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+
 import type { TimesheetRow } from '../timesheet.schema';
 
 export function useSubmitHandler() {
@@ -14,9 +15,7 @@ export function useSubmitHandler() {
         errors.push('No timesheet data to submit');
       }
 
-      const completeRows = timesheetDraftData.filter(
-        (row) => row.date && row.timeIn && row.timeOut && row.project
-      );
+      const completeRows = timesheetDraftData.filter((row) => row.date && row.timeIn && row.timeOut && row.project);
 
       if (completeRows.length === 0) {
         errors.push('No complete entries to submit');

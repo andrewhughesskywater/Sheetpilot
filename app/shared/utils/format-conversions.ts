@@ -1,9 +1,9 @@
 /**
  * @fileoverview Format Conversion Utilities
- * 
+ *
  * Centralized utilities for converting between different time and date formats
  * used throughout the application.
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025
@@ -11,11 +11,11 @@
 
 /**
  * Converts time string (HH:mm) to minutes since midnight
- * 
+ *
  * @param timeStr - Time string in HH:mm format (e.g., "08:00", "17:30")
  * @returns Minutes since midnight (0-1439)
  * @throws Error if time format is invalid
- * 
+ *
  * @example
  * parseTimeToMinutes("08:00") // returns 480
  * parseTimeToMinutes("17:30") // returns 1050
@@ -35,10 +35,10 @@ export function parseTimeToMinutes(timeStr: string): number {
 
 /**
  * Converts minutes since midnight to time string (HH:mm)
- * 
+ *
  * @param minutes - Minutes since midnight (0-1439)
  * @returns Time string in HH:mm format (e.g., "08:00", "17:30")
- * 
+ *
  * @example
  * formatMinutesToTime(480)  // returns "08:00"
  * formatMinutesToTime(1050) // returns "17:30"
@@ -51,11 +51,11 @@ export function formatMinutesToTime(minutes: number): string {
 
 /**
  * Converts date from YYYY-MM-DD to MM/DD/YYYY format
- * 
+ *
  * @param dateStr - Date string in YYYY-MM-DD format
  * @returns Date string in MM/DD/YYYY format
  * @throws Error if date format is invalid
- * 
+ *
  * @example
  * convertDateToUSFormat("2025-01-15") // returns "01/15/2025"
  */
@@ -70,11 +70,11 @@ export function convertDateToUSFormat(dateStr: string): string {
 
 /**
  * Converts date from MM/DD/YYYY to YYYY-MM-DD format
- * 
+ *
  * @param dateStr - Date string in MM/DD/YYYY format
  * @returns Date string in YYYY-MM-DD format
  * @throws Error if date format is invalid
- * 
+ *
  * @example
  * convertDateToISOFormat("01/15/2025") // returns "2025-01-15"
  */
@@ -90,10 +90,10 @@ export function convertDateToISOFormat(dateStr: string): string {
 /**
  * Converts date from MM/DD/YYYY to YYYY-MM-DD format (handles both formats)
  * Useful when the input format is unknown
- * 
+ *
  * @param dateStr - Date string in either MM/DD/YYYY or YYYY-MM-DD format
  * @returns Date string in YYYY-MM-DD format
- * 
+ *
  * @example
  * normalizeDateToISO("01/15/2025") // returns "2025-01-15"
  * normalizeDateToISO("2025-01-15") // returns "2025-01-15"
@@ -102,12 +102,12 @@ export function normalizeDateToISO(dateStr: string): string {
   if (!dateStr) {
     return dateStr;
   }
-  
+
   // Check if it's already in ISO format (YYYY-MM-DD)
   if (dateStr.includes('-') && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
     return dateStr;
   }
-  
+
   // Try to convert from US format (MM/DD/YYYY)
   if (dateStr.includes('/') && /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dateStr)) {
     try {
@@ -117,8 +117,7 @@ export function normalizeDateToISO(dateStr: string): string {
       return dateStr;
     }
   }
-  
+
   // Return as-is if it doesn't match any recognized format
   return dateStr;
 }
-

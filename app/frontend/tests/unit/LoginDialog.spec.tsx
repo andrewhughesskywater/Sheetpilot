@@ -1,9 +1,9 @@
 /**
  * @fileoverview LoginDialog Component Tests
- * 
+ *
  * Tests for the LoginDialog component to ensure secure authentication,
  * proper error handling, and user-friendly interactions.
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025
@@ -33,18 +33,18 @@ describe('LoginDialog Component', () => {
     mockWindow = {
       credentials: {
         list: vi.fn(),
-        store: vi.fn()
+        store: vi.fn(),
       },
       auth: {
-        login: vi.fn()
+        login: vi.fn(),
       },
       logger: {
         error: vi.fn(),
         info: vi.fn(),
-        userAction: vi.fn()
-      }
+        userAction: vi.fn(),
+      },
     };
-    (global as {window?: unknown}).window = mockWindow;
+    (global as { window?: unknown }).window = mockWindow;
   });
 
   describe('Email Auto-completion', () => {
@@ -52,12 +52,12 @@ describe('LoginDialog Component', () => {
       const email = 'user@';
       const atIndex = email.lastIndexOf('@');
       const domainPart = email.substring(atIndex + 1);
-      
+
       let completedEmail = email;
       if (domainPart === '' || domainPart === 'skywatertechnology.com'.substring(0, domainPart.length)) {
         completedEmail = email.substring(0, atIndex + 1) + 'skywatertechnology.com';
       }
-      
+
       expect(completedEmail).toBe('user@skywatertechnology.com');
     });
 
@@ -65,12 +65,12 @@ describe('LoginDialog Component', () => {
       const email = 'user@sky';
       const atIndex = email.lastIndexOf('@');
       const domainPart = email.substring(atIndex + 1);
-      
+
       let completedEmail = email;
       if (domainPart === '' || domainPart === 'skywatertechnology.com'.substring(0, domainPart.length)) {
         completedEmail = email.substring(0, atIndex + 1) + 'skywatertechnology.com';
       }
-      
+
       expect(completedEmail).toBe('user@skywatertechnology.com');
     });
 
@@ -78,19 +78,19 @@ describe('LoginDialog Component', () => {
       const email = 'user@gmail.com';
       const atIndex = email.lastIndexOf('@');
       const domainPart = email.substring(atIndex + 1);
-      
+
       let completedEmail = email;
       if (domainPart === '' || domainPart === 'skywatertechnology.com'.substring(0, domainPart.length)) {
         completedEmail = email.substring(0, atIndex + 1) + 'skywatertechnology.com';
       }
-      
+
       expect(completedEmail).toBe('user@gmail.com');
     });
 
     it('should handle email without @ symbol', () => {
       const email = 'user';
       const hasAt = email.includes('@');
-      
+
       expect(hasAt).toBe(false);
       // Auto-complete should not trigger
     });
@@ -98,7 +98,7 @@ describe('LoginDialog Component', () => {
     it('should handle multiple @ symbols', () => {
       const email = 'user@test@sky';
       const atIndex = email.lastIndexOf('@');
-      
+
       expect(email.substring(0, atIndex)).toBe('user@test');
     });
   });
@@ -111,7 +111,7 @@ describe('LoginDialog Component', () => {
         }
         return null;
       };
-      
+
       expect(validate('', '')).toBeTruthy();
       expect(validate('user@test.com', '')).toBeTruthy();
       expect(validate('', 'password')).toBeTruthy();
@@ -124,9 +124,9 @@ describe('LoginDialog Component', () => {
     });
 
     it('should handle missing API gracefully', () => {
-      (global as {window?: unknown}).window = { auth: undefined };
-      
-      const hasAPI = (global as {window?: {auth?: {login?: unknown}}}).window?.auth?.login !== undefined;
+      (global as { window?: unknown }).window = { auth: undefined };
+
+      const hasAPI = (global as { window?: { auth?: { login?: unknown } } }).window?.auth?.login !== undefined;
       expect(hasAPI).toBe(false);
     });
   });
@@ -136,15 +136,15 @@ describe('LoginDialog Component', () => {
       mockWindow.auth.login.mockResolvedValue({
         success: true,
         token: 'test-token-123',
-        isAdmin: false
+        isAdmin: false,
       });
-      
+
       const email = 'user@test.com';
       const password = 'password123';
       const stayLoggedIn = true;
-      
+
       const result = await mockWindow.auth.login(email, password, stayLoggedIn);
-      
+
       expect(mockWindow.auth.login).toHaveBeenCalledWith(email, password, stayLoggedIn);
       expect(result.success).toBe(true);
       expect(result.token).toBeDefined();
@@ -154,11 +154,11 @@ describe('LoginDialog Component', () => {
       mockWindow.auth.login.mockResolvedValue({
         success: true,
         token: 'test-token',
-        isAdmin: false
+        isAdmin: false,
       });
-      
+
       const result = await mockWindow.auth.login('user@test.com', 'password', false);
-      
+
       expect(result.success).toBe(true);
       expect(result.token).toBe('test-token');
     });
@@ -166,11 +166,11 @@ describe('LoginDialog Component', () => {
     it('should handle failed login', async () => {
       mockWindow.auth.login.mockResolvedValue({
         success: false,
-        error: 'Invalid credentials'
+        error: 'Invalid credentials',
       });
-      
+
       const result = await mockWindow.auth.login('user@test.com', 'wrong', false);
-      
+
       expect(result.success).toBe(false);
       expect(result.error).toBeDefined();
     });
@@ -179,17 +179,17 @@ describe('LoginDialog Component', () => {
       mockWindow.auth.login.mockResolvedValue({
         success: true,
         token: 'admin-token',
-        isAdmin: true
+        isAdmin: true,
       });
-      
+
       const result = await mockWindow.auth.login('admin@test.com', 'password', false);
-      
+
       expect(result.isAdmin).toBe(true);
     });
 
     it('should handle network errors', async () => {
       mockWindow.auth.login.mockRejectedValue(new Error('Network error'));
-      
+
       try {
         await mockWindow.auth.login('user@test.com', 'password', false);
         expect(true).toBe(false); // Should throw
@@ -203,30 +203,30 @@ describe('LoginDialog Component', () => {
     it('should detect first-time user when no credentials exist', async () => {
       mockWindow.credentials.list.mockResolvedValue({
         success: true,
-        credentials: []
+        credentials: [],
       });
-      
+
       const response = await mockWindow.credentials.list();
       const isFirstTime = !response.success || !response.credentials || response.credentials.length === 0;
-      
+
       expect(isFirstTime).toBe(true);
     });
 
     it('should detect returning user when credentials exist', async () => {
       mockWindow.credentials.list.mockResolvedValue({
         success: true,
-        credentials: [{ service: 'smartsheet', email: 'user@test.com' }]
+        credentials: [{ service: 'smartsheet', email: 'user@test.com' }],
       });
-      
+
       const response = await mockWindow.credentials.list();
       const isFirstTime = !response.success || !response.credentials || response.credentials.length === 0;
-      
+
       expect(isFirstTime).toBe(false);
     });
 
     it('should handle error checking credentials', async () => {
       mockWindow.credentials.list.mockRejectedValue(new Error('API error'));
-      
+
       try {
         await mockWindow.credentials.list();
       } catch (error) {
@@ -243,20 +243,20 @@ describe('LoginDialog Component', () => {
 
     it('should be toggleable', () => {
       let stayLoggedIn = true;
-      
+
       stayLoggedIn = !stayLoggedIn;
       expect(stayLoggedIn).toBe(false);
-      
+
       stayLoggedIn = !stayLoggedIn;
       expect(stayLoggedIn).toBe(true);
     });
 
     it('should pass correct value to login API', async () => {
       mockWindow.auth.login.mockResolvedValue({ success: true, token: 'test' });
-      
+
       await mockWindow.auth.login('user@test.com', 'password', false);
       expect(mockWindow.auth.login).toHaveBeenCalledWith('user@test.com', 'password', false);
-      
+
       await mockWindow.auth.login('user@test.com', 'password', true);
       expect(mockWindow.auth.login).toHaveBeenCalledWith('user@test.com', 'password', true);
     });
@@ -271,11 +271,11 @@ describe('LoginDialog Component', () => {
 
     it('should clear error on input change', () => {
       let error = 'Previous error';
-      
+
       const handleInputChange = () => {
         error = '';
       };
-      
+
       handleInputChange();
       expect(error).toBe('');
     });
@@ -288,7 +288,7 @@ describe('LoginDialog Component', () => {
     it('should handle network error gracefully', () => {
       const networkError = new Error('Network request failed');
       const displayError = networkError.message;
-      
+
       expect(displayError).toBe('Network request failed');
     });
   });
@@ -297,13 +297,13 @@ describe('LoginDialog Component', () => {
     it('should submit on Enter key', () => {
       const handleLogin = vi.fn();
       const isLoading = false;
-      
+
       const handleKeyPress = (key: string) => {
         if (key === 'Enter' && !isLoading) {
           handleLogin();
         }
       };
-      
+
       handleKeyPress('Enter');
       expect(handleLogin).toHaveBeenCalledTimes(1);
     });
@@ -311,13 +311,13 @@ describe('LoginDialog Component', () => {
     it('should not submit on Enter when loading', () => {
       const handleLogin = vi.fn();
       const isLoading = true;
-      
+
       const handleKeyPress = (key: string) => {
         if (key === 'Enter' && !isLoading) {
           handleLogin();
         }
       };
-      
+
       handleKeyPress('Enter');
       expect(handleLogin).not.toHaveBeenCalled();
     });
@@ -325,17 +325,17 @@ describe('LoginDialog Component', () => {
     it('should not submit on other keys', () => {
       const handleLogin = vi.fn();
       const isLoading = false;
-      
+
       const handleKeyPress = (key: string) => {
         if (key === 'Enter' && !isLoading) {
           handleLogin();
         }
       };
-      
+
       handleKeyPress('Space');
       handleKeyPress('Tab');
       handleKeyPress('Escape');
-      
+
       expect(handleLogin).not.toHaveBeenCalled();
     });
   });
@@ -346,16 +346,16 @@ describe('LoginDialog Component', () => {
       let password = 'password123';
       let stayLoggedIn = false;
       let error = '';
-      
+
       const resetForm = () => {
         email = '';
         password = '';
         stayLoggedIn = true;
         error = '';
       };
-      
+
       resetForm();
-      
+
       expect(email).toBe('');
       expect(password).toBe('');
       expect(stayLoggedIn).toBe(true);
@@ -365,7 +365,7 @@ describe('LoginDialog Component', () => {
     it('should maintain form state on failed login', () => {
       const email = 'user@test.com';
       const password = 'password123';
-      
+
       // On failure, email and password should remain
       expect(email).toBe('user@test.com');
       expect(password).toBe('password123');
@@ -376,7 +376,7 @@ describe('LoginDialog Component', () => {
     it('should disable inputs when loading', () => {
       const isLoading = true;
       const disabled = isLoading;
-      
+
       expect(disabled).toBe(true);
     });
 
@@ -384,9 +384,9 @@ describe('LoginDialog Component', () => {
       const email = '';
       const password = 'password';
       const isLoading = false;
-      
+
       const disabled = !email || !password || isLoading;
-      
+
       expect(disabled).toBe(true);
     });
 
@@ -394,9 +394,9 @@ describe('LoginDialog Component', () => {
       const email = 'user@test.com';
       const password = 'password123';
       const isLoading = false;
-      
+
       const disabled = !email || !password || isLoading;
-      
+
       expect(disabled).toBe(false);
     });
   });
@@ -411,7 +411,7 @@ describe('LoginDialog Component', () => {
       const getTitle = (isFirstTime: boolean) => {
         return isFirstTime ? 'Create Account' : 'Login to SheetPilot';
       };
-      
+
       expect(getTitle(true)).toBe('Create Account');
       expect(getTitle(false)).toBe('Login to SheetPilot');
     });
@@ -421,7 +421,7 @@ describe('LoginDialog Component', () => {
         if (isLoading) return 'Logging in...';
         return isFirstTime ? 'Create Account' : 'Login';
       };
-      
+
       expect(getButtonText(false, true)).toBe('Create Account');
       expect(getButtonText(false, false)).toBe('Login');
       expect(getButtonText(true, false)).toBe('Logging in...');
@@ -437,7 +437,7 @@ describe('LoginDialog Component', () => {
     it('should not display password in clear text', () => {
       const password = 'secret123';
       const inputType = 'password';
-      
+
       // In password type, browser handles masking
       expect(inputType).toBe('password');
       expect(password).toBe('secret123'); // Stored in memory but not displayed
@@ -446,7 +446,7 @@ describe('LoginDialog Component', () => {
     it('should handle empty password gracefully', () => {
       const password = '';
       const isValid = password.length > 0;
-      
+
       expect(isValid).toBe(false);
     });
 
@@ -458,11 +458,11 @@ describe('LoginDialog Component', () => {
       mockWindow.auth.login.mockResolvedValue({
         success: true,
         token: 'token',
-        isAdmin: false
+        isAdmin: false,
       });
-      
+
       await mockWindow.auth.login('user@test.com', 'password', false);
-      
+
       // Should log user action but not password
       expect(mockWindow.logger.userAction).toHaveBeenCalled();
     });
@@ -498,7 +498,7 @@ describe('LoginDialog Component', () => {
     it('should handle whitespace in inputs', () => {
       const emailWithSpaces = '  user@test.com  ';
       const passwordWithSpaces = '  password  ';
-      
+
       // Should either trim or reject
       expect(typeof emailWithSpaces).toBe('string');
       expect(typeof passwordWithSpaces).toBe('string');
@@ -510,28 +510,28 @@ describe('LoginDialog Component', () => {
       const errorMessage = 'Invalid credentials. Please try again.';
       mockWindow.auth.login.mockResolvedValue({
         success: false,
-        error: errorMessage
+        error: errorMessage,
       });
-      
+
       const result = await mockWindow.auth.login('user@test.com', 'wrong', false);
-      
+
       expect(result.error).toBe(errorMessage);
     });
 
     it('should show default error when API error is missing', async () => {
       mockWindow.auth.login.mockResolvedValue({
-        success: false
+        success: false,
       });
-      
+
       const result = await mockWindow.auth.login('user@test.com', 'wrong', false);
       const errorMsg = result.error || 'Login failed. Please check your credentials.';
-      
+
       expect(errorMsg).toBe('Login failed. Please check your credentials.');
     });
 
     it('should handle exception during login', async () => {
       mockWindow.auth.login.mockRejectedValue(new Error('Network failure'));
-      
+
       try {
         await mockWindow.auth.login('user@test.com', 'password', false);
         expect(true).toBe(false); // Should throw
@@ -543,11 +543,11 @@ describe('LoginDialog Component', () => {
 
     it('should clear error when user starts typing', () => {
       let error = 'Previous error message';
-      
+
       const handleChange = () => {
         error = '';
       };
-      
+
       handleChange();
       expect(error).toBe('');
     });
@@ -563,7 +563,7 @@ describe('LoginDialog Component', () => {
       const emailLabel = 'Email';
       const passwordLabel = 'Password';
       const stayLoggedInLabel = 'Stay logged in for 30 days';
-      
+
       expect(emailLabel).toBe('Email');
       expect(passwordLabel).toBe('Password');
       expect(stayLoggedInLabel).toBe('Stay logged in for 30 days');
@@ -572,10 +572,9 @@ describe('LoginDialog Component', () => {
     it('should have placeholders for guidance', () => {
       const emailPlaceholder = 'your.email@skywatertechnology.com';
       const passwordPlaceholder = 'Your password';
-      
+
       expect(emailPlaceholder).toContain('@skywatertechnology.com');
       expect(passwordPlaceholder).toBeDefined();
     });
   });
 });
-

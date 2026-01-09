@@ -1,15 +1,15 @@
 /**
  * @fileoverview Plugin Configuration Loader
- * 
+ *
  * Handles loading plugin configuration from JSON files or environment variables,
  * feature flag resolution, and plugin selection logic.
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025
  */
 
-import type { PluginRegistryConfig, FeatureFlag } from './plugin-types';
+import type { FeatureFlag,PluginRegistryConfig } from './plugin-types';
 
 /**
  * Default plugin configuration
@@ -22,20 +22,20 @@ const DEFAULT_CONFIG: PluginRegistryConfig = {
     submission: { active: 'electron', alternatives: ['mock'] },
     ui: {
       active: 'handsontable',
-      alternatives: ['simple-table']
+      alternatives: ['simple-table'],
     },
     // Timesheet-specific namespaces (renderer)
     'timesheet.ui': {
-      active: 'handsontable'
+      active: 'handsontable',
     },
     'timesheet.validation': {
-      active: 'basic'
-    }
+      active: 'basic',
+    },
   },
   featureFlags: {
     experimentalGrid: { enabled: false, variant: 'simple-table' },
-    mockSubmission: { enabled: false }
-  }
+    mockSubmission: { enabled: false },
+  },
 };
 
 /**
@@ -56,7 +56,7 @@ export function loadPluginConfig(configPath?: string): PluginRegistryConfig {
       const fs = require('fs');
       const path = require('path');
       const fullPath = path.resolve(configPath);
-      
+
       if (fs.existsSync(fullPath)) {
         const configData = fs.readFileSync(fullPath, 'utf-8');
         const config = JSON.parse(configData) as PluginRegistryConfig;
@@ -81,9 +81,9 @@ function loadConfigFromEnvironment(): PluginRegistryConfig | null {
   if (typeof process === 'undefined' || !process.env) {
     return null;
   }
-  
+
   const envConfig = process.env['SHEETPILOT_PLUGIN_CONFIG'];
-  
+
   if (envConfig) {
     try {
       return JSON.parse(envConfig) as PluginRegistryConfig;
@@ -91,7 +91,7 @@ function loadConfigFromEnvironment(): PluginRegistryConfig | null {
       console.error('Error parsing SHEETPILOT_PLUGIN_CONFIG environment variable:', error);
     }
   }
-  
+
   return null;
 }
 
@@ -104,12 +104,12 @@ function mergeWithDefaults(userConfig: Partial<PluginRegistryConfig>): PluginReg
   return {
     plugins: {
       ...DEFAULT_CONFIG.plugins,
-      ...(userConfig.plugins || {})
+      ...(userConfig.plugins || {}),
     },
     featureFlags: {
       ...DEFAULT_CONFIG.featureFlags,
-      ...(userConfig.featureFlags || {})
-    }
+      ...(userConfig.featureFlags || {}),
+    },
   };
 }
 
@@ -135,18 +135,20 @@ function doesFeatureFlagApplyToNamespace(flagName: string, namespace: string): b
   if (mappedNamespace) {
     return mappedNamespace === namespace;
   }
-  
+
   // Fallback to name-based matching (more permissive but less precise)
   // Only use if flag name contains namespace as a substring
   const flagNameLower = flagName.toLowerCase();
   const namespaceLower = namespace.toLowerCase();
-  
+
   // Require namespace to be a complete word match, not just substring
   // This prevents false matches like "ui" matching "submission" in "submission"
-  return flagNameLower === namespaceLower || 
-         flagNameLower.startsWith(`${namespaceLower}_`) ||
-         flagNameLower.endsWith(`_${namespaceLower}`) ||
-         flagNameLower.includes(`_${namespaceLower}_`);
+  return (
+    flagNameLower === namespaceLower ||
+    flagNameLower.startsWith(`${namespaceLower}_`) ||
+    flagNameLower.endsWith(`_${namespaceLower}`) ||
+    flagNameLower.includes(`_${namespaceLower}_`)
+  );
 }
 
 /**
@@ -157,24 +159,29 @@ function doesFeatureFlagApplyToNamespace(flagName: string, namespace: string): b
  */
 export function resolvePluginVariant(namespace: string, config: PluginRegistryConfig): string {
   const pluginConfig = config.plugins[namespace];
-  
+
   if (!pluginConfig || typeof pluginConfig !== 'object') {
     throw new Error(`No configuration found for namespace: ${namespace}`);
   }
 
-  const baseActive = 'active' in pluginConfig ? pluginConfig.active as string : '';
-  
+  const baseActive = 'active' in pluginConfig ? (pluginConfig.active as string) : '';
+
   // Check feature flags that might override the active plugin
   if (config.featureFlags) {
     for (const [flagName, flag] of Object.entries(config.featureFlags)) {
-      if (flag.enabled && flag.variant && doesFeatureFlagApplyToNamespace(flagName, namespace) && shouldEnableForUser(flag)) {
+      if (
+        flag.enabled &&
+        flag.variant &&
+        doesFeatureFlagApplyToNamespace(flagName, namespace) &&
+        shouldEnableForUser(flag)
+      ) {
         // Feature flag is enabled and specifies a variant
         console.log(`Feature flag ${flagName} enabled, using variant: ${flag.variant}`);
         return flag.variant;
       }
     }
   }
-  
+
   return baseActive;
 }
 
@@ -198,7 +205,7 @@ function checkRolloutPercentage(flag: FeatureFlag): boolean | null {
   if (flag.rolloutPercentage === undefined) {
     return null;
   }
-  
+
   // Handle edge cases explicitly
   if (flag.rolloutPercentage <= 0) {
     return false; // 0% rollout = no one gets it
@@ -206,7 +213,7 @@ function checkRolloutPercentage(flag: FeatureFlag): boolean | null {
   if (flag.rolloutPercentage >= 100) {
     return true; // 100% rollout = everyone gets it
   }
-  
+
   // For values between 0 and 100, use hash-based selection
   const userHash = getUserHash();
   const threshold = flag.rolloutPercentage / 100;
@@ -217,26 +224,26 @@ function shouldEnableForUser(flag: FeatureFlag): boolean {
   if (!flag.enabled) {
     return false;
   }
-  
+
   const userId = getCurrentUserId();
-  
+
   // Check deny list first (highest priority)
   if (!checkDenyList(flag, userId)) {
     return false;
   }
-  
+
   // Check allow list (second priority)
   const allowListResult = checkAllowList(flag, userId);
   if (allowListResult !== null) {
     return allowListResult;
   }
-  
+
   // Check rollout percentage (third priority)
   const rolloutResult = checkRolloutPercentage(flag);
   if (rolloutResult !== null) {
     return rolloutResult;
   }
-  
+
   // Default: enabled (if no allow/deny lists and no rollout specified)
   return true;
 }
@@ -250,12 +257,12 @@ function getCurrentUserId(): string | null {
   if (process.env['SHEETPILOT_USER_ID']) {
     return process.env['SHEETPILOT_USER_ID'];
   }
-  
+
   // Try to get from OS username
   if (typeof process !== 'undefined' && process.env) {
     return process.env['USERNAME'] || process.env['USER'] || null;
   }
-  
+
   return null;
 }
 
@@ -266,15 +273,15 @@ function getCurrentUserId(): string | null {
  */
 function getUserHash(): number {
   const userId = getCurrentUserId() || 'anonymous';
-  
+
   // Simple hash function (not cryptographically secure, but deterministic)
   let hash = 0;
   for (let i = 0; i < userId.length; i++) {
     const char = userId.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
+    hash = (hash << 5) - hash + char;
     hash = hash & hash; // Convert to 32-bit integer
   }
-  
+
   // Normalize to 0-1 range
   return Math.abs(hash % 1000) / 1000;
 }
@@ -287,4 +294,3 @@ function getUserHash(): number {
 export function createPluginConfig(overrides?: Partial<PluginRegistryConfig>): PluginRegistryConfig {
   return mergeWithDefaults(overrides || {});
 }
-

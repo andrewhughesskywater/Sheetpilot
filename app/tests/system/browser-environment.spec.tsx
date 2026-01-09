@@ -1,6 +1,6 @@
 /**
  * Browser Environment Tests
- * 
+ *
  * These tests ensure that renderer code doesn't use Node.js-specific APIs
  * that don't exist in the browser environment.
  */
@@ -13,15 +13,15 @@ describe('Browser Environment Compatibility', () => {
   beforeEach(() => {
     // Store original values
     originalProcess = global.process;
-    
+
     // Remove process from global scope to simulate browser environment
     delete (global as Record<string, unknown>)['process'];
-    
+
     // Ensure process is truly undefined
     Object.defineProperty(global, 'process', {
       value: undefined,
       writable: true,
-      configurable: true
+      configurable: true,
     });
   });
 

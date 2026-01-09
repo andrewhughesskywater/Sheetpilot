@@ -1,9 +1,9 @@
 /**
  * @fileoverview Plugin Registry Tests
- * 
+ *
  * Tests for the central plugin management system including registration,
  * resolution, lifecycle management, and fallback mechanisms.
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025
@@ -26,7 +26,7 @@ describe('Plugin Registry', () => {
     it('should return same instance on multiple getInstance calls', () => {
       const instance1 = PluginRegistry.getInstance();
       const instance2 = PluginRegistry.getInstance();
-      
+
       expect(instance1).toBe(instance2);
     });
 
@@ -34,45 +34,45 @@ describe('Plugin Registry', () => {
       const instance1 = PluginRegistry.getInstance();
       PluginRegistry.resetInstance();
       const instance2 = PluginRegistry.getInstance();
-      
+
       expect(instance1).not.toBe(instance2);
     });
   });
 
   describe('Plugin Registration', () => {
     it('should register plugin successfully', () => {
-      const mockPlugin: IPlugin = { 
+      const mockPlugin: IPlugin = {
         metadata: { name: 'test', version: '1.0.0', author: 'test' },
-        initialize: vi.fn() 
+        initialize: vi.fn(),
       };
-      
+
       registry.registerPlugin('data', 'mock-plugin', mockPlugin);
-      
+
       expect(registry.hasPlugin('data', 'mock-plugin')).toBe(true);
     });
 
     it('should register plugins in different namespaces', () => {
-      registry.registerPlugin('data', 'plugin1', { 
-        metadata: { name: 'data-plugin', version: '1.0.0', author: 'test' } 
+      registry.registerPlugin('data', 'plugin1', {
+        metadata: { name: 'data-plugin', version: '1.0.0', author: 'test' },
       });
-      registry.registerPlugin('ui', 'plugin2', { 
-        metadata: { name: 'ui-plugin', version: '1.0.0', author: 'test' } 
+      registry.registerPlugin('ui', 'plugin2', {
+        metadata: { name: 'ui-plugin', version: '1.0.0', author: 'test' },
       });
-      
+
       expect(registry.hasPlugin('data', 'plugin1')).toBe(true);
       expect(registry.hasPlugin('ui', 'plugin2')).toBe(true);
     });
 
     it('should warn when overwriting existing plugin', () => {
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      
-      registry.registerPlugin('data', 'plugin', { 
-        metadata: { name: 'version1', version: '1.0.0', author: 'test' } 
+
+      registry.registerPlugin('data', 'plugin', {
+        metadata: { name: 'version1', version: '1.0.0', author: 'test' },
       });
-      registry.registerPlugin('data', 'plugin', { 
-        metadata: { name: 'version2', version: '1.0.0', author: 'test' } 
+      registry.registerPlugin('data', 'plugin', {
+        metadata: { name: 'version2', version: '1.0.0', author: 'test' },
       });
-      
+
       expect(consoleSpy).toHaveBeenCalled();
       consoleSpy.mockRestore();
     });
@@ -80,91 +80,91 @@ describe('Plugin Registry', () => {
     it('should call initialize on plugin registration', async () => {
       const mockPlugin: IPlugin = {
         metadata: { name: 'test', version: '1.0.0', author: 'test' },
-        initialize: vi.fn().mockResolvedValue(undefined)
+        initialize: vi.fn().mockResolvedValue(undefined),
       };
-      
+
       registry.registerPlugin('data', 'test-plugin', mockPlugin);
-      
+
       // Give initialization a moment to run
-      await new Promise(resolve => setTimeout(resolve, 10));
-      
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
       expect(mockPlugin.initialize).toHaveBeenCalled();
     });
 
     it('should handle initialization errors gracefully', async () => {
       const mockPlugin: IPlugin = {
         metadata: { name: 'test', version: '1.0.0', author: 'test' },
-        initialize: vi.fn().mockRejectedValue(new Error('Init failed'))
+        initialize: vi.fn().mockRejectedValue(new Error('Init failed')),
       };
-      
+
       const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
-      
+
       await expect(registry.registerPlugin('data', 'failing-plugin', mockPlugin)).rejects.toThrow('Init failed');
-      
+
       consoleError.mockRestore();
     });
   });
 
   describe('Plugin Resolution', () => {
     beforeEach(() => {
-      registry.registerPlugin('data', 'sqlite', { 
-        metadata: { name: 'sqlite-plugin', version: '1.0.0', author: 'test' } 
+      registry.registerPlugin('data', 'sqlite', {
+        metadata: { name: 'sqlite-plugin', version: '1.0.0', author: 'test' },
       });
-      registry.registerPlugin('data', 'memory', { 
-        metadata: { name: 'memory-plugin', version: '1.0.0', author: 'test' } 
+      registry.registerPlugin('data', 'memory', {
+        metadata: { name: 'memory-plugin', version: '1.0.0', author: 'test' },
       });
       registry.setActivePlugin('data', 'sqlite');
     });
 
     it('should get plugin by namespace and name', () => {
       const plugin = registry.getPlugin<IPlugin>('data', 'sqlite');
-      
+
       expect(plugin).toBeDefined();
       expect(plugin!.metadata.name).toBe('sqlite-plugin');
     });
 
     it('should get active plugin when name not specified', () => {
       const plugin = registry.getPlugin<IPlugin>('data');
-      
+
       expect(plugin).toBeDefined();
       expect(plugin!.metadata.name).toBe('sqlite-plugin');
     });
 
     it('should return null for non-existent plugin', () => {
       const plugin = registry.getPlugin('data', 'nonexistent');
-      
+
       expect(plugin).toBeNull();
     });
 
     it('should return null for non-existent namespace', () => {
       const plugin = registry.getPlugin('nonexistent', 'plugin');
-      
+
       expect(plugin).toBeNull();
     });
 
     it('should return null when no active plugin set', () => {
       PluginRegistry.resetInstance();
       const newRegistry = PluginRegistry.getInstance();
-      
+
       const plugin = newRegistry.getPlugin('data');
-      
+
       expect(plugin).toBeNull();
     });
   });
 
   describe('Plugin Fallback', () => {
     beforeEach(() => {
-      registry.registerPlugin('data', 'primary', { 
-        metadata: { name: 'primary-plugin', version: '1.0.0', author: 'test' } 
+      registry.registerPlugin('data', 'primary', {
+        metadata: { name: 'primary-plugin', version: '1.0.0', author: 'test' },
       });
-      registry.registerPlugin('data', 'fallback', { 
-        metadata: { name: 'fallback-plugin', version: '1.0.0', author: 'test' } 
+      registry.registerPlugin('data', 'fallback', {
+        metadata: { name: 'fallback-plugin', version: '1.0.0', author: 'test' },
       });
     });
 
     it('should return primary plugin when available', () => {
       const result = registry.getPluginWithFallback('data', 'primary', 'fallback');
-      
+
       expect(result).toBeDefined();
       expect(result!.name).toBe('primary');
       expect(result!.isFallback).toBe(false);
@@ -172,7 +172,7 @@ describe('Plugin Registry', () => {
 
     it('should return fallback when primary unavailable', () => {
       const result = registry.getPluginWithFallback('data', 'nonexistent', 'fallback');
-      
+
       expect(result).toBeDefined();
       expect(result!.name).toBe('fallback');
       expect(result!.isFallback).toBe(true);
@@ -180,15 +180,15 @@ describe('Plugin Registry', () => {
 
     it('should return null when both unavailable', () => {
       const result = registry.getPluginWithFallback('data', 'nonexistent1', 'nonexistent2');
-      
+
       expect(result).toBeNull();
     });
 
     it('should warn when using fallback', () => {
       const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      
+
       registry.getPluginWithFallback('data', 'nonexistent', 'fallback');
-      
+
       expect(consoleSpy).toHaveBeenCalled();
       consoleSpy.mockRestore();
     });
@@ -196,17 +196,17 @@ describe('Plugin Registry', () => {
 
   describe('Active Plugin Management', () => {
     beforeEach(() => {
-      registry.registerPlugin('data', 'sqlite', { 
-        metadata: { name: 'sqlite', version: '1.0.0', author: 'test' } 
+      registry.registerPlugin('data', 'sqlite', {
+        metadata: { name: 'sqlite', version: '1.0.0', author: 'test' },
       });
-      registry.registerPlugin('data', 'memory', { 
-        metadata: { name: 'memory', version: '1.0.0', author: 'test' } 
+      registry.registerPlugin('data', 'memory', {
+        metadata: { name: 'memory', version: '1.0.0', author: 'test' },
       });
     });
 
     it('should set active plugin', () => {
       registry.setActivePlugin('data', 'sqlite');
-      
+
       const activeName = registry.getActivePluginName('data');
       expect(activeName).toBe('sqlite');
     });
@@ -214,7 +214,7 @@ describe('Plugin Registry', () => {
     it('should change active plugin', () => {
       registry.setActivePlugin('data', 'sqlite');
       expect(registry.getActivePluginName('data')).toBe('sqlite');
-      
+
       registry.setActivePlugin('data', 'memory');
       expect(registry.getActivePluginName('data')).toBe('memory');
     });
@@ -236,33 +236,33 @@ describe('Plugin Registry', () => {
       const mockPlugin: IPlugin = {
         metadata: { name: 'test', version: '1.0.0', author: 'test' },
         initialize: vi.fn(),
-        dispose: vi.fn().mockResolvedValue(undefined)
+        dispose: vi.fn().mockResolvedValue(undefined),
       };
-      
+
       registry.registerPlugin('data', 'disposable', mockPlugin);
       await registry.unregisterPlugin('data', 'disposable');
-      
+
       expect(mockPlugin.dispose).toHaveBeenCalled();
     });
 
     it('should handle dispose errors gracefully', async () => {
       const mockPlugin: IPlugin = {
         metadata: { name: 'test', version: '1.0.0', author: 'test' },
-        dispose: vi.fn().mockRejectedValue(new Error('Dispose failed'))
+        dispose: vi.fn().mockRejectedValue(new Error('Dispose failed')),
       };
-      
+
       await registry.registerPlugin('data', 'failing', mockPlugin);
       await expect(registry.unregisterPlugin('data', 'failing')).rejects.toThrow('Dispose failed');
     });
 
     it('should clear active plugin on unregister', async () => {
-      registry.registerPlugin('data', 'plugin', { 
-        metadata: { name: 'test', version: '1.0.0', author: 'test' } 
+      registry.registerPlugin('data', 'plugin', {
+        metadata: { name: 'test', version: '1.0.0', author: 'test' },
       });
       registry.setActivePlugin('data', 'plugin');
-      
+
       await registry.unregisterPlugin('data', 'plugin');
-      
+
       expect(registry.getActivePluginName('data')).toBeNull();
     });
 
@@ -273,20 +273,20 @@ describe('Plugin Registry', () => {
 
   describe('Plugin Discovery', () => {
     beforeEach(() => {
-      registry.registerPlugin('data', 'sqlite', { 
-        metadata: { name: 'sqlite', version: '1.0.0', author: 'test' } 
+      registry.registerPlugin('data', 'sqlite', {
+        metadata: { name: 'sqlite', version: '1.0.0', author: 'test' },
       });
-      registry.registerPlugin('data', 'memory', { 
-        metadata: { name: 'memory', version: '1.0.0', author: 'test' } 
+      registry.registerPlugin('data', 'memory', {
+        metadata: { name: 'memory', version: '1.0.0', author: 'test' },
       });
-      registry.registerPlugin('ui', 'theme', { 
-        metadata: { name: 'theme', version: '1.0.0', author: 'test' } 
+      registry.registerPlugin('ui', 'theme', {
+        metadata: { name: 'theme', version: '1.0.0', author: 'test' },
       });
     });
 
     it('should list all plugins in namespace', () => {
       const plugins = registry.listPlugins('data');
-      
+
       expect(plugins).toContain('sqlite');
       expect(plugins).toContain('memory');
       expect(plugins).toHaveLength(2);
@@ -294,13 +294,13 @@ describe('Plugin Registry', () => {
 
     it('should return empty array for non-existent namespace', () => {
       const plugins = registry.listPlugins('nonexistent');
-      
+
       expect(plugins).toEqual([]);
     });
 
     it('should list all namespaces', () => {
       const namespaces = registry.listNamespaces();
-      
+
       expect(namespaces).toContain('data');
       expect(namespaces).toContain('ui');
     });
@@ -318,14 +318,14 @@ describe('Plugin Registry', () => {
         plugins: {
           data: {
             active: 'sqlite',
-            fallback: 'memory'
-          }
+            fallback: 'memory',
+          },
         },
-        featureFlags: {}
+        featureFlags: {},
       };
-      
+
       registry.loadConfig(config);
-      
+
       expect(registry.getActivePluginName('data')).toBe('sqlite');
     });
 
@@ -334,14 +334,14 @@ describe('Plugin Registry', () => {
         plugins: {
           data: {
             active: 'sqlite',
-            fallback: 'memory'
-          }
+            fallback: 'memory',
+          },
         },
-        featureFlags: {}
+        featureFlags: {},
       };
-      
+
       registry.loadConfig(config);
-      
+
       const namespaceConfig = registry.getNamespaceConfig('data');
       expect(namespaceConfig).toBeDefined();
       expect(namespaceConfig!.active).toBe('sqlite');
@@ -358,12 +358,12 @@ describe('Plugin Registry', () => {
       const config = {
         plugins: {},
         featureFlags: {
-          'new-feature': { enabled: true, description: 'Test feature' }
-        }
+          'new-feature': { enabled: true, description: 'Test feature' },
+        },
       };
-      
+
       registry.loadConfig(config);
-      
+
       const flag = registry.getFeatureFlag('new-feature');
       expect(flag).toBe(true);
     });
@@ -377,12 +377,12 @@ describe('Plugin Registry', () => {
       const config = {
         plugins: {},
         featureFlags: {
-          'test-flag': { enabled: true, variant: 'test-variant', rolloutPercentage: 50 }
-        }
+          'test-flag': { enabled: true, variant: 'test-variant', rolloutPercentage: 50 },
+        },
       };
-      
+
       registry.loadConfig(config);
-      
+
       const flagConfig = registry.getFeatureFlagConfig('test-flag');
       expect(flagConfig).toBeDefined();
       expect(flagConfig!.enabled).toBe(true);
@@ -392,25 +392,25 @@ describe('Plugin Registry', () => {
 
   describe('Namespace Isolation', () => {
     it('should isolate plugins in different namespaces', () => {
-      registry.registerPlugin('namespace1', 'plugin', { 
-        metadata: { name: 'plugin1', version: '1.0.0', author: 'test' } 
+      registry.registerPlugin('namespace1', 'plugin', {
+        metadata: { name: 'plugin1', version: '1.0.0', author: 'test' },
       });
-      registry.registerPlugin('namespace2', 'plugin', { 
-        metadata: { name: 'plugin2', version: '1.0.0', author: 'test' } 
+      registry.registerPlugin('namespace2', 'plugin', {
+        metadata: { name: 'plugin2', version: '1.0.0', author: 'test' },
       });
-      
+
       const plugin1 = registry.getPlugin<IPlugin>('namespace1', 'plugin');
       const plugin2 = registry.getPlugin<IPlugin>('namespace2', 'plugin');
-      
+
       expect(plugin1!.metadata.name).toBe('plugin1');
       expect(plugin2!.metadata.name).toBe('plugin2');
     });
 
     it('should not leak plugins across namespaces', () => {
-      registry.registerPlugin('namespace1', 'plugin1', { 
-        metadata: { name: 'test', version: '1.0.0', author: 'test' } 
+      registry.registerPlugin('namespace1', 'plugin1', {
+        metadata: { name: 'test', version: '1.0.0', author: 'test' },
       });
-      
+
       expect(registry.hasPlugin('namespace1', 'plugin1')).toBe(true);
       expect(registry.hasPlugin('namespace2', 'plugin1')).toBe(false);
     });
@@ -418,18 +418,18 @@ describe('Plugin Registry', () => {
 
   describe('Edge Cases', () => {
     it('should handle empty namespace name', () => {
-      registry.registerPlugin('', 'plugin', { 
-        metadata: { name: 'test', version: '1.0.0', author: 'test' } 
+      registry.registerPlugin('', 'plugin', {
+        metadata: { name: 'test', version: '1.0.0', author: 'test' },
       });
-      
+
       expect(registry.hasPlugin('', 'plugin')).toBe(true);
     });
 
     it('should handle empty plugin name', () => {
-      registry.registerPlugin('data', '', { 
-        metadata: { name: 'test', version: '1.0.0', author: 'test' } 
+      registry.registerPlugin('data', '', {
+        metadata: { name: 'test', version: '1.0.0', author: 'test' },
       });
-      
+
       expect(registry.hasPlugin('data', '')).toBe(true);
     });
 
@@ -449,9 +449,9 @@ describe('Plugin Registry', () => {
 
     it('should handle registering non-IPlugin objects', () => {
       const plainObject = { data: 'test' };
-      
+
       registry.registerPlugin('data', 'plain', plainObject);
-      
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const retrieved = registry.getPlugin<any>('data', 'plain');
       expect(retrieved).toEqual(plainObject);
@@ -462,34 +462,33 @@ describe('Plugin Registry', () => {
     it('should handle many plugins efficiently', () => {
       // Register 100 plugins
       for (let i = 0; i < 100; i++) {
-        registry.registerPlugin('data', `plugin${i}`, { 
-          metadata: { name: `plugin${i}`, version: '1.0.0', author: 'test' } 
+        registry.registerPlugin('data', `plugin${i}`, {
+          metadata: { name: `plugin${i}`, version: '1.0.0', author: 'test' },
         });
       }
-      
+
       const startTime = Date.now();
       const plugins = registry.listPlugins('data');
       const duration = Date.now() - startTime;
-      
+
       expect(plugins).toHaveLength(100);
       expect(duration).toBeLessThan(100);
     });
 
     it('should lookup plugins efficiently', () => {
       for (let i = 0; i < 100; i++) {
-        registry.registerPlugin('data', `plugin${i}`, { 
-          metadata: { name: `plugin${i}`, version: '1.0.0', author: 'test' } 
+        registry.registerPlugin('data', `plugin${i}`, {
+          metadata: { name: `plugin${i}`, version: '1.0.0', author: 'test' },
         });
       }
-      
+
       const startTime = Date.now();
       for (let i = 0; i < 100; i++) {
         registry.getPlugin('data', `plugin${i}`);
       }
       const duration = Date.now() - startTime;
-      
+
       expect(duration).toBeLessThan(100);
     });
   });
 });
-

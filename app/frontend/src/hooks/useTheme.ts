@@ -2,13 +2,14 @@
  * React hook for Material Design 3 theme management
  */
 
-import { useState, useEffect, useCallback } from 'react';
-import { 
-  type ThemeMode, 
-  initializeTheme, 
-  setThemeMode as setThemeModeUtil,
+import { useCallback,useEffect, useState } from 'react';
+
+import {
+  getEffectiveTheme,
   getStoredTheme,
-  getEffectiveTheme
+  initializeTheme,
+  setThemeMode as setThemeModeUtil,
+  type ThemeMode,
 } from '@/utils/theme-manager';
 
 export function useTheme() {
@@ -58,4 +59,3 @@ export function useTheme() {
     isDark: effectiveTheme === 'dark',
   };
 }
-

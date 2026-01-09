@@ -1,11 +1,16 @@
-import { ipcLogger } from '../utils/logger';
 import { CredentialsStorageError } from '@sheetpilot/shared/errors';
+
 import { deleteCredentials, listCredentials, storeCredentials } from '../../repositories';
-import { validateInput } from '../../validation/validate-ipc-input';
 import { deleteCredentialsSchema, storeCredentialsSchema } from '../../validation/ipc-schemas';
+import { validateInput } from '../../validation/validate-ipc-input';
+import { ipcLogger } from '../utils/logger';
 
 export type CredentialsStoreResult = { success: boolean; message?: string; error?: unknown; changes: number };
-export type CredentialsListResult = { success: boolean; error?: string; credentials: Array<{ service: string; email: string }> };
+export type CredentialsListResult = {
+  success: boolean;
+  error?: string;
+  credentials: Array<{ service: string; email: string }>;
+};
 export type CredentialsDeleteResult = { success: boolean; message?: string; error?: unknown; changes: number };
 
 export function storeCredentialsRequest(service: string, email: string, password: string): CredentialsStoreResult {
@@ -15,7 +20,10 @@ export function storeCredentialsRequest(service: string, email: string, password
   }
 
   const validated = validation.data!;
-  ipcLogger.audit('store-credentials', 'User storing credentials', { service: validated.service, email: validated.email });
+  ipcLogger.audit('store-credentials', 'User storing credentials', {
+    service: validated.service,
+    email: validated.email,
+  });
 
   try {
     const result = storeCredentials(validated.service, validated.email, validated.password);
@@ -23,7 +31,7 @@ export function storeCredentialsRequest(service: string, email: string, password
       ipcLogger.warn('Could not store credentials', {
         service: validated.service,
         email: validated.email,
-        message: result.message
+        message: result.message,
       });
       return { success: false, message: result.message, changes: result.changes ?? 0 };
     }
@@ -31,19 +39,22 @@ export function storeCredentialsRequest(service: string, email: string, password
     ipcLogger.info('Credentials stored successfully', {
       service: validated.service,
       email: validated.email,
-      changes: result.changes
+      changes: result.changes,
     });
     return { success: true, message: result.message, changes: result.changes };
   } catch (err: unknown) {
     const isCredentialsError = err instanceof Error && err.name.includes('Credentials');
 
     if (isCredentialsError) {
-      ipcLogger.security('credentials-storage-error', 'Could not store credentials', { service: validated.service, error: err });
+      ipcLogger.security('credentials-storage-error', 'Could not store credentials', {
+        service: validated.service,
+        error: err,
+      });
     } else {
       ipcLogger.error('Could not store credentials', {
         service: validated.service,
         email: validated.email,
-        error: err instanceof Error ? err.message : String(err)
+        error: err instanceof Error ? err.message : String(err),
       });
     }
 
@@ -53,9 +64,9 @@ export function storeCredentialsRequest(service: string, email: string, password
       message: errorMessage,
       error: new CredentialsStorageError(validated.service, {
         error: errorMessage,
-        originalError: err instanceof Error ? err.name : 'Unknown'
+        originalError: err instanceof Error ? err.name : 'Unknown',
       }),
-      changes: 0
+      changes: 0,
     };
   }
 }
@@ -86,7 +97,7 @@ export function deleteCredentialsRequest(service: string): CredentialsDeleteResu
   } catch (err: unknown) {
     ipcLogger.error('Could not delete credentials', {
       service: validated.service,
-      error: err instanceof Error ? err.message : String(err)
+      error: err instanceof Error ? err.message : String(err),
     });
     const errorMessage = err instanceof Error ? err.message : String(err);
     return { success: false, message: errorMessage, changes: 0 };

@@ -1,4 +1,8 @@
-export async function login(email: string, password: string, stayLoggedIn: boolean): Promise<{
+export async function login(
+  email: string,
+  password: string,
+  stayLoggedIn: boolean
+): Promise<{
   success: boolean;
   token?: string;
   isAdmin?: boolean;
@@ -23,5 +27,3 @@ export async function logout(token: string): Promise<{ success: boolean; error?:
   }
   return window.auth.logout(token);
 }
-
-

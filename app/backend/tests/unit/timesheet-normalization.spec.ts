@@ -1,6 +1,9 @@
 import { describe, it, expect, vi } from 'vitest';
 import { normalizeRowData, normalizeTrailingBlank, type TimesheetRow } from '@/logic/timesheet-normalization';
-import { projectNeedsTools as _projectNeedsTools, toolNeedsChargeCode as _toolNeedsChargeCode } from '@/logic/dropdown-logic';
+import {
+  projectNeedsTools as _projectNeedsTools,
+  toolNeedsChargeCode as _toolNeedsChargeCode,
+} from '@/logic/dropdown-logic';
 
 // Mock dropdown-logic
 vi.mock('@/logic/dropdown-logic', () => ({
@@ -11,7 +14,7 @@ vi.mock('@/logic/dropdown-logic', () => ({
   toolNeedsChargeCode: vi.fn((tool?: string) => {
     // Mock: tools that need charge codes
     return tool === 'ToolWithChargeCode';
-  })
+  }),
 }));
 
 describe('timesheet-normalization', () => {
@@ -20,7 +23,7 @@ describe('timesheet-normalization', () => {
       const row: TimesheetRow = {
         project: 'ProjectWithoutTools',
         tool: 'SomeTool',
-        chargeCode: 'SomeCode'
+        chargeCode: 'SomeCode',
       };
 
       const normalized = normalizeRowData(row);
@@ -34,7 +37,7 @@ describe('timesheet-normalization', () => {
       const row: TimesheetRow = {
         project: 'ProjectWithTools',
         tool: 'SomeTool',
-        chargeCode: 'SomeCode'
+        chargeCode: 'SomeCode',
       };
 
       const normalized = normalizeRowData(row);
@@ -48,7 +51,7 @@ describe('timesheet-normalization', () => {
       const row: TimesheetRow = {
         project: 'ProjectWithTools',
         tool: 'ToolWithoutChargeCode',
-        chargeCode: 'SomeCode'
+        chargeCode: 'SomeCode',
       };
 
       const normalized = normalizeRowData(row);
@@ -61,7 +64,7 @@ describe('timesheet-normalization', () => {
       const row: TimesheetRow = {
         project: 'ProjectWithTools',
         tool: 'ToolWithChargeCode',
-        chargeCode: 'SomeCode'
+        chargeCode: 'SomeCode',
       };
 
       const normalized = normalizeRowData(row);
@@ -73,7 +76,7 @@ describe('timesheet-normalization', () => {
     it('should handle row with no project', () => {
       const row: TimesheetRow = {
         tool: 'SomeTool',
-        chargeCode: 'SomeCode'
+        chargeCode: 'SomeCode',
       };
 
       const normalized = normalizeRowData(row);
@@ -91,7 +94,7 @@ describe('timesheet-normalization', () => {
         project: 'ProjectWithTools',
         tool: 'ToolWithChargeCode',
         chargeCode: 'CC1',
-        taskDescription: 'Test task'
+        taskDescription: 'Test task',
       };
 
       const normalized = normalizeRowData(row);
@@ -106,7 +109,7 @@ describe('timesheet-normalization', () => {
     it('should return new object (immutable)', () => {
       const row: TimesheetRow = {
         project: 'ProjectWithTools',
-        tool: 'SomeTool'
+        tool: 'SomeTool',
       };
 
       const normalized = normalizeRowData(row);
@@ -119,7 +122,7 @@ describe('timesheet-normalization', () => {
     it('should ensure exactly one blank row at end', () => {
       const rows: TimesheetRow[] = [
         { date: '2025-01-15', project: 'Project A' },
-        { date: '2025-01-16', project: 'Project B' }
+        { date: '2025-01-16', project: 'Project B' },
       ];
 
       const normalized = normalizeTrailingBlank(rows);
@@ -131,12 +134,7 @@ describe('timesheet-normalization', () => {
     });
 
     it('should remove multiple trailing empty rows', () => {
-      const rows: TimesheetRow[] = [
-        { date: '2025-01-15', project: 'Project A' },
-        {},
-        {},
-        {}
-      ];
+      const rows: TimesheetRow[] = [{ date: '2025-01-15', project: 'Project A' }, {}, {}, {}];
 
       const normalized = normalizeTrailingBlank(rows);
 
@@ -172,7 +170,7 @@ describe('timesheet-normalization', () => {
         { tool: 'Tool 1' },
         { chargeCode: 'CC1' },
         { taskDescription: 'Task' },
-        {}
+        {},
       ];
 
       const normalized = normalizeTrailingBlank(rows);
@@ -185,7 +183,7 @@ describe('timesheet-normalization', () => {
       const rows: TimesheetRow[] = [
         { date: '2025-01-15', project: 'Project A' },
         { date: '2025-01-16' }, // Partial data
-        {}
+        {},
       ];
 
       const normalized = normalizeTrailingBlank(rows);

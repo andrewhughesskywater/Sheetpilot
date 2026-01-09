@@ -1,6 +1,7 @@
-import { useCallback } from 'react';
-import type { RefObject } from 'react';
 import type { HotTableRef } from '@handsontable/react-wrapper';
+import type { RefObject } from 'react';
+import { useCallback } from 'react';
+
 import type { TimesheetRow } from '../timesheet.schema';
 
 export function useBeforeKeyDownHandler() {
@@ -11,40 +12,37 @@ export function useBeforeKeyDownHandler() {
     hotRef: RefObject<HotTableRef | null>;
   }
 
-  const computeDateInsert = useCallback(
-    (config: ComputeDateInsertConfig): void => {
-      const { beforeKeyEvent, timesheetDraftData, selectedRows, hotRef } = config;
-      if (!beforeKeyEvent.shiftKey) return;
+  const computeDateInsert = useCallback((config: ComputeDateInsertConfig): void => {
+    const { beforeKeyEvent, timesheetDraftData, selectedRows, hotRef } = config;
+    if (!beforeKeyEvent.shiftKey) return;
 
-      const selectedRowArray = Array.from(selectedRows).sort((a, b) => a - b);
-      if (selectedRowArray.length === 0) return;
+    const selectedRowArray = Array.from(selectedRows).sort((a, b) => a - b);
+    if (selectedRowArray.length === 0) return;
 
-      const firstSelectedRow = selectedRowArray[0];
-      const referenceRow = timesheetDraftData[firstSelectedRow];
-      if (!referenceRow?.date) return;
+    const firstSelectedRow = selectedRowArray[0];
+    const referenceRow = timesheetDraftData[firstSelectedRow];
+    if (!referenceRow?.date) return;
 
-      const referenceDate = new Date(referenceRow.date);
-      const adjustedDate = new Date(referenceDate);
-      adjustedDate.setDate(adjustedDate.getDate() + 1);
+    const referenceDate = new Date(referenceRow.date);
+    const adjustedDate = new Date(referenceDate);
+    adjustedDate.setDate(adjustedDate.getDate() + 1);
 
-      const hotInstance = hotRef.current?.hotInstance;
-      if (!hotInstance) return;
+    const hotInstance = hotRef.current?.hotInstance;
+    if (!hotInstance) return;
 
-      // Populate date column for all selected rows with incremented dates
-      const currentDate = new Date(referenceDate);
-      for (const rowIdx of selectedRowArray) {
-        currentDate.setDate(currentDate.getDate() + 1);
-        const dateStr = currentDate.toISOString().split('T')[0];
-        hotInstance.setDataAtCell(rowIdx, 0, dateStr);
-      }
+    // Populate date column for all selected rows with incremented dates
+    const currentDate = new Date(referenceDate);
+    for (const rowIdx of selectedRowArray) {
+      currentDate.setDate(currentDate.getDate() + 1);
+      const dateStr = currentDate.toISOString().split('T')[0];
+      hotInstance.setDataAtCell(rowIdx, 0, dateStr);
+    }
 
-      window.logger?.verbose('Applied date increment to selected rows', {
-        count: selectedRowArray.length,
-        baseDate: referenceRow.date
-      });
-    },
-    []
-  );
+    window.logger?.verbose('Applied date increment to selected rows', {
+      count: selectedRowArray.length,
+      baseDate: referenceRow.date,
+    });
+  }, []);
 
   interface HandleBeforeKeyDownConfig {
     event: KeyboardEvent;

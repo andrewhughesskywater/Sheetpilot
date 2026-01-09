@@ -1,6 +1,6 @@
+import type { App } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
-import type { App } from 'electron';
 
 export function writeStartupLog(app: App, backendDirname: string): void {
   try {
@@ -21,5 +21,3 @@ export function writeStartupLog(app: App, backendDirname: string): void {
     // Ignore startup log errors - this is just for debugging
   }
 }
-
-

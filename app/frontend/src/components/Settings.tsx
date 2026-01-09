@@ -1,9 +1,9 @@
 /**
  * @fileoverview Settings Component
- * 
+ *
  * Comprehensive settings page providing access to application configuration,
  * user account management, system tools, and administrative functions.
- * 
+ *
  * Features:
  * - Credential management (update SmartSheet login)
  * - Log file export for troubleshooting
@@ -11,45 +11,48 @@
  * - Application settings (headless mode, etc.)
  * - Admin tools (database maintenance, credential clearing)
  * - About dialog with version information
- * 
+ *
  * Access control:
  * - Admin-specific tools only visible to admin users
  * - Token-based authentication for sensitive operations
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import './Settings.css';
+
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Typography from '@mui/material/Typography';
+import { useCallback,useEffect, useState } from 'react';
+
 import { useSession } from '@/contexts/SessionContext';
-import './Settings.css';
-import { autoCompleteEmailDomain } from '@/utils/emailAutoComplete';
 import { listCredentials as listCredentialsIpc } from '@/services/ipc/credentials';
+import { logError, logInfo, logUserAction, logWarn } from '@/services/ipc/logger';
 import { getLogPath as getLogPathIpc } from '@/services/ipc/logs';
 import { getSetting } from '@/services/ipc/settings';
-import { logError, logInfo, logUserAction, logWarn } from '@/services/ipc/logger';
-import { SettingsHeader, SettingsCardsGrid } from './SettingsHelpers';
+import { autoCompleteEmailDomain } from '@/utils/emailAutoComplete';
+
 import {
-  ExportLogsDialog,
-  UserGuideDialog,
+  AboutDialog,
   AdminToolsDialog,
-  UpdateCredentialsDialog,
-  ConfirmDialog,
   ApplicationSettingsDialog,
-  AboutDialog
+  ConfirmDialog,
+  ExportLogsDialog,
+  UpdateCredentialsDialog,
+  UserGuideDialog,
 } from './dialogs';
 import {
-  toggleHeadlessMode,
-  updateSmartsheetCredentials,
   adminClearCredentials,
   adminRebuildDatabase,
-  exportLogsToFile
+  exportLogsToFile,
+  toggleHeadlessMode,
+  updateSmartsheetCredentials,
 } from './SettingsHandlers';
+import { SettingsCardsGrid,SettingsHeader } from './SettingsHelpers';
 import type { StoredCredential } from './SettingsTypes';
 
 /**
  * Settings page component
- * 
+ *
  * Comprehensive settings interface organized as feature cards providing:
  * - Log file export for troubleshooting
  * - Credential management (update SmartSheet login)
@@ -58,12 +61,12 @@ import type { StoredCredential } from './SettingsTypes';
  * - About dialog with version info
  * - Logout functionality
  * - Admin tools (visible only to admin users)
- * 
+ *
  * Admin features:
  * - Clear all credentials (destructive)
  * - Rebuild database (destructive)
  * - Restricted by admin flag from session context
- * 
+ *
  * @returns Settings page with feature cards and dialogs
  */
 function Settings() {
@@ -73,26 +76,26 @@ function Settings() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [isExporting, setIsExporting] = useState(false);
-  
+
   // Dialog state for each feature card
   const [showLogsDialog, setShowLogsDialog] = useState(false);
   const [showUserGuideDialog, setShowUserGuideDialog] = useState(false);
   const [showAdminDialog, setShowAdminDialog] = useState(false);
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
   const [showAboutDialog, setShowAboutDialog] = useState(false);
-  
+
   // Credentials management state
   const [storedCredentials, setStoredCredentials] = useState<StoredCredential[]>([]);
   const [showUpdateCredentialsDialog, setShowUpdateCredentialsDialog] = useState(false);
   const [updateEmail, setUpdateEmail] = useState('');
   const [updatePassword, setUpdatePassword] = useState('');
   const [isUpdatingCredentials, setIsUpdatingCredentials] = useState(false);
-  
+
   // Admin state
   const [showClearCredentialsDialog, setShowClearCredentialsDialog] = useState(false);
   const [showRebuildDatabaseDialog, setShowRebuildDatabaseDialog] = useState(false);
   const [isAdminActionLoading, setIsAdminActionLoading] = useState(false);
-  
+
   // Settings state
   const [headlessMode, setHeadlessMode] = useState<boolean>(false);
   const [isLoadingSettings, setIsLoadingSettings] = useState(false);
@@ -112,7 +115,7 @@ function Settings() {
   const loadLogFiles = useCallback(async () => {
     setIsLoading(true);
     setError('');
-    
+
     try {
       const response = token ? await getLogPathIpc(token) : null;
       if (!response) {
@@ -149,7 +152,6 @@ function Settings() {
     void loadLogFiles();
     void loadStoredCredentials();
     void loadSettings();
-   
   }, [loadLogFiles]);
 
   const handleUpdateCredentials = async () =>
@@ -163,7 +165,7 @@ function Settings() {
         setUpdateEmail('');
         setUpdatePassword('');
         await loadStoredCredentials();
-      }
+      },
     });
 
   const handleLogout = async () => {
@@ -191,7 +193,7 @@ function Settings() {
   const exportLogs = async () => exportLogsToFile(token, { logFiles, logPath, setError, setIsExporting });
 
   const openUpdateCredentialsDialog = () => {
-    const existingCred = storedCredentials.find(c => c.service === 'smartsheet');
+    const existingCred = storedCredentials.find((c) => c.service === 'smartsheet');
     if (existingCred) {
       setUpdateEmail(existingCred.email);
     }

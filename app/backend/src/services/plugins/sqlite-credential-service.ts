@@ -1,27 +1,23 @@
 /**
  * @fileoverview SQLite Credential Service Plugin
- * 
+ *
  * Implementation of ICredentialService using SQLite database.
  * Wraps existing credential functions with the plugin interface.
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025
  */
 
 import type {
-  ICredentialService,
-  CredentialResult,
+  CredentialGetResult,
   CredentialListResult,
-  CredentialGetResult
+  CredentialResult,
+  ICredentialService,
 } from '@sheetpilot/shared/contracts/ICredentialService';
 import type { PluginMetadata } from '@sheetpilot/shared/plugin-types';
-import {
-  storeCredentials,
-  getCredentials,
-  listCredentials,
-  deleteCredentials
-} from '../../repositories';
+
+import { deleteCredentials,getCredentials, listCredentials, storeCredentials } from '../../repositories';
 
 /**
  * SQLite implementation of the credential service
@@ -31,7 +27,7 @@ export class SQLiteCredentialService implements ICredentialService {
     name: 'sqlite',
     version: '1.1.2',
     author: 'Andrew Hughes',
-    description: 'SQLite-based credential storage service'
+    description: 'SQLite-based credential storage service',
   };
 
   /**
@@ -45,7 +41,7 @@ export class SQLiteCredentialService implements ICredentialService {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
-        changes: 0
+        changes: 0,
       };
     }
   }
@@ -56,22 +52,22 @@ export class SQLiteCredentialService implements ICredentialService {
   public async get(service: string): Promise<CredentialGetResult> {
     try {
       const credentials = getCredentials(service);
-      
+
       if (!credentials) {
         return {
           success: false,
-          error: `Credentials not found for service: ${service}`
+          error: `Credentials not found for service: ${service}`,
         };
       }
-      
+
       return {
         success: true,
-        credentials
+        credentials,
       };
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       };
     }
   }
@@ -84,13 +80,19 @@ export class SQLiteCredentialService implements ICredentialService {
       const credentials = listCredentials();
       return {
         success: true,
-        credentials: credentials as { id: number; service: string; email: string; created_at: string; updated_at: string }[]
+        credentials: credentials as {
+          id: number;
+          service: string;
+          email: string;
+          created_at: string;
+          updated_at: string;
+        }[],
       };
     } catch (error) {
       return {
         success: false,
         credentials: [],
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       };
     }
   }
@@ -106,9 +108,8 @@ export class SQLiteCredentialService implements ICredentialService {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
-        changes: 0
+        changes: 0,
       };
     }
   }
 }
-

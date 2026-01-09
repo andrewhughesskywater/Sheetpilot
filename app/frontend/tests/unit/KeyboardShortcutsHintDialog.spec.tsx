@@ -18,12 +18,12 @@ describe('KeyboardShortcutsHintDialog', () => {
         delete storage[key];
       }),
       clear: vi.fn(() => {
-        Object.keys(storage).forEach(key => delete storage[key]);
+        Object.keys(storage).forEach((key) => delete storage[key]);
       }),
       get length() {
         return Object.keys(storage).length;
       },
-      key: vi.fn((index: number) => Object.keys(storage)[index] || null)
+      key: vi.fn((index: number) => Object.keys(storage)[index] || null),
     } as Storage;
     vi.stubGlobal('localStorage', mockLocalStorage);
   });
@@ -59,10 +59,7 @@ describe('KeyboardShortcutsHintDialog', () => {
     const onClose = vi.fn();
     render(<KeyboardShortcutsHintDialog open={true} onClose={onClose} />);
 
-    expect(mockLocalStorage.setItem).toHaveBeenCalledWith(
-      'sheetpilot-shortcuts-hint-last-shown',
-      expect.any(String)
-    );
+    expect(mockLocalStorage.setItem).toHaveBeenCalledWith('sheetpilot-shortcuts-hint-last-shown', expect.any(String));
   });
 
   it('should handle close button click', async () => {
@@ -96,10 +93,7 @@ describe('KeyboardShortcutsHintDialog', () => {
     const closeButton = screen.getByRole('button', { name: /got it/i });
     await user.click(closeButton);
 
-    expect(mockLocalStorage.setItem).toHaveBeenCalledWith(
-      'sheetpilot-hide-shortcuts-hint',
-      'true'
-    );
+    expect(mockLocalStorage.setItem).toHaveBeenCalledWith('sheetpilot-hide-shortcuts-hint', 'true');
   });
 
   it('should navigate between pages', async () => {
@@ -116,5 +110,3 @@ describe('KeyboardShortcutsHintDialog', () => {
     expect(screen.getByRole('button', { name: /got it/i })).toBeInTheDocument();
   });
 });
-
-

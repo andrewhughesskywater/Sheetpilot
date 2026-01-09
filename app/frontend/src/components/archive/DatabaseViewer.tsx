@@ -1,16 +1,18 @@
-import { useState, useEffect, useMemo, memo } from 'react';
-import { HotTable } from '@handsontable/react-wrapper';
-import { registerAllModules } from 'handsontable/registry';
-import DownloadIcon from '@mui/icons-material/Download';
-import RefreshIcon from '@mui/icons-material/Refresh';
-import IconButton from '@mui/material/IconButton';
-import Tooltip from '@mui/material/Tooltip';
-import CircularProgress from '@mui/material/CircularProgress';
 import 'handsontable/styles/handsontable.css';
 import 'handsontable/styles/ht-theme-horizon.css';
+import './DatabaseViewer.css';
+
+import { HotTable } from '@handsontable/react-wrapper';
+import DownloadIcon from '@mui/icons-material/Download';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import CircularProgress from '@mui/material/CircularProgress';
+import IconButton from '@mui/material/IconButton';
+import Tooltip from '@mui/material/Tooltip';
+import { registerAllModules } from 'handsontable/registry';
+import { memo,useEffect, useMemo, useState } from 'react';
+
 import { useData } from '../../contexts/DataContext';
 import { StatusButton } from '../StatusButton';
-import './DatabaseViewer.css';
 
 type ButtonStatus = 'neutral' | 'ready' | 'warning';
 
@@ -49,33 +51,33 @@ function Archive() {
   const [activeTab] = useState<'timesheet' | 'credentials'>('timesheet');
   const [isExporting, setIsExporting] = useState(false);
   const [isManualRefreshing, setIsManualRefreshing] = useState(false);
-  
+
   // Use shared DataContext instead of local state
   const { archiveData, isArchiveDataLoading, archiveDataError, refreshArchiveData } = useData();
 
   // Fetch fresh data when component mounts
   useEffect(() => {
     let isMounted = true;
-    
+
     const loadData = async () => {
       window.logger?.debug('[Archive] Component mounted, refreshing archive data');
       if (isMounted) {
         await refreshArchiveData();
       }
     };
-    
+
     void loadData();
-    
+
     return () => {
       isMounted = false;
     };
   }, [refreshArchiveData]);
-  
+
   window.logger?.debug('[Archive] Component state', {
     isLoading: isArchiveDataLoading,
     error: archiveDataError,
     timesheetCount: archiveData.timesheet.length,
-    credentialsCount: archiveData.credentials.length
+    credentialsCount: archiveData.credentials.length,
   });
 
   const formatTime = (minutes: number): string => {
@@ -98,7 +100,7 @@ function Archive() {
   };
 
   const formatTimesheetData = (entries: TimesheetEntry[]) => {
-    const formatted = entries.map(entry => ({
+    const formatted = entries.map((entry) => ({
       date: formatDate(entry.date),
       timeIn: formatTime(entry.time_in),
       timeOut: formatTime(entry.time_out),
@@ -106,20 +108,20 @@ function Archive() {
       project: entry.project,
       tool: entry.tool || '',
       chargeCode: entry.detail_charge_code || '',
-      taskDescription: entry.task_description
+      taskDescription: entry.task_description,
     }));
-    window.logger?.verbose('[Archive] Formatted timesheet data', { 
-      entryCount: formatted.length 
+    window.logger?.verbose('[Archive] Formatted timesheet data', {
+      entryCount: formatted.length,
     });
     return formatted;
   };
 
   const formatCredentialsData = (credentials: Credential[]) => {
-    return credentials.map(cred => ({
+    return credentials.map((cred) => ({
       service: cred.service,
       email: cred.email,
       createdAt: cred.created_at,
-      updatedAt: cred.updated_at
+      updatedAt: cred.updated_at,
     }));
   };
 
@@ -131,23 +133,23 @@ function Archive() {
     { data: 'project', title: 'Project', width: 120 },
     { data: 'tool', title: 'Tool', width: 100 },
     { data: 'chargeCode', title: 'Detail Charge Code', width: 120 },
-    { data: 'taskDescription', title: 'Task Description', width: 200 }
+    { data: 'taskDescription', title: 'Task Description', width: 200 },
   ];
 
   const credentialsColumns = [
     { data: 'service', title: 'Service', width: 120 },
     { data: 'email', title: 'Email', width: 200 },
     { data: 'createdAt', title: 'Created', width: 150 },
-    { data: 'updatedAt', title: 'Updated', width: 150 }
+    { data: 'updatedAt', title: 'Updated', width: 150 },
   ];
 
   const handleManualRefresh = async () => {
     // Prevent multiple simultaneous refreshes
     if (isManualRefreshing || isArchiveDataLoading) return;
-    
+
     window.logger?.userAction('archive-manual-refresh-clicked');
     setIsManualRefreshing(true);
-    
+
     try {
       await refreshArchiveData();
       window.logger?.info('Archive data manually refreshed');
@@ -161,10 +163,10 @@ function Archive() {
   const exportToCSV = async () => {
     // Prevent multiple simultaneous exports
     if (isExporting) return;
-    
+
     window.logger?.userAction('export-to-csv-clicked');
     setIsExporting(true);
-    
+
     try {
       // CSV export functionality not yet implemented
       window.logger?.info('CSV export requested');
@@ -195,9 +197,7 @@ function Archive() {
     return (
       <div className="error-container">
         <h3 className="md-typescale-title-large">Error loading archive</h3>
-        <p className="md-typescale-body-large archive-error-message">
-          {archiveDataError}
-        </p>
+        <p className="md-typescale-body-large archive-error-message">{archiveDataError}</p>
       </div>
     );
   }
@@ -214,12 +214,12 @@ function Archive() {
               sx={{
                 color: 'var(--md-sys-color-on-surface)',
                 '&:hover': {
-                  backgroundColor: 'var(--md-sys-color-surface-variant)'
+                  backgroundColor: 'var(--md-sys-color-surface-variant)',
                 },
                 '&:disabled': {
                   color: 'var(--md-sys-color-on-surface)',
-                  opacity: 0.38
-                }
+                  opacity: 0.38,
+                },
               }}
             >
               {isManualRefreshing || isArchiveDataLoading ? (
@@ -289,7 +289,7 @@ function Archive() {
       </div>
     </div>
   );
-};
+}
 
 // Wrap with React.memo to prevent unnecessary re-renders
 export default memo(Archive);

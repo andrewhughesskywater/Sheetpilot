@@ -12,5 +12,3 @@ export function getRuntimeFlags(app: App): RuntimeFlags {
   const isDev = process.env['NODE_ENV'] === 'development' || process.env['ELECTRON_IS_DEV'] === '1';
   return { isSmoke, packagedLike, isDev };
 }
-
-

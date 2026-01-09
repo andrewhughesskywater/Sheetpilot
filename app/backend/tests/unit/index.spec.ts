@@ -66,21 +66,9 @@ describe('ipc/index', () => {
     it('should log success message with all modules', () => {
       registerAllIPCHandlers();
 
-      expect(appLogger.info).toHaveBeenCalledWith(
-        'All IPC handler modules registered successfully',
-        {
-          modulesRegistered: [
-            'auth',
-            'credentials',
-            'timesheet',
-            'admin',
-            'database',
-            'logs',
-            'logger',
-            'settings'
-          ]
-        }
-      );
+      expect(appLogger.info).toHaveBeenCalledWith('All IPC handler modules registered successfully', {
+        modulesRegistered: ['auth', 'credentials', 'timesheet', 'admin', 'database', 'logs', 'logger', 'settings'],
+      });
     });
 
     it('should set main window when provided', () => {
@@ -115,13 +103,10 @@ describe('ipc/index', () => {
 
       expect(() => registerAllIPCHandlers()).toThrow('Registration failed');
 
-      expect(appLogger.error).toHaveBeenCalledWith(
-        'Failed to register IPC handler module',
-        {
-          error: 'Registration failed',
-          stack: expect.any(String)
-        }
-      );
+      expect(appLogger.error).toHaveBeenCalledWith('Failed to register IPC handler module', {
+        error: 'Registration failed',
+        stack: expect.any(String),
+      });
     });
 
     it('should handle non-Error exceptions', () => {
@@ -132,15 +117,10 @@ describe('ipc/index', () => {
 
       expect(() => registerAllIPCHandlers()).toThrow();
 
-      expect(appLogger.error).toHaveBeenCalledWith(
-        'Failed to register IPC handler module',
-        {
-          error: 'String error',
-          stack: undefined
-        }
-      );
+      expect(appLogger.error).toHaveBeenCalledWith('Failed to register IPC handler module', {
+        error: 'String error',
+        stack: undefined,
+      });
     });
   });
 });
-
-

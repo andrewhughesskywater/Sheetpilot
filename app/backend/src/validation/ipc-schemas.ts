@@ -1,9 +1,9 @@
 /**
  * @fileoverview IPC Input Validation Schemas
- * 
+ *
  * Provides Zod schemas for validating all IPC handler inputs.
  * Ensures type safety and prevents injection attacks.
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025
@@ -20,8 +20,12 @@ import { z } from 'zod';
  * Ensures valid email format and reasonable length
  * Uses regex to accept formats like 'a@b.c' that Zod's .email() might reject
  */
-export const emailSchema = z.string()
-  .regex(/^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+.-]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9-]*\.)+[A-Za-z]+$/, 'Invalid email format')
+export const emailSchema = z
+  .string()
+  .regex(
+    /^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+.-]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9-]*\.)+[A-Za-z]+$/,
+    'Invalid email format'
+  )
   .min(3, 'Email must be at least 3 characters')
   .max(255, 'Email must not exceed 255 characters');
 
@@ -29,14 +33,13 @@ export const emailSchema = z.string()
  * Password validation schema
  * Enforces minimum security requirements
  */
-export const passwordSchema = z.string()
-  .min(1, 'Password is required')
-  .max(1000, 'Password too long'); // Allow long passwords but have reasonable upper limit
+export const passwordSchema = z.string().min(1, 'Password is required').max(1000, 'Password too long'); // Allow long passwords but have reasonable upper limit
 
 /**
  * Service name validation schema
  */
-export const serviceNameSchema = z.string()
+export const serviceNameSchema = z
+  .string()
   .min(1, 'Service name is required')
   .max(100, 'Service name too long')
   .regex(/^[a-z0-9_-]+$/i, 'Service name must contain only letters, numbers, hyphens, and underscores');
@@ -44,33 +47,31 @@ export const serviceNameSchema = z.string()
 /**
  * Session token validation schema
  */
-export const sessionTokenSchema = z.string()
-  .uuid('Invalid session token format');
+export const sessionTokenSchema = z.string().uuid('Invalid session token format');
 
 /**
  * Date validation schema (YYYY-MM-DD or MM/DD/YYYY)
  */
-export const dateSchema = z.string()
+export const dateSchema = z
+  .string()
   .regex(/^(\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}\/\d{4})$/, 'Invalid date format. Use YYYY-MM-DD or MM/DD/YYYY');
 
 /**
  * Time validation schema (HH:MM or H:MM or HH:M or H:M)
  * Accepts flexible formats: 9:5, 9:05, 09:5, 09:05
  */
-export const timeSchema = z.string()
-  .regex(/^([0-1]?[0-9]|2[0-3]):[0-5]?[0-9]$/, 'Invalid time format. Use HH:MM');
+export const timeSchema = z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5]?[0-9]$/, 'Invalid time format. Use HH:MM');
 
 /**
  * Project name validation schema
  */
-export const projectNameSchema = z.string()
-  .min(1, 'Project name is required')
-  .max(500, 'Project name too long');
+export const projectNameSchema = z.string().min(1, 'Project name is required').max(500, 'Project name too long');
 
 /**
  * Task description validation schema
  */
-export const taskDescriptionSchema = z.string()
+export const taskDescriptionSchema = z
+  .string()
   .min(1, 'Task description is required')
   .max(5000, 'Task description too long');
 
@@ -84,14 +85,14 @@ export const taskDescriptionSchema = z.string()
 export const storeCredentialsSchema = z.object({
   service: serviceNameSchema,
   email: emailSchema,
-  password: passwordSchema
+  password: passwordSchema,
 });
 
 /**
  * Schema for credentials:delete
  */
 export const deleteCredentialsSchema = z.object({
-  service: serviceNameSchema
+  service: serviceNameSchema,
 });
 
 // ============================================================================
@@ -104,28 +105,28 @@ export const deleteCredentialsSchema = z.object({
 export const loginSchema = z.object({
   email: emailSchema,
   password: passwordSchema,
-  stayLoggedIn: z.boolean()
+  stayLoggedIn: z.boolean(),
 });
 
 /**
  * Schema for auth:validateSession
  */
 export const validateSessionSchema = z.object({
-  token: sessionTokenSchema
+  token: sessionTokenSchema,
 });
 
 /**
  * Schema for auth:logout
  */
 export const logoutSchema = z.object({
-  token: sessionTokenSchema
+  token: sessionTokenSchema,
 });
 
 /**
  * Schema for auth:getCurrentSession
  */
 export const getCurrentSessionSchema = z.object({
-  token: sessionTokenSchema
+  token: sessionTokenSchema,
 });
 
 // ============================================================================
@@ -135,57 +136,70 @@ export const getCurrentSessionSchema = z.object({
 /**
  * Schema for timesheet:saveDraft
  */
-export const saveDraftSchema = z.object({
-  id: z.number().int().positive().nullable().optional(),
-  date: dateSchema.optional(),
-  timeIn: timeSchema.optional(),
-  timeOut: timeSchema.optional(),
-  project: z.string().max(500).optional(),
-  tool: z.string().max(500).nullable().optional(),
-  chargeCode: z.string().max(100).nullable().optional(),
-  taskDescription: z.string().max(5000).optional()
-}).refine((data) => {
-  // If any core field is provided, all core fields must be provided
-  const hasAnyCoreField = !!(data.date || data.timeIn || data.timeOut || data.project || data.taskDescription);
-  if (hasAnyCoreField) {
-    return !!(data.date && data.timeIn && data.timeOut && data.project && data.taskDescription);
-  }
-  return true; // Empty draft is allowed
-}, {
-  message: 'All core fields (date, timeIn, timeOut, project, taskDescription) must be provided together'
-}).refine((data) => {
-  // Only validate timeOut > timeIn if both are present
-  if (data.timeIn && data.timeOut) {
-    const parseTime = (time: string) => {
-      const [hours, minutes] = time.split(':').map(Number);
-      return (hours || 0) * 60 + (minutes || 0);
-    };
-    return parseTime(data.timeOut) > parseTime(data.timeIn);
-  }
-  return true; // Allow partial data without time validation
-}, {
-  message: 'Time Out must be after Time In',
-  path: ['timeOut']
-}).refine((data) => {
-  // At least one field must be present (not counting id)
-  return data.date || data.timeIn || data.timeOut || data.project || data.taskDescription;
-}, {
-  message: 'At least one field must be provided',
-  path: []
-});
+export const saveDraftSchema = z
+  .object({
+    id: z.number().int().positive().nullable().optional(),
+    date: dateSchema.optional(),
+    timeIn: timeSchema.optional(),
+    timeOut: timeSchema.optional(),
+    project: z.string().max(500).optional(),
+    tool: z.string().max(500).nullable().optional(),
+    chargeCode: z.string().max(100).nullable().optional(),
+    taskDescription: z.string().max(5000).optional(),
+  })
+  .refine(
+    (data) => {
+      // If any core field is provided, all core fields must be provided
+      const hasAnyCoreField = Boolean(data.date || data.timeIn || data.timeOut || data.project || data.taskDescription);
+      if (hasAnyCoreField) {
+        return Boolean(data.date && data.timeIn && data.timeOut && data.project && data.taskDescription);
+      }
+      return true; // Empty draft is allowed
+    },
+    {
+      message: 'All core fields (date, timeIn, timeOut, project, taskDescription) must be provided together',
+    }
+  )
+  .refine(
+    (data) => {
+      // Only validate timeOut > timeIn if both are present
+      if (data.timeIn && data.timeOut) {
+        const parseTime = (time: string) => {
+          const [hours, minutes] = time.split(':').map(Number);
+          return (hours || 0) * 60 + (minutes || 0);
+        };
+        return parseTime(data.timeOut) > parseTime(data.timeIn);
+      }
+      return true; // Allow partial data without time validation
+    },
+    {
+      message: 'Time Out must be after Time In',
+      path: ['timeOut'],
+    }
+  )
+  .refine(
+    (data) => {
+      // At least one field must be present (not counting id)
+      return data.date || data.timeIn || data.timeOut || data.project || data.taskDescription;
+    },
+    {
+      message: 'At least one field must be provided',
+      path: [],
+    }
+  );
 
 /**
  * Schema for timesheet:deleteDraft
  */
 export const deleteDraftSchema = z.object({
-  id: z.number().int().positive('Valid ID is required')
+  id: z.number().int().positive('Valid ID is required'),
 });
 
 /**
  * Schema for timesheet:submit
  */
 export const submitTimesheetsSchema = z.object({
-  token: sessionTokenSchema
+  token: sessionTokenSchema,
 });
 
 // ============================================================================
@@ -196,7 +210,7 @@ export const submitTimesheetsSchema = z.object({
  * Schema for admin operations requiring token
  */
 export const adminTokenSchema = z.object({
-  token: sessionTokenSchema
+  token: sessionTokenSchema,
 });
 
 // ============================================================================
@@ -207,7 +221,7 @@ export const adminTokenSchema = z.object({
  * Schema for database:getAllTimesheetEntries
  */
 export const getAllTimesheetEntriesSchema = z.object({
-  token: sessionTokenSchema
+  token: sessionTokenSchema,
 });
 
 // ============================================================================
@@ -218,7 +232,7 @@ export const getAllTimesheetEntriesSchema = z.object({
  * Schema for logs:readLogFile
  */
 export const readLogFileSchema = z.object({
-  logPath: z.string().min(1).max(1000)
+  logPath: z.string().min(1).max(1000),
 });
 
 /**
@@ -226,7 +240,7 @@ export const readLogFileSchema = z.object({
  */
 export const exportLogsSchema = z.object({
   logPath: z.string().min(1).max(1000),
-  exportFormat: z.enum(['json', 'txt']).optional()
+  exportFormat: z.enum(['json', 'txt']).optional(),
 });
 
 // ============================================================================
@@ -247,5 +261,3 @@ export type AdminToken = z.infer<typeof adminTokenSchema>;
 export type GetAllTimesheetEntries = z.infer<typeof getAllTimesheetEntriesSchema>;
 export type ReadLogFile = z.infer<typeof readLogFileSchema>;
 export type ExportLogs = z.infer<typeof exportLogsSchema>;
-
-

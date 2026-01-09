@@ -8,7 +8,7 @@ vi.mock('electron-updater', () => {
     logger: null,
     on: vi.fn(),
     checkForUpdates: vi.fn(() => Promise.resolve()),
-    downloadUpdate: vi.fn(() => Promise.resolve())
+    downloadUpdate: vi.fn(() => Promise.resolve()),
   };
   return { autoUpdater };
 });
@@ -19,7 +19,7 @@ vi.mock('electron', () => {
   if (!globalThis.__test_handlers) {
     globalThis.__test_handlers = {};
   }
-  
+
   // Minimal BrowserWindow stub
   class BrowserWindow {
     public webContents: {
@@ -35,7 +35,7 @@ vi.mock('electron', () => {
         on: vi.fn(),
         once: vi.fn(),
         send: vi.fn(),
-        executeJavaScript: vi.fn()
+        executeJavaScript: vi.fn(),
       };
     }
     loadURL = vi.fn();
@@ -52,7 +52,9 @@ vi.mock('electron', () => {
   const ipcMain = {
     handle: vi.fn((channel: string, fn: (...args: unknown[]) => unknown) => {
       // Wrap handler to skip the event parameter when called from tests
-      (globalThis.__test_handlers as Record<string, (...args: unknown[]) => unknown>)[channel] = async (...args: unknown[]) => {
+      (globalThis.__test_handlers as Record<string, (...args: unknown[]) => unknown>)[channel] = async (
+        ...args: unknown[]
+      ) => {
         // Call the actual handler with a proper event object that has matching sender id
         return fn({ sender: { id: MAIN_WEB_CONTENTS_ID } }, ...args);
       };
@@ -60,15 +62,15 @@ vi.mock('electron', () => {
     }),
     on: vi.fn(),
     once: vi.fn(),
-    removeListener: vi.fn()
+    removeListener: vi.fn(),
   };
 
   const dialog = {
-    showOpenDialog: vi.fn()
+    showOpenDialog: vi.fn(),
   };
 
   const shell = {
-    openPath: vi.fn()
+    openPath: vi.fn(),
   };
 
   const app = {
@@ -83,20 +85,28 @@ vi.mock('electron', () => {
         callback();
         return Promise.resolve();
       },
-      catch: () => Promise.resolve()
+      catch: () => Promise.resolve(),
     })),
     on: vi.fn(),
     quit: vi.fn(),
-    exit: vi.fn()
+    exit: vi.fn(),
   };
 
   const screen = {
     getPrimaryDisplay: vi.fn(() => ({
-      workAreaSize: { width: 1920, height: 1080 }
-    }))
+      workAreaSize: { width: 1920, height: 1080 },
+    })),
   };
 
-  return { app, BrowserWindow, ipcMain, dialog, shell, screen, process: { on: vi.fn(), env: { NODE_ENV: 'test', ELECTRON_IS_DEV: 'true' } } };
+  return {
+    app,
+    BrowserWindow,
+    ipcMain,
+    dialog,
+    shell,
+    screen,
+    process: { on: vi.fn(), env: { NODE_ENV: 'test', ELECTRON_IS_DEV: 'true' } },
+  };
 });
 
 // Mock repositories module used by IPC handlers and startup code
@@ -104,7 +114,7 @@ vi.mock('@/repositories', () => {
   const mockDb = {
     prepare: vi.fn(() => ({ all: vi.fn(() => []), get: vi.fn(() => ({})), run: vi.fn(() => ({ changes: 1 })) })),
     exec: vi.fn(),
-    close: vi.fn()
+    close: vi.fn(),
   };
 
   return {
@@ -152,13 +162,20 @@ vi.mock('@/repositories', () => {
     getSessionByEmail: vi.fn(),
 
     // Migrations (used by bootstrap-database)
-    runMigrations: vi.fn(() => ({ success: true, migrationsRun: 0, fromVersion: 0, toVersion: 0 }))
+    runMigrations: vi.fn(() => ({ success: true, migrationsRun: 0, fromVersion: 0, toVersion: 0 })),
   };
 });
 
 vi.mock('@/services/timesheet-importer', () => {
   return {
-    submitTimesheets: vi.fn(async () => ({ ok: true, submittedIds: [1], removedIds: [], totalProcessed: 1, successCount: 1, removedCount: 0 }))
+    submitTimesheets: vi.fn(async () => ({
+      ok: true,
+      submittedIds: [1],
+      removedIds: [],
+      totalProcessed: 1,
+      successCount: 1,
+      removedCount: 0,
+    })),
   };
 });
 
@@ -173,9 +190,9 @@ vi.mock('../../shared/logger', () => {
     silly: vi.fn(),
     audit: vi.fn(),
     security: vi.fn(),
-    startTimer: vi.fn(() => ({ done: vi.fn() }))
+    startTimer: vi.fn(() => ({ done: vi.fn() })),
   });
-  
+
   return {
     initializeLogging: vi.fn(),
     configureLogger: vi.fn(),
@@ -183,7 +200,7 @@ vi.mock('../../shared/logger', () => {
     dbLogger: createMockLogger(),
     ipcLogger: createMockLogger(),
     importLogger: createMockLogger(),
-    botLogger: createMockLogger()
+    botLogger: createMockLogger(),
   };
 });
 
@@ -198,13 +215,18 @@ import { BrowserWindow } from 'electron';
 const mimps = imp as unknown as { submitTimesheets: ReturnType<typeof vi.fn> };
 
 // Create local reference to handlers after all imports
-const handlers: Record<string, (...args: unknown[]) => unknown> = globalThis.__test_handlers! as Record<string, (...args: unknown[]) => unknown>;
+const handlers: Record<string, (...args: unknown[]) => unknown> = globalThis.__test_handlers! as Record<
+  string,
+  (...args: unknown[]) => unknown
+>;
 
 describe('Electron IPC Handlers (main.ts)', () => {
   beforeEach(() => {
     // Reset stub return values between tests
     (imp as { submitTimesheets: { mockClear?: () => void } }).submitTimesheets.mockClear?.();
-    const repoTyped = repo as unknown as { getCredentials: { mockReset?: () => void; mockReturnValue?: (value: unknown) => void } };
+    const repoTyped = repo as unknown as {
+      getCredentials: { mockReset?: () => void; mockReturnValue?: (value: unknown) => void };
+    };
     repoTyped.getCredentials.mockReset?.();
     // Reset to default null value
     repoTyped.getCredentials.mockReturnValue?.(null);
@@ -214,23 +236,33 @@ describe('Electron IPC Handlers (main.ts)', () => {
     // Create a BrowserWindow with the proper webContents.id to match mock handlers
     const mockWindow = new BrowserWindow({});
     (mockWindow.webContents as { id: number }).id = 1; // Match MAIN_WEB_CONTENTS_ID
-    
+
     // Manually call registerIPCHandlers with the mock window
     registerAllIPCHandlers(mockWindow as any);
   });
 
   it('timesheet:submit returns error if credentials missing', async () => {
-    (repo as unknown as { getCredentials: { mockReturnValue: (value: unknown) => void } }).getCredentials.mockReturnValue(null);
-    const res = await handlers['timesheet:submit']('valid-token') as { submitResult?: { ok: boolean; successCount: number; removedCount: number; totalProcessed: number }; dbPath?: string; error?: string };
+    (
+      repo as unknown as { getCredentials: { mockReturnValue: (value: unknown) => void } }
+    ).getCredentials.mockReturnValue(null);
+    const res = (await handlers['timesheet:submit']('valid-token')) as {
+      submitResult?: { ok: boolean; successCount: number; removedCount: number; totalProcessed: number };
+      dbPath?: string;
+      error?: string;
+    };
     expect(res.error).toContain('credentials not found');
   });
 
   it('timesheet:submit submits with stored credentials', async () => {
     const repoTyped = repo as unknown as { getCredentials: { mockReturnValue: (value: unknown) => void } };
     repoTyped.getCredentials.mockReturnValue({ email: 'user@test', password: 'pw' });
-    
-    const res = await handlers['timesheet:submit']('valid-token') as { submitResult?: { ok: boolean; successCount: number; removedCount: number; totalProcessed: number }; dbPath?: string; error?: string };
-    
+
+    const res = (await handlers['timesheet:submit']('valid-token')) as {
+      submitResult?: { ok: boolean; successCount: number; removedCount: number; totalProcessed: number };
+      dbPath?: string;
+      error?: string;
+    };
+
     // DEBUG: Print response if error
     if (res && typeof res === 'object' && 'error' in res) {
       console.log('DEBUG: Handler error:', (res as { error: string }).error);
@@ -246,12 +278,10 @@ describe('Electron IPC Handlers (main.ts)', () => {
         password: 'pw',
         progressCallback: expect.any(Function),
         abortSignal: expect.anything(),
-        useMockWebsite: undefined
+        useMockWebsite: undefined,
       })
     );
     expect(res.submitResult).toBeDefined();
     expect(res.submitResult?.ok).toBe(true);
   });
 });
-
-

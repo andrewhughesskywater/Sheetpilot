@@ -1,17 +1,18 @@
 /**
  * @fileoverview Timesheet Grid Contract
- * 
+ *
  * Defines the interface for timesheet grid implementations.
  * Any grid implementation (Handsontable, AG Grid, HTML table, etc.) must provide this interface.
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025
  */
 
-import type { ReactElement } from 'react';
-import type { TimesheetRow } from '../../../backend/src/logic/timesheet-validation';
 import type { IPlugin } from '@sheetpilot/shared/plugin-types';
+import type { ReactElement } from 'react';
+
+import type { TimesheetRow } from '../../../backend/src/logic/timesheet-validation';
 
 /**
  * Validation result for a timesheet entry
@@ -86,4 +87,3 @@ export interface ITimesheetGrid extends IPlugin {
    */
   setData?(data: TimesheetRow[]): void;
 }
-

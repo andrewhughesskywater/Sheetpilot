@@ -1,14 +1,15 @@
-import { useMemo, useRef, useCallback } from 'react';
-import type { MutableRefObject } from 'react';
 import type { HotTableRef } from '@handsontable/react-wrapper';
-import type { ValidationError } from '../utils/timesheetGridUtils';
+import type { MutableRefObject } from 'react';
+import { useCallback,useMemo, useRef } from 'react';
+
 import { PluginRegistry } from '../../../../../shared/plugin-registry';
 import type { TimesheetUIPlugin } from '../../../../../shared/plugin-types';
 import { TIMESHEET_PLUGIN_NAMESPACES } from '../../../../../shared/plugin-types';
 import type { TimesheetRow } from '../timesheet.schema';
-import { computeDateInsert } from '../utils/timesheetGridUtils';
 import { saveColumnWidth } from '../utils/columnWidthStorage';
-import { saveRowHeight, loadRowHeight } from '../utils/rowHeightStorage';
+import { loadRowHeight,saveRowHeight } from '../utils/rowHeightStorage';
+import type { ValidationError } from '../utils/timesheetGridUtils';
+import { computeDateInsert } from '../utils/timesheetGridUtils';
 
 interface TableHandlersConfig {
   timesheetDraftData: TimesheetRow[];
@@ -44,7 +45,7 @@ export function useTableHandlers(config: TableHandlersConfig) {
     inFlightSavesRef: _inFlightSavesRef,
     saveAndReloadRow: _saveAndReloadRow,
     updateSaveButtonState: _updateSaveButtonState,
-    handleMacroKeyDown: _handleMacroKeyDown
+    handleMacroKeyDown: _handleMacroKeyDown,
   } = config;
   const weekdayPatternRef = useRef<boolean>(false);
   const previousSelectionRef = useRef<[number, number, number, number] | null>(null);
@@ -90,7 +91,7 @@ export function useTableHandlers(config: TableHandlersConfig) {
         }
       }
 
-      if (preventDefault || !!dateToInsert) {
+      if (preventDefault || Boolean(dateToInsert)) {
         event.preventDefault();
         return false;
       }
@@ -103,20 +104,23 @@ export function useTableHandlers(config: TableHandlersConfig) {
     previousSelectionRef.current = [row, col, row2, col2];
   }, []);
 
-  const handleAfterColumnResize = useCallback((newSize: number, column: number) => {
-    const hotInstance = _hotTableRef.current?.hotInstance;
-    if (!hotInstance) return;
+  const handleAfterColumnResize = useCallback(
+    (newSize: number, column: number) => {
+      const hotInstance = _hotTableRef.current?.hotInstance;
+      if (!hotInstance) return;
 
-    // Get the column data key from the column index using Handsontable's colToProp
-    try {
-      const prop = hotInstance.colToProp(column);
-      if (typeof prop === 'string') {
-        saveColumnWidth(prop, newSize);
+      // Get the column data key from the column index using Handsontable's colToProp
+      try {
+        const prop = hotInstance.colToProp(column);
+        if (typeof prop === 'string') {
+          saveColumnWidth(prop, newSize);
+        }
+      } catch (error) {
+        // Silently handle errors - column width persistence is non-critical
       }
-    } catch (error) {
-      // Silently handle errors - column width persistence is non-critical
-    }
-  }, [_hotTableRef]);
+    },
+    [_hotTableRef]
+  );
 
   const handleAfterRowResize = useCallback((newSize: number) => {
     // Save the row height (assuming uniform row height for all rows)

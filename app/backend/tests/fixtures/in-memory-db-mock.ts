@@ -1,6 +1,6 @@
 /**
  * @fileoverview In-Memory Database Mock for better-sqlite3
- * 
+ *
  * This provides a fully functional in-memory database mock that stores data
  * and supports SQL operations used by the database tests.
  */
@@ -34,7 +34,10 @@ class InMemoryDatabase {
     // Split by semicolon and remove comments, then process each statement
     // Remove SQL comments (-- style) before splitting
     const withoutComments = sql.replace(/--[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
-    const statements = withoutComments.split(';').map(s => s.trim()).filter(s => s.length > 0);
+    const statements = withoutComments
+      .split(';')
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
     for (const statement of statements) {
       this.executeSQL(statement);
     }
@@ -42,12 +45,13 @@ class InMemoryDatabase {
 
   prepare(sql: string): PreparedStatement {
     const normalizedSQL = sql.trim().replace(/\s+/g, ' ');
-    
+
     return {
-      run: (...args: unknown[]) => this.executeStatement(normalizedSQL, args, 'run') as { changes: number; lastInsertRowid?: number },
+      run: (...args: unknown[]) =>
+        this.executeStatement(normalizedSQL, args, 'run') as { changes: number; lastInsertRowid?: number },
       get: (...args: unknown[]) => this.executeStatement(normalizedSQL, args, 'get') as DatabaseRow | null,
       all: (...args: unknown[]) => this.executeStatement(normalizedSQL, args, 'all') as DatabaseRow[],
-      bind: (..._args: unknown[]) => this.prepare(sql)
+      bind: (..._args: unknown[]) => this.prepare(sql),
     };
   }
 
@@ -55,15 +59,18 @@ class InMemoryDatabase {
     return ((...args: T) => {
       // Transaction wrapper with rollback support
       const tableSnapshots = new Map<string, DatabaseRow[]>();
-      
+
       // Create snapshots of all tables before transaction
       for (const [tableName, tableData] of this.tables.entries()) {
         // Deep copy rows to ensure modifications to row objects don't affect snapshot
         // We use spread to shallow copy the row object, which is sufficient since
         // database values are primitives (or treated as immutable replacements)
-        tableSnapshots.set(tableName, tableData.map(row => ({ ...row })));
+        tableSnapshots.set(
+          tableName,
+          tableData.map((row) => ({ ...row }))
+        );
       }
-      
+
       try {
         return callback(...args);
       } catch (error) {
@@ -96,7 +103,7 @@ class InMemoryDatabase {
 
   private executeSQL(sql: string): void {
     const normalizedSQL = sql.trim().replace(/\s+/g, ' ').toUpperCase();
-    
+
     // CREATE TABLE
     if (normalizedSQL.startsWith('CREATE TABLE')) {
       this.createTable(sql);
@@ -129,7 +136,7 @@ class InMemoryDatabase {
       name: tableName,
       columns: [],
       indexes: [],
-      constraints: []
+      constraints: [],
     };
 
     // Handle well-known tables with hard-coded schemas for accuracy
@@ -147,7 +154,7 @@ class InMemoryDatabase {
         { name: 'detail_charge_code', type: 'TEXT', nullable: true },
         { name: 'task_description', type: 'TEXT', nullable: true },
         { name: 'status', type: 'TEXT', nullable: true },
-        { name: 'submitted_at', type: 'DATETIME', nullable: true }
+        { name: 'submitted_at', type: 'DATETIME', nullable: true },
       ];
     } else if (tableName === 'credentials') {
       schema.columns = [
@@ -156,7 +163,7 @@ class InMemoryDatabase {
         { name: 'email', type: 'TEXT', nullable: false },
         { name: 'password', type: 'TEXT', nullable: false },
         { name: 'created_at', type: 'DATETIME', nullable: true },
-        { name: 'updated_at', type: 'DATETIME', nullable: true }
+        { name: 'updated_at', type: 'DATETIME', nullable: true },
       ];
     } else if (tableName === 'sessions') {
       schema.columns = [
@@ -164,7 +171,7 @@ class InMemoryDatabase {
         { name: 'email', type: 'TEXT', nullable: false },
         { name: 'expires_at', type: 'DATETIME', nullable: true },
         { name: 'is_admin', type: 'BOOLEAN', nullable: true },
-        { name: 'created_at', type: 'DATETIME', nullable: true }
+        { name: 'created_at', type: 'DATETIME', nullable: true },
       ];
     } else {
       // Generic parser for other tables
@@ -184,7 +191,7 @@ class InMemoryDatabase {
     // Check for unique constraints
     const uniqueMatch = sql.match(/UNIQUE\s*\(([^)]+)\)/i);
     if (uniqueMatch) {
-      const columns = uniqueMatch[1]?.split(',').map(c => c.trim().toLowerCase()) || [];
+      const columns = uniqueMatch[1]?.split(',').map((c) => c.trim().toLowerCase()) || [];
       schema.constraints.push({ type: 'UNIQUE', columns });
     }
 
@@ -192,7 +199,9 @@ class InMemoryDatabase {
   }
 
   private createIndex(sql: string): void {
-    const indexMatch = sql.match(/CREATE\s+(?:UNIQUE\s+)?INDEX\s+IF NOT EXISTS\s+(\w+)|CREATE\s+(?:UNIQUE\s+)?INDEX\s+(\w+)/i);
+    const indexMatch = sql.match(
+      /CREATE\s+(?:UNIQUE\s+)?INDEX\s+IF NOT EXISTS\s+(\w+)|CREATE\s+(?:UNIQUE\s+)?INDEX\s+(\w+)/i
+    );
     if (!indexMatch) return;
     const indexName = (indexMatch[1] || indexMatch[2])?.toLowerCase();
     if (!indexName) return;
@@ -221,7 +230,11 @@ class InMemoryDatabase {
     this.nextRowId.delete(tableName);
   }
 
-  private executeStatement(sql: string, args: unknown[], operation: 'run' | 'get' | 'all'): { changes: number; lastInsertRowid?: number } | DatabaseRow[] | DatabaseRow | null {
+  private executeStatement(
+    sql: string,
+    args: unknown[],
+    operation: 'run' | 'get' | 'all'
+  ): { changes: number; lastInsertRowid?: number } | DatabaseRow[] | DatabaseRow | null {
     const normalizedSQL = sql.trim().replace(/\s+/g, ' ').toUpperCase();
 
     // INSERT OR REPLACE
@@ -269,16 +282,16 @@ class InMemoryDatabase {
 
     const table = this.tables.get(tableName)!;
     const schema = this.schemas.get(tableName);
-    
-    // Extract column names from INSERT statement  
+
+    // Extract column names from INSERT statement
     const insertColMatch = sql.match(/INSERT OR REPLACE INTO\s+\w+\s*\(([^)]+)\)/i);
     if (!insertColMatch) return { changes: 0 };
-    const columns = insertColMatch[1]?.split(',').map(c => c.trim().toLowerCase()) || [];
+    const columns = insertColMatch[1]?.split(',').map((c) => c.trim().toLowerCase()) || [];
 
     // Extract VALUES clause to handle hardcoded values and parameters
     const valuesMatch = sql.match(/VALUES\s*\(([^)]+)\)/i);
     if (!valuesMatch) return { changes: 0 };
-    const values = valuesMatch[1]?.split(',').map(v => v.trim()) || [];
+    const values = valuesMatch[1]?.split(',').map((v) => v.trim()) || [];
 
     // Create row
     const row: DatabaseRow = {};
@@ -293,7 +306,10 @@ class InMemoryDatabase {
           row[col] = null;
         }
         argIndex++;
-      } else if (valueStr?.toLowerCase().includes('datetime') || valueStr?.toLowerCase().includes('current_timestamp')) {
+      } else if (
+        valueStr?.toLowerCase().includes('datetime') ||
+        valueStr?.toLowerCase().includes('current_timestamp')
+      ) {
         // Function call - use current timestamp
         row[col] = new Date().toISOString();
       } else if (valueStr && !isNaN(Number(valueStr))) {
@@ -312,7 +328,7 @@ class InMemoryDatabase {
     // For other tables, check by 'id' column
     const idColumn = 'id';
     if (row[idColumn] !== undefined && row[idColumn] !== null) {
-      const existingIndex = table.findIndex(r => r[idColumn] === row[idColumn]);
+      const existingIndex = table.findIndex((r) => r[idColumn] === row[idColumn]);
       if (existingIndex !== -1) {
         // Replace existing row
         table[existingIndex] = row;
@@ -334,7 +350,7 @@ class InMemoryDatabase {
 
     // No existing row, insert new one
     // Handle auto-increment ID if not provided
-    if (!row['id'] && schema?.columns.some(c => c.name === 'id' && c.type === 'INTEGER')) {
+    if (!row['id'] && schema?.columns.some((c) => c.name === 'id' && c.type === 'INTEGER')) {
       const nextId = this.nextRowId.get(tableName) || 1;
       row['id'] = nextId;
       this.nextRowId.set(tableName, nextId + 1);
@@ -360,19 +376,19 @@ class InMemoryDatabase {
 
     const table = this.tables.get(tableName)!;
     const schema = this.schemas.get(tableName);
-    
+
     // Handle ON CONFLICT
     if (sql.includes('ON CONFLICT')) {
       const conflictMatch = sql.match(/ON CONFLICT\s*\(([^)]+)\)/i);
       if (conflictMatch) {
-        const conflictColumns = conflictMatch[1]?.split(',').map(c => c.trim().toLowerCase()) || [];
+        const conflictColumns = conflictMatch[1]?.split(',').map((c) => c.trim().toLowerCase()) || [];
         // Get INSERT column list to map conflict columns to argument indices
         const insertColMatch = sql.match(/\(([^)]+)\)\s*VALUES/i);
         if (insertColMatch) {
-          const insertColumns = insertColMatch[1]?.split(',').map(c => c.trim().toLowerCase()) || [];
+          const insertColumns = insertColMatch[1]?.split(',').map((c) => c.trim().toLowerCase()) || [];
           // Check if duplicate exists by comparing conflict column values
-          const existing = table.find(row => {
-            return conflictColumns.every(conflictCol => {
+          const existing = table.find((row) => {
+            return conflictColumns.every((conflictCol) => {
               const colIndex = insertColumns.indexOf(conflictCol);
               if (colIndex === -1 || colIndex >= args.length) return false;
               const conflictValue = args[colIndex];
@@ -386,14 +402,14 @@ class InMemoryDatabase {
       }
     }
 
-    // Extract column names from INSERT statement  
+    // Extract column names from INSERT statement
     const insertColMatch = sql.match(/INSERT INTO\s+\w+\s*\(([^)]+)\)/i);
     if (!insertColMatch) return { changes: 0 };
-    const columns = insertColMatch[1]?.split(',').map(c => c.trim().toLowerCase()) || [];
+    const columns = insertColMatch[1]?.split(',').map((c) => c.trim().toLowerCase()) || [];
 
     // Extract VALUES clause to handle hardcoded values and parameters
     const valuesMatch = sql.match(/VALUES\s*\(([^)]+)\)/i);
-    const values = valuesMatch ? valuesMatch[1]?.split(',').map(v => v.trim()) || [] : [];
+    const values = valuesMatch ? valuesMatch[1]?.split(',').map((v) => v.trim()) || [] : [];
 
     // Create row
     const row: DatabaseRow = {};
@@ -410,7 +426,10 @@ class InMemoryDatabase {
             row[col] = null;
           }
           argIndex++;
-        } else if (valueStr?.toLowerCase().includes('datetime') || valueStr?.toLowerCase().includes('current_timestamp')) {
+        } else if (
+          valueStr?.toLowerCase().includes('datetime') ||
+          valueStr?.toLowerCase().includes('current_timestamp')
+        ) {
           // Function call - use current timestamp
           row[col] = new Date().toISOString();
         } else if (valueStr?.toUpperCase() === 'NULL') {
@@ -438,7 +457,7 @@ class InMemoryDatabase {
     if (tableName === 'timesheet') {
       const timeIn = row['time_in'] !== undefined ? Number(row['time_in']) : undefined;
       const timeOut = row['time_out'] !== undefined ? Number(row['time_out']) : undefined;
-      
+
       if (timeIn !== undefined) {
         // CHECK(time_in between 0 and 1439)
         if (timeIn < 0 || timeIn > 1439) {
@@ -449,7 +468,7 @@ class InMemoryDatabase {
           throw new Error('CHECK constraint failed: time_in must be divisible by 15');
         }
       }
-      
+
       if (timeOut !== undefined) {
         // CHECK(time_out between 1 and 1440)
         if (timeOut < 1 || timeOut > 1440) {
@@ -460,7 +479,7 @@ class InMemoryDatabase {
           throw new Error('CHECK constraint failed: time_out must be divisible by 15');
         }
       }
-      
+
       if (timeIn !== undefined && timeOut !== undefined) {
         // CHECK(time_out > time_in)
         if (timeOut <= timeIn) {
@@ -470,7 +489,7 @@ class InMemoryDatabase {
     }
 
     // Handle auto-increment ID
-    if (!row['id'] && schema?.columns.some(c => c.name === 'id' && c.type === 'INTEGER')) {
+    if (!row['id'] && schema?.columns.some((c) => c.name === 'id' && c.type === 'INTEGER')) {
       const nextId = this.nextRowId.get(tableName) || 1;
       row['id'] = nextId;
       this.nextRowId.set(tableName, nextId + 1);
@@ -500,12 +519,12 @@ class InMemoryDatabase {
     if (sql.toUpperCase().includes('PRAGMA')) {
       return this.handlePragma(sql, args, operation);
     }
-    
+
     // Check for sqlite_master BEFORE parsing table name
     if (sql.includes('sqlite_master')) {
       return this.handleSqliteMaster(sql, operation);
     }
-    
+
     // Parse table name
     const tableMatch = sql.match(/FROM\s+(\w+)/i);
     if (!tableMatch) {
@@ -524,16 +543,19 @@ class InMemoryDatabase {
       if (whereMatch) {
         const whereClause = whereMatch[1];
         if (whereClause) {
-          results = results.filter(row => this.matchesWhere(row, whereClause, args));
+          results = results.filter((row) => this.matchesWhere(row, whereClause, args));
         }
       }
     }
 
-      // Apply ORDER BY
+    // Apply ORDER BY
     if (sql.includes('ORDER BY')) {
       const orderMatch = sql.match(/ORDER BY\s+([^,\s]+(?:\s+DESC)?)/i);
       if (orderMatch && orderMatch[1]) {
-        const orderCol = orderMatch[1].trim().replace(/\s+DESC/i, '').toLowerCase();
+        const orderCol = orderMatch[1]
+          .trim()
+          .replace(/\s+DESC/i, '')
+          .toLowerCase();
         if (orderCol.length > 0) {
           results.sort((a, b) => {
             const aVal = a[orderCol];
@@ -551,18 +573,22 @@ class InMemoryDatabase {
     if (sql.includes('GROUP BY')) {
       if (sql.includes('HAVING COUNT(*) > 1')) {
         // Duplicate detection
-        const groupCols = sql.match(/GROUP BY\s+(.+?)(?:\s+HAVING|$)/i)?.[1]?.split(',').map(c => c.trim().toLowerCase()) || [];
+        const groupCols =
+          sql
+            .match(/GROUP BY\s+(.+?)(?:\s+HAVING|$)/i)?.[1]
+            ?.split(',')
+            .map((c) => c.trim().toLowerCase()) || [];
         const grouped = new Map<string, DatabaseRow[]>();
-        results.forEach(row => {
-          const key = groupCols.map(col => String(row[col] || '')).join('|');
+        results.forEach((row) => {
+          const key = groupCols.map((col) => String(row[col] || '')).join('|');
           if (!grouped.has(key)) grouped.set(key, []);
           grouped.get(key)!.push(row);
         });
         results = Array.from(grouped.values())
-          .filter(group => group.length > 1)
-          .map(group => ({ ...group[0]!, count: group.length }));
+          .filter((group) => group.length > 1)
+          .map((group) => ({ ...group[0]!, count: group.length }));
         // Return the filtered results directly - don't run COUNT(*) aggregation after this
-        return operation === 'get' ? (results[0] || null) : results;
+        return operation === 'get' ? results[0] || null : results;
       }
     }
 
@@ -578,10 +604,17 @@ class InMemoryDatabase {
     // Select specific columns
     const selectMatch = sql.match(/SELECT\s+(.+?)\s+FROM/i);
     if (selectMatch && !selectMatch[1]?.includes('*')) {
-      const selectCols = selectMatch[1]?.split(',').map(c => c.trim().toLowerCase().replace(/as\s+\w+/i, '').trim()) || [];
-      results = results.map(row => {
+      const selectCols =
+        selectMatch[1]?.split(',').map((c) =>
+          c
+            .trim()
+            .toLowerCase()
+            .replace(/as\s+\w+/i, '')
+            .trim()
+        ) || [];
+      results = results.map((row) => {
         const newRow: DatabaseRow = {};
-        selectCols.forEach(col => {
+        selectCols.forEach((col) => {
           if (row[col] !== undefined) newRow[col] = row[col];
         });
         return newRow;
@@ -597,7 +630,7 @@ class InMemoryDatabase {
   private handleSqliteMaster(sql: string, operation: 'get' | 'all'): DatabaseRow[] | DatabaseRow | null {
     const results: DatabaseRow[] = [];
     const normalizedSql = sql.toLowerCase();
-    
+
     if (normalizedSql.includes("type='table'") || normalizedSql.includes('type="table"')) {
       // Return table names
       for (const tableName of this.tables.keys()) {
@@ -625,7 +658,7 @@ class InMemoryDatabase {
         }
         results.push({ name: tableName, type: 'table', sql: tableSql });
       }
-      
+
       // Apply WHERE clause filtering if present
       if (sql.includes('WHERE')) {
         const whereMatch = sql.match(/WHERE\s+(.+?)(?:\s+ORDER|\s+GROUP|$)/i);
@@ -636,17 +669,17 @@ class InMemoryDatabase {
             const nameMatch = whereClause.match(/name\s*=\s*['"]([^'"]+)['"]/i);
             if (nameMatch) {
               const targetName = nameMatch[1].toLowerCase();
-              const filtered = results.filter(r => r['name'] === targetName);
-              return operation === 'get' ? (filtered[0] || null) : filtered;
+              const filtered = results.filter((r) => r['name'] === targetName);
+              return operation === 'get' ? filtered[0] || null : filtered;
             }
             // Use general WHERE matching for other conditions
-            const filtered = results.filter(row => this.matchesWhere(row, whereClause, []));
-            return operation === 'get' ? (filtered[0] || null) : filtered;
+            const filtered = results.filter((row) => this.matchesWhere(row, whereClause, []));
+            return operation === 'get' ? filtered[0] || null : filtered;
           }
         }
       }
     }
-    
+
     if (normalizedSql.includes("type='index'") || normalizedSql.includes('type="index"')) {
       // Return index names
       for (const [tableName, indexSet] of this.indexes.entries()) {
@@ -659,23 +692,23 @@ class InMemoryDatabase {
             const colName = indexName.replace('idx_timesheet_', '').replace('idx_', '');
             indexSql = `CREATE INDEX IF NOT EXISTS ${indexName} ON ${tableName}(${colName})`;
           }
-          results.push({ 
-            name: indexName, 
-            type: 'index', 
+          results.push({
+            name: indexName,
+            type: 'index',
             sql: indexSql,
-            tbl_name: tableName
+            tbl_name: tableName,
           });
         }
       }
-      
+
       // Filter by name if specified
       const nameMatch = normalizedSql.match(/name=['"](\w+)['"]/);
       if (nameMatch && nameMatch[1]) {
-        const filtered = results.filter(r => r['name'] === nameMatch[1]);
-        return operation === 'get' ? (filtered[0] || null) : filtered;
+        const filtered = results.filter((r) => r['name'] === nameMatch[1]);
+        return operation === 'get' ? filtered[0] || null : filtered;
       }
     }
-    
+
     if (sql.includes('table_info')) {
       // Return column info
       const tableMatch = sql.match(/table_info\((\w+)\)/i);
@@ -689,13 +722,13 @@ class InMemoryDatabase {
             type: col.type,
             notnull: col.nullable === false ? 1 : 0,
             dflt_value: col.default ?? null,
-            pk: col.name === 'id' ? 1 : 0
+            pk: col.name === 'id' ? 1 : 0,
           }));
         }
       }
     }
-    
-    return operation === 'get' ? (results[0] || null) : results;
+
+    return operation === 'get' ? results[0] || null : results;
   }
 
   private handleUpdate(sql: string, args: unknown[]): { changes: number } {
@@ -705,35 +738,35 @@ class InMemoryDatabase {
     if (!tableName || !this.tables.has(tableName)) return { changes: 0 };
 
     const table = this.tables.get(tableName)!;
-    
+
     // Extract SET clause
     const setMatch = sql.match(/SET\s+(.+?)(?:\s+WHERE|$)/i);
     if (!setMatch) return { changes: 0 };
     const setClause = setMatch[1];
     if (!setClause) return { changes: 0 };
-    
+
     // Extract WHERE clause
     const whereMatch = sql.match(/WHERE\s+(.+?)(?:\s+ORDER|$)/i);
     const whereClause = whereMatch ? whereMatch[1] : '';
-    
+
     // Determine parameter mapping
     // Count placeholders in SET clause to find offset for WHERE clause parameters
     const setParamCount = (setClause.match(/\?/g) || []).length;
     const whereArgs = args.slice(setParamCount);
-    
+
     // Parse SET updates and prepare values
-    const updates: Array<{ col: string, val: unknown }> = [];
+    const updates: Array<{ col: string; val: unknown }> = [];
     let setParamIndex = 0;
-    
+
     // Split by comma, but handle careful parsing to avoid splitting inside functions if any (simple split for now)
-    const setParts = setClause.split(',').map(s => s.trim());
-    
-    setParts.forEach(part => {
-      const [colRaw, valRaw] = part.split('=').map(s => s.trim());
+    const setParts = setClause.split(',').map((s) => s.trim());
+
+    setParts.forEach((part) => {
+      const [colRaw, valRaw] = part.split('=').map((s) => s.trim());
       if (colRaw && valRaw) {
         const col = colRaw.toLowerCase();
         let val: unknown;
-        
+
         if (valRaw === '?') {
           val = args[setParamIndex++];
         } else if (valRaw.toUpperCase() === 'NULL') {
@@ -749,14 +782,14 @@ class InMemoryDatabase {
     });
 
     // Filter rows to update
-    const rowsToUpdate = table.filter(row => {
+    const rowsToUpdate = table.filter((row) => {
       if (!whereClause) return true;
       return this.matchesWhere(row, whereClause, whereArgs);
     });
-    
+
     // Apply updates
-    rowsToUpdate.forEach(row => {
-      updates.forEach(update => {
+    rowsToUpdate.forEach((row) => {
+      updates.forEach((update) => {
         row[update.col] = update.val;
       });
     });
@@ -779,17 +812,31 @@ class InMemoryDatabase {
       // Handle IN clause with placeholders (WHERE id IN (?, ?, ?))
       if (whereMatch[1]?.includes('IN') && args.length > 0) {
         // Use args array directly (they're the IDs to delete)
-        const idsToDelete = args.map(id => Number(id)).filter(id => !isNaN(id));
-        this.tables.set(tableName, table.filter(row => !idsToDelete.includes(Number(row['id']))));
+        const idsToDelete = args.map((id) => Number(id)).filter((id) => !isNaN(id));
+        this.tables.set(
+          tableName,
+          table.filter((row) => !idsToDelete.includes(Number(row['id'])))
+        );
       } else if (whereMatch[1]?.includes('IN')) {
         // Fallback: try to parse from SQL string if no args
         const inMatch = whereMatch[1].match(/IN\s*\(([^)]+)\)/i);
         if (inMatch) {
-          const ids = inMatch[1] ? inMatch[1].split(',').map(id => Number(id.trim())).filter(id => !isNaN(id)) : [];
-          this.tables.set(tableName, table.filter(row => !ids.includes(Number(row['id']))));
+          const ids = inMatch[1]
+            ? inMatch[1]
+                .split(',')
+                .map((id) => Number(id.trim()))
+                .filter((id) => !isNaN(id))
+            : [];
+          this.tables.set(
+            tableName,
+            table.filter((row) => !ids.includes(Number(row['id'])))
+          );
         }
       } else if (whereMatch[1]) {
-        this.tables.set(tableName, table.filter(row => !this.matchesWhere(row, whereMatch[1]!, args)));
+        this.tables.set(
+          tableName,
+          table.filter((row) => !this.matchesWhere(row, whereMatch[1]!, args))
+        );
       }
     } else {
       // No WHERE clause - delete all
@@ -812,9 +859,9 @@ class InMemoryDatabase {
           type: col.type,
           notnull: col.nullable === false ? 1 : 0,
           dflt_value: col.default ?? null,
-          pk: col.name === 'id' ? 1 : 0
+          pk: col.name === 'id' ? 1 : 0,
         }));
-        return operation === 'get' ? (result[0] || null) : result;
+        return operation === 'get' ? result[0] || null : result;
       }
     }
     return operation === 'get' ? null : [];
@@ -823,14 +870,14 @@ class InMemoryDatabase {
   private matchesWhere(row: DatabaseRow, whereClause: string, args: unknown[]): boolean {
     // Handle complex WHERE clauses with AND/OR
     // For now, handle common patterns used in tests
-    
+
     // Handle: id IN (...) AND (status IS NULL OR status = 'in_progress')
     if (whereClause.includes('AND')) {
       const conditions = whereClause.split(/\s+AND\s+/i);
       let argIndex = 0;
-      return conditions.every(cond => {
+      return conditions.every((cond) => {
         const trimmedCond = cond.trim();
-        
+
         // Check if this condition has a parenthesized OR clause
         if (trimmedCond.includes('(') && trimmedCond.includes('OR')) {
           const orGroupMatch = trimmedCond.match(/\(([^)]+)\)/);
@@ -838,10 +885,10 @@ class InMemoryDatabase {
             const orGroup = orGroupMatch[1];
             const orConditions = orGroup?.split(/\s+OR\s+/i) || [];
             // OR conditions typically don't consume args (they're usually IS NULL checks)
-            return orConditions.some(orCond => this.matchesSingleCondition(row, orCond.trim(), []));
+            return orConditions.some((orCond) => this.matchesSingleCondition(row, orCond.trim(), []));
           }
         }
-        
+
         // Count how many placeholders this condition uses
         const placeholderCount = (trimmedCond.match(/\?/g) || []).length;
         const conditionArgs = args.slice(argIndex, argIndex + placeholderCount);
@@ -849,7 +896,7 @@ class InMemoryDatabase {
         return this.matchesSingleCondition(row, trimmedCond, conditionArgs);
       });
     }
-    
+
     // Handle: condition1 OR condition2 (parentheses)
     if (whereClause.includes('OR') && whereClause.includes('(')) {
       // Extract parenthesized OR group: (status IS NULL OR status = 'in_progress')
@@ -857,13 +904,13 @@ class InMemoryDatabase {
       if (orGroupMatch) {
         const orGroup = orGroupMatch[1];
         const orConditions = orGroup?.split(/\s+OR\s+/i) || [];
-        return orConditions.some(cond => this.matchesSingleCondition(row, cond.trim(), args));
+        return orConditions.some((cond) => this.matchesSingleCondition(row, cond.trim(), args));
       }
     }
-    
+
     return this.matchesSingleCondition(row, whereClause, args);
   }
-  
+
   private matchesSingleCondition(row: DatabaseRow, condition: string, args: unknown[]): boolean {
     // IS NULL
     if (condition.includes('IS NULL')) {
@@ -873,7 +920,7 @@ class InMemoryDatabase {
         return row[col] === null || row[col] === undefined;
       }
     }
-    
+
     // IS NOT NULL
     if (condition.includes('IS NOT NULL')) {
       const colMatch = condition.match(/(\w+)\s+IS NOT NULL/i);
@@ -882,26 +929,26 @@ class InMemoryDatabase {
         return row[col] !== null && row[col] !== undefined;
       }
     }
-    
+
     // IN clause
     if (condition.includes('IN')) {
       const inMatch = condition.match(/(\w+)\s+IN\s*\(([^)]+)\)/i);
       if (inMatch) {
         const col = inMatch[1]?.toLowerCase();
-        const values = inMatch[2]?.split(',').map(v => v.trim().replace(/'/g, '')) || [];
-        const placeholderCount = values.filter(v => v === '?').length;
+        const values = inMatch[2]?.split(',').map((v) => v.trim().replace(/'/g, '')) || [];
+        const placeholderCount = values.filter((v) => v === '?').length;
         if (placeholderCount > 0 && args.length > 0) {
           // Args are spread as individual values: [1, 2, 3] not [[1, 2, 3]]
-          const idList = args.slice(0, placeholderCount).map(id => Number(id));
+          const idList = args.slice(0, placeholderCount).map((id) => Number(id));
           return idList.includes(Number(row[col || '']));
         }
         return values.includes(String(row[col || '']));
       }
     }
-    
+
     // Equality
     if (condition.includes('=')) {
-      const parts = condition.split('=').map(s => s.trim());
+      const parts = condition.split('=').map((s) => s.trim());
       if (parts.length === 2 && parts[0] && parts[1]) {
         const col = parts[0].replace(/^[^.]+\./, '').toLowerCase();
         let value = parts[1];
@@ -913,10 +960,9 @@ class InMemoryDatabase {
         return String(row[col]) === value;
       }
     }
-    
+
     return true; // Default to match if we can't parse
   }
-
 }
 
 // Global store for database instances by path
@@ -934,4 +980,3 @@ export function resetDatabaseInstances(): void {
 }
 
 export { InMemoryDatabase };
-

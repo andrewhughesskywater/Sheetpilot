@@ -1,9 +1,9 @@
 /**
  * @fileoverview Full Workflow Integration Tests
- * 
+ *
  * Tests the complete user workflow from login through data entry, save, and submit.
  * Ensures end-to-end functionality works correctly.
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025
@@ -19,7 +19,7 @@ vi.mock('../../../shared/logger', () => ({
   appLogger: {
     info: vi.fn(),
     warn: vi.fn(),
-    error: vi.fn()
+    error: vi.fn(),
   },
   dbLogger: {
     info: vi.fn(),
@@ -27,8 +27,8 @@ vi.mock('../../../shared/logger', () => ({
     error: vi.fn(),
     verbose: vi.fn(),
     audit: vi.fn(),
-    startTimer: vi.fn(() => ({ done: vi.fn() }))
-  }
+    startTimer: vi.fn(() => ({ done: vi.fn() })),
+  },
 }));
 
 import { setDbPath, ensureSchema, openDb, shutdownDatabase } from '@/repositories';
@@ -51,7 +51,7 @@ describe('Full Workflow Integration', () => {
     } catch {
       // Ignore
     }
-    
+
     if (fs.existsSync(testDbPath)) {
       try {
         fs.unlinkSync(testDbPath);
@@ -84,7 +84,7 @@ describe('Full Workflow Integration', () => {
         project: 'Test Project',
         tool: 'Test Tool',
         detailChargeCode: 'EPR1',
-        taskDescription: 'Test task'
+        taskDescription: 'Test task',
       };
 
       const insertResult = insertTimesheetEntry(entry);
@@ -110,7 +110,7 @@ describe('Full Workflow Integration', () => {
         timeIn: 540,
         timeOut: 1020,
         project: 'Session Test',
-        taskDescription: 'Task'
+        taskDescription: 'Task',
       });
 
       // Session 2: New session, data should still exist
@@ -165,8 +165,10 @@ describe('Full Workflow Integration', () => {
 
       // Manually expire session
       const db = openDb();
-      db.prepare('UPDATE sessions SET expires_at = ? WHERE session_token = ?')
-        .run(new Date(Date.now() - 1000).toISOString(), token);
+      db.prepare('UPDATE sessions SET expires_at = ? WHERE session_token = ?').run(
+        new Date(Date.now() - 1000).toISOString(),
+        token
+      );
       db.close();
 
       // Session should be invalid
@@ -199,14 +201,13 @@ describe('Full Workflow Integration', () => {
         timeIn: 540,
         timeOut: 600,
         project: 'Private Data',
-        taskDescription: 'Sensitive task'
+        taskDescription: 'Sensitive task',
       });
 
       const pending = getPendingTimesheetEntries();
 
       // Should get all pending, but filtered by session in real app
-      expect(pending.some(e => e.project === 'Private Data')).toBe(true);
+      expect(pending.some((e) => e.project === 'Private Data')).toBe(true);
     });
   });
 });
-

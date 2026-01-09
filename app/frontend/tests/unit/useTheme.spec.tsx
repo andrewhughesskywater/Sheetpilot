@@ -8,7 +8,7 @@ vi.mock('@/utils/theme-manager', () => ({
   initializeTheme: vi.fn(() => 'auto'),
   setThemeMode: vi.fn(),
   getStoredTheme: vi.fn(() => 'auto'),
-  getEffectiveTheme: vi.fn((mode: string) => mode === 'dark' ? 'dark' : 'light')
+  getEffectiveTheme: vi.fn((mode: string) => (mode === 'dark' ? 'dark' : 'light')),
 }));
 
 describe('useTheme', () => {
@@ -17,7 +17,7 @@ describe('useTheme', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     // Mock matchMedia
     originalMatchMedia = window.matchMedia;
     mockMatchMedia = vi.fn((query: string) => ({
@@ -28,7 +28,7 @@ describe('useTheme', () => {
       removeListener: vi.fn(),
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
-      dispatchEvent: vi.fn()
+      dispatchEvent: vi.fn(),
     })) as typeof window.matchMedia;
     window.matchMedia = mockMatchMedia;
   });
@@ -46,7 +46,7 @@ describe('useTheme', () => {
 
   it('should return effective theme', () => {
     vi.mocked(themeManager.getEffectiveTheme).mockReturnValue('dark');
-    
+
     const { result } = renderHook(() => useTheme());
 
     expect(result.current.effectiveTheme).toBe('dark');
@@ -56,7 +56,7 @@ describe('useTheme', () => {
 
   it('should return light theme when effective theme is light', () => {
     vi.mocked(themeManager.getEffectiveTheme).mockReturnValue('light');
-    
+
     const { result } = renderHook(() => useTheme());
 
     expect(result.current.effectiveTheme).toBe('light');
@@ -107,7 +107,7 @@ describe('useTheme', () => {
       removeListener: vi.fn(),
       addEventListener: addEventListenerSpy,
       removeEventListener: vi.fn(),
-      dispatchEvent: vi.fn()
+      dispatchEvent: vi.fn(),
     })) as typeof window.matchMedia;
 
     const { unmount } = renderHook(() => useTheme());
@@ -133,7 +133,7 @@ describe('useTheme', () => {
       removeListener: vi.fn(),
       addEventListener: addEventListenerSpy,
       removeEventListener: vi.fn(),
-      dispatchEvent: vi.fn()
+      dispatchEvent: vi.fn(),
     })) as typeof window.matchMedia;
 
     vi.mocked(themeManager.getStoredTheme).mockReturnValue('auto');
@@ -152,5 +152,3 @@ describe('useTheme', () => {
     expect(result.current.effectiveTheme).toBe('dark');
   });
 });
-
-

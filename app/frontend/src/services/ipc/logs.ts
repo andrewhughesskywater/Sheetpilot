@@ -17,5 +17,3 @@ export async function exportLogs(
   }
   return window.logs.exportLogs(token, logPath, format);
 }
-
-

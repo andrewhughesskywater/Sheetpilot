@@ -1,6 +1,6 @@
-import { forwardRef } from 'react';
-import { HotTable } from '@handsontable/react-wrapper';
 import type { HotTableRef } from '@handsontable/react-wrapper';
+import { HotTable } from '@handsontable/react-wrapper';
+import { forwardRef } from 'react';
 
 // Handsontable event handler types
 type BeforeRemoveRowHandler = (index: number, amount: number) => void;
@@ -33,16 +33,17 @@ interface TimesheetHotTableProps {
   rowHeight?: number;
 }
 
-export const TimesheetHotTable = forwardRef<HotTableRef | null, TimesheetHotTableProps>(function TimesheetHotTable(
+export const TimesheetHotTable = forwardRef<HotTableRef | null, TimesheetHotTableProps>((
   { data, columns, cells, handlers, rowHeight },
   ref
-) {
+) => {
   // Extract column headers from column definitions as strings
-  const colHeaders = columns?.map((col: Record<string, unknown>) => {
-    const title = col['title'];
-    const dataKey = col['data'];
-    return typeof title === 'string' ? title : (typeof dataKey === 'string' ? dataKey : '');
-  }) || true;
+  const colHeaders =
+    columns?.map((col: Record<string, unknown>) => {
+      const title = col['title'];
+      const dataKey = col['data'];
+      return typeof title === 'string' ? title : typeof dataKey === 'string' ? dataKey : '';
+    }) || true;
 
   return (
     <HotTable
@@ -61,7 +62,7 @@ export const TimesheetHotTable = forwardRef<HotTableRef | null, TimesheetHotTabl
       afterSelection={handlers.afterSelection}
       afterColumnResize={handlers.afterColumnResize}
       afterRowResize={handlers.afterRowResize}
-      rowHeights={rowHeight ? (() => rowHeight) : undefined}
+      rowHeights={rowHeight ? () => rowHeight : undefined}
       colHeaders={colHeaders as unknown as boolean | string[] | ((index: number) => string)}
       themeName="ht-theme-horizon"
       width="100%"

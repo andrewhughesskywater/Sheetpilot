@@ -1,9 +1,9 @@
 /**
  * @fileoverview New User Journey E2E Tests
- * 
+ *
  * Tests the complete first-time user experience from account creation
  * through initial data entry and first submission.
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025
@@ -16,14 +16,14 @@ describe('New User Journey E2E', () => {
     it('should show login dialog for new user', async () => {
       const hasExistingCredentials = false;
       const shouldShowLogin = !hasExistingCredentials;
-      
+
       expect(shouldShowLogin).toBe(true);
     });
 
     it('should display "Create Account" for first-time users', () => {
       const isFirstTime = true;
       const title = isFirstTime ? 'Create Account' : 'Login to SheetPilot';
-      
+
       expect(title).toBe('Create Account');
     });
 
@@ -35,9 +35,9 @@ describe('New User Journey E2E', () => {
         'click-create-account',
         'credentials-stored',
         'session-created',
-        'redirect-to-timesheet'
+        'redirect-to-timesheet',
       ];
-      
+
       expect(workflow).toContain('credentials-stored');
       expect(workflow).toContain('session-created');
     });
@@ -52,9 +52,9 @@ describe('New User Journey E2E', () => {
         'select-project',
         'select-tool',
         'select-charge-code',
-        'enter-task-description'
+        'enter-task-description',
       ];
-      
+
       expect(steps).toHaveLength(7);
     });
 
@@ -62,10 +62,10 @@ describe('New User Journey E2E', () => {
       const placeholders = {
         date: 'Like 01/15/2024',
         timeIn: 'Like 09:00',
-        timeOut: 'Like 17:00'
+        timeOut: 'Like 17:00',
       };
-      
-      Object.values(placeholders).forEach(placeholder => {
+
+      Object.values(placeholders).forEach((placeholder) => {
         expect(placeholder).toContain('Like');
       });
     });
@@ -73,7 +73,7 @@ describe('New User Journey E2E', () => {
     it('should provide real-time validation feedback', () => {
       const dateInput = '01/15/2025';
       const isValid = /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dateInput);
-      
+
       expect(isValid).toBe(true);
     });
   });
@@ -87,9 +87,9 @@ describe('New User Journey E2E', () => {
         'credentials-retrieved',
         'bot-automation-starts',
         'entries-submitted',
-        'success-message'
+        'success-message',
       ];
-      
+
       expect(steps).toContain('bot-automation-starts');
       expect(steps).toContain('success-message');
     });
@@ -99,15 +99,15 @@ describe('New User Journey E2E', () => {
         current: 1,
         total: 1,
         percentage: 100,
-        message: 'Processing 1 of 1'
+        message: 'Processing 1 of 1',
       };
-      
+
       expect(progress.percentage).toBe(100);
     });
 
     it('should celebrate first successful submission', () => {
       const successMessage = 'Timesheet submitted successfully!';
-      
+
       expect(successMessage).toContain('successfully');
     });
   });
@@ -116,7 +116,7 @@ describe('New User Journey E2E', () => {
     it('should show user manual for first-time users', () => {
       const isFirstTime = true;
       const shouldShowManual = isFirstTime;
-      
+
       expect(shouldShowManual).toBe(true);
     });
 
@@ -125,11 +125,10 @@ describe('New User Journey E2E', () => {
         'How to enter timesheet data',
         'Understanding dropdown cascading',
         'Submitting your timesheet',
-        'Using macros for quick entry'
+        'Using macros for quick entry',
       ];
-      
+
       expect(helpTopics.length).toBe(4);
     });
   });
 });
-

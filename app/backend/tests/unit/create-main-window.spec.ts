@@ -4,8 +4,18 @@ import type { LoggerLike } from '@/bootstrap/logging/logger-contract';
 import { createMainWindow } from '@/bootstrap/windows/create-main-window';
 import type { WindowState } from '@/bootstrap/windows/window-state';
 import { PerWindowConsoleFilter, ConsoleLoggerManager } from '@/bootstrap/windows/console-logger';
-import { resolveCspPolicy, buildCspHeader, createProductionCspPolicy, createDevelopmentCspPolicy } from '@/bootstrap/security/csp-policy';
-import { resolvePreloadPath, resolveIconPathSync, validateIconPathAsync, resolveAppPathsSync } from '@/bootstrap/utils/resolve-app-paths';
+import {
+  resolveCspPolicy,
+  buildCspHeader,
+  createProductionCspPolicy,
+  createDevelopmentCspPolicy,
+} from '@/bootstrap/security/csp-policy';
+import {
+  resolvePreloadPath,
+  resolveIconPathSync,
+  validateIconPathAsync,
+  resolveAppPathsSync,
+} from '@/bootstrap/utils/resolve-app-paths';
 import { validateWindowState } from '@/bootstrap/windows/window-state';
 
 describe('CSP Policy Module', () => {
@@ -103,7 +113,7 @@ describe('Console Logger with Deduplication', () => {
         silly: vi.fn(),
         audit: vi.fn(),
         security: vi.fn(),
-        startTimer: () => ({ done: vi.fn() })
+        startTimer: () => ({ done: vi.fn() }),
       };
       filter = new PerWindowConsoleFilter(123, logger);
     });
@@ -175,7 +185,7 @@ describe('Console Logger with Deduplication', () => {
         silly: vi.fn(),
         audit: vi.fn(),
         security: vi.fn(),
-        startTimer: () => ({ done: vi.fn() })
+        startTimer: () => ({ done: vi.fn() }),
       };
       manager = new ConsoleLoggerManager(logger);
     });
@@ -224,7 +234,7 @@ describe('Window State Validation', () => {
       silly: vi.fn(),
       audit: vi.fn(),
       security: vi.fn(),
-      startTimer: () => ({ done: vi.fn() })
+      startTimer: () => ({ done: vi.fn() }),
     };
   });
 

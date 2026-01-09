@@ -1,8 +1,8 @@
 /**
  * @fileoverview Submission Service Plugin Registration
- * 
+ *
  * Handles registration of submission service plugins.
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025
@@ -17,7 +17,7 @@ import { getRegistry } from '../utils/registry';
  */
 export async function registerSubmissionServices(): Promise<void> {
   const registry = getRegistry();
-  
+
   await registry.registerPlugin('submission', 'electron', new ElectronBotService());
   await registry.registerPlugin('submission', 'mock', new MockSubmissionService());
 }

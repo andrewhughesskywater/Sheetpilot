@@ -8,7 +8,5 @@ export const logsBridge = {
     logPath: string,
     format: 'json' | 'txt' = 'txt'
   ): Promise<{ success: boolean; content?: string; filename?: string; mimeType?: string; error?: string }> =>
-    ipcRenderer.invoke('logs:exportLogs', token, logPath, format)
+    ipcRenderer.invoke('logs:exportLogs', token, logPath, format),
 };
-
-

@@ -1,4 +1,5 @@
 import type { App } from 'electron';
+
 import type { LoggerLike } from '../logging/logger-contract';
 
 export function preflightResolveCriticalModules(app: App, logger: LoggerLike): void {
@@ -17,11 +18,11 @@ export function preflightResolveCriticalModules(app: App, logger: LoggerLike): v
     return;
   }
 
-  const details = failures.map(f => `${f.name}: ${f.error}`).join(' | ');
+  const details = failures.map((f) => `${f.name}: ${f.error}`).join(' | ');
   logger.error('Preflight module resolution failed', {
     details,
     nodePath: process.env['NODE_PATH'],
-    resourcesPath: process.resourcesPath
+    resourcesPath: process.resourcesPath,
   });
 
   // Log to console (will be visible if run from command line)
@@ -67,5 +68,3 @@ export function preflightResolveCriticalModules(app: App, logger: LoggerLike): v
     }
   }, 10000);
 }
-
-

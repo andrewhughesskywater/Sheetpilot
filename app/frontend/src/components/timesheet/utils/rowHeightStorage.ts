@@ -1,6 +1,6 @@
 /**
  * @fileoverview Row Height Storage Utility
- * 
+ *
  * Handles persistence of timesheet grid row heights to localStorage.
  * Allows users to customize row heights and have them persist across sessions.
  */
@@ -20,12 +20,12 @@ export function loadRowHeight(): number | null {
   try {
     const stored = localStorage.getItem(ROW_HEIGHT_STORAGE_KEY);
     if (!stored) return null;
-    
+
     const parsed = JSON.parse(stored) as unknown;
     if (typeof parsed === 'number' && parsed > 0) {
       return parsed;
     }
-    
+
     return null;
   } catch (error) {
     // Silently handle parse errors - return null to use defaults

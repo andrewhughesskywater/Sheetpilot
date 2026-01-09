@@ -1,9 +1,9 @@
 /**
  * @fileoverview Plugin Contract Validation Tests
- * 
+ *
  * Validates that plugin implementations satisfy their interfaces.
  * Prevents AI from breaking plugin system contracts.
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025
@@ -11,7 +11,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Import types for contract validation (used in type assertions)
- 
+
 // Types validated via runtime assertion helper; explicit type imports not needed here
 import { assertPluginInterface } from '../helpers/assertion-helpers';
 
@@ -27,7 +27,7 @@ vi.mock('@/services/plugins/sqlite-data-service', () => ({
     version = '1.0.0';
     initialize = vi.fn();
     cleanup = vi.fn();
-  }
+  },
 }));
 
 vi.mock('@/services/plugins/memory-data-service', () => ({
@@ -41,7 +41,7 @@ vi.mock('@/services/plugins/memory-data-service', () => ({
     version = '1.0.0';
     initialize = vi.fn();
     cleanup = vi.fn();
-  }
+  },
 }));
 
 vi.mock('@/services/plugins/electron-bot-service', () => ({
@@ -53,7 +53,7 @@ vi.mock('@/services/plugins/electron-bot-service', () => ({
     version = '1.0.0';
     initialize = vi.fn();
     cleanup = vi.fn();
-  }
+  },
 }));
 
 vi.mock('@/services/plugins/mock-submission-service', () => ({
@@ -65,7 +65,7 @@ vi.mock('@/services/plugins/mock-submission-service', () => ({
     version = '1.0.0';
     initialize = vi.fn();
     cleanup = vi.fn();
-  }
+  },
 }));
 
 vi.mock('@/services/plugins/sqlite-credential-service', () => ({
@@ -78,7 +78,7 @@ vi.mock('@/services/plugins/sqlite-credential-service', () => ({
     version = '1.0.0';
     initialize = vi.fn();
     cleanup = vi.fn();
-  }
+  },
 }));
 
 describe('Plugin Contract Validation', () => {
@@ -91,9 +91,9 @@ describe('Plugin Contract Validation', () => {
       const { SQLiteDataService } = await import('../../src/services/plugins/sqlite-data-service');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const service: any = new SQLiteDataService();
-      
+
       assertPluginInterface(service, 'IDataService');
-      
+
       // Verify method signatures
       expect(typeof service.saveDraft).toBe('function');
       expect(typeof service.loadDraft).toBe('function');
@@ -106,9 +106,9 @@ describe('Plugin Contract Validation', () => {
       const { MemoryDataService } = await import('../../src/services/plugins/memory-data-service');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const service: any = new MemoryDataService();
-      
+
       assertPluginInterface(service, 'IDataService');
-      
+
       // Verify method signatures
       expect(typeof service.saveDraft).toBe('function');
       expect(typeof service.loadDraft).toBe('function');
@@ -121,7 +121,7 @@ describe('Plugin Contract Validation', () => {
       const { SQLiteDataService } = await import('../../src/services/plugins/sqlite-data-service');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const service: any = new SQLiteDataService();
-      
+
       const mockEntry = {
         date: '01/15/2025',
         timeIn: '09:00',
@@ -129,18 +129,18 @@ describe('Plugin Contract Validation', () => {
         project: 'FL-Carver Techs',
         tool: '#1 Rinse and 2D marker',
         chargeCode: 'EPR1',
-        taskDescription: 'Test task'
+        taskDescription: 'Test task',
       };
-      
+
       // Mock the method to return expected structure
       (service.saveDraft as unknown as import('vitest').Mock).mockResolvedValue({
         success: true,
         changes: 1,
-        id: 1
+        id: 1,
       });
-      
+
       const result = await service.saveDraft(mockEntry);
-      
+
       expect(result).toHaveProperty('success');
       expect(result).toHaveProperty('changes');
       expect(result).toHaveProperty('id');
@@ -153,7 +153,7 @@ describe('Plugin Contract Validation', () => {
       const { SQLiteDataService } = await import('../../src/services/plugins/sqlite-data-service');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const service: any = new SQLiteDataService();
-      
+
       const mockEntries = [
         {
           id: 1,
@@ -163,17 +163,17 @@ describe('Plugin Contract Validation', () => {
           project: 'FL-Carver Techs',
           tool: '#1 Rinse and 2D marker',
           chargeCode: 'EPR1',
-          taskDescription: 'Test task'
-        }
+          taskDescription: 'Test task',
+        },
       ];
-      
+
       (service.loadDraft as unknown as import('vitest').Mock).mockResolvedValue({
         success: true,
-        entries: mockEntries
+        entries: mockEntries,
       });
-      
+
       const result = await service.loadDraft();
-      
+
       expect(result).toHaveProperty('success');
       expect(result).toHaveProperty('entries');
       expect(typeof result.success).toBe('boolean');
@@ -184,13 +184,13 @@ describe('Plugin Contract Validation', () => {
       const { SQLiteDataService } = await import('../../src/services/plugins/sqlite-data-service');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const service: any = new SQLiteDataService();
-      
+
       (service.deleteDraft as unknown as import('vitest').Mock).mockResolvedValue({
-        success: true
+        success: true,
       });
-      
+
       const result = await service.deleteDraft(1);
-      
+
       expect(result).toHaveProperty('success');
       expect(typeof result.success).toBe('boolean');
     });
@@ -199,19 +199,19 @@ describe('Plugin Contract Validation', () => {
       const { SQLiteDataService } = await import('../../src/services/plugins/sqlite-data-service');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const service: any = new SQLiteDataService();
-      
+
       const mockArchiveData = {
         timesheet: [],
-        credentials: []
+        credentials: [],
       };
-      
+
       (service.getArchiveData as unknown as import('vitest').Mock).mockResolvedValue({
         success: true,
-        data: mockArchiveData
+        data: mockArchiveData,
       });
-      
+
       const result = await service.getArchiveData();
-      
+
       expect(result).toHaveProperty('success');
       expect(result).toHaveProperty('data');
       expect(typeof result.success).toBe('boolean');
@@ -222,7 +222,7 @@ describe('Plugin Contract Validation', () => {
     it('should validate getAllTimesheetEntries method signature', async () => {
       const { SQLiteDataService } = await import('../../src/services/plugins/sqlite-data-service');
       const service = new SQLiteDataService();
-      
+
       const mockDbEntries = [
         {
           id: 1,
@@ -235,17 +235,17 @@ describe('Plugin Contract Validation', () => {
           detail_charge_code: 'EPR1',
           task_description: 'Test task',
           status: 'Complete',
-          submitted_at: '2025-01-15T10:00:00Z'
-        }
+          submitted_at: '2025-01-15T10:00:00Z',
+        },
       ];
-      
+
       (service.getAllTimesheetEntries as unknown as import('vitest').Mock).mockResolvedValue({
         success: true,
-        entries: mockDbEntries
+        entries: mockDbEntries,
       });
-      
+
       const result = await service.getAllTimesheetEntries();
-      
+
       expect(result).toHaveProperty('success');
       expect(result).toHaveProperty('entries');
       expect(typeof result.success).toBe('boolean');
@@ -258,9 +258,9 @@ describe('Plugin Contract Validation', () => {
       const { ElectronBotService } = await import('../../src/services/plugins/electron-bot-service');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const service: any = new ElectronBotService();
-      
+
       assertPluginInterface(service, 'ISubmissionService');
-      
+
       // Verify method signatures
       expect(typeof service.submit).toBe('function');
       expect(typeof service.validateEntry).toBe('function');
@@ -271,9 +271,9 @@ describe('Plugin Contract Validation', () => {
       const { MockSubmissionService } = await import('../../src/services/plugins/mock-submission-service');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const service: any = new MockSubmissionService();
-      
+
       assertPluginInterface(service, 'ISubmissionService');
-      
+
       // Verify method signatures
       expect(typeof service.submit).toBe('function');
       expect(typeof service.validateEntry).toBe('function');
@@ -284,7 +284,7 @@ describe('Plugin Contract Validation', () => {
       const { ElectronBotService } = await import('../../src/services/plugins/electron-bot-service');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const service: any = new ElectronBotService();
-      
+
       const mockEntries = [
         {
           date: '01/15/2025',
@@ -293,26 +293,26 @@ describe('Plugin Contract Validation', () => {
           project: 'FL-Carver Techs',
           tool: '#1 Rinse and 2D marker',
           chargeCode: 'EPR1',
-          taskDescription: 'Test task'
-        }
+          taskDescription: 'Test task',
+        },
       ];
-      
+
       const mockCredentials = {
         email: 'test@example.com',
-        password: 'password123'
+        password: 'password123',
       };
-      
+
       (service.submit as unknown as import('vitest').Mock).mockResolvedValue({
         ok: true,
         submittedIds: [1],
         removedIds: [],
         totalProcessed: 1,
         successCount: 1,
-        removedCount: 0
+        removedCount: 0,
       });
-      
+
       const result = await service.submit({ entries: mockEntries, credentials: mockCredentials });
-      
+
       expect(result).toHaveProperty('ok');
       expect(result).toHaveProperty('submittedIds');
       expect(result).toHaveProperty('removedIds');
@@ -331,7 +331,7 @@ describe('Plugin Contract Validation', () => {
       const { ElectronBotService } = await import('../../src/services/plugins/electron-bot-service');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const service: any = new ElectronBotService();
-      
+
       const mockEntry = {
         date: '01/15/2025',
         timeIn: '09:00',
@@ -339,17 +339,17 @@ describe('Plugin Contract Validation', () => {
         project: 'FL-Carver Techs',
         tool: '#1 Rinse and 2D marker',
         chargeCode: 'EPR1',
-        taskDescription: 'Test task'
+        taskDescription: 'Test task',
       };
-      
+
       (service.validateEntry as unknown as import('vitest').Mock).mockReturnValue({
         valid: true,
         errors: [],
-        warnings: []
+        warnings: [],
       });
-      
+
       const result = service.validateEntry(mockEntry);
-      
+
       expect(result).toHaveProperty('valid');
       expect(result).toHaveProperty('errors');
       expect(result).toHaveProperty('warnings');
@@ -361,11 +361,11 @@ describe('Plugin Contract Validation', () => {
     it('should validate isAvailable method signature', async () => {
       const { ElectronBotService } = await import('../../src/services/plugins/electron-bot-service');
       const service = new ElectronBotService();
-      
+
       (service.isAvailable as unknown as import('vitest').Mock).mockResolvedValue(true);
-      
+
       const result = await service.isAvailable();
-      
+
       expect(typeof result).toBe('boolean');
     });
   });
@@ -375,9 +375,9 @@ describe('Plugin Contract Validation', () => {
       const { SQLiteCredentialService } = await import('../../src/services/plugins/sqlite-credential-service');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const service: any = new SQLiteCredentialService();
-      
+
       assertPluginInterface(service, 'ICredentialService');
-      
+
       // Verify method signatures
       expect(typeof service.store).toBe('function');
       expect(typeof service.get).toBe('function');
@@ -389,15 +389,15 @@ describe('Plugin Contract Validation', () => {
       const { SQLiteCredentialService } = await import('../../src/services/plugins/sqlite-credential-service');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const service: any = new SQLiteCredentialService();
-      
+
       service.store.mockResolvedValue({
         success: true,
         message: 'Credentials stored successfully',
-        changes: 1
+        changes: 1,
       });
-      
+
       const result = await service.store('smartsheet', 'test@example.com', 'password123');
-      
+
       expect(result).toHaveProperty('success');
       expect(result).toHaveProperty('message');
       expect(result).toHaveProperty('changes');
@@ -410,17 +410,17 @@ describe('Plugin Contract Validation', () => {
       const { SQLiteCredentialService } = await import('../../src/services/plugins/sqlite-credential-service');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const service: any = new SQLiteCredentialService();
-      
+
       service.get.mockResolvedValue({
         success: true,
         credentials: {
           email: 'test@example.com',
-          password: 'password123'
-        }
+          password: 'password123',
+        },
       });
-      
+
       const result = await service.get('smartsheet');
-      
+
       expect(result).toHaveProperty('success');
       expect(result).toHaveProperty('credentials');
       expect(typeof result.success).toBe('boolean');
@@ -431,24 +431,24 @@ describe('Plugin Contract Validation', () => {
     it('should validate list method signature', async () => {
       const { SQLiteCredentialService } = await import('../../src/services/plugins/sqlite-credential-service');
       const service = new SQLiteCredentialService();
-      
+
       const mockCredentials = [
         {
           id: 1,
           service: 'smartsheet',
           email: 'test@example.com',
           created_at: '2025-01-15T10:00:00Z',
-          updated_at: '2025-01-15T10:00:00Z'
-        }
+          updated_at: '2025-01-15T10:00:00Z',
+        },
       ];
-      
+
       (service.list as unknown as import('vitest').Mock).mockResolvedValue({
         success: true,
-        credentials: mockCredentials
+        credentials: mockCredentials,
       });
-      
+
       const result = await service.list();
-      
+
       expect(result).toHaveProperty('success');
       expect(result).toHaveProperty('credentials');
       expect(typeof result.success).toBe('boolean');
@@ -458,15 +458,15 @@ describe('Plugin Contract Validation', () => {
     it('should validate delete method signature', async () => {
       const { SQLiteCredentialService } = await import('../../src/services/plugins/sqlite-credential-service');
       const service = new SQLiteCredentialService();
-      
+
       (service.delete as unknown as import('vitest').Mock).mockResolvedValue({
         success: true,
         message: 'Credentials deleted successfully',
-        changes: 1
+        changes: 1,
       });
-      
+
       const result = await service.delete('smartsheet');
-      
+
       expect(result).toHaveProperty('success');
       expect(result).toHaveProperty('message');
       expect(result).toHaveProperty('changes');
@@ -483,32 +483,32 @@ describe('Plugin Contract Validation', () => {
         { MemoryDataService },
         { ElectronBotService },
         { MockSubmissionService },
-        { SQLiteCredentialService }
+        { SQLiteCredentialService },
       ] = await Promise.all([
         import('../../src/services/plugins/sqlite-data-service'),
         import('../../src/services/plugins/memory-data-service'),
         import('../../src/services/plugins/electron-bot-service'),
         import('../../src/services/plugins/mock-submission-service'),
-        import('../../src/services/plugins/sqlite-credential-service')
+        import('../../src/services/plugins/sqlite-credential-service'),
       ]);
-      
+
       const plugins = [
         SQLiteDataService,
         MemoryDataService,
         ElectronBotService,
         MockSubmissionService,
-        SQLiteCredentialService
+        SQLiteCredentialService,
       ];
-      
-      plugins.forEach(PluginClass => {
+
+      plugins.forEach((PluginClass) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const plugin: any = new PluginClass();
-        
+
         expect(plugin).toHaveProperty('name');
         expect(plugin).toHaveProperty('version');
         expect(plugin).toHaveProperty('initialize');
         expect(plugin).toHaveProperty('cleanup');
-        
+
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         expect(typeof (plugin as any).name).toBe('string');
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -524,11 +524,11 @@ describe('Plugin Contract Validation', () => {
       const { SQLiteDataService } = await import('../../src/services/plugins/sqlite-data-service');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const service: any = new SQLiteDataService();
-      
+
       service.initialize.mockResolvedValue(true);
-      
+
       const result = await service.initialize();
-      
+
       expect(typeof result).toBe('boolean');
     });
 
@@ -536,11 +536,11 @@ describe('Plugin Contract Validation', () => {
       const { SQLiteDataService } = await import('../../src/services/plugins/sqlite-data-service');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const service: any = new SQLiteDataService();
-      
+
       service.cleanup.mockResolvedValue(true);
-      
+
       const result = await service.cleanup();
-      
+
       expect(typeof result).toBe('boolean');
     });
   });
@@ -549,20 +549,20 @@ describe('Plugin Contract Validation', () => {
     it('should validate error response structure', async () => {
       const { SQLiteDataService } = await import('../../src/services/plugins/sqlite-data-service');
       const service = new SQLiteDataService();
-      
+
       (service.saveDraft as unknown as import('vitest').Mock).mockResolvedValue({
         success: false,
-        error: 'Database connection failed'
+        error: 'Database connection failed',
       });
-      
+
       const result = await service.saveDraft({
         date: '01/15/2025',
         timeIn: '09:00',
         timeOut: '17:00',
         project: 'FL-Carver Techs',
-        taskDescription: 'Test'
+        taskDescription: 'Test',
       });
-      
+
       expect(result).toHaveProperty('success');
       expect(result).toHaveProperty('error');
       expect(result.success).toBe(false);
@@ -576,7 +576,7 @@ describe('Plugin Contract Validation', () => {
       const { ElectronBotService } = await import('../../src/services/plugins/electron-bot-service');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const service: any = new ElectronBotService();
-      
+
       (service.submit as unknown as import('vitest').Mock).mockResolvedValue({
         ok: false,
         submittedIds: [],
@@ -584,11 +584,14 @@ describe('Plugin Contract Validation', () => {
         totalProcessed: 0,
         successCount: 0,
         removedCount: 0,
-        error: 'Could not connect to submission service'
+        error: 'Could not connect to submission service',
       });
-      
-      const result = await service.submit({ entries: [], credentials: { email: 'test@example.com', password: 'password' } });
-      
+
+      const result = await service.submit({
+        entries: [],
+        credentials: { email: 'test@example.com', password: 'password' },
+      });
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if ('error' in result && typeof (result as any).error === 'string') {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -611,9 +614,9 @@ describe('Plugin Contract Validation', () => {
         registerCredentialService: vi.fn(),
         getDataService: vi.fn(),
         getSubmissionService: vi.fn(),
-        getCredentialService: vi.fn()
+        getCredentialService: vi.fn(),
       };
-      
+
       expect(typeof mockRegistry.registerDataService).toBe('function');
       expect(typeof mockRegistry.registerSubmissionService).toBe('function');
       expect(typeof mockRegistry.registerCredentialService).toBe('function');
@@ -626,9 +629,9 @@ describe('Plugin Contract Validation', () => {
       const mockRegistry = {
         switchDataService: vi.fn(),
         switchSubmissionService: vi.fn(),
-        switchCredentialService: vi.fn()
+        switchCredentialService: vi.fn(),
       };
-      
+
       expect(typeof mockRegistry.switchDataService).toBe('function');
       expect(typeof mockRegistry.switchSubmissionService).toBe('function');
       expect(typeof mockRegistry.switchCredentialService).toBe('function');

@@ -1,9 +1,9 @@
 /**
  * @fileoverview Authentication Flow Integration Tests
- * 
+ *
  * Tests for login → session management → logout flow, session expiration,
  * and credential updates during active sessions.
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025
@@ -30,13 +30,13 @@ describe('Authentication Flow Integration', () => {
       auth: {
         login: vi.fn(),
         validateSession: vi.fn(),
-        logout: vi.fn()
+        logout: vi.fn(),
       },
       credentials: {
         store: vi.fn(),
-      }
+      },
     };
-    (global as {window?: unknown}).window = mockWindow;
+    (global as { window?: unknown }).window = mockWindow;
   });
 
   describe('Login to Logout Flow', () => {
@@ -45,7 +45,7 @@ describe('Authentication Flow Integration', () => {
       mockWindow.auth.login.mockResolvedValue({
         success: true,
         token: 'test-token-123',
-        isAdmin: false
+        isAdmin: false,
       });
 
       const loginResult = await mockWindow.auth.login('user@test.com', 'password', true);
@@ -56,7 +56,7 @@ describe('Authentication Flow Integration', () => {
       mockWindow.auth.validateSession.mockResolvedValue({
         valid: true,
         email: 'user@test.com',
-        isAdmin: false
+        isAdmin: false,
       });
 
       const validation = await mockWindow.auth.validateSession(loginResult.token);
@@ -64,7 +64,7 @@ describe('Authentication Flow Integration', () => {
 
       // Step 3: Logout
       mockWindow.auth.logout.mockResolvedValue({
-        success: true
+        success: true,
       });
 
       const logoutResult = await mockWindow.auth.logout(loginResult.token);
@@ -72,7 +72,7 @@ describe('Authentication Flow Integration', () => {
 
       // Step 4: Session should be invalid after logout
       mockWindow.auth.validateSession.mockResolvedValue({
-        valid: false
+        valid: false,
       });
 
       const postLogoutValidation = await mockWindow.auth.validateSession(loginResult.token);
@@ -83,7 +83,7 @@ describe('Authentication Flow Integration', () => {
       mockWindow.auth.login.mockResolvedValue({
         success: true,
         token: 'persistent-token',
-        isAdmin: false
+        isAdmin: false,
       });
 
       // Login with stay logged in
@@ -94,7 +94,7 @@ describe('Authentication Flow Integration', () => {
       mockWindow.auth.validateSession.mockResolvedValue({
         valid: true,
         email: 'user@test.com',
-        isAdmin: false
+        isAdmin: false,
       });
 
       // Session should still be valid
@@ -106,7 +106,7 @@ describe('Authentication Flow Integration', () => {
       mockWindow.auth.login.mockResolvedValue({
         success: true,
         token: 'temp-token',
-        isAdmin: false
+        isAdmin: false,
       });
 
       // Login without stay logged in
@@ -124,7 +124,7 @@ describe('Authentication Flow Integration', () => {
     it('should detect expired sessions', async () => {
       mockWindow.auth.validateSession.mockResolvedValue({
         valid: false,
-        error: 'Session expired'
+        error: 'Session expired',
       });
 
       const validation = await mockWindow.auth.validateSession('expired-token');
@@ -135,7 +135,7 @@ describe('Authentication Flow Integration', () => {
 
     it('should redirect to login on expired session', async () => {
       mockWindow.auth.validateSession.mockResolvedValue({
-        valid: false
+        valid: false,
       });
 
       const validation = await mockWindow.auth.validateSession('token');
@@ -152,7 +152,7 @@ describe('Authentication Flow Integration', () => {
       mockWindow.auth.login.mockResolvedValue({
         success: true,
         token: 'new-token',
-        isAdmin: false
+        isAdmin: false,
       });
 
       const loginResult = await mockWindow.auth.login('user@test.com', 'password', true);
@@ -166,14 +166,14 @@ describe('Authentication Flow Integration', () => {
       mockWindow.auth.login.mockResolvedValue({
         success: true,
         token: 'active-token',
-        isAdmin: false
+        isAdmin: false,
       });
 
       const token = (await mockWindow.auth.login('user@test.com', 'old-password', true)).token;
 
       // Update credentials
       mockWindow.credentials.store.mockResolvedValue({
-        success: true
+        success: true,
       });
 
       const updateResult = await mockWindow.credentials.store('smartsheet', 'user@test.com', 'new-password');
@@ -182,7 +182,7 @@ describe('Authentication Flow Integration', () => {
       // Session should remain valid
       mockWindow.auth.validateSession.mockResolvedValue({
         valid: true,
-        email: 'user@test.com'
+        email: 'user@test.com',
       });
 
       const validation = await mockWindow.auth.validateSession(token);
@@ -204,18 +204,16 @@ describe('Authentication Flow Integration', () => {
       const users = [
         { email: 'user1@test.com', password: 'pass1' },
         { email: 'user2@test.com', password: 'pass2' },
-        { email: 'user3@test.com', password: 'pass3' }
+        { email: 'user3@test.com', password: 'pass3' },
       ];
 
       mockWindow.auth.login.mockImplementation(async (email: string) => ({
         success: true,
         token: `token-${email}`,
-        isAdmin: false
+        isAdmin: false,
       }));
 
-      const tokens = await Promise.all(
-        users.map(u => mockWindow.auth.login(u.email, u.password, false))
-      );
+      const tokens = await Promise.all(users.map((u) => mockWindow.auth.login(u.email, u.password, false)));
 
       expect(tokens).toHaveLength(3);
       tokens.forEach((result, index) => {
@@ -232,4 +230,3 @@ describe('Authentication Flow Integration', () => {
     });
   });
 });
-

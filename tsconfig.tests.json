@@ -10,7 +10,17 @@
     "noUncheckedIndexedAccess": false,
     "exactOptionalPropertyTypes": false,
     "noUnusedLocals": false,
-    "noUnusedParameters": false
+    "noUnusedParameters": false,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["app/backend/src/*"],
+      "@/services": ["app/backend/src/services/index.ts"],
+      "@/logic": ["app/backend/src/logic/index.ts"],
+      "@/middleware": ["app/backend/src/middleware/index.ts"],
+      "@/validation": ["app/backend/src/validation/index.ts"],
+      "@sheetpilot/shared": ["app/shared/index.ts"],
+      "@sheetpilot/shared/*": ["app/shared/*"]
+    }
   },
   "include": [
     "app/backend/tests/**/*.ts",
@@ -19,7 +29,6 @@
     "app/frontend/tests/**/*.ts",
     "app/frontend/tests/**/*.tsx",
     "app/frontend/tests/**/*.d.ts",
-    
     "app/frontend/src/utils/safe-init.ts"
   ],
   "exclude": [
@@ -31,5 +40,3 @@
     "app/backend/src/services/bot/dist"
   ]
 }
-
-

@@ -1,30 +1,28 @@
 /**
  * @fileoverview Playwright Bot Service Plugin
- * 
+ *
  * Implementation of ISubmissionService using Playwright browser automation.
  * Wraps the existing bot orchestration system.
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025
  */
 
+import type { Credentials } from '@sheetpilot/shared/contracts/ICredentialService';
+import type { TimesheetEntry } from '@sheetpilot/shared/contracts/IDataService';
 import type {
   ISubmissionService,
   SubmissionResult,
-  ValidationResult
+  ValidationResult,
 } from '@sheetpilot/shared/contracts/ISubmissionService';
-import type { TimesheetEntry } from '@sheetpilot/shared/contracts/IDataService';
-import type { Credentials } from '@sheetpilot/shared/contracts/ICredentialService';
 import type { PluginMetadata } from '@sheetpilot/shared/plugin-types';
+import { convertDateToUSFormat,parseTimeToMinutes } from '@sheetpilot/shared/utils/format-conversions';
+
 import { runTimesheet } from '../bot/src/core/index';
-import { botLogger } from '../utils/logger';
 import { checkAborted, createCancelledResult } from '../bot/src/utils/abort-utils';
 import { processEntriesByQuarter } from '../bot/src/utils/quarter-processing';
-import {
-  parseTimeToMinutes,
-  convertDateToUSFormat
-} from '@sheetpilot/shared/utils/format-conversions';
+import { botLogger } from '../utils/logger';
 
 /**
  * Playwright-based submission service using browser automation
@@ -34,7 +32,7 @@ export class PlaywrightBotService implements ISubmissionService {
     name: 'playwright',
     version: '1.2.5',
     author: 'Andrew Hughes',
-    description: 'Playwright-based browser automation submission service'
+    description: 'Playwright-based browser automation submission service',
   };
 
   /**
@@ -43,12 +41,12 @@ export class PlaywrightBotService implements ISubmissionService {
   private toBotRow(entry: TimesheetEntry): Record<string, string | number | null | undefined> {
     // Convert date from YYYY-MM-DD to mm/dd/yyyy format for bot
     const formattedDate = convertDateToUSFormat(entry.date);
-    
+
     // Calculate hours from time_in and time_out
     const timeInMinutes = parseTimeToMinutes(entry.timeIn);
     const timeOutMinutes = parseTimeToMinutes(entry.timeOut);
     const hours = (timeOutMinutes - timeInMinutes) / 60.0;
-    
+
     return {
       Project: entry.project,
       Date: formattedDate,
@@ -56,7 +54,7 @@ export class PlaywrightBotService implements ISubmissionService {
       Tool: entry.tool ?? '',
       'Task Description': entry.taskDescription,
       'Detail Charge Code': entry.chargeCode ?? '',
-      Status: '' // Bot will skip rows with Status === 'Complete'
+      Status: '', // Bot will skip rows with Status === 'Complete'
     };
   }
 
@@ -64,11 +62,11 @@ export class PlaywrightBotService implements ISubmissionService {
    * Submit timesheet entries using browser automation
    */
   public async submit(
-    entries: TimesheetEntry[], 
-    credentials: Credentials, 
+    entries: TimesheetEntry[],
+    credentials: Credentials,
     options?: {
       progressCallback?: (percent: number, message: string) => void;
-      abortSignal?: {aborted: boolean; reason?: unknown};
+      abortSignal?: { aborted: boolean; reason?: unknown };
       useMockWebsite?: boolean;
     }
   ): Promise<SubmissionResult> {
@@ -76,7 +74,7 @@ export class PlaywrightBotService implements ISubmissionService {
     const actualUseMockWebsite = options?.useMockWebsite;
     const abortSignal = options?.abortSignal;
     botLogger.info('Starting Playwright submission', { entryCount: entries.length });
-    
+
     try {
       // Check if aborted before starting
       try {
@@ -91,15 +89,15 @@ export class PlaywrightBotService implements ISubmissionService {
         password: credentials.password,
         progressCallback: actualProgressCallback,
         abortSignal,
-        useMockWebsite: actualUseMockWebsite
+        useMockWebsite: actualUseMockWebsite,
       });
-      
+
       botLogger.info('Playwright submission completed', result);
       return result;
     } catch (error) {
-      botLogger.error('Exception during Playwright submission', { 
+      botLogger.error('Exception during Playwright submission', {
         error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined
+        stack: error instanceof Error ? error.stack : undefined,
       });
       return {
         ok: false,
@@ -108,7 +106,7 @@ export class PlaywrightBotService implements ISubmissionService {
         totalProcessed: entries.length,
         successCount: 0,
         removedCount: 0,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       };
     }
   }
@@ -134,14 +132,14 @@ export class PlaywrightBotService implements ISubmissionService {
 
     const timeInParts = timeIn.split(':');
     const timeOutParts = timeOut.split(':');
-    
+
     const timeInMinutes = parseInt(timeInParts[0] || '0', 10) * 60 + parseInt(timeInParts[1] || '0', 10);
     const timeOutMinutes = parseInt(timeOutParts[0] || '0', 10) * 60 + parseInt(timeOutParts[1] || '0', 10);
-    
+
     if (timeInMinutes % 15 !== 0 || timeOutMinutes % 15 !== 0) {
       errors.push('Times must be in 15-minute increments');
     }
-    
+
     if (timeOutMinutes <= timeInMinutes) {
       errors.push('End time must be after start time');
     }
@@ -151,7 +149,7 @@ export class PlaywrightBotService implements ISubmissionService {
     if (!entry.project) {
       errors.push('Project is required');
     }
-    
+
     if (!entry.taskDescription) {
       errors.push('Task description is required');
     }
@@ -162,16 +160,16 @@ export class PlaywrightBotService implements ISubmissionService {
    */
   public validateEntry(entry: TimesheetEntry): ValidationResult {
     const errors: string[] = [];
-    
+
     this.validateDate(entry.date, errors);
     this.validateTimeFormat(entry.timeIn, 'Start time', errors);
     this.validateTimeFormat(entry.timeOut, 'End time', errors);
     this.validateTimeIncrements(entry.timeIn, entry.timeOut, errors);
     this.validateRequiredFields(entry, errors);
-    
+
     return {
       valid: errors.length === 0,
-      errors
+      errors,
     };
   }
 
@@ -183,4 +181,3 @@ export class PlaywrightBotService implements ISubmissionService {
     return true;
   }
 }
-

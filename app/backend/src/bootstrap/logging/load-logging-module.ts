@@ -6,7 +6,10 @@ export interface LoggingModule {
   dbLogger: LoggerLike;
 }
 
-export function loadLoggingModule(backendRequire: NodeRequire, shim: { appLogger: LoggerLike; dbLogger: LoggerLike }): LoggingModule {
+export function loadLoggingModule(
+  backendRequire: NodeRequire,
+  shim: { appLogger: LoggerLike; dbLogger: LoggerLike }
+): LoggingModule {
   // In test mode, use placeholder loggers that will be mocked
   if (process.env['VITEST'] === 'true') {
     const mockLogger = (): LoggerLike => ({
@@ -18,12 +21,12 @@ export function loadLoggingModule(backendRequire: NodeRequire, shim: { appLogger
       silly: () => {},
       audit: () => {},
       security: () => {},
-      startTimer: () => ({ done: () => {} })
+      startTimer: () => ({ done: () => {} }),
     });
     return {
       initializeLogging: () => {},
       appLogger: mockLogger(),
-      dbLogger: mockLogger()
+      dbLogger: mockLogger(),
     };
   }
 
@@ -42,12 +45,10 @@ export function loadLoggingModule(backendRequire: NodeRequire, shim: { appLogger
     return {
       initializeLogging: mod.initializeLogging as () => void,
       appLogger: (mod.appLogger as LoggerLike) ?? shim.appLogger,
-      dbLogger: (mod.dbLogger as LoggerLike) ?? shim.dbLogger
+      dbLogger: (mod.dbLogger as LoggerLike) ?? shim.dbLogger,
     };
   } catch {
     // Keep shim loggers if shared logger cannot load for any reason
     return { initializeLogging: () => {}, appLogger: shim.appLogger, dbLogger: shim.dbLogger };
   }
 }
-
-

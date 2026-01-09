@@ -1,9 +1,9 @@
 /**
  * @fileoverview Application Constants
- * 
+ *
  * Centralized location for application-wide constants.
  * This ensures a single source of truth for values like version numbers.
- * 
+ *
  * @author SheetPilot Team
  * @version 1.4.0
  */
@@ -70,21 +70,21 @@ export function getBrowserHeadless(): boolean {
 export function setBrowserHeadless(value: boolean): void {
   const oldValue = appSettings.browserHeadless;
   appSettings.browserHeadless = value;
-  
+
   // Use logger with lazy import to avoid circular dependency
   try {
     const logger = getLogger();
-    logger.info('Browser headless mode updated', { 
-      oldValue, 
+    logger.info('Browser headless mode updated', {
+      oldValue,
       newValue: value,
-      appSettingsBrowserHeadless: appSettings.browserHeadless 
+      appSettingsBrowserHeadless: appSettings.browserHeadless,
     });
   } catch {
     // Fallback to console if logger is not available (shouldn't happen in normal operation)
-    console.log('[Constants] Browser headless mode updated:', { 
-      oldValue, 
+    console.log('[Constants] Browser headless mode updated:', {
+      oldValue,
       newValue: value,
-      appSettingsBrowserHeadless: appSettings.browserHeadless 
+      appSettingsBrowserHeadless: appSettings.browserHeadless,
     });
   }
 }

@@ -49,8 +49,8 @@ export class MarkdownReporter implements Reporter {
         passed: 0,
         failed: 0,
         skipped: 0,
-        duration: 0
-      }
+        duration: 0,
+      },
     };
   }
 
@@ -73,7 +73,7 @@ export class MarkdownReporter implements Reporter {
             duration?: number;
             error?: string;
           }>;
-        }>
+        }>,
       };
 
       // Process tasks in the file
@@ -86,22 +86,27 @@ export class MarkdownReporter implements Reporter {
             error?: string;
           } = {
             name: task.name,
-            status: task.mode === 'skip' ? 'skipped' as const : 
-                   task.result?.state === 'pass' ? 'passed' as const :
-                   task.result?.state === 'fail' ? 'failed' as const : 'failed' as const,
+            status:
+              task.mode === 'skip'
+                ? ('skipped' as const)
+                : task.result?.state === 'pass'
+                  ? ('passed' as const)
+                  : task.result?.state === 'fail'
+                    ? ('failed' as const)
+                    : ('failed' as const),
           };
-          
+
           if (task.result?.duration !== undefined) {
             testResult.duration = task.result.duration;
           }
-          
+
           const errorMessage = task.result?.errors?.[0]?.message || task.result?.errors?.[0]?.stack;
           if (errorMessage !== undefined) {
             testResult.error = errorMessage;
           }
 
           if (suiteName) {
-            let suite = fileResult.suites.find(s => s.name === suiteName);
+            let suite = fileResult.suites.find((s) => s.name === suiteName);
             if (!suite) {
               suite = { name: suiteName, tests: [] };
               fileResult.suites.push(suite);
@@ -126,11 +131,11 @@ export class MarkdownReporter implements Reporter {
         } else if (task.type === 'suite') {
           const suite = task as Suite;
           const currentSuiteName = suiteName ? `${suiteName} > ${suite.name}` : suite.name;
-          suite.tasks.forEach(subTask => processTask(subTask, currentSuiteName));
+          suite.tasks.forEach((subTask) => processTask(subTask, currentSuiteName));
         }
       };
 
-      file.tasks.forEach(task => processTask(task));
+      file.tasks.forEach((task) => processTask(task));
 
       if (fileResult.tests.length > 0 || fileResult.suites.length > 0) {
         this.results.files.push(fileResult);
@@ -174,9 +179,10 @@ export class MarkdownReporter implements Reporter {
     lines.push('');
 
     // Pass rate
-    const passRate = this.results.summary.total > 0
-      ? ((this.results.summary.passed / this.results.summary.total) * 100).toFixed(2)
-      : '0.00';
+    const passRate =
+      this.results.summary.total > 0
+        ? ((this.results.summary.passed / this.results.summary.total) * 100).toFixed(2)
+        : '0.00';
     lines.push(`**Pass Rate:** ${passRate}%`);
     lines.push('');
 
@@ -196,8 +202,7 @@ export class MarkdownReporter implements Reporter {
           lines.push('| Test | Status | Duration |');
           lines.push('|------|--------|----------|');
           fileResult.tests.forEach((test) => {
-            const statusEmoji = test.status === 'passed' ? '✅' : 
-                               test.status === 'failed' ? '❌' : '⏭️';
+            const statusEmoji = test.status === 'passed' ? '✅' : test.status === 'failed' ? '❌' : '⏭️';
             const duration = test.duration ? `${(test.duration / 1000).toFixed(2)}s` : '-';
             lines.push(`| ${test.name} | ${statusEmoji} ${test.status} | ${duration} |`);
           });
@@ -212,8 +217,7 @@ export class MarkdownReporter implements Reporter {
             lines.push('| Test | Status | Duration |');
             lines.push('|------|--------|----------|');
             suite.tests.forEach((test) => {
-              const statusEmoji = test.status === 'passed' ? '✅' : 
-                                 test.status === 'failed' ? '❌' : '⏭️';
+              const statusEmoji = test.status === 'passed' ? '✅' : test.status === 'failed' ? '❌' : '⏭️';
               const duration = test.duration ? `${(test.duration / 1000).toFixed(2)}s` : '-';
               lines.push(`| ${test.name} | ${statusEmoji} ${test.status} | ${duration} |`);
             });
@@ -245,11 +249,11 @@ export class MarkdownReporter implements Reporter {
 
   private getAllFailedTests(): Array<{ file: string; name: string; error?: string }> {
     const failed: Array<{ file: string; name: string; error?: string }> = [];
-    
+
     this.results.files.forEach((fileResult) => {
       fileResult.tests
-        .filter(t => t.status === 'failed')
-        .forEach(test => {
+        .filter((t) => t.status === 'failed')
+        .forEach((test) => {
           const failedEntry: { file: string; name: string; error?: string } = {
             file: fileResult.file,
             name: test.name,
@@ -262,8 +266,8 @@ export class MarkdownReporter implements Reporter {
 
       fileResult.suites.forEach((suite) => {
         suite.tests
-          .filter(t => t.status === 'failed')
-          .forEach(test => {
+          .filter((t) => t.status === 'failed')
+          .forEach((test) => {
             const failedEntry: { file: string; name: string; error?: string } = {
               file: fileResult.file,
               name: `${suite.name} > ${test.name}`,

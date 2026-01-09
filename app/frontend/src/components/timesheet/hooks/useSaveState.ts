@@ -1,6 +1,6 @@
-import { useCallback, useRef, useState } from 'react';
 import type { HotTableRef } from '@handsontable/react-wrapper';
 import type { MutableRefObject } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 export type SaveState = 'neutral' | 'saving' | 'saved';
 

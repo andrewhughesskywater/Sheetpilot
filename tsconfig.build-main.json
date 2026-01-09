@@ -17,10 +17,13 @@
       "@/ipc/*": ["app/backend/src/ipc/*"],
       "@/repositories": ["app/backend/src/repositories/index.ts"],
       "@/repositories/*": ["app/backend/src/repositories/*"],
+      "@/services": ["app/backend/src/services/index.ts"],
       "@/services/*": ["app/backend/src/services/*"],
+      "@/logic": ["app/backend/src/logic/index.ts"],
       "@/logic/*": ["app/backend/src/logic/*"],
       "@/middleware": ["app/backend/src/middleware/index.ts"],
       "@/middleware/*": ["app/backend/src/middleware/*"],
+      "@/validation": ["app/backend/src/validation/index.ts"],
       "@/validation/*": ["app/backend/src/validation/*"],
       "@/preload": ["app/backend/src/preload/index.ts"],
       "@/preload/*": ["app/backend/src/preload/*"]
@@ -37,10 +40,7 @@
     "incremental": true,
     "tsBuildInfoFile": "build/.tsbuildinfo"
   },
-  "include": [
-    "app/backend/src/**/*.ts",
-    "app/shared/**/*.ts"
-  ],
+  "include": ["app/backend/src/**/*.ts", "app/shared/**/*.ts"],
   "exclude": [
     "app/backend/tests/**/*",
     "app/shared/tests/**/*",

@@ -1,6 +1,7 @@
-import { PluginRegistry } from '@sheetpilot/shared/plugin-registry';
 import { loadPluginConfig, resolvePluginVariant } from '@sheetpilot/shared/plugin-config';
+import { PluginRegistry } from '@sheetpilot/shared/plugin-registry';
 import { TIMESHEET_PLUGIN_NAMESPACES } from '@sheetpilot/shared/plugin-types';
+
 import { HandsontableTimesheetUIPlugin } from './timesheet-ui-handsontable';
 import { BasicTimesheetValidationPlugin } from './timesheet-validation-basic';
 

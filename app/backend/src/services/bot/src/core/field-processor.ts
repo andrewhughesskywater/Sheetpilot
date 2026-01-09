@@ -6,9 +6,9 @@
  * workflow, reducing complexity in _fill_fields and improving testability.
  */
 
-import * as Cfg from '../config/automation_config';
-import type { WebformFiller } from '../browser/webform_flow';
 import { botLogger } from '../../utils/logger';
+import type { WebformFiller } from '../browser/webform_flow';
+import * as Cfg from '../config/automation_config';
 
 export interface FieldProcessingContext {
   webformFiller: WebformFiller;
@@ -44,7 +44,7 @@ export class FieldProcessor {
         botLogger.debug('Skipping field', {
           fieldKey,
           reason: 'Not required for project',
-          projectName
+          projectName,
         });
         return null;
       }
@@ -56,7 +56,7 @@ export class FieldProcessor {
           botLogger.debug('Using project-specific locator', {
             fieldKey,
             projectName,
-            locator: projectSpecificLocator
+            locator: projectSpecificLocator,
           });
         }
       }
@@ -79,7 +79,7 @@ export class FieldProcessor {
         fieldKey,
         value,
         fieldSpec: JSON.stringify(spec),
-        error: String(error)
+        error: String(error),
       });
       throw error;
     }
@@ -108,7 +108,7 @@ export class FieldProcessor {
       fieldKey,
       label: spec['label'] || 'No label',
       type: spec['type'] || 'text',
-      locator: spec['locator'] || 'No locator'
+      locator: spec['locator'] || 'No locator',
     });
 
     await this.injectField(context, spec);

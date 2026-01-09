@@ -1,29 +1,25 @@
 /**
  * @fileoverview Admin IPC Handlers
- * 
+ *
  * Handles IPC communication for administrative operations.
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025
  */
 
 import { ipcMain } from 'electron';
-import { ipcLogger } from './utils/logger';
-import { isTrustedIpcSender } from './handlers/timesheet/main-window';
-import { 
-  validateSession,
-  clearAllCredentials,
-  rebuildDatabase
-} from '../repositories';
-import { validateInput } from '../validation/validate-ipc-input';
+
+import { clearAllCredentials, rebuildDatabase,validateSession } from '../repositories';
 import { adminTokenSchema } from '../validation/ipc-schemas';
+import { validateInput } from '../validation/validate-ipc-input';
+import { isTrustedIpcSender } from './handlers/timesheet/main-window';
+import { ipcLogger } from './utils/logger';
 
 /**
  * Register all admin-related IPC handlers
  */
 export function registerAdminHandlers(): void {
-  
   // Handler for admin to clear all credentials
   ipcMain.handle('admin:clearCredentials', async (event, token: string) => {
     if (!isTrustedIpcSender(event)) {
@@ -34,19 +30,19 @@ export function registerAdminHandlers(): void {
     if (!validation.success) {
       return { success: false, error: validation.error };
     }
-    
+
     const validatedData = validation.data!;
     const session = validateSession(validatedData.token);
-    
+
     if (!session.valid || !session.isAdmin) {
-      ipcLogger.security('admin-action-denied', 'Unauthorized admin action attempted', { 
-        token: validatedData.token.substring(0, 8) + '...' 
+      ipcLogger.security('admin-action-denied', 'Unauthorized admin action attempted', {
+        token: `${validatedData.token.substring(0, 8)  }...`,
       });
       return { success: false, error: 'Unauthorized: Admin access required' };
     }
 
     ipcLogger.audit('admin-clear-credentials', 'Admin clearing all credentials', { email: session.email });
-    
+
     try {
       clearAllCredentials();
       ipcLogger.info('All credentials cleared by admin', { email: session.email });
@@ -67,19 +63,19 @@ export function registerAdminHandlers(): void {
     if (!validation.success) {
       return { success: false, error: validation.error };
     }
-    
+
     const validatedData = validation.data!;
     const session = validateSession(validatedData.token);
-    
+
     if (!session.valid || !session.isAdmin) {
-      ipcLogger.security('admin-action-denied', 'Unauthorized admin action attempted', { 
-        token: validatedData.token.substring(0, 8) + '...' 
+      ipcLogger.security('admin-action-denied', 'Unauthorized admin action attempted', {
+        token: `${validatedData.token.substring(0, 8)  }...`,
       });
       return { success: false, error: 'Unauthorized: Admin access required' };
     }
 
     ipcLogger.audit('admin-rebuild-database', 'Admin rebuilding database', { email: session.email });
-    
+
     try {
       rebuildDatabase();
       ipcLogger.info('Database rebuilt by admin', { email: session.email });
@@ -90,5 +86,3 @@ export function registerAdminHandlers(): void {
     }
   });
 }
-
-

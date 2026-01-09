@@ -6,6 +6,7 @@
  */
 
 import type { BrowserWindow } from 'electron';
+
 import { registerTimesheetHandlers as registerTimesheetHandlersInternal, setMainWindowRef } from './handlers/timesheet';
 
 export function setMainWindow(window: BrowserWindow | null): void {
@@ -15,4 +16,3 @@ export function setMainWindow(window: BrowserWindow | null): void {
 export function registerTimesheetHandlers(): void {
   registerTimesheetHandlersInternal();
 }
-

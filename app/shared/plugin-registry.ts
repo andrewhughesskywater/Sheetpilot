@@ -1,9 +1,9 @@
 /**
  * @fileoverview Plugin Registry System
- * 
+ *
  * Central plugin management system that handles registration, resolution,
  * and lifecycle management for all plugins in the application.
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025
@@ -17,13 +17,13 @@ import type { IPlugin, PluginConfiguration, PluginRegistryConfig, PluginResoluti
  */
 export class PluginRegistry {
   private static instance: PluginRegistry | null = null;
-  
+
   /** Registered plugins organized by namespace and name */
   private plugins: Map<string, Map<string, unknown>> = new Map();
-  
+
   /** Active plugin names by namespace */
   private activePlugins: Map<string, string> = new Map();
-  
+
   /** Plugin configurations loaded from config file */
   private config: PluginRegistryConfig | null = null;
 
@@ -54,7 +54,7 @@ export class PluginRegistry {
    */
   public loadConfig(config: PluginRegistryConfig): void {
     this.config = config;
-    
+
     // Set active plugins from configuration
     for (const [namespace, pluginConfig] of Object.entries(config.plugins)) {
       if (typeof pluginConfig === 'object' && pluginConfig !== null && 'active' in pluginConfig) {
@@ -75,15 +75,15 @@ export class PluginRegistry {
     if (!this.plugins.has(namespace)) {
       this.plugins.set(namespace, new Map());
     }
-    
+
     const namespacePlugins = this.plugins.get(namespace)!;
-    
+
     if (namespacePlugins.has(name)) {
       console.warn(`Plugin ${namespace}:${name} is already registered. Overwriting.`);
     }
-    
+
     namespacePlugins.set(name, implementation);
-    
+
     // Initialize plugin if it implements IPlugin interface
     if (implementation && typeof implementation === 'object' && 'initialize' in implementation) {
       const plugin = implementation as unknown as IPlugin;
@@ -108,25 +108,25 @@ export class PluginRegistry {
    */
   public getPlugin<T = unknown>(namespace: string, name?: string): T | null {
     const targetName = name || this.activePlugins.get(namespace);
-    
+
     if (!targetName) {
       // Use debug level during initialization to avoid noise
       console.debug(`No plugin name specified and no active plugin for namespace: ${namespace}`);
       return null;
     }
-    
+
     const namespacePlugins = this.plugins.get(namespace);
     if (!namespacePlugins) {
       console.debug(`No plugins registered for namespace: ${namespace}`);
       return null;
     }
-    
+
     const plugin = namespacePlugins.get(targetName);
     if (!plugin) {
       console.warn(`Plugin ${namespace}:${targetName} not found`);
       return null;
     }
-    
+
     return plugin as T;
   }
 
@@ -143,15 +143,15 @@ export class PluginRegistry {
     fallbackName?: string
   ): PluginResolution<T> | null {
     let plugin = this.getPlugin<T>(namespace, name);
-    
+
     if (plugin) {
       return {
         plugin,
         name,
-        isFallback: false
+        isFallback: false,
       };
     }
-    
+
     if (fallbackName) {
       plugin = this.getPlugin<T>(namespace, fallbackName);
       if (plugin) {
@@ -159,11 +159,11 @@ export class PluginRegistry {
         return {
           plugin,
           name: fallbackName,
-          isFallback: true
+          isFallback: true,
         };
       }
     }
-    
+
     return null;
   }
 
@@ -186,7 +186,7 @@ export class PluginRegistry {
     if (!namespacePlugins || !namespacePlugins.has(name)) {
       throw new Error(`Cannot set active plugin: ${namespace}:${name} is not registered`);
     }
-    
+
     this.activePlugins.set(namespace, name);
   }
 
@@ -200,7 +200,7 @@ export class PluginRegistry {
     if (!namespacePlugins) {
       return [];
     }
-    
+
     return Array.from(namespacePlugins.keys());
   }
 
@@ -234,12 +234,12 @@ export class PluginRegistry {
     if (!namespacePlugins) {
       return;
     }
-    
+
     const plugin = namespacePlugins.get(name);
     if (!plugin) {
       return;
     }
-    
+
     // Dispose plugin if it implements IPlugin interface
     if (plugin && typeof plugin === 'object' && 'dispose' in plugin) {
       const pluginWithDispose = plugin as unknown as IPlugin;
@@ -252,9 +252,9 @@ export class PluginRegistry {
         }
       }
     }
-    
+
     namespacePlugins.delete(name);
-    
+
     // If this was the active plugin, clear it
     if (this.activePlugins.get(namespace) === name) {
       this.activePlugins.delete(namespace);
@@ -270,12 +270,12 @@ export class PluginRegistry {
     if (!this.config || !this.config.plugins[namespace]) {
       return null;
     }
-    
+
     const config = this.config.plugins[namespace];
     if (typeof config === 'object' && config !== null && 'active' in config) {
       return config as PluginConfiguration;
     }
-    
+
     return null;
   }
 
@@ -288,7 +288,7 @@ export class PluginRegistry {
     if (!this.config || !this.config.featureFlags) {
       return false;
     }
-    
+
     const flag = this.config.featureFlags[flagName];
     return flag ? flag.enabled : false;
   }
@@ -302,8 +302,7 @@ export class PluginRegistry {
     if (!this.config || !this.config.featureFlags) {
       return null;
     }
-    
+
     return this.config.featureFlags[flagName] || null;
   }
 }
-

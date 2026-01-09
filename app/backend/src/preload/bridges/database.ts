@@ -39,7 +39,5 @@ export const databaseBridge = {
     }>;
     credentials?: Array<{ id: number; service: string; email: string; created_at: string; updated_at: string }>;
     error?: string;
-  }> => ipcRenderer.invoke('database:getAllArchiveData', token)
+  }> => ipcRenderer.invoke('database:getAllArchiveData', token),
 };
-
-

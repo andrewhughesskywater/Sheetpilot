@@ -1,13 +1,13 @@
 /**
  * @fileoverview Database Migration Rollback Integration Test
- * 
+ *
  * Tests the automatic rollback and backup restoration functionality
  * when a migration fails. Simulates a failing migration to verify that:
  * 1. Database is backed up before migration
  * 2. Failed migration triggers automatic rollback
  * 3. Database state is restored from backup
  * 4. Schema version remains at original value
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2026
@@ -72,7 +72,9 @@ describe('Database Migration Rollback', () => {
     db.pragma('wal_checkpoint(TRUNCATE)');
 
     // Verify data is actually in the database
-    const versionCheck = db.prepare('SELECT version FROM schema_info WHERE id = 1').get() as { version: number } | undefined;
+    const versionCheck = db.prepare('SELECT version FROM schema_info WHERE id = 1').get() as
+      | { version: number }
+      | undefined;
     if (!versionCheck || versionCheck.version !== 1) {
       throw new Error(`Failed to set up test database: version check returned ${versionCheck?.version ?? 'undefined'}`);
     }
@@ -105,7 +107,7 @@ describe('Database Migration Rollback', () => {
     // Ensure database file exists on disk before backup
     // VACUUM INTO requires the main database file to exist
     db.pragma('wal_checkpoint(TRUNCATE)');
-    
+
     // Run migrations (should succeed for v1->v2)
     const result = runMigrations(db, testDbPath);
 
@@ -122,18 +124,24 @@ describe('Database Migration Rollback', () => {
       // doesn't have a main file yet (all data in WAL). This is a known limitation.
       // The important thing is that the backup file is created.
       const backupDb = new Database(result.backupPath);
-      
+
       // List all tables in backup
-      const allTables = backupDb.prepare(`
+      const allTables = backupDb
+        .prepare(
+          `
         SELECT name FROM sqlite_master 
         WHERE type='table' AND name NOT LIKE 'sqlite_%'
-      `).all() as Array<{ name: string }>;
-      
+      `
+        )
+        .all() as Array<{ name: string }>;
+
       // If backup has tables, verify timesheet exists and has data
       if (allTables.length > 0) {
-        const tableExists = allTables.find(t => t.name === 'timesheet');
+        const tableExists = allTables.find((t) => t.name === 'timesheet');
         if (tableExists) {
-          const rowCountResult = backupDb.prepare('SELECT COUNT(*) as count FROM timesheet').get() as { count: number } | undefined;
+          const rowCountResult = backupDb.prepare('SELECT COUNT(*) as count FROM timesheet').get() as
+            | { count: number }
+            | undefined;
           expect(rowCountResult).not.toBeNull();
           if (rowCountResult) {
             expect(rowCountResult.count).toBe(1);
@@ -175,7 +183,8 @@ describe('Database Migration Rollback', () => {
     }
 
     // Verify data is still intact
-    const afterMigrationCount = (db.prepare('SELECT COUNT(*) as count FROM timesheet').get() as { count: number }).count;
+    const afterMigrationCount = (db.prepare('SELECT COUNT(*) as count FROM timesheet').get() as { count: number })
+      .count;
     expect(afterMigrationCount).toBe(1);
   });
 
@@ -199,7 +208,7 @@ describe('Database Migration Rollback', () => {
       db.prepare(`INSERT INTO timesheet (date, hours) VALUES (?, ?)`).run('2026-01-03', 8.5);
     });
     insertTransaction();
-    
+
     // Checkpoint to ensure data is visible
     db.pragma('wal_checkpoint(TRUNCATE)');
 

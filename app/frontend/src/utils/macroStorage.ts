@@ -1,9 +1,9 @@
 /**
  * @fileoverview Macro Storage Utility
- * 
+ *
  * Handles storage and retrieval of timesheet macros in localStorage.
  * Macros allow users to quickly fill timesheet rows with frequently-used data patterns.
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025
@@ -17,7 +17,7 @@ const MACRO_COUNT = 5;
  */
 /**
  * @fileoverview Macro Storage Utilities
- * 
+ *
  * Manages persistent storage of user-defined macros in localStorage.
  * Macros allow quick data entry by pre-filling common time entries with Ctrl+1-5.
  */
@@ -46,7 +46,7 @@ function createEmptyMacro(): MacroRow {
     project: '',
     tool: null,
     chargeCode: null,
-    taskDescription: ''
+    taskDescription: '',
   };
 }
 
@@ -56,7 +56,9 @@ function createEmptyMacro(): MacroRow {
  */
 export function loadMacros(): MacroRow[] {
   if (typeof window === 'undefined') {
-    return Array(MACRO_COUNT).fill(null).map(() => createEmptyMacro());
+    return Array(MACRO_COUNT)
+      .fill(null)
+      .map(() => createEmptyMacro());
   }
 
   try {
@@ -68,18 +70,20 @@ export function loadMacros(): MacroRow[] {
         // Ensure each macro has a name field (for backward compatibility)
         return parsed.map((macro) => ({
           ...macro,
-          name: macro.name ?? ''
+          name: macro.name ?? '',
         }));
       }
     }
   } catch (error) {
-    window.logger?.error('Could not load macros', { 
-      error: error instanceof Error ? error.message : String(error) 
+    window.logger?.error('Could not load macros', {
+      error: error instanceof Error ? error.message : String(error),
     });
   }
 
   // Return empty macros if loading failed or not found
-  return Array(MACRO_COUNT).fill(null).map(() => createEmptyMacro());
+  return Array(MACRO_COUNT)
+    .fill(null)
+    .map(() => createEmptyMacro());
 }
 
 /**
@@ -92,8 +96,8 @@ export function saveMacros(macros: MacroRow[]): void {
   }
 
   if (!Array.isArray(macros) || macros.length !== MACRO_COUNT) {
-    window.logger?.error('Invalid macros array - must have exactly 5 items', { 
-      receivedLength: macros?.length 
+    window.logger?.error('Invalid macros array - must have exactly 5 items', {
+      receivedLength: macros?.length,
     });
     return;
   }
@@ -103,8 +107,8 @@ export function saveMacros(macros: MacroRow[]): void {
     localStorage.setItem(MACRO_STORAGE_KEY, serialized);
     window.logger?.debug('Macros saved successfully', { count: macros.length });
   } catch (error) {
-    window.logger?.error('Could not save macros', { 
-      error: error instanceof Error ? error.message : String(error) 
+    window.logger?.error('Could not save macros', {
+      error: error instanceof Error ? error.message : String(error),
     });
   }
 }
@@ -113,12 +117,9 @@ export function saveMacros(macros: MacroRow[]): void {
  * Check if a macro row has any data
  */
 export function isMacroEmpty(macro: MacroRow): boolean {
-  return !macro.timeIn && 
-         !macro.timeOut && 
-         !macro.project && 
-         !macro.tool && 
-         !macro.chargeCode && 
-         !macro.taskDescription;
+  return (
+    !macro.timeIn && !macro.timeOut && !macro.project && !macro.tool && !macro.chargeCode && !macro.taskDescription
+  );
 }
 
 /**
@@ -128,4 +129,3 @@ export function isMacroEmpty(macro: MacroRow): boolean {
 export function isMacroValid(macro: MacroRow): boolean {
   return Boolean(macro.project && macro.taskDescription);
 }
-
