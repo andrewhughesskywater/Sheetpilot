@@ -32,14 +32,10 @@ import VpnKeyIcon from '@mui/icons-material/VpnKey';
 import BugReportIcon from '@mui/icons-material/BugReport';
 import ContactSupportIcon from '@mui/icons-material/ContactSupport';
 
-export default function UserManual() {
-  const [expandedSection, setExpandedSection] = useState<string | false>('getting-started');
+const MANUAL_BODY_TEXT_CLASS = 'manual-body-text';
+const LIST_ITEM_PRIMARY_FONT_SIZE = '0.875rem';
 
-  const handleChange = (panel: string) => (_event: React.SyntheticEvent, isExpanded: boolean) => {
-    setExpandedSection(isExpanded ? panel : false);
-  };
-
-  const manualSections = [
+const MANUAL_SECTIONS = [
     {
       id: 'getting-started',
       title: 'Getting Started',
@@ -49,7 +45,7 @@ export default function UserManual() {
           <Typography variant="h6" gutterBottom className="manual-heading">
             Welcome to SheetPilot
           </Typography>
-          <Typography variant="body1" paragraph className="manual-body-text">
+          <Typography variant="body1" paragraph className={MANUAL_BODY_TEXT_CLASS}>
             SheetPilot is a comprehensive timesheet management application designed to streamline your workflow 
             and simplify the process of tracking and submitting time entries to SmartSheet.
           </Typography>
@@ -67,7 +63,7 @@ export default function UserManual() {
             <Step>
               <StepLabel>Add Your Credentials</StepLabel>
               <StepContent>
-                <Typography variant="body2" className="manual-body-text">
+                <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
                   Store your SmartSheet email and password securely in the application. 
                   Your credentials are encrypted and stored locally on your device.
                 </Typography>
@@ -76,7 +72,7 @@ export default function UserManual() {
             <Step>
               <StepLabel>View Your Timesheet</StepLabel>
               <StepContent>
-                <Typography variant="body2" className="manual-body-text">
+                <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
                   Navigate to the Timesheet tab to see your current entries, add new time entries, 
                   and manage your weekly timesheet.
                 </Typography>
@@ -85,7 +81,7 @@ export default function UserManual() {
             <Step>
               <StepLabel>Submit to SmartSheet</StepLabel>
               <StepContent>
-                <Typography variant="body2" className="manual-body-text">
+                <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
                   Use the &quot;Submit Timesheet&quot; button to automatically send your entries to SmartSheet. 
                   The application will validate your data before submission.
                 </Typography>
@@ -94,7 +90,7 @@ export default function UserManual() {
             <Step>
               <StepLabel>Review Your Archive</StepLabel>
               <StepContent>
-                <Typography variant="body2" className="manual-body-text">
+                <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
                   Check the Archive tab to view all your previously submitted timesheet entries 
                   and track your submission history.
                 </Typography>
@@ -120,7 +116,7 @@ export default function UserManual() {
                 <SecurityIcon className="manual-icon-spacing manual-icon-primary" />
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>Secure Credential Storage</Typography>
               </Box>
-              <Typography variant="body2" className="manual-body-text">
+              <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
                 Your SmartSheet credentials are encrypted and stored securely on your local device. 
                 No credentials are transmitted to external servers.
               </Typography>
@@ -131,7 +127,7 @@ export default function UserManual() {
                 <AssignmentIcon className="manual-icon-spacing manual-icon-tertiary" />
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>Timesheet Management</Typography>
               </Box>
-              <Typography variant="body2" className="manual-body-text">
+              <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
                 Create, edit, and manage your timesheet entries with an intuitive grid interface. 
                 Real-time validation ensures data accuracy.
               </Typography>
@@ -142,7 +138,7 @@ export default function UserManual() {
                 <CloudUploadIcon className="manual-icon-spacing manual-icon-secondary" />
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>SmartSheet Integration</Typography>
               </Box>
-              <Typography variant="body2" className="manual-body-text">
+              <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
                 Seamlessly submit your timesheet entries directly to SmartSheet with automatic 
                 validation and error handling.
               </Typography>
@@ -153,7 +149,7 @@ export default function UserManual() {
                 <ArchiveIcon className="manual-icon-spacing manual-icon-secondary" />
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>Submission Archive</Typography>
               </Box>
-              <Typography variant="body2" className="manual-body-text">
+              <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
                 Keep track of all your submitted entries with a comprehensive archive that 
                 shows submission history and status.
               </Typography>
@@ -164,7 +160,7 @@ export default function UserManual() {
                 <SpeedIcon className="manual-icon-spacing manual-icon-error" />
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>Performance Optimized</Typography>
               </Box>
-              <Typography variant="body2" className="manual-body-text">
+              <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
                 Built with performance in mind, SheetPilot provides fast, responsive 
                 interactions and efficient data processing.
               </Typography>
@@ -175,7 +171,7 @@ export default function UserManual() {
                 <StorageIcon className="manual-icon-spacing manual-icon-secondary" />
                 <Typography variant="h6" sx={{ fontWeight: 600 }}>Local Data Storage</Typography>
               </Box>
-              <Typography variant="body2" className="manual-body-text">
+              <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
                 All your data is stored locally using SQLite database, ensuring privacy 
                 and allowing offline access to your timesheet entries.
               </Typography>
@@ -235,7 +231,7 @@ export default function UserManual() {
           <Typography variant="h6" gutterBottom className="manual-heading">
             Daily Workflow
           </Typography>
-          <Typography variant="body1" paragraph className="manual-body-text">
+          <Typography variant="body1" paragraph className={MANUAL_BODY_TEXT_CLASS}>
             Follow these steps for efficient timesheet management:
           </Typography>
 
@@ -243,7 +239,7 @@ export default function UserManual() {
             <Step>
               <StepLabel>Start Your Day</StepLabel>
               <StepContent>
-                <Typography variant="body2" className="manual-body-text">
+                <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
                   Open SheetPilot and navigate to the Timesheet tab. Review any existing entries 
                   from previous days to ensure accuracy.
                 </Typography>
@@ -252,7 +248,7 @@ export default function UserManual() {
             <Step>
               <StepLabel>Log Your Time</StepLabel>
               <StepContent>
-                <Typography variant="body2" className="manual-body-text">
+                <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
                   Add new time entries as you complete tasks throughout the day. Include project codes, 
                   descriptions, and accurate time durations.
                 </Typography>
@@ -261,7 +257,7 @@ export default function UserManual() {
             <Step>
               <StepLabel>Review Before Submission</StepLabel>
               <StepContent>
-                <Typography variant="body2" className="manual-body-text">
+                <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
                   Before submitting, review all entries for the week to ensure they&apos;re complete 
                   and accurate. Check for any missing project codes or descriptions.
                 </Typography>
@@ -270,7 +266,7 @@ export default function UserManual() {
             <Step>
               <StepLabel>Submit Weekly</StepLabel>
               <StepContent>
-                <Typography variant="body2" className="manual-body-text">
+                <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
                   Submit your timesheet at the end of each week or as required by your organization. 
                   The application will validate all entries before submission.
                 </Typography>
@@ -284,25 +280,25 @@ export default function UserManual() {
               <ListItem sx={{ py: 0 }}>
                 <ListItemText 
                   primary="Log time entries daily to avoid forgetting tasks"
-                  sx={{ '& .MuiListItemText-primary': { fontSize: '0.875rem' } }}
+                  sx={{ '& .MuiListItemText-primary': { fontSize: LIST_ITEM_PRIMARY_FONT_SIZE } }}
                 />
               </ListItem>
               <ListItem sx={{ py: 0 }}>
                 <ListItemText 
                   primary="Use descriptive project names and task descriptions"
-                  sx={{ '& .MuiListItemText-primary': { fontSize: '0.875rem' } }}
+                  sx={{ '& .MuiListItemText-primary': { fontSize: LIST_ITEM_PRIMARY_FONT_SIZE } }}
                 />
               </ListItem>
               <ListItem sx={{ py: 0 }}>
                 <ListItemText 
                   primary="Review and submit timesheets weekly for better accuracy"
-                  sx={{ '& .MuiListItemText-primary': { fontSize: '0.875rem' } }}
+                  sx={{ '& .MuiListItemText-primary': { fontSize: LIST_ITEM_PRIMARY_FONT_SIZE } }}
                 />
               </ListItem>
               <ListItem sx={{ py: 0 }}>
                 <ListItemText 
                   primary="Keep your credentials up to date if your password changes"
-                  sx={{ '& .MuiListItemText-primary': { fontSize: '0.875rem' } }}
+                  sx={{ '& .MuiListItemText-primary': { fontSize: LIST_ITEM_PRIMARY_FONT_SIZE } }}
                 />
               </ListItem>
             </List>
@@ -384,7 +380,7 @@ export default function UserManual() {
                       If you recently changed your password, update your stored credentials in the Home tab.
                     </>
                   }
-                  secondaryTypographyProps={{ className: 'manual-body-text' }}
+                  secondaryTypographyProps={{ className: MANUAL_BODY_TEXT_CLASS }}
                 />
               </ListItem>
               <ListItem>
@@ -399,7 +395,7 @@ export default function UserManual() {
                       Try again in a few minutes if the issue persists.
                     </>
                   }
-                  secondaryTypographyProps={{ className: 'manual-body-text' }}
+                  secondaryTypographyProps={{ className: MANUAL_BODY_TEXT_CLASS }}
                 />
               </ListItem>
             </List>
@@ -422,7 +418,7 @@ export default function UserManual() {
                       missing project codes, invalid time formats, or duplicate entries. Fix the issues and try again.
                     </>
                   }
-                  secondaryTypographyProps={{ className: 'manual-body-text' }}
+                  secondaryTypographyProps={{ className: MANUAL_BODY_TEXT_CLASS }}
                 />
               </ListItem>
               <ListItem>
@@ -437,7 +433,7 @@ export default function UserManual() {
                       Check that entries are not already submitted (they won&apos;t appear in the submission queue).
                     </>
                   }
-                  secondaryTypographyProps={{ className: 'manual-body-text' }}
+                  secondaryTypographyProps={{ className: MANUAL_BODY_TEXT_CLASS }}
                 />
               </ListItem>
             </List>
@@ -460,7 +456,7 @@ export default function UserManual() {
                       contact your system administrator for assistance.
                     </>
                   }
-                  secondaryTypographyProps={{ className: 'manual-body-text' }}
+                  secondaryTypographyProps={{ className: MANUAL_BODY_TEXT_CLASS }}
                 />
               </ListItem>
               <ListItem>
@@ -475,7 +471,7 @@ export default function UserManual() {
                       The application stores data locally in a SQLite database file.
                     </>
                   }
-                  secondaryTypographyProps={{ className: 'manual-body-text' }}
+                  secondaryTypographyProps={{ className: MANUAL_BODY_TEXT_CLASS }}
                 />
               </ListItem>
             </List>
@@ -483,7 +479,7 @@ export default function UserManual() {
 
           <Alert severity="info" sx={{ mt: 3 }}>
             <AlertTitle>Getting Additional Help</AlertTitle>
-            <Typography variant="body2" className="manual-body-text">
+            <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
               If you continue to experience issues after trying these solutions:
             </Typography>
             <List dense sx={{ mt: 1 }}>
@@ -493,7 +489,7 @@ export default function UserManual() {
                 </ListItemIcon>
                 <ListItemText 
                   primary="Contact your system administrator"
-                  sx={{ '& .MuiListItemText-primary': { fontSize: '0.875rem' } }}
+                  sx={{ '& .MuiListItemText-primary': { fontSize: LIST_ITEM_PRIMARY_FONT_SIZE } }}
                 />
               </ListItem>
               <ListItem sx={{ py: 0 }}>
@@ -502,7 +498,7 @@ export default function UserManual() {
                 </ListItemIcon>
                 <ListItemText 
                   primary="Check the application logs for detailed error information"
-                  sx={{ '& .MuiListItemText-primary': { fontSize: '0.875rem' } }}
+                  sx={{ '& .MuiListItemText-primary': { fontSize: LIST_ITEM_PRIMARY_FONT_SIZE } }}
                 />
               </ListItem>
               <ListItem sx={{ py: 0 }}>
@@ -511,7 +507,7 @@ export default function UserManual() {
                 </ListItemIcon>
                 <ListItemText 
                   primary="Verify your SmartSheet account has the necessary permissions"
-                  sx={{ '& .MuiListItemText-primary': { fontSize: '0.875rem' } }}
+                  sx={{ '& .MuiListItemText-primary': { fontSize: LIST_ITEM_PRIMARY_FONT_SIZE } }}
                 />
               </ListItem>
             </List>
@@ -528,7 +524,7 @@ export default function UserManual() {
           <Typography variant="h6" gutterBottom className="manual-heading">
             Data Security
           </Typography>
-          <Typography variant="body1" paragraph className="manual-body-text">
+          <Typography variant="body1" paragraph className={MANUAL_BODY_TEXT_CLASS}>
             SheetPilot is designed with security and privacy as top priorities. Here&apos;s how we protect your data:
           </Typography>
 
@@ -537,7 +533,7 @@ export default function UserManual() {
               <Typography variant="h6" className="manual-card-success-heading">
                 Local Data Storage
               </Typography>
-              <Typography variant="body2" className="manual-body-text">
+              <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
                 All your timesheet data and credentials are stored locally on your device using 
                 SQLite database. No data is transmitted to external servers except during SmartSheet submission.
               </Typography>
@@ -547,7 +543,7 @@ export default function UserManual() {
               <Typography variant="h6" className="manual-card-warning-heading">
                 Encrypted Credentials
               </Typography>
-              <Typography variant="body2" className="manual-body-text">
+              <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
                 Your SmartSheet credentials are encrypted before being stored locally. 
                 The encryption key is derived from your system and is not stored in the application.
               </Typography>
@@ -557,7 +553,7 @@ export default function UserManual() {
               <Typography variant="h6" className="manual-card-info-heading">
                 Secure Communication
               </Typography>
-              <Typography variant="body2" className="manual-body-text">
+              <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
                 All communication with SmartSheet uses HTTPS encryption. Your credentials 
                 are only transmitted during the authentication process.
               </Typography>
@@ -567,7 +563,7 @@ export default function UserManual() {
               <Typography variant="h6" className="manual-card-secondary-heading">
                 No Data Collection
               </Typography>
-              <Typography variant="body2" className="manual-body-text">
+              <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
                 SheetPilot does not collect, store, or transmit any usage data, analytics, 
                 or personal information to external services.
               </Typography>
@@ -618,7 +614,7 @@ export default function UserManual() {
 
           <Alert severity="warning" sx={{ mt: 3 }}>
             <AlertTitle>Important Security Notes</AlertTitle>
-            <Typography variant="body2" className="manual-body-text">
+            <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
               • Never share your SmartSheet credentials with others<br/>
               • Keep your device&apos;s operating system and security software up to date<br/>
               • Be cautious when using SheetPilot on shared or public computers<br/>
@@ -637,7 +633,7 @@ export default function UserManual() {
           <Typography variant="h6" gutterBottom className="manual-heading">
             Getting Help
           </Typography>
-          <Typography variant="body1" paragraph className="manual-body-text">
+          <Typography variant="body1" paragraph className={MANUAL_BODY_TEXT_CLASS}>
             If you need assistance with SheetPilot, here are the resources available to you:
           </Typography>
 
@@ -722,7 +718,7 @@ export default function UserManual() {
                 <Typography variant="subtitle2" className="manual-heading">
                   Application Name
                 </Typography>
-                <Typography variant="body2" className="manual-body-text">
+                <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
                   SheetPilot
                 </Typography>
               </Box>
@@ -730,7 +726,7 @@ export default function UserManual() {
                 <Typography variant="subtitle2" className="manual-heading">
                   Database
                 </Typography>
-                <Typography variant="body2" className="manual-body-text">
+                <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
                   SQLite (Local)
                 </Typography>
               </Box>
@@ -738,7 +734,7 @@ export default function UserManual() {
                 <Typography variant="subtitle2" className="manual-heading">
                   Platform
                 </Typography>
-                <Typography variant="body2" className="manual-body-text">
+                <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
                   Electron Desktop App
                 </Typography>
               </Box>
@@ -746,7 +742,7 @@ export default function UserManual() {
                 <Typography variant="subtitle2" className="manual-heading">
                   Integration
                 </Typography>
-                <Typography variant="body2" className="manual-body-text">
+                <Typography variant="body2" className={MANUAL_BODY_TEXT_CLASS}>
                   SmartSheet API
                 </Typography>
               </Box>
@@ -755,7 +751,14 @@ export default function UserManual() {
         </Box>
       )
     }
-  ];
+];
+
+export default function UserManual() {
+  const [expandedSection, setExpandedSection] = useState<string | false>('getting-started');
+
+  const handleChange = (panel: string) => (_event: React.SyntheticEvent, isExpanded: boolean) => {
+    setExpandedSection(isExpanded ? panel : false);
+  };
 
   return (
     <Box sx={{ width: '100%', maxWidth: '100%' }}>
@@ -763,7 +766,7 @@ export default function UserManual() {
         SheetPilot User Manual
       </Typography>
       
-      {manualSections.map((section, index) => (
+      {MANUAL_SECTIONS.map((section, index) => (
         <Accordion
           key={section.id}
           expanded={expandedSection === section.id}

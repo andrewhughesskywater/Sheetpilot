@@ -9,7 +9,7 @@ vi.mock('@/ipc/handlers/timesheet/main-window', () => ({
 }));
 
 import { registerAdminHandlers } from '@/ipc/admin-handlers';
-import * as repositories from '@/repositories'';
+import * as repositories from '@/repositories';
 
 // Mock electron
 vi.mock('electron', () => ({

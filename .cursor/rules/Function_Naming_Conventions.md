@@ -1,3 +1,5 @@
+# Function Naming Conventions
+
 rules:
   - name: Function Naming Conventions
     appliesTo:
@@ -166,6 +168,7 @@ rules:
           prefix: "find"
           pattern: "find + Noun"
 
+
     reactComponents:
       - Name: PascalCase (e.g. `LoginDialog`, `TimesheetGrid`)
       - Should be descriptive nouns or `Adjective + Noun`
@@ -207,6 +210,7 @@ rules:
         - export function handleSubmit() {}
         - export function processEntriesByQuarter() {}
         - export function TimesheetGrid() {}
+
       bad:
         - function get_user_data() {}  # Should be getUserData
         - const ProcessData = () => {} # Should be processData

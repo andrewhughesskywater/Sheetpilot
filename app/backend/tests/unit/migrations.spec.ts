@@ -34,8 +34,8 @@ import {
   runMigrations,
   needsMigration,
   CURRENT_SCHEMA_VERSION
-} from '@/repositories'/migrations';
-import { setDbPath, getDb, closeConnection, ensureSchema, getDbPath } from '@/repositories'/connection-manager';
+} from '@/repositories/migrations';
+import { setDbPath, getDb, closeConnection, ensureSchema, getDbPath } from '@/repositories/connection-manager';
 
 describe('Database Migrations', () => {
   let testDbPath: string;
@@ -190,9 +190,9 @@ describe('Database Migrations', () => {
       expect(backupPath).not.toBeNull();
       
       const Database = require('better-sqlite3');
-      const backupDb = new Database(backupPath);
-      const result = backupDb.prepare('SELECT * FROM credentials WHERE service = ?').get('test') as { email: string } | undefined;
-      backupDb.close();
+      const backupReadDb = new Database(backupPath);
+      const result = backupReadDb.prepare('SELECT * FROM credentials WHERE service = ?').get('test') as { email: string } | undefined;
+      backupReadDb.close();
       
       expect(result).toBeDefined();
       expect(result!.email).toBe('test@example.com');

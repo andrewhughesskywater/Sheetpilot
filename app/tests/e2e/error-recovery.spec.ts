@@ -10,6 +10,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import { net } from 'electron';
 
 describe('Error Recovery E2E', () => {
   describe('Network Failure Recovery', () => {
@@ -121,7 +122,7 @@ describe('Error Recovery E2E', () => {
       const features = {
         dataEntry: true,
         localSave: true,
-        submit: !isOnline
+        submit: isOnline
       };
       
       expect(features.dataEntry).toBe(true);
@@ -189,4 +190,35 @@ describe('Error Recovery E2E', () => {
     });
   });
 });
+
+/**
+ * Check if the system has network connectivity
+ */
+export function isOnline(): boolean {
+  return net.isOnline();
+}
+
+/**
+ * Check if a URL is reachable
+ */
+export async function isReachable(url: string, timeout = 5000): Promise<boolean> {
+  if (!isOnline()) {
+    return false;
+  }
+  
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    
+    const response = await fetch(url, {
+      method: 'HEAD',
+      signal: controller.signal,
+    });
+    
+    clearTimeout(timeoutId);
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
 

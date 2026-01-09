@@ -6,15 +6,18 @@ export function useKeyboardShortcuts(
 ) {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.ctrlKey) {
-        // Ctrl+1..5 apply macros
+      const hasShortcutModifier = e.ctrlKey || e.metaKey;
+
+      if (hasShortcutModifier) {
+        // Ctrl/Cmd + 1..5 apply macros
         const num = Number(e.key);
         if (Number.isInteger(num) && num >= 1 && num <= 5) {
           applyMacro(num - 1);
         }
       }
-      // Example: Ctrl+D to duplicate (optional placeholder)
-      if (e.ctrlKey && (e.key === 'd' || e.key === 'D')) {
+
+      // Ctrl/Cmd + D duplicates the selected row
+      if (hasShortcutModifier && (e.key === 'd' || e.key === 'D')) {
         duplicateSelectedRow();
       }
     };

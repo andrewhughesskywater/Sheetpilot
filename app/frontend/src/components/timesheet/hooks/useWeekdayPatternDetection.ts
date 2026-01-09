@@ -1,11 +1,13 @@
 import { useEffect } from 'react';
 import type { MutableRefObject } from 'react';
+import type { TimesheetRow } from '../timesheet.schema';
+import { detectWeekdayPattern } from '../../../utils/smartDate';
 
 export function useWeekdayPatternDetection(
-  _timesheetDraftData: unknown[],
-  _weekdayPatternRef: MutableRefObject<string | null>
+  _timesheetDraftData: TimesheetRow[],
+  _weekdayPatternRef: MutableRefObject<boolean>
 ) {
   useEffect(() => {
-    // Placeholder to detect weekday patterns
-  }, [_timesheetDraftData]);
+    _weekdayPatternRef.current = detectWeekdayPattern(_timesheetDraftData);
+  }, [_timesheetDraftData, _weekdayPatternRef]);
 }

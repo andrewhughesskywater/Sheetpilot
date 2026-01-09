@@ -31,7 +31,7 @@ interface HandleInputActionConfig {
   step: LoginStep;
   email: string;
   password: string;
-  contextIndex?: number;
+  contextIndex?: number | undefined;
 }
 
 /**
@@ -44,25 +44,111 @@ export class LoginManager {
   /** Configuration object containing authentication settings */
   cfg: typeof C;
   /** Webform filler instance for browser interaction */
-  browser_manager: WebformFiller;
+  browserManager: WebformFiller;
   /** Wait timeout in seconds for element operations */
-  _wait_s: number;
+  waitSeconds: number;
   /** Dynamic form configuration */
   private formConfig: { BASE_URL: string; FORM_ID: string; SUBMISSION_ENDPOINT: string; SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[] };
   /** Track login state for each context */
   private loginStates: boolean[] = [];
 
+  private _getPageForContext(contextIndex?: number): Page {
+    return contextIndex !== undefined
+      ? this.browserManager.getPage(contextIndex)
+      : this.browserManager.requirePage();
+  }
+
+  private async _navigateToBaseWithRetries(contextIndex?: number): Promise<void> {
+    const maxRetries = 3;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        authLogger.verbose('Navigation attempt', { attempt, maxRetries, contextIndex });
+        const page = this._getPageForContext(contextIndex);
+        await C.wait_for_dom_stability(
+          page,
+          'body',
+          'visible',
+          C.DYNAMIC_WAIT_BASE_TIMEOUT * C.HALF_TIMEOUT_MULTIPLIER,
+          C.DYNAMIC_WAIT_BASE_TIMEOUT * 1.0
+        );
+        await this._navigateToBase(page);
+        authLogger.verbose('Successfully navigated to base URL', { contextIndex });
+        return;
+      } catch (e) {
+        authLogger.warn('Navigation attempt failed', {
+          attempt,
+          error: String(e),
+          contextIndex
+        });
+        if (attempt >= maxRetries) {
+          authLogger.error('All navigation attempts failed', {
+            maxRetries,
+            baseUrl: this.formConfig.BASE_URL,
+            error: String(e),
+            contextIndex
+          });
+          throw new BotNavigationError(
+            `Could not navigate to ${this.formConfig.BASE_URL} after ${maxRetries} attempts: ${String(e)}`
+          );
+        }
+
+        const page = this._getPageForContext(contextIndex);
+        await C.wait_for_dom_stability(
+          page,
+          'body',
+          'visible',
+          C.DYNAMIC_WAIT_BASE_TIMEOUT * 1.0,
+          C.DYNAMIC_WAIT_BASE_TIMEOUT * 2.0
+        );
+      }
+    }
+  }
+
+  private async _executeLoginSteps(
+    page: Page,
+    config: { email: string; password: string; contextIndex?: number }
+  ): Promise<void> {
+    const { email, password, contextIndex } = config;
+    authLogger.verbose('Executing login steps', { stepCount: C.LOGIN_STEPS.length, contextIndex });
+
+    for (let i = 0; i < C.LOGIN_STEPS.length; i++) {
+      const step = C.LOGIN_STEPS[i];
+      if (!step) continue;
+      const action = step['action'] as string;
+      authLogger.debug('Executing login step', {
+        stepIndex: i,
+        action,
+        selector: step['element_selector'] || step['locator'],
+        contextIndex
+      });
+
+      switch (action) {
+        case 'wait':
+          await this._handleWaitAction(page, step, contextIndex);
+          break;
+        case 'input':
+          await this._handleInputAction({ page, step, email, password, contextIndex });
+          break;
+        case 'click':
+          await this._handleClickAction(page, step, contextIndex);
+          break;
+        default:
+          authLogger.warn('Unknown login action', { action, stepIndex: i });
+      }
+    }
+  }
+
   /**
    * Creates a new LoginManager instance
    * @param config - Configuration object for authentication settings
-   * @param browser_manager - WebformFiller instance for browser operations
+   * @param browserManager - WebformFiller instance for browser operations
    */
-  constructor(config: typeof C, browser_manager: WebformFiller) {
+  constructor(config: typeof C, browserManager: WebformFiller) {
     this.cfg = config;
-    this.browser_manager = browser_manager;
-    this._wait_s = Number(this.cfg.ELEMENT_WAIT_TIMEOUT ?? 10.0);
+    this.browserManager = browserManager;
+    this.waitSeconds = Number(this.cfg.ELEMENT_WAIT_TIMEOUT ?? 10.0);
     // Use the dynamic form configuration from WebformFiller
-    this.formConfig = browser_manager.formConfig;
+    this.formConfig = browserManager.formConfig;
   }
 
   /**
@@ -163,7 +249,7 @@ export class LoginManager {
    * @returns Promise that resolves when login is complete
    * @throws BotNavigationError if navigation fails after retries
    */
-  async run_login_steps(email: string, password: string, contextIndex?: number): Promise<void> {
+  async runLoginSteps(email: string, password: string, contextIndex?: number): Promise<void> {
     // Check if already logged in for this context
     if (contextIndex !== undefined && this.loginStates[contextIndex]) {
       authLogger.verbose('Context already logged in, skipping login', { contextIndex });
@@ -173,69 +259,14 @@ export class LoginManager {
     const timer = authLogger.startTimer('login-flow');
     authLogger.info('Starting login process', { email, baseUrl: this.formConfig.BASE_URL, contextIndex });
     
-    const max_navigation_retries = 3;
-    let navigation_attempt = 0;
+    await this._navigateToBaseWithRetries(contextIndex);
 
-    while (navigation_attempt < max_navigation_retries) {
-      try {
-        navigation_attempt += 1;
-        authLogger.verbose('Navigation attempt', { attempt: navigation_attempt, maxRetries: max_navigation_retries, contextIndex });
-        const page = contextIndex !== undefined ? this.browser_manager.getPage(contextIndex) : this.browser_manager.require_page();
-        // Wait for page to settle before attempting navigation. This reduces flakiness
-        // after prior failures (especially when the page still animates or loads).
-        await C.wait_for_dom_stability(page, 'body', 'visible', C.DYNAMIC_WAIT_BASE_TIMEOUT * C.HALF_TIMEOUT_MULTIPLIER, C.DYNAMIC_WAIT_BASE_TIMEOUT * 1.0, 'navigation retry delay');
-        await this._navigate_to_base(page);
-        authLogger.verbose('Successfully navigated to base URL', { contextIndex });
-        break;
-      } catch (e) {
-        authLogger.warn('Navigation attempt failed', { 
-          attempt: navigation_attempt,
-          error: String(e),
-          contextIndex
-        });
-        if (navigation_attempt >= max_navigation_retries) {
-          authLogger.error('All navigation attempts failed', { 
-            maxRetries: max_navigation_retries,
-            baseUrl: this.formConfig.BASE_URL,
-            error: String(e),
-            contextIndex
-          });
-          throw new BotNavigationError(`Could not navigate to ${this.formConfig.BASE_URL} after ${max_navigation_retries} attempts: ${String(e)}`);
-        }
-        // Wait for page to be stable after navigation failure
-        const page = contextIndex !== undefined ? this.browser_manager.getPage(contextIndex) : this.browser_manager.require_page();
-        await C.wait_for_dom_stability(page, 'body', 'visible', C.DYNAMIC_WAIT_BASE_TIMEOUT * 1.0, C.DYNAMIC_WAIT_BASE_TIMEOUT * 2.0, 'login retry delay');
-      }
+    const page = this._getPageForContext(contextIndex);
+    const loginConfig: { email: string; password: string; contextIndex?: number } = { email, password };
+    if (contextIndex !== undefined) {
+      loginConfig.contextIndex = contextIndex;
     }
-
-    const page = contextIndex !== undefined ? this.browser_manager.getPage(contextIndex) : this.browser_manager.require_page();
-    authLogger.verbose('Executing login steps', { stepCount: C.LOGIN_STEPS.length, contextIndex });
-    
-    for (let i = 0; i < C.LOGIN_STEPS.length; i++) {
-      const step = C.LOGIN_STEPS[i];
-      if (!step) continue;
-      const action = step['action'] as string;
-      authLogger.debug('Executing login step', { 
-        stepIndex: i,
-        action,
-        selector: step['element_selector'] || step['locator'],
-        contextIndex
-      });
-      
-      switch (action) {
-        case 'wait':
-          await this._handleWaitAction(page, step, contextIndex);
-          break;
-        case 'input':
-          await this._handleInputAction({ page, step, email, password, contextIndex });
-          break;
-        case 'click':
-          await this._handleClickAction(page, step, contextIndex);
-          break;
-        default:
-          authLogger.warn('Unknown login action', { action, stepIndex: i });
-      }
-    }
+    await this._executeLoginSteps(page, loginConfig);
     
     // Mark this context as logged in
     if (contextIndex !== undefined) {
@@ -251,11 +282,11 @@ export class LoginManager {
    * Navigates to the base URL for authentication
    * @private
    * @param page - Playwright Page instance to navigate
-   * @param timeout_ms - Optional timeout in milliseconds
+   * @param timeoutMs - Optional timeout in milliseconds
    * @returns Promise that resolves when navigation is complete
    */
-  private async _navigate_to_base(page: Page, timeout_ms?: number): Promise<void> {
-    const timeout = timeout_ms ?? this._wait_s * 1000;
+  private async _navigateToBase(page: Page, timeoutMs?: number): Promise<void> {
+    const timeout = timeoutMs ?? this.waitSeconds * 1000;
     authLogger.verbose('Navigating to base URL', { 
       baseUrl: this.formConfig.BASE_URL,
       timeoutMs: timeout 
@@ -273,15 +304,15 @@ export class LoginManager {
    */
   validate_login_state = async (): Promise<boolean> => {
     try {
-      const page = this.browser_manager.require_page();
+      const page = this.browserManager.requirePage();
       // Check if current URL contains any configured success URL patterns
-      const current_url = page.url();
-      const success_urls: string[] = (this.cfg as Record<string, unknown>)['LOGIN_SUCCESS_URLS'] as string[] ?? [];
+      const currentUrl = page.url();
+      const successUrls: string[] = (this.cfg as Record<string, unknown>)['LOGIN_SUCCESS_URLS'] as string[] ?? [];
       authLogger.verbose('Validating login state', { 
-        currentUrl: current_url,
-        successUrls: success_urls 
+        currentUrl: currentUrl,
+        successUrls: successUrls 
       });
-      if (success_urls.some((u) => current_url.includes(u))) {
+      if (successUrls.some((u) => currentUrl.includes(u))) {
         authLogger.info('Login state validated successfully');
         return true;
       }

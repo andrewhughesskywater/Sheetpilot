@@ -63,12 +63,6 @@ window.addEventListener('DOMContentLoaded', () => {
 // Initialize theme system before rendering
 initializeTheme();
 
-// Initialize frontend plugins (non-blocking)
-// Intentionally not awaited to avoid delaying first paint; safe as consumers access lazily
-registerDefaultFrontendPlugins().catch((err) => {
-  window.logger?.warn?.('Could not register frontend plugins', { error: err?.message || String(err) });
-});
-
 // MUI theme is primarily overridden by M3 CSS tokens in m3-mui-overrides.css
 // This theme ensures MUI respects dark mode and doesn't break
 function createMuiTheme(mode: 'light' | 'dark') {
@@ -98,6 +92,20 @@ function createMuiTheme(mode: 'light' | 'dark') {
 function ThemedApp() {
   const [muiTheme, setMuiTheme] = useState(() => createMuiTheme(getCurrentEffectiveTheme()));
   const [mountSplash, setMountSplash] = useState(() => window.location.hash.includes('splash'));
+  const [pluginsReady, setPluginsReady] = useState(false);
+
+  // Initialize frontend plugins before first render
+  useEffect(() => {
+    registerDefaultFrontendPlugins()
+      .then(() => {
+        setPluginsReady(true);
+      })
+      .catch((err) => {
+        window.logger?.warn?.('Could not register frontend plugins', { error: err?.message || String(err) });
+        // Allow rendering even if plugin registration fails (fallback to defaults)
+        setPluginsReady(true);
+      });
+  }, []);
 
   useEffect(() => {
     // Update theme when it changes
@@ -126,7 +134,7 @@ function ThemedApp() {
   return (
     <ThemeProvider theme={muiTheme}>
       <CssBaseline />
-      {mountSplash ? <Splash /> : <App />}
+      {!pluginsReady ? null : mountSplash ? <Splash /> : <App />}
     </ThemeProvider>
   );
 }

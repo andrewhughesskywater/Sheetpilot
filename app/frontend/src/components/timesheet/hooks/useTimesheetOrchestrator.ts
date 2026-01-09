@@ -89,7 +89,11 @@ export function useTimesheetOrchestrator(onChange?: (rows: TimesheetRow[]) => vo
     refreshArchiveData
   });
 
-  const { macros, setMacros, showMacroDialog, setShowMacroDialog, applyMacro, duplicateSelectedRow } = useMacroSystem();
+  const { macros, setMacros, showMacroDialog, setShowMacroDialog, applyMacro, duplicateSelectedRow, handleMacroKeyDown } = useMacroSystem({
+    hotTableRef,
+    timesheetDraftData,
+    setTimesheetDraftData
+  });
 
   const { validationErrors, setValidationErrors, showErrorDialog, setShowErrorDialog } = useValidationState();
 
@@ -114,7 +118,8 @@ export function useTimesheetOrchestrator(onChange?: (rows: TimesheetRow[]) => vo
     saveTimersRef,
     inFlightSavesRef,
     saveAndReloadRow,
-    updateSaveButtonState
+    updateSaveButtonState,
+    handleMacroKeyDown,
   });
 
   const onRefresh = useMemo(() => createRefreshHandler(setTimesheetDraftData), [setTimesheetDraftData]);

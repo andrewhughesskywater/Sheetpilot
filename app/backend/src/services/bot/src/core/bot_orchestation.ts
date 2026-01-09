@@ -73,18 +73,18 @@ interface ProcessRowConfig {
 export class BotOrchestrator {
   /**
    * Invariant: call `start()` before any method that requires a page/context.
-   * `WebformFiller.require_page()` throws when the browser has not started.
+   * `WebformFiller.requirePage()` throws when the browser has not started.
    */
   /** Configuration object containing automation settings */
   cfg: typeof Cfg;
   /** Whether to run browser in headless mode */
   headless: boolean;
   /** Type of browser to use (chromium only) */
-  browser_kind: string;
+  browserKind: string;
   /** Webform filler instance for form interaction */
-  webform_filler: WebformFiller;
+  webformFiller: WebformFiller;
   /** Login manager instance for authentication */
-  login_manager: LoginManager;
+  loginManager: LoginManager;
   /** Optional callback for progress updates during automation */
   progress_callback: ((pct: number, msg: string) => void) | undefined;
   /** Dynamic form configuration */
@@ -110,24 +110,24 @@ export class BotOrchestrator {
       appSettingsBrowserHeadless: appSettings.browserHeadless
     });
 
-    this.browser_kind = config.browser ?? (this.cfg as Record<string, unknown>)['BROWSER'] as string ?? 'chromium';
+    this.browserKind = config.browser ?? (this.cfg as Record<string, unknown>)['BROWSER'] as string ?? 'chromium';
     this.progress_callback = config.progress_callback;
     this.formConfig = config.formConfig;
-    this.webform_filler = new WebformFiller(this.cfg, this.headless, this.browser_kind, this.formConfig);
-    this.login_manager = new LoginManager(this.cfg, this.webform_filler);
+    this.webformFiller = new WebformFiller(this.cfg, this.headless, this.browserKind, this.formConfig);
+    this.loginManager = new LoginManager(this.cfg, this.webformFiller);
   }
 
   /**
    * Initializes the browser and starts the automation session
    * @returns Promise that resolves when browser is ready
    */
-  async start(): Promise<void> { await this.webform_filler.start(); }
+  async start(): Promise<void> { await this.webformFiller.start(); }
   
   /**
    * Closes the browser and cleans up resources
    * @returns Promise that resolves when cleanup is complete
    */
-  async close(): Promise<void> { await this.webform_filler.close(); }
+  async close(): Promise<void> { await this.webformFiller.close(); }
 
   /**
    * Runs the automation workflow for a batch of rows.
@@ -137,8 +137,8 @@ export class BotOrchestrator {
    * - The return value uses **indices into `df`**, not external IDs.
    * - The method supports cancellation through `AbortSignal`.
    */
-  async run_automation(df: Array<Record<string, unknown>>, creds: [string, string], abortSignal?: AbortSignal): Promise<[boolean, number[], Array<[number,string]>]> {
-    const result = await this._run_automation_internal(df, creds, abortSignal);
+  async runAutomation(df: Array<Record<string, unknown>>, creds: [string, string], abortSignal?: AbortSignal): Promise<[boolean, number[], Array<[number,string]>]> {
+    const result = await this._runAutomationInternal(df, creds, abortSignal);
     return [result.success, result.submitted_indices, result.errors];
   }
 
@@ -148,14 +148,14 @@ export class BotOrchestrator {
    * @param password - User password for authentication
    * @returns Promise that resolves when login is complete
    */
-  run_login_steps(email: string, password: string): Promise<void> { return this.login_manager.run_login_steps(email, password); }
+  runLoginSteps(email: string, password: string): Promise<void> { return this.loginManager.runLoginSteps(email, password); }
 
   /**
    * Gets the current browser page instance
    * @returns Playwright Page object
    * @throws BotNotStartedError if browser is not started
    */
-  require_page() { return this.webform_filler.require_page(); }
+  requirePage() { return this.webformFiller.requirePage(); }
 
   /**
    * Waits for an element to become visible and returns its locator
@@ -163,9 +163,9 @@ export class BotOrchestrator {
    * @returns Promise resolving to Playwright Locator object
    * @throws Error if element doesn't become visible within timeout
    */
-  async wait_visible(sel: string) {
-    const page = this.webform_filler.require_page();
-    const ok = await Cfg.dynamic_wait_for_element(page, sel, 'visible', Cfg.DYNAMIC_WAIT_BASE_TIMEOUT, Cfg.GLOBAL_TIMEOUT, `element visibility (${sel})`);
+  async waitVisible(sel: string) {
+    const page = this.webformFiller.requirePage();
+    const ok = await Cfg.dynamic_wait_for_element(page, sel, 'visible', Cfg.DYNAMIC_WAIT_BASE_TIMEOUT, Cfg.GLOBAL_TIMEOUT);
     if (!ok) throw new Error(`Element '${sel}' did not become visible within timeout`);
     return page.locator(sel);
   }
@@ -174,24 +174,24 @@ export class BotOrchestrator {
    * Clicks an element identified by selector
    * @param sel - CSS selector for the element to click
    */
-  async click(sel: string) { const page = this.webform_filler.require_page(); await page.locator(sel).click(); }
+  async click(sel: string) { const page = this.webformFiller.requirePage(); await page.locator(sel).click(); }
   
   /**
    * Types text into an element identified by selector
    * @param sel - CSS selector for the input element
    * @param text - Text to type into the element
    */
-  async type(sel: string, text: string) { const page = this.webform_filler.require_page(); await page.locator(sel).type(text); }
+  async type(sel: string, text: string) { const page = this.webformFiller.requirePage(); await page.locator(sel).type(text); }
 
   /**
    * Determines if a field should be processed based on its value
    * @private
-   * @param field_key - Key identifying the field
+   * @param fieldKey - Key identifying the field
    * @param fields - Object containing field values
    * @returns True if field should be processed, false otherwise
    */
-  private _should_process_field(field_key: string, fields: Record<string, unknown>): boolean {
-    const fieldValue = fields[field_key];
+  private _shouldProcessField(fieldKey: string, fields: Record<string, unknown>): boolean {
+    const fieldValue = fields[fieldKey];
     if (fieldValue === null || fieldValue === undefined) {
       return false;
     }
@@ -216,12 +216,12 @@ export class BotOrchestrator {
   /**
    * Gets project-specific tool locator based on project name
    * @private
-   * @param project_name - Name of the project to get tool for
+   * @param projectName - Name of the project to get tool for
    * @returns CSS selector for project-specific tool input or null if not found
    */
-  private get_project_specific_tool_locator(project_name: string): string | null {
+  private getProjectSpecificToolLocator(projectName: string): string | null {
     const map = this.cfg.PROJECT_TO_TOOL_LABEL;
-    if (project_name && map[project_name]) return `input[aria-label='${map[project_name]}']`;
+    if (projectName && map[projectName]) return `input[aria-label='${map[projectName]}']`;
     return null;
   }
 
@@ -282,9 +282,9 @@ export class BotOrchestrator {
     }
 
     const [, monthStr, dayStr, yearStr] = dateMatch;
-    const month = parseInt(monthStr, 10);
-    const day = parseInt(dayStr, 10);
-    const year = parseInt(yearStr, 10);
+    const month = parseInt(monthStr ?? '', 10);
+    const day = parseInt(dayStr ?? '', 10);
+    const year = parseInt(yearStr ?? '', 10);
 
     if (isNaN(month) || isNaN(day) || isNaN(year)) {
       return null;
@@ -346,11 +346,11 @@ export class BotOrchestrator {
     botLogger.verbose('Processing row', { rowIndex: rowIndex + 1, totalRows, progress });
 
     // Build fields from row
-    const fields = this._build_fields_from_row(row);
+    const fields = this._buildFieldsFromRow(row);
     
     // Validate required fields early to avoid partial UI interactions that can leave
     // the form in an unexpected state.
-    if (!this._validate_required_fields(fields, rowIndex)) {
+    if (!this._validateRequiredFields(fields, rowIndex)) {
       botLogger.warn('Row skipped', { rowIndex, reason: 'Missing required fields' });
       rowOutcome = 'skipped';
       return [false, 'Missing required fields'];
@@ -368,12 +368,12 @@ export class BotOrchestrator {
     }
 
     // Ensure the form has loaded and the network has settled before interacting.
-    await this.webform_filler.wait_for_form_ready();
+    await this.webformFiller.waitForFormReady();
 
     // Fill fields
     botLogger.verbose('Filling form fields', { rowIndex });
     const fillTimer = botLogger.startTimer('row-fill');
-    await this._fill_fields(fields);
+    await this._fillFields(fields);
     fillTimer.done({ rowIndex });
 
     // Submit is optional: tests and debugging sometimes run in “fill-only” mode.
@@ -381,12 +381,11 @@ export class BotOrchestrator {
       botLogger.verbose('Waiting for form to stabilize before submission', { rowIndex });
       // Wait for form to be stable (no ongoing animations or changes)
       await Cfg.wait_for_dom_stability(
-        this.webform_filler.require_page(),
+        this.webformFiller.requirePage(),
         'form',
         'visible',
         Cfg.SUBMIT_DELAY_AFTER_FILLING,
-        Cfg.SUBMIT_DELAY_AFTER_FILLING * 2,
-        'form stabilization before submission'
+        Cfg.SUBMIT_DELAY_AFTER_FILLING * 2
       );
       
       // Submit with retry (Initial + Level 1 + Level 2 = 3 attempts)
@@ -423,7 +422,7 @@ export class BotOrchestrator {
   private async _submitWithRetryWithFields(rowIndex: number, fields: Record<string, unknown>): Promise<boolean> {
     // Attempt 1: Initial submit
     botLogger.info('Attempting initial submission', { rowIndex, attempt: 1, retryLevel: 'initial' });
-    let success = await this.webform_filler.submit_form();
+    let success = await this.webformFiller.submitForm();
     
     if (success) {
       botLogger.info('Initial submission succeeded', { rowIndex, attempt: 1, retryLevel: 'initial', result: 'success' });
@@ -443,7 +442,7 @@ export class BotOrchestrator {
     await new Promise(resolve => setTimeout(resolve, level1Delay * 1000));
     
     botLogger.info('Attempting Level 1 retry submission', { rowIndex, attempt: 2, retryLevel: 'level-1' });
-    success = await this.webform_filler.submit_form();
+    success = await this.webformFiller.submitForm();
     
     if (success) {
       botLogger.info('Level 1 retry succeeded', { rowIndex, attempt: 2, retryLevel: 'level-1', result: 'success' });
@@ -461,19 +460,18 @@ export class BotOrchestrator {
       delaySeconds: level2Delay 
     });
     await Cfg.wait_for_dom_stability(
-      this.webform_filler.require_page(),
+      this.webformFiller.requirePage(),
       'body',
       'visible',
       level2Delay,
-      level2Delay * 2,
-      'page stabilization before Level 2 retry'
+      level2Delay * 2
     );
     
     botLogger.verbose('Re-filling form fields for Level 2 retry', { rowIndex, retryLevel: 'level-2' });
-    await this._fill_fields(fields);
+    await this._fillFields(fields);
     
     botLogger.info('Attempting Level 2 retry submission', { rowIndex, attempt: 3, retryLevel: 'level-2' });
-    success = await this.webform_filler.submit_form();
+    success = await this.webformFiller.submitForm();
     
     if (success) {
       botLogger.info('Level 2 retry succeeded', { rowIndex, attempt: 3, retryLevel: 'level-2', result: 'success' });
@@ -520,7 +518,7 @@ export class BotOrchestrator {
           totalRows,
           status_col: statusCol,
           complete_val: completeVal,
-          abortSignal
+          ...(abortSignal && { abortSignal })
         });
 
         if (!success) {
@@ -537,7 +535,7 @@ export class BotOrchestrator {
         failed_rows.push([idx, errorMsg]);
 
         try {
-          await this.webform_filler.navigate_to_base();
+          await this.webformFiller.navigateToBase();
         } catch (recoveryError) {
           botLogger.warn('Recovery navigation failed', {
             rowIndex: idx,
@@ -565,7 +563,7 @@ export class BotOrchestrator {
    * @param abortSignal - Optional abort signal for cancellation support
    * @returns Promise resolving to detailed automation results
    */
-  private async _run_automation_internal(df: Array<Record<string, unknown>>, creds: [string, string], abortSignal?: AbortSignal): Promise<AutomationResult> {
+  private async _runAutomationInternal(df: Array<Record<string, unknown>>, creds: [string, string], abortSignal?: AbortSignal): Promise<AutomationResult> {
     const [email, password] = creds;
     const submitted: number[] = [];
     const failed_rows: Array<[number, string]> = [];
@@ -588,7 +586,7 @@ export class BotOrchestrator {
       botLogger.info('Logging in to primary context', { progress: 10 });
       this.progress_callback?.(10, 'Logging in');
       const loginTimer = botLogger.startTimer('login');
-      await this.login_manager.run_login_steps(email, password, 0);
+      await this.loginManager.runLoginSteps(email, password, 0);
       loginTimer.done({ contextIndex: 0 });
       
       // Check if aborted after login
@@ -607,7 +605,17 @@ export class BotOrchestrator {
 
       // Process rows sequentially: each row expects a stable form state and
       // interacts with the same page session.
-      const [submitted_batch, failed_rows_batch] = await this._processRowBatch({ df, statusCol: status_col, completeVal: complete_val, totalRows: total_rows, abortSignal });
+      const batchConfig: {
+        df: Array<Record<string, unknown>>;
+        statusCol: string;
+        completeVal: unknown;
+        totalRows: number;
+        abortSignal?: AbortSignal;
+      } = { df, statusCol: status_col, completeVal: complete_val, totalRows: total_rows };
+      if (abortSignal) {
+        batchConfig.abortSignal = abortSignal;
+      }
+      const [submitted_batch, failed_rows_batch] = await this._processRowBatch(batchConfig);
       submitted.push(...submitted_batch);
       failed_rows.push(...failed_rows_batch);
 
@@ -653,7 +661,7 @@ export class BotOrchestrator {
    * @param row - Data row containing column label -> value mappings
    * @returns Object with field keys mapped to their values
    */
-  private _build_fields_from_row(row: Record<string, unknown>): Record<string, unknown> {
+  private _buildFieldsFromRow(row: Record<string, unknown>): Record<string, unknown> {
     const fields: Record<string, unknown> = {};
     for (const key of Cfg.FIELD_ORDER) {
       const spec = Cfg.FIELD_DEFINITIONS[key];
@@ -671,20 +679,20 @@ export class BotOrchestrator {
    * @param fields - Object containing field keys and their values
    * @returns Promise that resolves when all fields are filled
    */
-  private async _fill_fields(fields: Record<string, unknown>): Promise<void> {
+  private async _fillFields(fields: Record<string, unknown>): Promise<void> {
     botLogger.verbose('Processing fields for form filling', {
       fieldCount: Object.keys(fields).length,
       fields
     });
 
-    for (const [field_key, value] of Object.entries(fields)) {
+    for (const [fieldKey, value] of Object.entries(fields)) {
       const context: FieldProcessingContext = {
-        webformFiller: this.webform_filler,
-        fieldKey: field_key,
+        webformFiller: this.webformFiller,
+        fieldKey: fieldKey,
         value,
         allFields: fields,
-        shouldProcessField: this._should_process_field.bind(this),
-        getProjectSpecificToolLocator: this.get_project_specific_tool_locator.bind(this)
+        shouldProcessField: this._shouldProcessField.bind(this),
+        getProjectSpecificToolLocator: this.getProjectSpecificToolLocator.bind(this)
       };
 
       await FieldProcessor.processField(context);
@@ -698,7 +706,7 @@ export class BotOrchestrator {
    * @param _idx - Row index (unused but kept for interface consistency)
    * @returns True if all required fields are valid, false otherwise
    */
-  private _validate_required_fields(fields: Record<string, unknown>, _idx: number): boolean {
+  private _validateRequiredFields(fields: Record<string, unknown>, _idx: number): boolean {
     for (const field_key of ['hours','project_code','date']) {
       if (!(field_key in fields)) return false;
       const v = fields[field_key];

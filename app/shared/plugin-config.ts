@@ -77,6 +77,11 @@ export function loadPluginConfig(configPath?: string): PluginRegistryConfig {
  * @returns Plugin configuration from environment or null
  */
 function loadConfigFromEnvironment(): PluginRegistryConfig | null {
+  // Check if we're in a Node.js environment (backend) vs browser (frontend)
+  if (typeof process === 'undefined' || !process.env) {
+    return null;
+  }
+  
   const envConfig = process.env['SHEETPILOT_PLUGIN_CONFIG'];
   
   if (envConfig) {

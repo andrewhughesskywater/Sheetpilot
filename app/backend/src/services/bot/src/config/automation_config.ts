@@ -553,8 +553,7 @@ export async function sleep(ms: number): Promise<void> {
     selector?: string,
     state: 'visible' | 'hidden' | 'attached' = 'visible',
     base_timeout?: number,
-    max_timeout?: number,
-    _operation_name?: string
+    max_timeout?: number
   ): Promise<boolean> {
     // Support both new object parameter and legacy multiple parameters
     let page: import('playwright').Page;
@@ -704,8 +703,7 @@ export async function sleep(ms: number): Promise<void> {
     selector?: string,
     state: 'visible' | 'hidden' | 'attached' | 'detached' = 'visible',
     base_timeout?: number,
-    max_timeout?: number,
-    _operation_name?: string
+    max_timeout?: number
   ): Promise<boolean> {
     // Support both new object parameter and legacy multiple parameters
     let page: import('playwright').Page;

@@ -15,7 +15,7 @@
  *   caller[Caller] --> runTimesheet
  *   runTimesheet --> orchestrator[BotOrchestrator]
  *   orchestrator --> startBrowser[WebformFiller.start]
- *   orchestrator --> login[LoginManager.run_login_steps]
+ *   orchestrator --> login[LoginManager.runLoginSteps]
  *   orchestrator --> processRows[ProcessRows]
  *   processRows --> fill[FillFields]
  *   processRows --> submit[SubmitAndVerify]
@@ -57,6 +57,72 @@ interface RunTimesheetConfig {
   abortSignal?: AbortSignal | {aborted: boolean; reason?: unknown};
 }
 
+type RunTimesheetResult = {
+  ok: boolean;
+  submitted: number[];
+  errors: Array<[number, string]>;
+};
+
+function cancelledRunResult(message: string): RunTimesheetResult {
+  return { ok: false, submitted: [], errors: [[0, message]] };
+}
+
+function emptyRunResult(): RunTimesheetResult {
+  return { ok: true, submitted: [], errors: [] };
+}
+
+function isAborted(signal: RunTimesheetConfig['abortSignal']): boolean {
+  if (!signal) return false;
+  const maybe = signal as { aborted?: unknown };
+  return maybe.aborted === true;
+}
+
+function resolveAbortSignal(signal: RunTimesheetConfig['abortSignal']): AbortSignal | undefined {
+  if (!signal) return undefined;
+
+  const maybeAbortSignal = signal as {
+    aborted?: unknown;
+    addEventListener?: unknown;
+    removeEventListener?: unknown;
+  };
+  const looksLikeAbortSignal =
+    typeof maybeAbortSignal.aborted === 'boolean' &&
+    typeof maybeAbortSignal.addEventListener === 'function' &&
+    typeof maybeAbortSignal.removeEventListener === 'function';
+  if (looksLikeAbortSignal) return signal as AbortSignal;
+
+  if (isAborted(signal)) {
+    const controller = new AbortController();
+    controller.abort();
+    return controller.signal;
+  }
+  return undefined;
+}
+
+function isCancellationLikeError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const msg = error.message.toLowerCase();
+  return (
+    msg.includes('cancelled') ||
+    msg.includes('canceled') ||
+    msg.includes('aborted') ||
+    msg.includes('browser has been closed') ||
+    msg.includes('target closed')
+  );
+}
+
+async function safeCloseBot(bot: BotOrchestrator): Promise<void> {
+  try {
+    botLogger.verbose('Closing browser');
+    await bot.close();
+    botLogger.info('Browser closed successfully');
+  } catch (closeError) {
+    botLogger.error('Could not close bot browser', {
+      error: closeError instanceof Error ? closeError.message : String(closeError),
+    });
+  }
+}
+
 /**
  * Runs timesheet automation for a batch of rows.
  *
@@ -89,24 +155,14 @@ export async function runTimesheet(config: RunTimesheetConfig): Promise<{
   });
   
   try {
-    // Check if aborted before starting
-    if (abortSignal?.aborted) {
+    if (isAborted(abortSignal)) {
       botLogger.info('Automation aborted before starting');
-      return {
-        ok: false,
-        submitted: [],
-        errors: [[0, 'Automation was cancelled']]
-      };
+      return cancelledRunResult('Automation was cancelled');
     }
-    
-    // Handle empty rows array - should succeed immediately
+
     if (rows.length === 0) {
       botLogger.info('No rows to process, returning success immediately');
-      return {
-        ok: true,
-        submitted: [],
-        errors: []
-      };
+      return emptyRunResult();
     }
     
     // Initialize the browser before running automation
@@ -114,70 +170,33 @@ export async function runTimesheet(config: RunTimesheetConfig): Promise<{
     await bot.start();
     botLogger.info('Browser started successfully');
     
-    // Check if aborted after browser start
-    if (abortSignal?.aborted) {
+    if (isAborted(abortSignal)) {
       botLogger.info('Automation aborted after browser start');
-      return {
-        ok: false,
-        submitted: [],
-        errors: [[0, 'Automation was cancelled']]
-      };
+      return cancelledRunResult('Automation was cancelled');
     }
     
     botLogger.info('Starting automation', { rowCount: rows.length });
-    // Convert simplified abort signal to AbortSignal if needed
-    const actualAbortSignal: AbortSignal | undefined = abortSignal instanceof AbortSignal 
-      ? abortSignal 
-      : abortSignal?.aborted 
-        ? (() => {
-            const controller = new AbortController();
-            controller.abort();
-            return controller.signal;
-          })()
-        : undefined;
-    const [success, submitted_indices, errors] = await bot.run_automation(rows, [email, password], actualAbortSignal);
+    const actualAbortSignal = resolveAbortSignal(abortSignal);
+    const [success, submitted_indices, errors] = await bot.runAutomation(rows, [email, password], actualAbortSignal);
     botLogger.info('Automation completed', { success, submittedCount: submitted_indices.length, errorCount: errors.length });
     
-    return {
-      ok: success,
-      submitted: submitted_indices,
-      errors: errors
-    };
+    return { ok: success, submitted: submitted_indices, errors };
   } catch (error) {
-    // Check if error is due to abort or browser closure
-    if (error instanceof Error) {
-      const errorMsg = error.message.toLowerCase();
-      if (errorMsg.includes('cancelled') || errorMsg.includes('aborted')) {
-        botLogger.info('Automation was cancelled');
-        return {
-          ok: false,
-          submitted: [],
-          errors: [[0, 'Automation was cancelled']]
-        };
-      }
-      // Check for Playwright browser closure errors
-      if (errorMsg.includes('browser has been closed') || errorMsg.includes('target closed')) {
+    if (isCancellationLikeError(error)) {
+      const msg = error instanceof Error ? error.message.toLowerCase() : '';
+      if (msg.includes('browser has been closed') || msg.includes('target closed')) {
         botLogger.info('Browser was closed during automation');
-        return {
-          ok: false,
-          submitted: [],
-          errors: [[0, 'Automation was cancelled - browser closed']]
-        };
+        return cancelledRunResult('Automation was cancelled - browser closed');
       }
+
+      botLogger.info('Automation was cancelled');
+      return cancelledRunResult('Automation was cancelled');
     }
     
     botLogger.error('Error during automation', { error: error instanceof Error ? error.message : String(error) });
     // Re-throw the error so it can be properly handled by the calling code
     throw error;
   } finally {
-    // Always clean up the browser, even if automation fails
-    try {
-      botLogger.verbose('Closing browser');
-      await bot.close();
-      botLogger.info('Browser closed successfully');
-    } catch (closeError) {
-      // Log but don't throw - we don't want cleanup errors to mask the real error
-      botLogger.error('Could not close bot browser', { error: closeError instanceof Error ? closeError.message : String(closeError) });
-    }
+    await safeCloseBot(bot);
   }
 }

@@ -326,6 +326,8 @@ export function DataProvider({ children }: DataProviderProps) {
       if (!archiveResponse?.success) {
         setArchiveDataError(archiveResponse?.error || 'Could not load archive data');
       }
+      
+      setIsArchiveDataLoading(false);
     } catch (error) {
       handleArchiveLoadError(error);
     }

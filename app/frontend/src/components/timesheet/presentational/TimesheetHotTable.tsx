@@ -32,6 +32,13 @@ export const TimesheetHotTable = forwardRef<HotTableRef | null, TimesheetHotTabl
   { data, columns, cells, handlers },
   ref
 ) {
+  // Extract column headers from column definitions as strings
+  const colHeaders = columns?.map((col: Record<string, unknown>) => {
+    const title = col['title'];
+    const dataKey = col['data'];
+    return typeof title === 'string' ? title : (typeof dataKey === 'string' ? dataKey : '');
+  }) || true;
+
   return (
     <HotTable
       ref={ref}
@@ -47,10 +54,10 @@ export const TimesheetHotTable = forwardRef<HotTableRef | null, TimesheetHotTabl
       afterBeginEditing={handlers.afterBeginEditing}
       beforeKeyDown={handlers.beforeKeyDown}
       afterSelection={handlers.afterSelection}
+      colHeaders={colHeaders as unknown as boolean | string[] | ((index: number) => string)}
       themeName="ht-theme-horizon"
       width="100%"
       rowHeaders={true}
-      colHeaders={true}
       customBorders={[]}
       contextMenu={['row_above', 'row_below', 'remove_row', '---------', 'undo', 'redo', '---------', 'copy', 'cut']}
       manualColumnResize={true}

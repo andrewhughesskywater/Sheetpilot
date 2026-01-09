@@ -108,62 +108,84 @@ export class SubmissionMonitor {
       const status = response.status();
       allResponses.push({ status, url });
 
-      // Consider a response “success-relevant” only when status is 2xx (configurable)
-      // and the URL matches the configured submission patterns.
-      const matched =
-        status >= cfg.SUBMIT_SUCCESS_MIN_STATUS &&
-        status <= cfg.SUBMIT_SUCCESS_MAX_STATUS &&
-        this._matchesAnyUrlPattern(url, cfg.SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS);
+      if (!this._isSuccessRelevantResponse(url, status)) return;
 
-      if (!matched) return;
-
-      let body: string | undefined;
-      try {
-        body = await response.text();
-      } catch (err: unknown) {
-        botLogger.debug('Could not read submission response body', {
-          url,
-          status,
-          error: String(err),
-        });
-      }
-
-      if (body === undefined) {
-        successResponses.push({ status, url });
-      } else {
-        successResponses.push({ status, url, body });
-      }
-
-      // Collect request identifiers when present
-      try {
-        const headers = response.request().headers();
-        const requestIdHeader =
-          headers['x-request-id'] ??
-          headers['x-amzn-trace-id'] ??
-          headers['x-correlation-id'];
-        if (requestIdHeader) requestIds.push(String(requestIdHeader));
-      } catch {
-        // ignore
-      }
+      const body = await this._tryReadResponseBody(response, { url, status });
+      this._recordSuccessResponse(successResponses, { url, status, body });
+      this._tryCollectRequestId(response, requestIds);
 
       if (!body) return;
-
-      // Extract common Smartsheet submission fields.
-      const parsed = this._tryParseJson(body);
-      if (parsed) {
-        const submissionId = this._getStringProp(parsed, 'submissionId');
-        const token = this._getStringProp(parsed, 'token');
-        if (submissionId) submissionIds.push(submissionId);
-        if (token) submissionTokens.push(token);
-        return;
-      }
-
-      const submissionIdMatch = body.match(/"submissionId"\s*:\s*"([^"]+)"/i);
-      if (submissionIdMatch?.[1]) submissionIds.push(submissionIdMatch[1]);
-
-      const tokenMatch = body.match(/"token"\s*:\s*"([^"]+)"/i);
-      if (tokenMatch?.[1]) submissionTokens.push(tokenMatch[1]);
+      this._extractSubmissionFieldsFromBody(body, submissionIds, submissionTokens);
     };
+  }
+
+  private _isSuccessRelevantResponse(url: string, status: number): boolean {
+    return (
+      status >= cfg.SUBMIT_SUCCESS_MIN_STATUS &&
+      status <= cfg.SUBMIT_SUCCESS_MAX_STATUS &&
+      this._matchesAnyUrlPattern(url, cfg.SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS)
+    );
+  }
+
+  private async _tryReadResponseBody(
+    response: Response,
+    meta: { url: string; status: number }
+  ): Promise<string | undefined> {
+    try {
+      return await response.text();
+    } catch (err: unknown) {
+      botLogger.debug('Could not read submission response body', {
+        url: meta.url,
+        status: meta.status,
+        error: String(err),
+      });
+      return undefined;
+    }
+  }
+
+  private _recordSuccessResponse(
+    successResponses: RecordedResponse[],
+    entry: { url: string; status: number; body?: string }
+  ): void {
+    if (entry.body === undefined) {
+      successResponses.push({ status: entry.status, url: entry.url });
+      return;
+    }
+    successResponses.push({ status: entry.status, url: entry.url, body: entry.body });
+  }
+
+  private _tryCollectRequestId(response: Response, requestIds: string[]): void {
+    try {
+      const headers = response.request().headers();
+      const requestIdHeader =
+        headers['x-request-id'] ??
+        headers['x-amzn-trace-id'] ??
+        headers['x-correlation-id'];
+      if (requestIdHeader) requestIds.push(String(requestIdHeader));
+    } catch {
+      // ignore
+    }
+  }
+
+  private _extractSubmissionFieldsFromBody(
+    body: string,
+    submissionIds: string[],
+    submissionTokens: string[]
+  ): void {
+    const parsed = this._tryParseJson(body);
+    if (parsed) {
+      const submissionId = this._getStringProp(parsed, 'submissionId');
+      const token = this._getStringProp(parsed, 'token');
+      if (submissionId) submissionIds.push(submissionId);
+      if (token) submissionTokens.push(token);
+      return;
+    }
+
+    const submissionIdMatch = body.match(/"submissionId"\s*:\s*"([^"]+)"/i);
+    if (submissionIdMatch?.[1]) submissionIds.push(submissionIdMatch[1]);
+
+    const tokenMatch = body.match(/"token"\s*:\s*"([^"]+)"/i);
+    if (tokenMatch?.[1]) submissionTokens.push(tokenMatch[1]);
   }
 
   private async _findSubmitButton(page: Page): Promise<Locator | null> {
@@ -179,7 +201,6 @@ export class SubmissionMonitor {
         'visible',
         cfg.DYNAMIC_WAIT_BASE_TIMEOUT,
         cfg.GLOBAL_TIMEOUT,
-        `submit button (${selector})`,
       );
       if (!visible) continue;
 

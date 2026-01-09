@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ipcMain, IpcMainInvokeEvent } from 'electron';
 import { registerAuthHandlers } from '@/ipc/auth-handlers';
-import * as repositories from '@/repositories'';
+import * as repositories from '@/repositories';
 // We use getCredentials from repositories in our mocks
 import { ipcLogger as _ipcLogger } from '@sheetpilot/shared/logger';
 

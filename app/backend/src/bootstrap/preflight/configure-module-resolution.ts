@@ -29,10 +29,17 @@ export function configureBackendNodeModuleResolution(params: {
   // Override module resolution for @sheetpilot/shared to use compiled output
   // This allows the compiled main.js to load the compiled shared code
   const Module = require('module');
-  const originalResolveFilename = Module._resolveFilename;
+  type ResolveFilenameOptions = { paths?: string[] };
+  type ResolveFilename = (request: string, parent: unknown, isMain: boolean, options?: ResolveFilenameOptions) => string;
+  const originalResolveFilename = Module._resolveFilename as unknown as ResolveFilename;
   const fs = require('fs') as typeof import('fs');
   
-  Module._resolveFilename = function(request: string, parent: typeof Module, isMain: boolean, options: typeof Module._resolveFilename extends (request: string, parent: typeof Module, isMain: boolean, options?: any) => any ? any : never) {
+  Module._resolveFilename = function(
+    request: string,
+    parent: unknown,
+    isMain: boolean,
+    options?: ResolveFilenameOptions
+  ): string {
     // If requesting @sheetpilot/shared, redirect to compiled output
     if (request.startsWith('@sheetpilot/shared')) {
       const subpath = request.replace('@sheetpilot/shared', '') || '/index';
@@ -65,11 +72,6 @@ export function configureBackendNodeModuleResolution(params: {
       if (request.startsWith('@sheetpilot/shared')) {
         const subpath = request.replace('@sheetpilot/shared', '') || '/index';
         const cleanSubpath = subpath.startsWith('/') ? subpath.slice(1) : subpath;
-        const compiledDir = pathModule.resolve(
-          params.backendDirname,
-          '..', '..', '..', '..', 'build', 'dist', 'shared'
-        );
-        const compiledPath = pathModule.join(compiledDir, cleanSubpath + '.js');
         // If compiled file doesn't exist, we need to compile it or use source with a loader
         // For now, try to use the source file directly (will require TypeScript execution)
         const sourceDir = pathModule.resolve(

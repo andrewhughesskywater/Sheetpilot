@@ -31,8 +31,8 @@ import {
   validateSession,
   clearSession,
   clearUserSessions
-} from '@/repositories'/session-repository';
-import { setDbPath, openDb, ensureSchema, shutdownDatabase } from '@/repositories'';
+} from '@/repositories/session-repository';
+import { setDbPath, openDb, ensureSchema, shutdownDatabase } from '@/repositories';
 
 // Type for database row
 interface DbRow { [key: string]: unknown }
@@ -281,7 +281,10 @@ describe('Session Repository', () => {
   describe('Session Hijacking Prevention', () => {
     it('should not accept modified tokens', () => {
       const token = createSession('user@test.com', false);
-      const modifiedToken = token.replace(/a/g, 'b');
+      // Ensure we actually change the token (randomUUID may not contain 'a').
+      const lastChar = token[token.length - 1];
+      const replacement = lastChar?.toLowerCase() === 'a' ? 'b' : 'a';
+      const modifiedToken = token.slice(0, -1) + replacement;
       
       const validation = validateSession(modifiedToken);
       expect(validation.valid).toBe(false);

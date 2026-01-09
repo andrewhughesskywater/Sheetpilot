@@ -10,6 +10,12 @@ interface MacroToolbarProps {
 }
 
 export function MacroToolbar({ macros, onApplyMacro, onOpenManager }: MacroToolbarProps) {
+  const handleOpenManager = (event: React.MouseEvent<HTMLButtonElement>) => {
+    // Blur the button to prevent focus remaining in aria-hidden root when dialog opens
+    event.currentTarget.blur();
+    onOpenManager();
+  };
+
   return (
     <div className="macro-toolbar">
       {macros.map((macro, index) => {
@@ -34,7 +40,7 @@ export function MacroToolbar({ macros, onApplyMacro, onOpenManager }: MacroToolb
           </Button>
         );
       })}
-      <Button className="macro-edit-button" variant="text" size="small" startIcon={<EditIcon />} onClick={onOpenManager}>
+      <Button className="macro-edit-button" variant="text" size="small" startIcon={<EditIcon />} onClick={handleOpenManager}>
         Edit Macros...
       </Button>
     </div>

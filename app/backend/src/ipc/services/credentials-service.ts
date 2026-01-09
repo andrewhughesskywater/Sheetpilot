@@ -19,25 +19,44 @@ export function storeCredentialsRequest(service: string, email: string, password
 
   try {
     const result = storeCredentials(validated.service, validated.email, validated.password);
+    if (!result.success) {
+      ipcLogger.warn('Could not store credentials', {
+        service: validated.service,
+        email: validated.email,
+        message: result.message
+      });
+      return { success: false, message: result.message, changes: result.changes ?? 0 };
+    }
+
     ipcLogger.info('Credentials stored successfully', {
       service: validated.service,
       email: validated.email,
       changes: result.changes
     });
-    return { success: true, changes: result.changes };
+    return { success: true, message: result.message, changes: result.changes };
   } catch (err: unknown) {
     const isCredentialsError = err instanceof Error && err.name.includes('Credentials');
 
     if (isCredentialsError) {
       ipcLogger.security('credentials-storage-error', 'Could not store credentials', { service: validated.service, error: err });
     } else {
-      ipcLogger.error('Could not store credentials', err);
+      ipcLogger.error('Could not store credentials', {
+        service: validated.service,
+        email: validated.email,
+        error: err instanceof Error ? err.message : String(err)
+      });
     }
 
-    throw new CredentialsStorageError(validated.service, {
-      error: err instanceof Error ? err.message : String(err),
-      originalError: err instanceof Error ? err.name : 'Unknown'
-    });
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    return {
+      success: false,
+      message: errorMessage,
+      error: new CredentialsStorageError(validated.service, {
+        error: errorMessage,
+        originalError: err instanceof Error ? err.name : 'Unknown'
+      }),
+      changes: 0
+    };
   }
 }
 
@@ -63,9 +82,12 @@ export function deleteCredentialsRequest(service: string): CredentialsDeleteResu
   try {
     const result = deleteCredentials(validated.service);
     ipcLogger.info('Credentials deleted', { service: validated.service, changes: result.changes });
-    return { success: true, changes: result.changes };
+    return { success: result.success, message: result.message, changes: result.changes };
   } catch (err: unknown) {
-    ipcLogger.error('Could not delete credentials', err);
+    ipcLogger.error('Could not delete credentials', {
+      service: validated.service,
+      error: err instanceof Error ? err.message : String(err)
+    });
     const errorMessage = err instanceof Error ? err.message : String(err);
     return { success: false, message: errorMessage, changes: 0 };
   }

@@ -83,7 +83,11 @@ export function saveDraftRequest(row: SaveDraftInput): SaveDraftResult {
 
     return { success: true, changes, id: savedId };
   } catch (err: unknown) {
-    ipcLogger.error('Could not save draft timesheet entry', err);
+    ipcLogger.error('Could not save draft timesheet entry', {
+      date: validatedRow.date,
+      project: validatedRow.project,
+      error: err instanceof Error ? err.message : String(err)
+    });
     const errorMessage = err instanceof Error ? err.message : String(err);
     timer.done({ outcome: 'error', error: errorMessage });
     return { success: false, error: errorMessage };
@@ -131,7 +135,10 @@ export function deleteDraftRequest(id: number): DeleteDraftResult {
     timer.done({ changes: result.changes });
     return { success: true, changes: result.changes };
   } catch (err: unknown) {
-    ipcLogger.error('Could not delete timesheet entry', err);
+    ipcLogger.error('Could not delete timesheet entry', {
+      entryId: validated.id,
+      error: err instanceof Error ? err.message : String(err)
+    });
     const errorMessage = err instanceof Error ? err.message : String(err);
     timer.done({ outcome: 'error', error: errorMessage });
     return { success: false, error: errorMessage };
@@ -235,6 +242,106 @@ function parseAndValidateTimes(timeIn?: string, timeOut?: string): { timeInMinut
   return { timeInMinutes, timeOutMinutes };
 }
 
+function buildUpdateFieldsAndValues(
+  validatedRow: SaveDraftInput,
+  timeInMinutes: number | null,
+  timeOutMinutes: number | null
+): { fields: string[]; values: (string | number | null)[] } {
+  const fields: string[] = [];
+  const values: (string | number | null)[] = [];
+
+  if (validatedRow.date !== undefined) {
+    fields.push('date = ?');
+    values.push(validatedRow.date);
+  }
+  if (timeInMinutes !== null) {
+    fields.push('time_in = ?');
+    values.push(timeInMinutes);
+  }
+  if (timeOutMinutes !== null) {
+    fields.push('time_out = ?');
+    values.push(timeOutMinutes);
+  }
+  if (validatedRow.project !== undefined) {
+    fields.push('project = ?');
+    values.push(validatedRow.project);
+  }
+  if (validatedRow.tool !== undefined) {
+    fields.push('tool = ?');
+    values.push(validatedRow.tool || null);
+  }
+  if (validatedRow.chargeCode !== undefined) {
+    fields.push('detail_charge_code = ?');
+    values.push(validatedRow.chargeCode || null);
+  }
+  if (validatedRow.taskDescription !== undefined) {
+    fields.push('task_description = ?');
+    values.push(validatedRow.taskDescription);
+  }
+
+  return { fields, values };
+}
+
+function updateExistingEntry(
+  db: ReturnType<typeof getDb>,
+  validatedRow: SaveDraftInput,
+  timeInMinutes: number | null,
+  timeOutMinutes: number | null
+): { changes: number; savedId: number } {
+  ipcLogger.debug('Updating existing timesheet entry (partial data allowed)', { id: validatedRow.id });
+
+  const { fields, values } = buildUpdateFieldsAndValues(validatedRow, timeInMinutes, timeOutMinutes);
+  
+  if (fields.length === 0) {
+    return { changes: 0, savedId: validatedRow.id! };
+  }
+
+  const updateSql = `UPDATE timesheet SET ${fields.join(', ')} WHERE id = ? AND status IS NULL`;
+  const update = db.prepare(updateSql);
+  const result = update.run(...values, validatedRow.id);
+  
+  if (!result) {
+    throw new Error('Failed to update timesheet entry');
+  }
+  
+  return { changes: result.changes, savedId: validatedRow.id! };
+}
+
+function insertNewEntry(
+  db: ReturnType<typeof getDb>,
+  validatedRow: SaveDraftInput,
+  timeInMinutes: number | null,
+  timeOutMinutes: number | null
+): { changes: number; savedId: number } {
+  ipcLogger.debug('Inserting new timesheet entry (partial data allowed)');
+  
+  const insert = db.prepare(`
+    INSERT INTO timesheet
+    (date, time_in, time_out, project, tool, detail_charge_code, task_description, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, NULL)
+  `);
+
+  const result = insert.run(
+    validatedRow.date || null,
+    timeInMinutes,
+    timeOutMinutes,
+    validatedRow.project || null,
+    validatedRow.tool || null,
+    validatedRow.chargeCode || null,
+    validatedRow.taskDescription || null
+  );
+
+  if (!result) {
+    throw new Error('Failed to insert timesheet entry');
+  }
+  
+  const savedId = typeof result.lastInsertRowid === 'bigint' 
+    ? Number(result.lastInsertRowid) 
+    : result.lastInsertRowid;
+    
+  return { changes: result.changes, savedId };
+}
+
 function runSaveTransaction(params: {
   validatedRow: SaveDraftInput;
   timeInMinutes: number | null;
@@ -243,99 +350,20 @@ function runSaveTransaction(params: {
   const db = getDb();
   const { validatedRow, timeInMinutes, timeOutMinutes } = params;
 
-  let result: { changes: number; lastInsertRowid: number | bigint } | undefined;
-  let savedId: number;
-  let savedEntry: DbEntry | undefined;
-
   const saveTransaction = db.transaction(() => {
-    if (validatedRow.id !== undefined && validatedRow.id !== null) {
-      ipcLogger.debug('Updating existing timesheet entry (partial data allowed)', { id: validatedRow.id });
-
-      const updateFields: string[] = [];
-      const updateValues: (string | number | null)[] = [];
-
-      if (validatedRow.date !== undefined) {
-        updateFields.push('date = ?');
-        updateValues.push(validatedRow.date);
-      }
-      if (timeInMinutes !== null) {
-        updateFields.push('time_in = ?');
-        updateValues.push(timeInMinutes);
-      }
-      if (timeOutMinutes !== null) {
-        updateFields.push('time_out = ?');
-        updateValues.push(timeOutMinutes);
-      }
-      if (validatedRow.project !== undefined) {
-        updateFields.push('project = ?');
-        updateValues.push(validatedRow.project);
-      }
-      if (validatedRow.tool !== undefined) {
-        updateFields.push('tool = ?');
-        updateValues.push(validatedRow.tool || null);
-      }
-      if (validatedRow.chargeCode !== undefined) {
-        updateFields.push('detail_charge_code = ?');
-        updateValues.push(validatedRow.chargeCode || null);
-      }
-      if (validatedRow.taskDescription !== undefined) {
-        updateFields.push('task_description = ?');
-        updateValues.push(validatedRow.taskDescription);
-      }
-
-      if (updateFields.length > 0) {
-        const updateSql = `UPDATE timesheet SET ${updateFields.join(', ')} WHERE id = ? AND status IS NULL`;
-        const update = db.prepare(updateSql);
-        result = update.run(...updateValues, validatedRow.id);
-      } else {
-        result = { changes: 0, lastInsertRowid: validatedRow.id };
-      }
-      savedId = validatedRow.id;
-      if (!result) {
-        throw new Error('Failed to update timesheet entry');
-      }
-    } else {
-      ipcLogger.debug('Inserting new timesheet entry (partial data allowed)');
-      const insert = db.prepare(`
-              INSERT INTO timesheet
-              (date, time_in, time_out, project, tool, detail_charge_code, task_description, status)
-              VALUES (?, ?, ?, ?, ?, ?, ?, NULL)
-            `);
-
-      result = insert.run(
-        validatedRow.date || null,
-        timeInMinutes,
-        timeOutMinutes,
-        validatedRow.project || null,
-        validatedRow.tool || null,
-        validatedRow.chargeCode || null,
-        validatedRow.taskDescription || null
-      );
-
-      if (!result) {
-        throw new Error('Failed to insert timesheet entry');
-      }
-      savedId = typeof result.lastInsertRowid === 'bigint' ? Number(result.lastInsertRowid) : result.lastInsertRowid;
-    }
+    const isUpdate = validatedRow.id !== undefined && validatedRow.id !== null;
+    
+    const { changes, savedId } = isUpdate
+      ? updateExistingEntry(db, validatedRow, timeInMinutes, timeOutMinutes)
+      : insertNewEntry(db, validatedRow, timeInMinutes, timeOutMinutes);
 
     const getEntry = db.prepare(`SELECT * FROM timesheet WHERE id = ?`);
-    savedEntry = getEntry.get(savedId) as DbEntry | undefined;
+    const savedEntry = getEntry.get(savedId) as DbEntry | undefined;
 
-    if (!result) {
-      throw new Error('Database operation failed');
-    }
-    return { result, savedId, savedEntry };
+    return { changes, savedId, savedEntry };
   });
 
-  const transactionResult = saveTransaction();
-  if (!transactionResult.result) {
-    throw new Error('Transaction failed');
-  }
-  return {
-    changes: transactionResult.result.changes,
-    savedId: transactionResult.savedId,
-    savedEntry: transactionResult.savedEntry
-  };
+  return saveTransaction();
 }
 
 function mapDbEntryToGrid(entry: DbEntry): {

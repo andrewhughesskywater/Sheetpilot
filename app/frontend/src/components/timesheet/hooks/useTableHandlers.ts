@@ -1,15 +1,17 @@
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useCallback } from 'react';
 import type { MutableRefObject } from 'react';
 import type { HotTableRef } from '@handsontable/react-wrapper';
 import type { ValidationError } from '../utils/timesheetGridUtils';
 import { PluginRegistry } from '../../../../../shared/plugin-registry';
 import type { TimesheetUIPlugin } from '../../../../../shared/plugin-types';
 import { TIMESHEET_PLUGIN_NAMESPACES } from '../../../../../shared/plugin-types';
+import type { TimesheetRow } from '../timesheet.schema';
+import { computeDateInsert } from '../utils/timesheetGridUtils';
 
-interface TableHandlersConfig<T> {
-  timesheetDraftData: T[];
-  setTimesheetDraftData: (rows: T[]) => void;
-  onChange: ((rows: T[]) => void) | undefined;
+interface TableHandlersConfig {
+  timesheetDraftData: TimesheetRow[];
+  setTimesheetDraftData: (rows: TimesheetRow[]) => void;
+  onChange: ((rows: TimesheetRow[]) => void) | undefined;
   hotTableRef: MutableRefObject<HotTableRef | null>;
   validationErrors: ValidationError[];
   setValidationErrors: (v: ValidationError[]) => void;
@@ -21,9 +23,10 @@ interface TableHandlersConfig<T> {
   inFlightSavesRef: MutableRefObject<Map<number, AbortController>>;
   saveAndReloadRow: (rowIndex: number) => Promise<void>;
   updateSaveButtonState: (s: 'neutral' | 'saving' | 'saved') => void;
+  handleMacroKeyDown?: (event: KeyboardEvent) => boolean;
 }
 
-export function useTableHandlers<T>(config: TableHandlersConfig<T>) {
+export function useTableHandlers(config: TableHandlersConfig) {
   const {
     timesheetDraftData: _timesheetDraftData,
     setTimesheetDraftData: _setTimesheetDraftData,
@@ -38,9 +41,10 @@ export function useTableHandlers<T>(config: TableHandlersConfig<T>) {
     saveTimersRef: _saveTimersRef,
     inFlightSavesRef: _inFlightSavesRef,
     saveAndReloadRow: _saveAndReloadRow,
-    updateSaveButtonState: _updateSaveButtonState
+    updateSaveButtonState: _updateSaveButtonState,
+    handleMacroKeyDown: _handleMacroKeyDown
   } = config;
-  const weekdayPatternRef = useRef<string | null>(null);
+  const weekdayPatternRef = useRef<boolean>(false);
   const previousSelectionRef = useRef<[number, number, number, number] | null>(null);
 
   const handleAfterChange = () => {};
@@ -49,8 +53,53 @@ export function useTableHandlers<T>(config: TableHandlersConfig<T>) {
   const handleBeforePaste = () => {};
   const handleAfterPaste = () => {};
   const handleAfterBeginEditing = () => {};
-  const handleBeforeKeyDown = () => {};
-  const handleAfterSelection = () => {};
+  const handleBeforeKeyDown = useCallback(
+    (event: KeyboardEvent) => {
+      const hotInstance = _hotTableRef.current?.hotInstance;
+      if (!hotInstance) return true;
+
+      // Handle macros first so we do not also trigger date shortcuts
+      if (_handleMacroKeyDown?.(event)) {
+        return false;
+      }
+
+      const selection = hotInstance.getSelectedLast?.();
+      if (!selection || selection.length < 2) return true;
+
+      const [row, col] = selection;
+      const { dateToInsert, preventDefault } = computeDateInsert(event, {
+        row,
+        col,
+        timesheetDraftData: _timesheetDraftData,
+        weekdayPattern: weekdayPatternRef.current,
+      });
+
+      if (dateToInsert) {
+        hotInstance.setDataAtCell(row, col, dateToInsert, 'smart-date-placeholder');
+
+        if (row >= 0 && row < _timesheetDraftData.length) {
+          const next = [..._timesheetDraftData];
+          const current = next[row];
+          if (current) {
+            next[row] = { ...current, date: dateToInsert } as TimesheetRow;
+            _setTimesheetDraftData(next);
+            _onChange?.(next);
+          }
+        }
+      }
+
+      if (preventDefault || !!dateToInsert) {
+        event.preventDefault();
+        return false;
+      }
+
+      return true;
+    },
+    [_handleMacroKeyDown, _hotTableRef, _onChange, _setTimesheetDraftData, _timesheetDraftData]
+  );
+  const handleAfterSelection = useCallback((row: number, col: number, row2: number, col2: number) => {
+    previousSelectionRef.current = [row, col, row2, col2];
+  }, []);
 
   const uiPlugin = useMemo(() => {
     const registry = PluginRegistry.getInstance();

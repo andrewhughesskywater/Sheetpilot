@@ -2,7 +2,7 @@
  * FormInteractor: small helpers for filling fields on a Smartsheet form.
  *
  * This module is currently **not wired** into `BotOrchestrator` / `WebformFiller`.
- * It exists as a more testable/focused alternative to `WebformFiller.inject_field_value`.
+ * It exists as a more testable/focused alternative to `WebformFiller.injectFieldValue`.
  *
  * Design intent:
  * - treat each field fill as an operation with clear preconditions (visible/ready)

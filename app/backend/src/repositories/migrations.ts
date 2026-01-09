@@ -9,7 +9,7 @@
  * @since 2025
  */
 
-import type BetterSqlite3 from 'better-sqlite3';
+import BetterSqlite3 from 'better-sqlite3';
 import * as fs from 'fs';
 import * as path from 'path';
 import { dbLogger } from './utils/logger';
@@ -121,6 +121,165 @@ export function setSchemaVersion(db: BetterSqlite3.Database, version: number): v
     dbLogger.info('Schema version updated', { version });
 }
 
+function tryCheckpointWal(db: BetterSqlite3.Database): void {
+    try {
+        // Force a full checkpoint to move all WAL data to main database
+        // This works even if not in WAL mode (no-op)
+        db.pragma('wal_checkpoint(TRUNCATE)');
+        dbLogger.verbose('WAL checkpoint completed before backup');
+    } catch (checkpointError) {
+        // If checkpoint fails, log but continue - might not be in WAL mode
+        dbLogger.verbose('WAL checkpoint failed or not needed', {
+            error: checkpointError instanceof Error ? checkpointError.message : String(checkpointError)
+        });
+    }
+}
+
+function touchDatabaseConnection(db: BetterSqlite3.Database): void {
+    try {
+        db.prepare('SELECT COUNT(*) FROM sqlite_master').get();
+    } catch {
+        // Ignore - just ensuring connection is active
+    }
+}
+
+function createBackupPath(dbPath: string): string {
+    const timestamp = Date.now();
+    const dir = path.dirname(dbPath);
+    const basename = path.basename(dbPath, '.sqlite');
+    return path.join(dir, `${basename}.backup-${timestamp}.sqlite`);
+}
+
+function tryVacuumInto(db: BetterSqlite3.Database, backupPath: string): { ok: boolean; error?: string } {
+    try {
+        // Escape single quotes in the path by doubling them (SQL standard)
+        // Convert Windows backslashes to forward slashes for SQLite
+        const normalizedPath = backupPath.replace(/\\/g, '/');
+        const escapedPath = normalizedPath.replace(/'/g, "''");
+        db.exec(`VACUUM INTO '${escapedPath}'`);
+        return { ok: true };
+    } catch (error) {
+        return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    }
+}
+
+type SqliteSchemaObject = { type: string; name: string; sql: string };
+
+function safeDeleteFileIfExists(filePath: string): void {
+    try {
+        if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+        }
+    } catch {
+        // ignore
+    }
+}
+
+function listUserSchemaObjects(db: BetterSqlite3.Database): SqliteSchemaObject[] {
+    return db
+        .prepare(
+            `
+                SELECT type, name, sql
+                FROM sqlite_master
+                WHERE name NOT LIKE 'sqlite_%'
+                  AND sql IS NOT NULL
+                ORDER BY CASE type
+                    WHEN 'table' THEN 0
+                    WHEN 'view' THEN 1
+                    WHEN 'index' THEN 2
+                    WHEN 'trigger' THEN 3
+                    ELSE 4
+                END
+            `
+        )
+        .all() as SqliteSchemaObject[];
+}
+
+function createTablesAndViews(backupDb: BetterSqlite3.Database, objects: SqliteSchemaObject[]): void {
+    for (const obj of objects) {
+        if (obj.type === 'table' || obj.type === 'view') {
+            backupDb.exec(obj.sql);
+        }
+    }
+}
+
+function createIndexesAndTriggers(backupDb: BetterSqlite3.Database, objects: SqliteSchemaObject[]): void {
+    for (const obj of objects) {
+        if (obj.type === 'index' || obj.type === 'trigger') {
+            backupDb.exec(obj.sql);
+        }
+    }
+}
+
+function listTableNames(objects: SqliteSchemaObject[]): string[] {
+    return objects.filter(o => o.type === 'table').map(o => o.name);
+}
+
+function getTableColumns(db: BetterSqlite3.Database, tableName: string): Array<{ name: string }> {
+    const quoteIdent = (name: string) => `"${name.replace(/"/g, '""')}"`;
+    return db.prepare(`PRAGMA table_info(${quoteIdent(tableName)})`).all() as Array<{ name: string }>;
+}
+
+function insertAllRows(
+    sourceDb: BetterSqlite3.Database,
+    backupDb: BetterSqlite3.Database,
+    tableName: string,
+    columnNames: string[]
+): void {
+    const quoteIdent = (name: string) => `"${name.replace(/"/g, '""')}"`;
+
+    const insertSql = `INSERT INTO ${quoteIdent(tableName)} (${columnNames.map(quoteIdent).join(', ')}) VALUES (${columnNames.map(c => `@${c}`).join(', ')})`;
+    const insertStmt = backupDb.prepare(insertSql);
+
+    const rows = sourceDb.prepare(`SELECT * FROM ${quoteIdent(tableName)}`).all() as Array<Record<string, unknown>>;
+    for (const row of rows) {
+        insertStmt.run(row);
+    }
+}
+
+function copyTableContents(
+    sourceDb: BetterSqlite3.Database,
+    backupDb: BetterSqlite3.Database,
+    tableNames: string[]
+): void {
+    for (const tableName of tableNames) {
+        const columns = getTableColumns(sourceDb, tableName);
+        if (columns.length === 0) continue;
+
+        insertAllRows(sourceDb, backupDb, tableName, columns.map(c => c.name));
+    }
+}
+
+function rollbackQuietly(db: BetterSqlite3.Database): void {
+    try {
+        db.exec('ROLLBACK');
+    } catch {
+        // ignore
+    }
+}
+
+function copyBackupFromOpenConnection(db: BetterSqlite3.Database, backupPath: string): void {
+    safeDeleteFileIfExists(backupPath);
+
+    const backupDb = new BetterSqlite3(backupPath);
+    try {
+        backupDb.pragma('journal_mode = OFF');
+        backupDb.exec('BEGIN');
+
+        const objects = listUserSchemaObjects(db);
+        createTablesAndViews(backupDb, objects);
+        copyTableContents(db, backupDb, listTableNames(objects));
+        createIndexesAndTriggers(backupDb, objects);
+
+        backupDb.exec('COMMIT');
+    } catch (copyError) {
+        rollbackQuietly(backupDb);
+        throw copyError;
+    } finally {
+        backupDb.close();
+    }
+}
+
 /**
  * Creates a backup of the database file before migration
  * 
@@ -132,56 +291,55 @@ export function createBackup(db: BetterSqlite3.Database, dbPath: string): string
     const timer = dbLogger.startTimer('create-db-backup');
     
     try {
-        // Checkpoint WAL mode databases to ensure all data is in the main database file
-        // This is necessary because in WAL mode, data might only exist in the WAL file
-        // VACUUM INTO requires the main database file to exist with data
+        tryCheckpointWal(db);
+        touchDatabaseConnection(db);
+
+        // If the database file doesn't exist yet (common with WAL mode + small DBs),
+        // we still want a backup before migrating. We can create one from the open
+        // connection by copying schema + data into a new backup database.
+        let sourceFileMissing = false;
         try {
-            // Force a full checkpoint to move all WAL data to main database
-            // This works even if not in WAL mode (no-op)
-            db.pragma('wal_checkpoint(TRUNCATE)');
-            dbLogger.verbose('WAL checkpoint completed before backup');
-        } catch (checkpointError) {
-            // If checkpoint fails, log but continue - might not be in WAL mode
-            dbLogger.verbose('WAL checkpoint failed or not needed', {
-                error: checkpointError instanceof Error ? checkpointError.message : String(checkpointError)
-            });
-        }
-        
-        // Ensure database file exists by performing a simple write operation
-        // This forces SQLite to create the main database file if it doesn't exist
-        try {
-            // Touch the database by reading and writing a system table
-            db.prepare('SELECT COUNT(*) FROM sqlite_master').get();
+            const stats = fs.statSync(dbPath);
+            if (!stats.isFile()) {
+                dbLogger.verbose('Database path is not a file, skipping backup', { dbPath });
+                timer.done({ outcome: 'skipped', reason: 'db-path-not-file' });
+                return null;
+            }
         } catch {
-            // Ignore - just ensuring connection is active
+            sourceFileMissing = true;
+            dbLogger.verbose('Database file does not exist on disk; will create backup from open connection', { dbPath });
         }
         
-        // Generate backup filename with timestamp
-        const timestamp = Date.now();
-        const dir = path.dirname(dbPath);
-        const basename = path.basename(dbPath, '.sqlite');
-        const backupPath = path.join(dir, `${basename}.backup-${timestamp}.sqlite`);
+        const backupPath = createBackupPath(dbPath);
         
         dbLogger.info('Creating database backup before migration', { 
             source: dbPath, 
             backup: backupPath 
         });
-        
-        // Use SQLite's VACUUM INTO command which properly handles WAL mode databases
-        // This creates a complete backup including all data from WAL files
-        // VACUUM INTO is available in SQLite 3.27.0+ and creates an atomic backup
-        // Escape single quotes in the path by doubling them (SQL standard)
-        // Convert Windows backslashes to forward slashes for SQLite
-        const normalizedPath = backupPath.replace(/\\/g, '/');
-        const escapedPath = normalizedPath.replace(/'/g, "''");
-        db.exec(`VACUUM INTO '${escapedPath}'`);
+
+        if (sourceFileMissing) {
+            copyBackupFromOpenConnection(db, backupPath);
+        } else {
+            // Prefer SQLite's VACUUM INTO (SQLite 3.27.0+) for a consistent backup.
+            // Some environments/bundled SQLite builds may not support it; fall back to
+            // copying schema + data from the open connection.
+            const vacuumResult = tryVacuumInto(db, backupPath);
+            if (!vacuumResult.ok) {
+                dbLogger.warn('VACUUM INTO backup failed; falling back to SQL copy', {
+                    dbPath,
+                    backupPath,
+                    error: vacuumResult.error ?? 'VACUUM INTO failed'
+                });
+                copyBackupFromOpenConnection(db, backupPath);
+            }
+        }
         
         // Verify backup was created
         if (!fs.existsSync(backupPath)) {
             throw new Error(`Backup file was not created at ${backupPath}`);
         }
         
-        dbLogger.verbose('Database backup completed using VACUUM INTO');
+        dbLogger.verbose('Database backup completed');
         
         dbLogger.info('Database backup created successfully', { backupPath });
         timer.done({ backupPath });
@@ -196,6 +354,111 @@ export function createBackup(db: BetterSqlite3.Database, dbPath: string): string
         timer.done({ outcome: 'error', error: errorMessage });
         return null;
     }
+}
+
+type MigrationRunResult = {
+    success: boolean;
+    fromVersion: number;
+    toVersion: number;
+    migrationsRun: number;
+    backupPath: string | null;
+    error?: string;
+};
+
+function buildUpToDateMigrationResult(version: number): MigrationRunResult {
+    return {
+        success: true,
+        fromVersion: version,
+        toVersion: version,
+        migrationsRun: 0,
+        backupPath: null
+    };
+}
+
+function buildBackupSafetyAbortMigrationResult(version: number, error: string): MigrationRunResult {
+    return {
+        success: false,
+        fromVersion: version,
+        toVersion: version,
+        migrationsRun: 0,
+        backupPath: null,
+        error
+    };
+}
+
+function buildNoPendingMigrationsResult(
+    currentVersion: number,
+    targetVersion: number,
+    backupPath: string | null
+): MigrationRunResult {
+    return {
+        success: true,
+        fromVersion: currentVersion,
+        toVersion: targetVersion,
+        migrationsRun: 0,
+        backupPath
+    };
+}
+
+function buildMigrationSuccessResult(
+    currentVersion: number,
+    targetVersion: number,
+    migrationsRun: number,
+    backupPath: string | null
+): MigrationRunResult {
+    return {
+        success: true,
+        fromVersion: currentVersion,
+        toVersion: targetVersion,
+        migrationsRun,
+        backupPath
+    };
+}
+
+function buildMigrationFailureResult(
+    currentVersion: number,
+    migrationsRun: number,
+    backupPath: string | null,
+    errorMessage: string
+): MigrationRunResult {
+    return {
+        success: false,
+        fromVersion: currentVersion,
+        toVersion: currentVersion + migrationsRun,
+        migrationsRun,
+        backupPath,
+        error: `Migration failed: ${errorMessage}. Database backup available at: ${backupPath || 'N/A'}`
+    };
+}
+
+function getPendingMigrations(currentVersion: number, targetVersion: number): Migration[] {
+    return migrations
+        .filter(m => m.version > currentVersion && m.version <= targetVersion)
+        .sort((a, b) => a.version - b.version);
+}
+
+function runPendingMigrations(db: BetterSqlite3.Database, pendingMigrations: Migration[]): number {
+    let migrationsRun = 0;
+    for (const migration of pendingMigrations) {
+        dbLogger.info('Running migration', {
+            version: migration.version,
+            description: migration.description
+        });
+
+        const migrationTransaction = db.transaction(() => {
+            migration.up(db);
+            setSchemaVersion(db, migration.version);
+        });
+
+        migrationTransaction();
+        migrationsRun++;
+
+        dbLogger.info('Migration completed successfully', {
+            version: migration.version
+        });
+    }
+
+    return migrationsRun;
 }
 
 /**
@@ -217,136 +480,73 @@ export function runMigrations(db: BetterSqlite3.Database, dbPath: string): {
     const timer = dbLogger.startTimer('run-migrations');
     const currentVersion = getCurrentSchemaVersion(db);
     const targetVersion = CURRENT_SCHEMA_VERSION;
-    
-    dbLogger.info('Checking database schema version', { 
-        currentVersion, 
+
+    dbLogger.info('Checking database schema version', {
+        currentVersion,
         targetVersion,
         needsMigration: currentVersion < targetVersion
     });
-    
-    // If already at target version, no migration needed
+
     if (currentVersion >= targetVersion) {
         dbLogger.verbose('Database schema is up to date, no migration needed');
         timer.done({ migrationsRun: 0 });
-        return {
-            success: true,
-            fromVersion: currentVersion,
-            toVersion: currentVersion,
-            migrationsRun: 0,
-            backupPath: null
-        };
+        return buildUpToDateMigrationResult(currentVersion);
     }
-    
-    // Create backup before migration
+
     let backupPath: string | null = null;
     if (currentVersion > 0) {
-        // Only backup if there's existing data (version > 0)
         backupPath = createBackup(db, dbPath);
         if (!backupPath && fs.existsSync(dbPath)) {
-            // Backup failed but database exists - this is a safety concern
             const error = 'Could not create backup before migration. Migration aborted for safety.';
             dbLogger.error(error, { dbPath });
             timer.done({ outcome: 'error', error });
-            return {
-                success: false,
-                fromVersion: currentVersion,
-                toVersion: currentVersion,
-                migrationsRun: 0,
-                backupPath: null,
-                error
-            };
+            return buildBackupSafetyAbortMigrationResult(currentVersion, error);
         }
     }
-    
-    // Run migrations in a transaction
+
     let migrationsRun = 0;
-    
     try {
-        // Get migrations that need to run (versions > currentVersion and <= targetVersion)
-        const pendingMigrations = migrations.filter(
-            m => m.version > currentVersion && m.version <= targetVersion
-        ).sort((a, b) => a.version - b.version);
-        
+        const pendingMigrations = getPendingMigrations(currentVersion, targetVersion);
         if (pendingMigrations.length === 0) {
-            // No migrations to run but version is behind - just update version
-            // This can happen if schema was created manually
             dbLogger.info('No pending migrations, updating version tracking');
             setSchemaVersion(db, targetVersion);
             timer.done({ migrationsRun: 0, versionUpdated: true });
-            return {
-                success: true,
-                fromVersion: currentVersion,
-                toVersion: targetVersion,
-                migrationsRun: 0,
-                backupPath
-            };
+            return buildNoPendingMigrationsResult(currentVersion, targetVersion, backupPath);
         }
-        
-        dbLogger.info('Running database migrations', { 
+
+        dbLogger.info('Running database migrations', {
             count: pendingMigrations.length,
             versions: pendingMigrations.map(m => m.version)
         });
-        
-        // Run each migration in its own transaction for atomic rollback
-        for (const migration of pendingMigrations) {
-            dbLogger.info('Running migration', { 
-                version: migration.version,
-                description: migration.description
-            });
-            
-            const migrationTransaction = db.transaction(() => {
-                migration.up(db);
-                setSchemaVersion(db, migration.version);
-            });
-            
-            migrationTransaction();
-            migrationsRun++;
-            
-            dbLogger.info('Migration completed successfully', { 
-                version: migration.version 
-            });
-        }
-        
-        dbLogger.info('All migrations completed successfully', { 
+
+        migrationsRun = runPendingMigrations(db, pendingMigrations);
+
+        dbLogger.info('All migrations completed successfully', {
             fromVersion: currentVersion,
             toVersion: targetVersion,
             migrationsRun,
             backupPath
         });
-        
-        timer.done({ 
+
+        timer.done({
             fromVersion: currentVersion,
             toVersion: targetVersion,
             migrationsRun
         });
-        
-        return {
-            success: true,
-            fromVersion: currentVersion,
-            toVersion: targetVersion,
-            migrationsRun,
-            backupPath
-        };
+
+        return buildMigrationSuccessResult(currentVersion, targetVersion, migrationsRun, backupPath);
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        dbLogger.error('Migration failed', { 
+        dbLogger.error('Migration failed', {
             fromVersion: currentVersion,
             targetVersion,
             migrationsRun,
             error: errorMessage,
             backupPath
         });
-        
+
         timer.done({ outcome: 'error', error: errorMessage, migrationsRun });
-        
-        return {
-            success: false,
-            fromVersion: currentVersion,
-            toVersion: currentVersion + migrationsRun,
-            migrationsRun,
-            backupPath,
-            error: `Migration failed: ${errorMessage}. Database backup available at: ${backupPath || 'N/A'}`
-        };
+        return buildMigrationFailureResult(currentVersion, migrationsRun, backupPath, errorMessage);
     }
 }
 

@@ -73,7 +73,7 @@ export class FieldProcessor {
 
     try {
       botLogger.debug('Injecting field value', { fieldKey, value: String(value) });
-      await webformFiller.inject_field_value(spec, String(value));
+      await webformFiller.injectFieldValue(spec, String(value));
     } catch (error) {
       botLogger.error('Could not process field', {
         fieldKey,

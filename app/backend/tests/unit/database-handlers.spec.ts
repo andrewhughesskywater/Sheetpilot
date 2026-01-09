@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ipcMain } from 'electron';
 import { registerDatabaseHandlers } from '@/ipc/database-handlers';
-import * as repositories from '@/repositories'';
+import * as repositories from '@/repositories';
 
 // Mock electron
 vi.mock('electron', () => ({

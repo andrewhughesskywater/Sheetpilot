@@ -26,7 +26,7 @@ vi.mock('../../../shared/logger', () => ({
   }
 }));
 
-import { setDbPath, getDbPath, getDb, openDb } from '@/repositories'/connection-manager';
+import { setDbPath, getDbPath, getDb, openDb } from '@/repositories/connection-manager';
 
 describe('Connection Manager', () => {
   let testDbPath: string;

@@ -273,6 +273,59 @@ interface SubmitTimesheetsConfig {
   useMockWebsite?: boolean;
 }
 
+async function submitViaPluginSystem(params: {
+    submissionService: { submit: (...args: unknown[]) => Promise<SubmissionResult> };
+    entries: TimesheetEntry[];
+    credentials: Credentials;
+    progressCallback?: (percent: number, message: string) => void;
+    abortSignal?: AbortSignal;
+    useMockWebsite?: boolean;
+    dbRowCount: number;
+    timer: ReturnType<typeof botLogger.startTimer>;
+}): Promise<SubmissionResult> {
+    const { submissionService, entries, credentials, progressCallback, abortSignal, useMockWebsite, dbRowCount, timer } = params;
+
+    try {
+        const result = await submissionService.submit(entries, credentials, {
+            progressCallback,
+            abortSignal,
+            useMockWebsite
+        });
+
+        botLogger.info('Submission completed via plugin system', {
+            ok: result.ok,
+            successCount: result.successCount,
+            removedCount: result.removedCount,
+            submittedIds: result.submittedIds,
+            removedIds: result.removedIds
+        });
+
+        const processedResult = processSubmissionResult(result, dbRowCount);
+        if (!processedResult.ok && processedResult.error?.includes('database update failed')) {
+            timer.done({ outcome: 'error', reason: 'database-update-failed' });
+        } else {
+            timer.done({ outcome: processedResult.ok ? 'success' : 'partial', processedResult });
+        }
+        return processedResult;
+    } catch (error) {
+        if (isCancellationError(error)) {
+            botLogger.info('Submission was cancelled by user');
+            resetInProgressEntries('cancellation');
+            timer.done({ outcome: 'cancelled' });
+            return createEmptyResult(dbRowCount, 'Submission was cancelled');
+        }
+
+        botLogger.error('Submission service encountered error', {
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined
+        });
+
+        resetInProgressEntries('error');
+        timer.done({ outcome: 'error', reason: 'service-error' });
+        return createEmptyResult(dbRowCount, error instanceof Error ? error.message : 'Unknown error');
+    }
+}
+
 export async function submitTimesheets(config: SubmitTimesheetsConfig): Promise<SubmissionResult> {
     const { email, password, progressCallback, abortSignal, useMockWebsite } = config;
     const timer = botLogger.startTimer('submit-timesheets');
@@ -294,59 +347,26 @@ export async function submitTimesheets(config: SubmitTimesheetsConfig): Promise<
         timer.done({ outcome: 'error', reason: 'service-unavailable' });
         return createEmptyResult(dbRows.length, 'Submission service not available');
     }
-    
-    try {
-        // Check if already aborted before starting
-        if (abortSignal?.aborted) {
-            botLogger.info('Submission aborted before starting');
-            resetInProgressEntries('abort before start');
-            timer.done({ outcome: 'aborted' });
-            return createEmptyResult(dbRows.length, 'Submission was cancelled');
-        }
-        
-        // Submit entries via plugin system
-        const credentials: Credentials = { email, password };
-        const result = await submissionService.submit(
-          entries,
-          credentials,
-          progressCallback,
-          abortSignal,
-          useMockWebsite
-        );
-        
-        botLogger.info('Submission completed via plugin system', { 
-            ok: result.ok,
-            successCount: result.successCount,
-            removedCount: result.removedCount,
-            submittedIds: result.submittedIds,
-            removedIds: result.removedIds
-        });
-        
-        // Process results and update database
-        const processedResult = processSubmissionResult(result, dbRows.length);
-        if (!processedResult.ok && processedResult.error?.includes('database update failed')) {
-            timer.done({ outcome: 'error', reason: 'database-update-failed' });
-        } else {
-            timer.done({ outcome: processedResult.ok ? 'success' : 'partial', processedResult });
-        }
-        return processedResult;
-    } catch (error) {
-        if (isCancellationError(error)) {
-            botLogger.info('Submission was cancelled by user');
-            resetInProgressEntries('cancellation');
-            timer.done({ outcome: 'cancelled' });
-            return createEmptyResult(dbRows.length, 'Submission was cancelled');
-        }
-        
-        botLogger.error('Submission service encountered error', { 
-            error: error instanceof Error ? error.message : String(error),
-            stack: error instanceof Error ? error.stack : undefined
-        });
-        
-        resetInProgressEntries('error');
-        timer.done({ outcome: 'error', reason: 'service-error' });
-        return createEmptyResult(dbRows.length, error instanceof Error ? error.message : 'Unknown error');
+
+    // Check if already aborted before starting
+    if (abortSignal?.aborted) {
+        botLogger.info('Submission aborted before starting');
+        resetInProgressEntries('abort before start');
+        timer.done({ outcome: 'aborted' });
+        return createEmptyResult(dbRows.length, 'Submission was cancelled');
     }
+
+    const credentials: Credentials = { email, password };
+    return submitViaPluginSystem({
+      submissionService,
+      entries,
+      credentials,
+      progressCallback,
+      abortSignal,
+      useMockWebsite,
+      dbRowCount: dbRows.length,
+      timer
+    });
 }
 
 /**

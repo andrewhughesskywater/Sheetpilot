@@ -28,7 +28,7 @@ import {
     checkDuplicateEntry,
     getDuplicateEntries,
     shutdownDatabase
-} from '@/repositories'';
+} from '@/repositories';
 
 describe('Database Module', () => {
     let testDbPath: string;

@@ -93,6 +93,74 @@ module.exports = [
     }
   },
 
+  // Relaxed complexity for React UI components (presentational code)
+  {
+    files: [
+      'app/frontend/src/components/**/*.{ts,tsx}',
+      'app/frontend/src/contexts/**/*.{ts,tsx}'
+    ],
+    rules: {
+      'max-lines-per-function': ['error', { max: 250, skipBlankLines: true, skipComments: true }],
+      'complexity': ['error', { max: 20 }],
+      'sonarjs/cognitive-complexity': ['error', 25],
+    }
+  },
+
+  // Stricter rules for business logic and services
+  {
+    files: [
+      'app/backend/src/services/**/*.{ts,tsx}',
+      'app/backend/src/logic/**/*.{ts,tsx}',
+      'app/backend/src/repositories/**/*.{ts,tsx}',
+      'app/shared/**/*.{ts,tsx}'
+    ],
+    ignores: ['app/backend/src/services/bot/**'],
+    rules: {
+      'complexity': ['error', { max: 10 }],
+      'max-lines-per-function': ['error', { max: 100, skipBlankLines: true, skipComments: true }],
+      'sonarjs/cognitive-complexity': ['error', 15]
+    }
+  },
+
+  // Moderate rules for IPC handlers and middleware
+  {
+    files: [
+      'app/backend/src/ipc/**/*.{ts,tsx}',
+      'app/backend/src/middleware/**/*.{ts,tsx}'
+    ],
+    rules: {
+      'complexity': ['error', { max: 12 }],
+      'max-params': ['error', { max: 5 }], // IPC handlers often need event + multiple params
+      'max-lines-per-function': ['error', { max: 150, skipBlankLines: true, skipComments: true }]
+    }
+  },
+
+  // Relaxed rules for bootstrap and configuration
+  {
+    files: [
+      'app/backend/src/bootstrap/**/*.{ts,tsx}',
+      'app/backend/src/config/**/*.{ts,tsx}',
+      '**/*config*.{ts,tsx}'
+    ],
+    rules: {
+      'complexity': ['error', { max: 15 }],
+      'max-params': ['error', { max: 5 }],
+      'max-lines-per-function': ['error', { max: 150, skipBlankLines: true, skipComments: true }],
+      '@typescript-eslint/no-explicit-any': 'warn' // Config files sometimes need flexibility
+    }
+  },
+
+
+
+  // Relaxed rules for React hooks (often complex state management)
+  {
+    files: ['app/frontend/src/**/*use*.{ts,tsx}'],
+    rules: {
+      'complexity': ['error', { max: 18 }],
+      'max-lines-per-function': ['error', { max: 150, skipBlankLines: true, skipComments: true }]
+    }
+  },
+
   // Type-aware rules: backend/shared (match `npm run type-check:root`)
   {
     files: ['app/backend/src/**/*.{ts,tsx}', 'app/shared/**/*.{ts,tsx}'],

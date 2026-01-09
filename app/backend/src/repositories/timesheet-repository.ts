@@ -217,7 +217,10 @@ export function insertTimesheetEntries(entries: TimesheetBulkInsertEntry[]): {
             errors: 0
         };
     } catch (error: unknown) {
-        dbLogger.error('Bulk insert failed', error);
+        dbLogger.error('Bulk insert failed', {
+            entryCount: entries.length,
+            error: error instanceof Error ? error.message : 'Unknown error'
+        });
         timer.done({ outcome: 'error' });
         return {
             success: false,

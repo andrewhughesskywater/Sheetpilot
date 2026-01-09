@@ -144,7 +144,36 @@ describe('plugin-config', () => {
       expect(config).toBeDefined();
       expect(config.plugins.data.active).toBe('sqlite');
     });
+
+    it('should handle browser environment without process.env', () => {
+      // Simulate browser environment where process is undefined
+      const originalProcess = global.process;
+      (global as any).process = undefined;
+
+      const config = loadPluginConfig();
+
+      expect(config).toBeDefined();
+      expect(config.plugins.data.active).toBe('sqlite');
+      expect(console.error).not.toHaveBeenCalled();
+
+      // Restore process
+      (global as any).process = originalProcess;
+    });
+
+    it('should handle browser environment where process.env is undefined', () => {
+      // Simulate partial browser polyfill where process exists but env doesn't
+      const originalEnv = process.env;
+      delete (process as any).env;
+
+      const config = loadPluginConfig();
+
+      expect(config).toBeDefined();
+      expect(config.plugins.data.active).toBe('sqlite');
+      expect(console.error).not.toHaveBeenCalled();
+
+      // Restore env
+      (process as any).env = originalEnv;
+    });
   });
 });
-
 

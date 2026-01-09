@@ -209,9 +209,9 @@ describe('settings-handlers', () => {
       await handler({}, 'browserHeadless', true);
 
       expect(setBrowserHeadless).toHaveBeenCalledWith(true);
-      expect(consoleLogSpy).toHaveBeenCalledWith(
-        expect.stringContaining('[Settings] Updated browserHeadless setting:'),
-        expect.any(Object)
+      expect(ipcLogger.info).toHaveBeenCalledWith(
+        'Updated browserHeadless setting',
+        expect.objectContaining({ toggleValue: true })
       );
     });
 

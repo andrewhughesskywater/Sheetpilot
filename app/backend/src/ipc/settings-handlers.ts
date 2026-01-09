@@ -51,7 +51,6 @@ const saveSettings = (settings: AppSettings): void => {
 export function registerSettingsHandlers(): void {
   // Initialize browser headless mode from settings file on startup
   try {
-    const settingsPath = getSettingsPath();
     const settings = loadSettings();
     // Default to false (headless OFF = visible browser) for better user experience
     const headlessValue = settings.browserHeadless ?? false;
@@ -59,19 +58,12 @@ export function registerSettingsHandlers(): void {
     // Update the shared constant
     setBrowserHeadless(headlessValue);
     
-    // Use console.log for startup message to ensure it's visible
-    console.log('[Settings] Initialized browserHeadless on startup:', { 
-      settingsPath,
-      savedValue: settings.browserHeadless, 
-      effectiveValue: headlessValue
-    });
-    
+    // Log initialization message
     ipcLogger.info('Initialized browserHeadless setting on startup', { 
       savedValue: settings.browserHeadless, 
       effectiveValue: headlessValue
     });
   } catch (err) {
-    console.error('[Settings] Could not initialize settings on startup', err);
     ipcLogger.error('Could not initialize settings on startup', { 
       error: err instanceof Error ? err.message : String(err) 
     });
@@ -117,10 +109,6 @@ export function registerSettingsHandlers(): void {
       // If headless mode changed, update the shared constant immediately
       if (key === 'browserHeadless') {
         setBrowserHeadless(Boolean(value));
-        console.log('[Settings] Updated browserHeadless setting:', { 
-          toggleValue: value,
-          meaning: value ? 'Browser will be INVISIBLE (headless)' : 'Browser will be VISIBLE (non-headless)'
-        });
         ipcLogger.info('Updated browserHeadless setting', { 
           toggleValue: value,
           meaning: value ? 'Browser will be INVISIBLE (headless)' : 'Browser will be VISIBLE (non-headless)'

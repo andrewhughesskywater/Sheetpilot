@@ -19,12 +19,59 @@ import * as cfg from '../config/automation_config';
 import { botLogger } from '../../utils/logger';
 import { SubmissionMonitor } from './submission_monitor';
 
+function resolveBrowserChannel(): string {
+  if (cfg.BROWSER_CHANNEL && cfg.BROWSER_CHANNEL !== 'chromium') {
+    return cfg.BROWSER_CHANNEL;
+  }
+  return 'chrome';
+}
+
+function buildBrowserLaunchArgs(): string[] {
+  const baseArgs = [
+    '--disable-dev-shm-usage',
+    '--disable-gpu',
+    '--disable-extensions',
+    '--disable-blink-features=AutomationControlled'
+  ];
+  return baseArgs.concat(process.platform === 'win32' ? [] : ['--no-sandbox']);
+}
+
+type BrowserProcessInfo = { spawnfile?: string; spawnargs?: string[] };
+type BrowserWithProcess = { process?: () => BrowserProcessInfo | null };
+
+function getSpawnedExecutablePath(browser: Browser): string | null {
+  const proc = (browser as unknown as BrowserWithProcess).process?.();
+
+  const spawnfile = proc?.spawnfile;
+  if (typeof spawnfile === 'string' && spawnfile.length > 0) {
+    return spawnfile;
+  }
+
+  const args = proc?.spawnargs;
+  if (Array.isArray(args) && typeof args[0] === 'string' && args[0].length > 0) {
+    return args[0];
+  }
+
+  return null;
+}
+
+function redactUserHomeFromPath(input: string | null): string | null {
+  if (!input) return input;
+  const win = input.replace(/(\\Users\\)([^\\]+)(\\)/i, '$1<redacted>$3');
+  if (win !== input) return win;
+  const mac = input.replace(/(\/Users\/)([^/]+)(\/)/, '$1<redacted>$3');
+  if (mac !== input) return mac;
+  const linux = input.replace(/(\/home\/)([^/]+)(\/)/, '$1<redacted>$3');
+  if (linux !== input) return linux;
+  return input;
+}
+
 export class BotNotStartedError extends Error {}
 
 export class WebformFiller {
   cfg: typeof cfg;
   headless: boolean;
-  browser_kind: string;
+  browserKind: string;
   browser: Browser | null = null;
   // The bot can run multiple browser contexts (e.g., separate auth contexts),
   // but the current workflow mainly uses index 0.
@@ -37,12 +84,12 @@ export class WebformFiller {
   constructor(
     config: typeof cfg,
     headless: boolean = true,
-    browser_kind: string = 'chromium',
+    browserKind: string = 'chromium',
     formConfig?: { BASE_URL: string; FORM_ID: string; SUBMISSION_ENDPOINT: string; SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[] }
   ) {
     this.cfg = config;
     this.headless = headless;
-    this.browser_kind = browser_kind;
+    this.browserKind = browserKind;
     // Prefer a caller-provided formConfig (quarter routing usually provides it).
     // Falling back to cfg.* keeps legacy callers/tests working, even though some
     // of those constants are marked deprecated in `config/automation_config.ts`.
@@ -62,10 +109,10 @@ export class WebformFiller {
 
     const timer = botLogger.startTimer('bot-browser-start');
     botLogger.info('Starting WebformFiller browser');
-    await this._launch_browser();
+    await this._launchBrowser();
 
-    await this._create_context_at_index(0);
-    await this._create_page_at_index(0);
+    await this._createContextAtIndex(0);
+    await this._createPageAtIndex(0);
 
     this.page = this.pages[0] ?? null;
     this.context = this.contexts[0] ?? null;
@@ -78,13 +125,10 @@ export class WebformFiller {
     timer.done({});
   }
 
-  private async _launch_browser(): Promise<void> {
+  private async _launchBrowser(): Promise<void> {
     // Note: `browser/browser_launcher.ts` contains a standalone launcher helper
     // with richer diagnostics. `WebformFiller` currently launches directly.
-    const channel =
-      cfg.BROWSER_CHANNEL && cfg.BROWSER_CHANNEL !== 'chromium'
-        ? cfg.BROWSER_CHANNEL
-        : 'chrome';
+    const channel = resolveBrowserChannel();
 
     botLogger.verbose('Launching Chrome via Playwright', { headless: this.headless, channel });
 
@@ -92,39 +136,17 @@ export class WebformFiller {
       this.browser = await chromium.launch({
         headless: this.headless,
         channel,
-        args: [
-          '--disable-dev-shm-usage',
-          '--disable-gpu',
-          '--disable-extensions',
-          '--disable-blink-features=AutomationControlled'
-        ].concat(process.platform === 'win32' ? [] : ['--no-sandbox'])
+        args: buildBrowserLaunchArgs()
       });
 
-      type BrowserProcessInfo = { spawnfile?: string; spawnargs?: string[] };
-      type BrowserWithProcess = {
-        process?: () => BrowserProcessInfo | null;
-      };
-      const proc = (this.browser as unknown as BrowserWithProcess).process?.();
-      const spawnedExecutablePath =
-        (proc?.spawnfile && typeof proc.spawnfile === 'string' ? proc.spawnfile : null) ??
-        (Array.isArray(proc?.spawnargs) && typeof proc?.spawnargs?.[0] === 'string'
-          ? proc?.spawnargs?.[0]
-          : null);
-      const redactUserHomeFromPath = (input: string | null): string | null => {
-        if (!input) return input;
-        const win = input.replace(/(\\Users\\)([^\\]+)(\\)/i, '$1<redacted>$3');
-        if (win !== input) return win;
-        const mac = input.replace(/(\/Users\/)([^/]+)(\/)/, '$1<redacted>$3');
-        if (mac !== input) return mac;
-        const linux = input.replace(/(\/home\/)([^/]+)(\/)/, '$1<redacted>$3');
-        if (linux !== input) return linux;
-        return input;
-      };
+      const spawnedExecutablePath = redactUserHomeFromPath(
+        this.browser ? getSpawnedExecutablePath(this.browser) : null
+      );
 
       botLogger.info('Chrome launched successfully', {
         headless: this.headless,
         channel,
-        spawnedExecutablePath: redactUserHomeFromPath(spawnedExecutablePath),
+        spawnedExecutablePath,
       });
     } catch (err) {
       const e = err instanceof Error ? err.message : String(err);
@@ -133,7 +155,7 @@ export class WebformFiller {
     }
   }
 
-  private async _create_context_at_index(index: number): Promise<void> {
+  private async _createContextAtIndex(index: number): Promise<void> {
     if (!this.browser) throw new BotNotStartedError('Browser not started');
 
     const context = await this.browser.newContext({
@@ -152,13 +174,13 @@ export class WebformFiller {
     this.contexts[index] = context;
   }
 
-  private async _create_page_at_index(index: number): Promise<void> {
+  private async _createPageAtIndex(index: number): Promise<void> {
     const context = this.contexts[index];
     if (!context) throw new BotNotStartedError('Context not initialized');
     this.pages[index] = await context.newPage();
   }
 
-  require_page(): Page {
+  requirePage(): Page {
     if (!this.page) throw new BotNotStartedError('Page is not available');
     return this.page;
   }
@@ -191,15 +213,15 @@ export class WebformFiller {
     this.browser = null;
   }
 
-  async navigate_to_base(): Promise<void> {
-    const page = this.require_page();
+  async navigateToBase(): Promise<void> {
+    const page = this.requirePage();
     await page.goto(this.formConfig.BASE_URL, {
       timeout: cfg.GLOBAL_TIMEOUT * 1000
     });
   }
 
-  async wait_for_form_ready(): Promise<void> {
-    const page = this.require_page();
+  async waitForFormReady(): Promise<void> {
+    const page = this.requirePage();
     // This method is called for every row. Keep it fast and deterministic.
     // Treat "form ready" as: required field exists, is visible, and is enabled.
     const projectLocator =
@@ -220,9 +242,9 @@ export class WebformFiller {
     });
   }
 
-  async inject_field_value(spec: Record<string, unknown>, value: string): Promise<void> {
+  async injectFieldValue(spec: Record<string, unknown>, value: string): Promise<void> {
     const locator = String(spec['locator']);
-    const page = this.require_page();
+    const page = this.requirePage();
     const field = page.locator(locator);
 
     const ok = await cfg.dynamic_wait_for_element(page, locator, 'visible', 1, cfg.GLOBAL_TIMEOUT);
@@ -231,8 +253,8 @@ export class WebformFiller {
     await field.fill(String(value));
   }
 
-  async submit_form(): Promise<boolean> {
-    const page = this.require_page();
+  async submitForm(): Promise<boolean> {
+    const page = this.requirePage();
     const timer = botLogger.startTimer('submit-form-total');
 
     try {

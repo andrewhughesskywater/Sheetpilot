@@ -110,19 +110,20 @@ export class PluginRegistry {
     const targetName = name || this.activePlugins.get(namespace);
     
     if (!targetName) {
-      console.error(`No plugin name specified and no active plugin for namespace: ${namespace}`);
+      // Use debug level during initialization to avoid noise
+      console.debug(`No plugin name specified and no active plugin for namespace: ${namespace}`);
       return null;
     }
     
     const namespacePlugins = this.plugins.get(namespace);
     if (!namespacePlugins) {
-      console.error(`No plugins registered for namespace: ${namespace}`);
+      console.debug(`No plugins registered for namespace: ${namespace}`);
       return null;
     }
     
     const plugin = namespacePlugins.get(targetName);
     if (!plugin) {
-      console.error(`Plugin ${namespace}:${targetName} not found`);
+      console.warn(`Plugin ${namespace}:${targetName} not found`);
       return null;
     }
     

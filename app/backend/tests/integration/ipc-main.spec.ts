@@ -238,14 +238,16 @@ describe('Electron IPC Handlers (main.ts)', () => {
 
     // Verify the handler was called and returned proper structure
     expect(res).toBeDefined();
-    
-    // Expect 5 arguments: email, password, progressCallback, abortSignal, useMockWebsite
+
+    // submitTimesheets now takes a single config object
     expect(mimps.submitTimesheets).toHaveBeenCalledWith(
-      'user@test', 
-      'pw',
-      expect.any(Function),
-      expect.anything(), // AbortSignal
-      undefined // useMockWebsite is optional and defaults to undefined
+      expect.objectContaining({
+        email: 'user@test',
+        password: 'pw',
+        progressCallback: expect.any(Function),
+        abortSignal: expect.anything(),
+        useMockWebsite: undefined
+      })
     );
     expect(res.submitResult).toBeDefined();
     expect(res.submitResult?.ok).toBe(true);

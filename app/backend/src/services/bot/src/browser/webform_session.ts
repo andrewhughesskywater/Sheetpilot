@@ -112,7 +112,6 @@ export class WebformSessionManager {
       'visible',
       cfg.DYNAMIC_WAIT_BASE_TIMEOUT,
       cfg.DYNAMIC_WAIT_MAX_TIMEOUT,
-      'form readiness',
     );
     await cfg.dynamic_wait_for_network_idle(
       page,

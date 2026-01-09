@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ipcMain } from 'electron';
 import { registerCredentialsHandlers } from '@/ipc/credentials-handlers';
-import * as repositories from '@/repositories'';
+import * as repositories from '@/repositories';
 import { CredentialsNotFoundError as _CredentialsNotFoundError, CredentialsStorageError } from '@sheetpilot/shared/errors';
 
 // Mock electron

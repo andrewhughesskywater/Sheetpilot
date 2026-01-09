@@ -1,19 +1,25 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
+import { act } from '@testing-library/react';
+
+let mockUseData: any;
 
 // Mock the DataContext to provide test data
 vi.mock('@/contexts/DataContext', () => ({
-  useData: () => ({
-    archiveData: {
-      timesheet: [],
-      credentials: []
-    },
-    isArchiveDataLoading: false,
-    archiveDataError: null,
-    refreshArchiveData: vi.fn().mockResolvedValue(undefined)
-  }),
+  useData: () => mockUseData(),
   DataProvider: ({ children }: { children: React.ReactNode }) => React.createElement('div', {}, children)
 }));
+
+// Default mock implementation
+const defaultMockUseData = () => ({
+  archiveData: {
+    timesheet: [],
+    credentials: []
+  },
+  isArchiveDataLoading: false,
+  archiveDataError: null,
+  refreshArchiveData: vi.fn().mockResolvedValue(undefined)
+});
 
 // Mock Handsontable to avoid complex rendering issues
 vi.mock('@handsontable/react-wrapper', () => ({
@@ -30,6 +36,11 @@ import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 
 describe('DatabaseViewer', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUseData = vi.fn(defaultMockUseData);
+  });
+
   it('renders without crashing', () => {
     render(<Archive />);
     // Check for the no data message
@@ -38,9 +49,101 @@ describe('DatabaseViewer', () => {
     expect(screen.getByText(/Timesheet entries: 0/)).toBeInTheDocument();
     expect(screen.getByText(/Credentials: 0/)).toBeInTheDocument();
   });
+
+  it('should show loading state when isArchiveDataLoading is true', () => {
+    mockUseData = vi.fn(() => ({
+      archiveData: {
+        timesheet: [],
+        credentials: []
+      },
+      isArchiveDataLoading: true,
+      archiveDataError: null,
+      refreshArchiveData: vi.fn().mockResolvedValue(undefined)
+    }));
+
+    render(<Archive />);
+    
+    expect(screen.getByText(/Loading archive/)).toBeInTheDocument();
+  });
+
+  it('should show error state when archiveDataError is set', () => {
+    const errorMessage = 'Failed to load archive data';
+    mockUseData = vi.fn(() => ({
+      archiveData: {
+        timesheet: [],
+        credentials: []
+      },
+      isArchiveDataLoading: false,
+      archiveDataError: errorMessage,
+      refreshArchiveData: vi.fn().mockResolvedValue(undefined)
+    }));
+
+    render(<Archive />);
+    
+    expect(screen.getByText(/Error loading archive/)).toBeInTheDocument();
+    expect(screen.getByText(errorMessage)).toBeInTheDocument();
+  });
+
+  it('should render data when isArchiveDataLoading is false with data available', () => {
+    mockUseData = vi.fn(() => ({
+      archiveData: {
+        timesheet: [
+          { id: 1, date: '2024-01-15', hours: 8 }
+        ],
+        credentials: [
+          { id: 1, name: 'Test Credential' }
+        ]
+      },
+      isArchiveDataLoading: false,
+      archiveDataError: null,
+      refreshArchiveData: vi.fn().mockResolvedValue(undefined)
+    }));
+
+    render(<Archive />);
+    
+    // Should NOT show loading or error messages
+    expect(screen.queryByText(/Loading archive/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Error loading archive/)).not.toBeInTheDocument();
+    // Should render the data
+    expect(screen.queryByText(/No data available/)).not.toBeInTheDocument();
+  });
+
+  it('should NOT show content when loading even with data count > 0 (regression test)', () => {
+    // This is the specific regression test for the bug where isArchiveDataLoading was never set to false
+    // Even with data present (timesheetCount: 19, credentialsCount: 1), 
+    // if isArchiveDataLoading is true, only loading message should show
+    mockUseData = vi.fn(() => ({
+      archiveData: {
+        timesheet: [
+          { id: 1, date: '2024-01-15', hours: 8 },
+          { id: 2, date: '2024-01-16', hours: 8 },
+          { id: 3, date: '2024-01-17', hours: 8 },
+          // ... 19 total entries
+        ],
+        credentials: [
+          { id: 1, name: 'Test Credential' }
+        ]
+      },
+      isArchiveDataLoading: true, // BUG: This should have been set to false
+      archiveDataError: null,
+      refreshArchiveData: vi.fn().mockResolvedValue(undefined)
+    }));
+
+    render(<Archive />);
+    
+    // Loading state takes precedence - should show loading screen
+    expect(screen.getByText(/Loading archive/)).toBeInTheDocument();
+    // Should NOT show the data, even though it exists in state
+    expect(screen.queryByText(/No data available/)).not.toBeInTheDocument();
+  });
 });
 
 describe('Archive Non-Editability', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUseData = vi.fn(defaultMockUseData);
+  });
+
   it('validates that archive table is configured as read-only', () => {
     // Test that the archive table is completely read-only
     const archiveTableConfig = {

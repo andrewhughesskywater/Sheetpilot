@@ -235,8 +235,18 @@ function useAccessibilityFix() {
       if (isHidden) {
         setTimeout(() => {
           const activeElement = document.activeElement;
-          if (activeElement && rootElement.contains(activeElement) && activeElement !== document.body) {
-            (activeElement as HTMLElement).blur();
+          // When root is hidden (dialog is open), blur any focused elements inside root
+          // This prevents "focus trapped in aria-hidden element" accessibility warning
+          // Check if element is in root AND not in a dialog portal
+          if (activeElement && 
+              rootElement.contains(activeElement) && 
+              activeElement !== document.body) {
+            // Additional check: make sure the element isn't in a dialog portal
+            // (in case MUI renders dialog inside root in some edge cases)
+            const isInDialog = activeElement.closest('[role="dialog"]');
+            if (!isInDialog) {
+              (activeElement as HTMLElement).blur();
+            }
           }
         }, 0);
       }

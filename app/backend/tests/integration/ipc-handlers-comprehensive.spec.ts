@@ -126,13 +126,13 @@ function createMockDb() {
   };
 }
 
-// Declare module-scoped variable that will be initialized in the factory
-let mockDbInstance: ReturnType<typeof createMockDb>;
+// NOTE: vi.mock factories are hoisted; use `var` to avoid TDZ issues.
+// This test file mutates `mockDbInstance` in beforeEach.
+// eslint-disable-next-line no-var
+var mockDbInstance: ReturnType<typeof createMockDb>;
 
 // Mock repositories module (single source of truth)
-// Create mockDb instance inside the factory to avoid hoisting issues
 vi.mock('@/repositories', () => {
-  // Initialize mockDbInstance here so it's available both in factory and in tests
   mockDbInstance = createMockDb();
   
   const resetInProgressTimesheetEntries = vi.fn(() => {
@@ -982,11 +982,13 @@ describe('IPC Handlers Comprehensive Tests', () => {
       expect(result.submitResult!.ok).toBe(true);
       // Verify that submitTimesheets was called with correct credentials, progressCallback, AbortSignal, and useMockWebsite
       expect(mimps.submitTimesheets).toHaveBeenCalledWith(
-        'user@test.com', 
-        'password123', 
-        expect.any(Function),
-        expect.any(AbortSignal),
-        undefined // useMockWebsite is optional and defaults to undefined
+        expect.objectContaining({
+          email: 'user@test.com',
+          password: 'password123',
+          progressCallback: expect.any(Function),
+          abortSignal: expect.anything(),
+          useMockWebsite: undefined
+        })
       );
       // With mocked database (0 entries), successCount should be 0
       expect(result.submitResult?.successCount).toBe(0);
@@ -1016,11 +1018,13 @@ describe('IPC Handlers Comprehensive Tests', () => {
       expect(result.submitResult).toBeDefined();
       // Verify that submitTimesheets was called with progressCallback, AbortSignal, and useMockWebsite
       expect(mimps.submitTimesheets).toHaveBeenCalledWith(
-        'user@test.com', 
-        'password123', 
-        expect.any(Function),
-        expect.any(AbortSignal),
-        undefined // useMockWebsite is optional and defaults to undefined
+        expect.objectContaining({
+          email: 'user@test.com',
+          password: 'password123',
+          progressCallback: expect.any(Function),
+          abortSignal: expect.anything(),
+          useMockWebsite: undefined
+        })
       );
       // With mocked database (0 entries), the handler completes successfully
       expect(result.submitResult!.ok).toBe(true);

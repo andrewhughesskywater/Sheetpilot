@@ -326,32 +326,22 @@ function validateTaskDescriptionField(value: unknown): string | null {
 function validateFieldInternal(config: ValidateFieldConfig): string | null {
   const { value, row, prop, rows, projects, chargeCodes } = config;
   const rowData = rows[row];
-  
-  switch (prop) {
-    case 'date':
-      return validateDateField(value);
-      
-    case 'timeIn':
-      return validateTimeInField(value);
-      
-    case 'timeOut':
-      return validateTimeOutField(value, rowData?.timeIn);
-      
-    case 'project':
-      return validateProjectField(value, projects);
-      
-    case 'tool':
-      return validateToolField(value, rowData?.project);
-      
-    case 'chargeCode':
-      return validateChargeCodeField(value, rowData?.tool, chargeCodes);
-      
-    case 'taskDescription':
-      return validateTaskDescriptionField(value);
-      
-    default:
-      return null;
-  }
+
+  const validators: Record<
+    string,
+    (args: { value: unknown; rowData: (typeof rows)[number] | undefined }) => string | null
+  > = {
+    date: ({ value }) => validateDateField(value),
+    timeIn: ({ value }) => validateTimeInField(value),
+    timeOut: ({ value, rowData }) => validateTimeOutField(value, rowData?.timeIn),
+    project: ({ value }) => validateProjectField(value, projects),
+    tool: ({ value, rowData }) => validateToolField(value, rowData?.project),
+    chargeCode: ({ value, rowData }) => validateChargeCodeField(value, rowData?.tool, chargeCodes),
+    taskDescription: ({ value }) => validateTaskDescriptionField(value),
+  };
+
+  const validator = validators[prop];
+  return validator ? validator({ value, rowData }) : null;
 }
 
 /**

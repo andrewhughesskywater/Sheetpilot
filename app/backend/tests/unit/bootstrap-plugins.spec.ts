@@ -23,7 +23,25 @@ vi.mock('@/services/plugins/memory-data-service');
 vi.mock('@/services/plugins/sqlite-credential-service');
 vi.mock('@/services/plugins/electron-bot-service');
 vi.mock('@/services/plugins/mock-submission-service');
-vi.mock('../../../shared/logger');
+vi.mock('@sheetpilot/shared/logger', () => {
+  const appLogger = {
+    child: vi.fn(),
+    info: vi.fn(),
+    verbose: vi.fn(),
+    debug: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn()
+  };
+
+  appLogger.child.mockReturnValue(appLogger);
+
+  // Some backend modules (e.g., bot automation config) import these directly.
+  // Provide stable mocks so importing those modules doesn't crash during tests.
+  const botLogger = appLogger;
+  const authLogger = appLogger;
+
+  return { appLogger, botLogger, authLogger };
+});
 vi.mock('path', async (importOriginal) => {
   const actual = await importOriginal<typeof import('path')>();
   return {

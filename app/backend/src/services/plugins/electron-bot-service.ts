@@ -26,6 +26,29 @@ import {
   convertDateToUSFormat
 } from '@sheetpilot/shared/utils/format-conversions';
 
+function toAbortSignal(
+  abortSignal?: AbortSignal | { aborted: boolean; reason?: unknown }
+): AbortSignal | undefined {
+  if (!abortSignal) return undefined;
+  const maybeAbortSignal = abortSignal as {
+    aborted?: unknown;
+    addEventListener?: unknown;
+    removeEventListener?: unknown;
+  };
+  const looksLikeAbortSignal =
+    typeof maybeAbortSignal.aborted === 'boolean' &&
+    typeof maybeAbortSignal.addEventListener === 'function' &&
+    typeof maybeAbortSignal.removeEventListener === 'function';
+  if (looksLikeAbortSignal) return abortSignal as AbortSignal;
+
+  if ((abortSignal as { aborted?: unknown }).aborted === true) {
+    const controller = new AbortController();
+    controller.abort();
+    return controller.signal;
+  }
+  return undefined;
+}
+
 /**
  * Electron-based submission service using browser automation
  */
@@ -63,30 +86,21 @@ export class ElectronBotService implements ISubmissionService {
   /**
    * Submit timesheet entries using browser automation
    */
-  public async submit(entries: TimesheetEntry[], credentials: Credentials, progressCallback?: (percent: number, message: string) => void, abortSignal?: {aborted: boolean; reason?: unknown}, useMockWebsite?: boolean): Promise<SubmissionResult> {
-    const actualCredentials = credentials;
-    const actualProgressCallback = progressCallback;
-    const actualUseMockWebsite = useMockWebsite;
-    botLogger.info('Starting Electron submission', { entryCount: entries.length });
-    
-    // Convert simplified abort signal to AbortSignal if needed
-    let actualAbortSignal: AbortSignal | undefined = undefined;
-    if (abortSignal) {
-      if (abortSignal instanceof AbortSignal) {
-        actualAbortSignal = abortSignal;
-      } else if (abortSignal.aborted) {
-        // If already aborted, create an aborted signal
-        const controller = new AbortController();
-        controller.abort();
-        actualAbortSignal = controller.signal;
-      } else {
-        // Create a new AbortController that we can abort later if needed
-        // For now, we'll just check it periodically via checkAborted
-        // Since we can't easily convert a simplified signal to a real one,
-        // we'll pass undefined and rely on checkAborted calls
-        actualAbortSignal = undefined;
-      }
+  public async submit(
+    entries: TimesheetEntry[], 
+    credentials: Credentials, 
+    options?: {
+      progressCallback?: (percent: number, message: string) => void;
+      abortSignal?: {aborted: boolean; reason?: unknown};
+      useMockWebsite?: boolean;
     }
+  ): Promise<SubmissionResult> {
+    const actualProgressCallback = options?.progressCallback;
+    const actualUseMockWebsite = options?.useMockWebsite;
+    const abortSignal = options?.abortSignal;
+    botLogger.info('Starting Electron submission', { entryCount: entries.length });
+
+    const actualAbortSignal = toAbortSignal(abortSignal);
     
     try {
       // Check if aborted before starting
@@ -98,8 +112,8 @@ export class ElectronBotService implements ISubmissionService {
       const result = await processEntriesByQuarter(entries, {
         toBotRow: (entry) => this.toBotRow(entry),
         runBot: runTimesheet,
-        email: actualCredentials.email,
-        password: actualCredentials.password,
+        email: credentials.email,
+        password: credentials.password,
         progressCallback: actualProgressCallback,
         abortSignal: actualAbortSignal,
         useMockWebsite: actualUseMockWebsite
