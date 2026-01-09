@@ -49,7 +49,16 @@ export class MockSubmissionService implements ISubmissionService {
   /**
    * Submit timesheet entries (mock implementation)
    */
-  public async submit(entries: TimesheetEntry[], _credentials: Credentials, _progressCallback?: (percent: number, message: string) => void, abortSignal?: AbortSignal): Promise<SubmissionResult> {
+  public async submit(
+    entries: TimesheetEntry[], 
+    _credentials: Credentials, 
+    options?: {
+      progressCallback?: (percent: number, message: string) => void;
+      abortSignal?: {aborted: boolean; reason?: unknown};
+      useMockWebsite?: boolean;
+    }
+  ): Promise<SubmissionResult> {
+    const abortSignal = options?.abortSignal;
     // Check if aborted before starting
     if (abortSignal?.aborted) {
       return {

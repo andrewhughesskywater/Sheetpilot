@@ -11,6 +11,8 @@ type AfterPasteHandler = (data: unknown[][], coords: unknown[]) => void;
 type AfterBeginEditingHandler = (row: number, col: number) => void;
 type BeforeKeyDownHandler = (event: KeyboardEvent) => boolean | void;
 type AfterSelectionHandler = (row: number, col: number, row2: number, col2: number) => void;
+type AfterColumnResizeHandler = (newSize: number, column: number, isDoubleClick: boolean) => void;
+type AfterRowResizeHandler = (newSize: number, row: number, isDoubleClick: boolean) => void;
 
 interface TimesheetHotTableProps {
   data: unknown[];
@@ -25,11 +27,14 @@ interface TimesheetHotTableProps {
     afterBeginEditing?: AfterBeginEditingHandler;
     beforeKeyDown?: BeforeKeyDownHandler;
     afterSelection?: AfterSelectionHandler;
+    afterColumnResize?: AfterColumnResizeHandler;
+    afterRowResize?: AfterRowResizeHandler;
   };
+  rowHeight?: number;
 }
 
 export const TimesheetHotTable = forwardRef<HotTableRef | null, TimesheetHotTableProps>(function TimesheetHotTable(
-  { data, columns, cells, handlers },
+  { data, columns, cells, handlers, rowHeight },
   ref
 ) {
   // Extract column headers from column definitions as strings
@@ -54,6 +59,9 @@ export const TimesheetHotTable = forwardRef<HotTableRef | null, TimesheetHotTabl
       afterBeginEditing={handlers.afterBeginEditing}
       beforeKeyDown={handlers.beforeKeyDown}
       afterSelection={handlers.afterSelection}
+      afterColumnResize={handlers.afterColumnResize}
+      afterRowResize={handlers.afterRowResize}
+      rowHeights={rowHeight ? (() => rowHeight) : undefined}
       colHeaders={colHeaders as unknown as boolean | string[] | ((index: number) => string)}
       themeName="ht-theme-horizon"
       width="100%"

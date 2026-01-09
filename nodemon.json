@@ -2,7 +2,7 @@
   "watch": ["build/dist"],
   "ext": "js,json",
   "ignore": ["node_modules", "app/frontend", "tests"],
-  "exec": "cross-env ELECTRON_IS_DEV=1 NODE_PATH=app/backend/node_modules:node_modules electron build/dist/backend/src/main.js",
+  "exec": "cross-env ELECTRON_IS_DEV=1 NODE_PATH=app/backend/node_modules:node_modules electron build/dist/backend/src/bootstrap-entry.js",
   "delay": 500,
   "verbose": true,
   "restartable": "rs"

@@ -114,6 +114,9 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
     handleAfterBeginEditing,
     handleBeforeKeyDown,
     handleAfterSelection,
+    handleAfterColumnResize,
+    handleAfterRowResize,
+    savedRowHeight,
     validationErrors,
     showErrorDialog,
     setShowErrorDialog,
@@ -162,6 +165,7 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
         data={timesheetDraftData}
         columns={columnDefinitions}
         cells={cellsFunction}
+        rowHeight={savedRowHeight ?? undefined}
         handlers={{
           beforeRemoveRow: handleBeforeRemoveRow,
           afterChange: handleAfterChange,
@@ -171,6 +175,8 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
           afterBeginEditing: handleAfterBeginEditing,
           beforeKeyDown: handleBeforeKeyDown,
           afterSelection: handleAfterSelection,
+          afterColumnResize: handleAfterColumnResize,
+          afterRowResize: handleAfterRowResize,
         }}
       />
       <TimesheetFooter

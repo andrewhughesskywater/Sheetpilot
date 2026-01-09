@@ -274,7 +274,7 @@ interface SubmitTimesheetsConfig {
 }
 
 async function submitViaPluginSystem(params: {
-    submissionService: { submit: (...args: unknown[]) => Promise<SubmissionResult> };
+    submissionService: ISubmissionService;
     entries: TimesheetEntry[];
     credentials: Credentials;
     progressCallback?: (percent: number, message: string) => void;

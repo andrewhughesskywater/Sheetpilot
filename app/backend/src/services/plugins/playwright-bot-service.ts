@@ -63,7 +63,18 @@ export class PlaywrightBotService implements ISubmissionService {
   /**
    * Submit timesheet entries using browser automation
    */
-  public async submit(entries: TimesheetEntry[], credentials: Credentials, progressCallback?: (percent: number, message: string) => void, abortSignal?: AbortSignal): Promise<SubmissionResult> {
+  public async submit(
+    entries: TimesheetEntry[], 
+    credentials: Credentials, 
+    options?: {
+      progressCallback?: (percent: number, message: string) => void;
+      abortSignal?: {aborted: boolean; reason?: unknown};
+      useMockWebsite?: boolean;
+    }
+  ): Promise<SubmissionResult> {
+    const actualProgressCallback = options?.progressCallback;
+    const actualUseMockWebsite = options?.useMockWebsite;
+    const abortSignal = options?.abortSignal;
     botLogger.info('Starting Playwright submission', { entryCount: entries.length });
     
     try {
@@ -78,8 +89,9 @@ export class PlaywrightBotService implements ISubmissionService {
         runBot: runTimesheet,
         email: credentials.email,
         password: credentials.password,
-        progressCallback,
-        abortSignal
+        progressCallback: actualProgressCallback,
+        abortSignal,
+        useMockWebsite: actualUseMockWebsite
       });
       
       botLogger.info('Playwright submission completed', result);

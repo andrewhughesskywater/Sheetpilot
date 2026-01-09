@@ -114,6 +114,36 @@ function setupErrorHandlers(window: BrowserWindow, params: CreateMainWindowParam
         url: window.webContents.getURL(),
         title: window.webContents.getTitle()
       });
+      
+      // Verify preload script executed by checking if APIs are available
+      // This check happens after the page loads, so preload should have run
+      window.webContents.executeJavaScript(`
+        (function() {
+          const hasAuth = typeof window.auth !== 'undefined';
+          const hasTimesheet = typeof window.timesheet !== 'undefined';
+          const hasCredentials = typeof window.credentials !== 'undefined';
+          return {
+            auth: hasAuth,
+            timesheet: hasTimesheet,
+            credentials: hasCredentials,
+            allAPIs: hasAuth && hasTimesheet && hasCredentials
+          };
+        })()
+      `).then((result: { auth: boolean; timesheet: boolean; credentials: boolean; allAPIs: boolean }) => {
+        if (!result.allAPIs) {
+          params.logger.error('Preload script APIs not exposed', {
+            auth: result.auth,
+            timesheet: result.timesheet,
+            credentials: result.credentials
+          });
+        } else {
+          params.logger.verbose('Preload script APIs verified', result);
+        }
+      }).catch((err: unknown) => {
+        params.logger.warn('Could not verify preload script APIs', {
+          error: err instanceof Error ? err.message : String(err)
+        });
+      });
     } else {
       params.logger.info('Renderer loaded successfully (window already destroyed)');
     }
@@ -213,6 +243,7 @@ export function createMainWindow(params: CreateMainWindowParams): BrowserWindow 
     const paths = resolveAppPathsSync(params.backendDirname, params.packagedLike);
     preloadPath = paths.preloadPath;
     iconPath = paths.iconPath;
+    params.logger.verbose('Preload script path resolved', { preloadPath });
   } catch (err: unknown) {
     void showErrorDialog({
       app: params.app,

@@ -7,6 +7,8 @@ import type { TimesheetUIPlugin } from '../../../../../shared/plugin-types';
 import { TIMESHEET_PLUGIN_NAMESPACES } from '../../../../../shared/plugin-types';
 import type { TimesheetRow } from '../timesheet.schema';
 import { computeDateInsert } from '../utils/timesheetGridUtils';
+import { saveColumnWidth } from '../utils/columnWidthStorage';
+import { saveRowHeight, loadRowHeight } from '../utils/rowHeightStorage';
 
 interface TableHandlersConfig {
   timesheetDraftData: TimesheetRow[];
@@ -101,6 +103,28 @@ export function useTableHandlers(config: TableHandlersConfig) {
     previousSelectionRef.current = [row, col, row2, col2];
   }, []);
 
+  const handleAfterColumnResize = useCallback((newSize: number, column: number) => {
+    const hotInstance = _hotTableRef.current?.hotInstance;
+    if (!hotInstance) return;
+
+    // Get the column data key from the column index using Handsontable's colToProp
+    try {
+      const prop = hotInstance.colToProp(column);
+      if (typeof prop === 'string') {
+        saveColumnWidth(prop, newSize);
+      }
+    } catch (error) {
+      // Silently handle errors - column width persistence is non-critical
+    }
+  }, [_hotTableRef]);
+
+  const handleAfterRowResize = useCallback((newSize: number) => {
+    // Save the row height (assuming uniform row height for all rows)
+    saveRowHeight(newSize);
+  }, []);
+
+  const savedRowHeight = useMemo(() => loadRowHeight(), []);
+
   const uiPlugin = useMemo(() => {
     const registry = PluginRegistry.getInstance();
     return registry.getPlugin<TimesheetUIPlugin>(TIMESHEET_PLUGIN_NAMESPACES.ui);
@@ -134,6 +158,9 @@ export function useTableHandlers(config: TableHandlersConfig) {
     handleAfterBeginEditing,
     handleBeforeKeyDown,
     handleAfterSelection,
+    handleAfterColumnResize,
+    handleAfterRowResize,
+    savedRowHeight,
     cellsFunction,
     columnDefinitions,
   } as const;

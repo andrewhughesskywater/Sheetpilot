@@ -4,7 +4,7 @@
   "private": true,
   "description": "Business timesheet management and reporting tool",
   "author": "Andrew Hughes",
-  "main": "build/dist/backend/src/main.js",
+  "main": "build/dist/backend/src/bootstrap-entry.js",
   "workspaces": [
     "app/backend",
     "app/frontend",
@@ -13,8 +13,8 @@
   "scripts": {
     "postinstall": "npm run rebuild && npm run -w @sheetpilot/backend postinstall",
     "rebuild": "npx @electron/rebuild -f -w better-sqlite3",
-    "electron:compiled": "npm run rebuild && cross-env NODE_PATH=app/backend/node_modules:node_modules electron build/dist/backend/src/main.js",
-    "electron:dev": "cross-env NODE_PATH=app/backend/node_modules:node_modules electron build/dist/backend/src/main.js",
+    "electron:compiled": "npm run rebuild && cross-env NODE_PATH=app/backend/node_modules:node_modules electron build/dist/backend/src/bootstrap-entry.js",
+    "electron:dev": "cross-env NODE_PATH=app/backend/node_modules:node_modules electron build/dist/backend/src/bootstrap-entry.js",
     "electron:watch": "nodemon",
     "sync-version": "node scripts/sync-version.js",
     "generate-icon": "node scripts/generate-icon.js",
@@ -25,7 +25,7 @@
     "vite": "npm run -w @sheetpilot/frontend dev",
     "reset-db": "node scripts/reset-dev-database.js",
     "dev": "concurrently -k --prefix \"[{time} {name}]\" -n VITE,ELECTRON -c auto \"npm:vite\" \"wait-on tcp:5173 && npm run build:main:dev && cross-env ELECTRON_IS_DEV=1 npm run electron:dev\"",
-    "dev:watch": "concurrently -k --prefix \"[{time} {name}]\" -n VITE,BUILD,ELECTRON -c auto \"npm:vite\" \"npm run build:main:watch\" \"wait-on tcp:5173 build/dist/backend/src/main.js && npm run electron:watch\"",
+    "dev:watch": "concurrently -k --prefix \"[{time} {name}]\" -n VITE,BUILD,ELECTRON -c auto \"npm:vite\" \"npm run build:main:watch\" \"wait-on tcp:5173 build/dist/backend/src/bootstrap-entry.js && npm run electron:watch\"",
     "build:renderer": "npm run -w @sheetpilot/frontend build",
     "build:renderer:analyze": "npm run -w @sheetpilot/frontend build:analyze",
     "build:bot": "node scripts/build-bot.js",
@@ -151,7 +151,7 @@
       "**/node_modules/better-sqlite3/**/*"
     ],
     "extraMetadata": {
-      "main": "build/dist/backend/src/main.js"
+      "main": "build/dist/backend/src/bootstrap-entry.js"
     },
     "win": {
       "icon": "build/icon.ico",

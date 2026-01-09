@@ -58,6 +58,9 @@ export interface TimesheetOrchestratorModel {
   handleAfterBeginEditing: AfterBeginEditingHandler;
   handleBeforeKeyDown: BeforeKeyDownHandler;
   handleAfterSelection: AfterSelectionHandler;
+  handleAfterColumnResize: (newSize: number, column: number, isDoubleClick: boolean) => void;
+  handleAfterRowResize: (newSize: number, row: number, isDoubleClick: boolean) => void;
+  savedRowHeight: number | null;
 
   // footer
   validationErrors: ValidationError[];
@@ -104,7 +107,7 @@ export function useTimesheetOrchestrator(onChange?: (rows: TimesheetRow[]) => vo
     hotTableRef
   );
 
-  const { weekdayPatternRef, /* previousSelectionRef */ handleAfterChange, handleAfterRemoveRow, handleBeforeRemoveRow, handleBeforePaste, handleAfterPaste, handleAfterBeginEditing, handleBeforeKeyDown, handleAfterSelection, cellsFunction, columnDefinitions } = useTableHandlers({
+  const { weekdayPatternRef, /* previousSelectionRef */ handleAfterChange, handleAfterRemoveRow, handleBeforeRemoveRow, handleBeforePaste, handleAfterPaste, handleAfterBeginEditing, handleBeforeKeyDown, handleAfterSelection, handleAfterColumnResize, handleAfterRowResize, savedRowHeight, cellsFunction, columnDefinitions } = useTableHandlers({
     timesheetDraftData,
     setTimesheetDraftData,
     onChange,
@@ -161,6 +164,9 @@ export function useTimesheetOrchestrator(onChange?: (rows: TimesheetRow[]) => vo
     handleAfterBeginEditing,
     handleBeforeKeyDown,
     handleAfterSelection,
+    handleAfterColumnResize,
+    handleAfterRowResize,
+    savedRowHeight,
 
     validationErrors,
     showErrorDialog,

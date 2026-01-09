@@ -44,11 +44,17 @@ export interface ISubmissionService extends IPlugin {
    * Submit timesheet entries using provided credentials
    * @param entries Array of timesheet entries to submit
    * @param credentials Authentication credentials
-   * @param progressCallback Optional callback for progress updates (percent, message)
-   * @param abortSignal Optional abort signal for cancellation support
+   * @param options Optional configuration object
+   * @param options.progressCallback Optional callback for progress updates (percent, message)
+   * @param options.abortSignal Optional abort signal for cancellation support
+   * @param options.useMockWebsite Optional flag to use mock website for testing
    * @returns Result of submission operation
    */
-  submit(entries: TimesheetEntry[], credentials: Credentials, progressCallback?: (percent: number, message: string) => void, abortSignal?: {aborted: boolean; reason?: unknown}, useMockWebsite?: boolean): Promise<SubmissionResult>;
+  submit(entries: TimesheetEntry[], credentials: Credentials, options?: {
+    progressCallback?: (percent: number, message: string) => void;
+    abortSignal?: {aborted: boolean; reason?: unknown};
+    useMockWebsite?: boolean;
+  }): Promise<SubmissionResult>;
 
   /**
    * Validate a timesheet entry before submission
