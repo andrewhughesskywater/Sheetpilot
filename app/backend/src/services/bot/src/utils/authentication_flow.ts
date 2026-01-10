@@ -72,8 +72,8 @@ export class LoginManager {
           page,
           'body',
           'visible',
-          C.DYNAMIC_WAIT_BASE_TIMEOUT * C.HALF_TIMEOUT_MULTIPLIER,
-          C.DYNAMIC_WAIT_BASE_TIMEOUT * 1.0
+          Number(C.DYNAMIC_WAIT_BASE_TIMEOUT) * C.HALF_TIMEOUT_MULTIPLIER,
+          Number(C.DYNAMIC_WAIT_BASE_TIMEOUT) * 1.0
         );
         await this._navigateToBase(page);
         authLogger.verbose('Successfully navigated to base URL', { contextIndex });
@@ -101,8 +101,8 @@ export class LoginManager {
           page,
           'body',
           'visible',
-          C.DYNAMIC_WAIT_BASE_TIMEOUT * 1.0,
-          C.DYNAMIC_WAIT_BASE_TIMEOUT * 2.0
+          Number(C.DYNAMIC_WAIT_BASE_TIMEOUT) * 1.0,
+          Number(C.DYNAMIC_WAIT_BASE_TIMEOUT) * 2.0
         );
       }
     }

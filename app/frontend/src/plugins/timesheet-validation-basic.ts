@@ -17,7 +17,7 @@ export class BasicTimesheetValidationPlugin implements TimesheetValidationPlugin
   initialize(): void {}
   dispose(): void {}
 
-  validate(_rows: TimesheetRow[]) {
+  validate(_rows: TimesheetRow[]): unknown[] {
     // No-op validation for now; preserve existing behavior
     return [] as unknown[];
   }

@@ -12,7 +12,11 @@ import {
   type ThemeMode,
 } from '@/utils/theme-manager';
 
-export function useTheme() {
+export function useTheme(): {
+  themeMode: ThemeMode;
+  effectiveTheme: 'light' | 'dark';
+  setThemeMode: (mode: ThemeMode) => void;
+} {
   const [themeMode, setThemeModeState] = useState<ThemeMode>(() => {
     // Initialize theme on first render
     return initializeTheme();

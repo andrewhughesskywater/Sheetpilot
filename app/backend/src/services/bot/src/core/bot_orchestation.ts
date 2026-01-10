@@ -176,7 +176,7 @@ export class BotOrchestrator {
    * @returns Playwright Page object
    * @throws BotNotStartedError if browser is not started
    */
-  requirePage() {
+  requirePage(): Page {
     return this.webformFiller.requirePage();
   }
 
@@ -186,7 +186,7 @@ export class BotOrchestrator {
    * @returns Promise resolving to Playwright Locator object
    * @throws Error if element doesn't become visible within timeout
    */
-  async waitVisible(sel: string) {
+  async waitVisible(sel: string): Promise<Locator> {
     const page = this.webformFiller.requirePage();
     const ok = await Cfg.dynamic_wait_for_element(
       page,
@@ -203,7 +203,7 @@ export class BotOrchestrator {
    * Clicks an element identified by selector
    * @param sel - CSS selector for the element to click
    */
-  async click(sel: string) {
+  async click(sel: string): Promise<void> {
     const page = this.webformFiller.requirePage();
     await page.locator(sel).click();
   }
@@ -213,7 +213,7 @@ export class BotOrchestrator {
    * @param sel - CSS selector for the input element
    * @param text - Text to type into the element
    */
-  async type(sel: string, text: string) {
+  async type(sel: string, text: string): Promise<void> {
     const page = this.webformFiller.requirePage();
     await page.locator(sel).type(text);
   }

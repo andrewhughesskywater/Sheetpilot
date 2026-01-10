@@ -33,7 +33,7 @@ export function loadColumnWidths(): ColumnWidthMap | null {
     }
 
     return Object.keys(widthMap).length > 0 ? widthMap : null;
-  } catch (error) {
+  } catch {
     // Silently handle parse errors - return null to use defaults
     return null;
   }
@@ -46,7 +46,7 @@ export function loadColumnWidths(): ColumnWidthMap | null {
 export function saveColumnWidths(widths: ColumnWidthMap): void {
   try {
     localStorage.setItem(COLUMN_WIDTH_STORAGE_KEY, JSON.stringify(widths));
-  } catch (error) {
+  } catch {
     // Silently handle errors (e.g., QuotaExceededError)
     // Column width persistence is a nice-to-have, not critical
   }

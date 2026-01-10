@@ -164,7 +164,7 @@ export const saveDraftSchema = z
     (data) => {
       // Only validate timeOut > timeIn if both are present
       if (data.timeIn && data.timeOut) {
-        const parseTime = (time: string) => {
+        const parseTime = (time: string): number => {
           const [hours, minutes] = time.split(':').map(Number);
           return (hours || 0) * 60 + (minutes || 0);
         };

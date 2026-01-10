@@ -42,7 +42,7 @@ export abstract class AppError extends Error {
   /**
    * Converts error to JSON for logging/transmission
    */
-  toJSON() {
+  toJSON(): Record<string, unknown> {
     return {
       name: this.name,
       code: this.code,

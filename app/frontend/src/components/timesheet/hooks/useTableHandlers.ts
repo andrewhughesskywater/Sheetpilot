@@ -115,7 +115,7 @@ export function useTableHandlers(config: TableHandlersConfig) {
         if (typeof prop === 'string') {
           saveColumnWidth(prop, newSize);
         }
-      } catch (error) {
+      } catch {
         // Silently handle errors - column width persistence is non-critical
       }
     },

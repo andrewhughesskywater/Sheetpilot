@@ -288,7 +288,7 @@ function configureFileTransport(): void {
  * Writes to both local (15MB limit) and network drives
  * Always uses verbose logging for internal tool debugging
  */
-export function configureLogger() {
+export function configureLogger(): void {
   configureLogLevels();
   configureFileTransport();
 

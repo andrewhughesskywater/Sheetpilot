@@ -58,16 +58,15 @@
     "incremental": true,
     "tsBuildInfoFile": "build/dist/.tsbuildinfo"
   },
-  "include": ["app/**/*.ts"],
+  "files": [],
+  "references": [
+    { "path": "./app/backend" },
+    { "path": "./app/frontend" },
+    { "path": "./app/shared" }
+  ],
   "exclude": [
     "node_modules",
     "build",
-    "release",
-    "app/backend/src/services/bot/node_modules",
-    "app/frontend/src/node_modules",
-    "app/frontend/src/config/vite.config.ts",
-    "app/frontend/tests/vitest.config.blank-screen-prevention.ts",
-    "**/*.spec.ts",
-    "**/*.test.ts"
+    "release"
   ]
 }

@@ -76,7 +76,7 @@ function decryptPassword(encryptedPassword: string): string {
 /**
  * Stores or updates credentials for a service
  */
-export function storeCredentials(service: string, email: string, password: string) {
+export function storeCredentials(service: string, email: string, password: string): void {
   const timer = dbLogger.startTimer('store-credentials');
   const db = getDb();
 
@@ -189,7 +189,7 @@ export function listCredentials(): Array<{ service: string; email: string }> {
 /**
  * Deletes credentials for a service
  */
-export function deleteCredentials(service: string) {
+export function deleteCredentials(service: string): { success: boolean; message: string; changes: number } {
   const timer = dbLogger.startTimer('delete-credentials');
   const db = getDb();
 

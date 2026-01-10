@@ -43,20 +43,20 @@ export async function registerDefaultPlugins(): Promise<void> {
 /**
  * Get the active data service
  */
-export function getDataService() {
+export function getDataService(): unknown {
   return getRegistry().getPlugin('data');
 }
 
 /**
  * Get the active credential service
  */
-export function getCredentialService() {
+export function getCredentialService(): unknown {
   return getRegistry().getPlugin('credentials');
 }
 
 /**
  * Get the active submission service
  */
-export function getSubmissionService() {
+export function getSubmissionService(): unknown {
   return getRegistry().getPlugin('submission');
 }

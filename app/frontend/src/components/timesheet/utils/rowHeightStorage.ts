@@ -27,7 +27,7 @@ export function loadRowHeight(): number | null {
     }
 
     return null;
-  } catch (error) {
+  } catch {
     // Silently handle parse errors - return null to use defaults
     return null;
   }
@@ -42,7 +42,7 @@ export function saveRowHeight(height: number): void {
     if (height > 0) {
       localStorage.setItem(ROW_HEIGHT_STORAGE_KEY, JSON.stringify(height));
     }
-  } catch (error) {
+  } catch {
     // Silently handle errors (e.g., QuotaExceededError)
     // Row height persistence is a nice-to-have, not critical
   }

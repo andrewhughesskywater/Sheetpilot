@@ -60,7 +60,7 @@ export function loadPluginConfig(configPath?: string): PluginRegistryConfig {
       if (fs.existsSync(fullPath)) {
         const configData = fs.readFileSync(fullPath, 'utf-8');
         const config = JSON.parse(configData) as PluginRegistryConfig;
-        console.log(`Loaded plugin configuration from ${fullPath}`);
+        console.warn(`Loaded plugin configuration from ${fullPath}`);
         return mergeWithDefaults(config);
       }
     } catch (error) {
@@ -176,7 +176,7 @@ export function resolvePluginVariant(namespace: string, config: PluginRegistryCo
         shouldEnableForUser(flag)
       ) {
         // Feature flag is enabled and specifies a variant
-        console.log(`Feature flag ${flagName} enabled, using variant: ${flag.variant}`);
+        console.warn(`Feature flag ${flagName} enabled, using variant: ${flag.variant}`);
         return flag.variant;
       }
     }

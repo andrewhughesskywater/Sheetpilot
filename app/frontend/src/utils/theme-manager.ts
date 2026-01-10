@@ -175,7 +175,7 @@ export function getCurrentEffectiveTheme(): 'light' | 'dark' {
 export function subscribeToThemeChanges(
   callback: (theme: { mode: ThemeMode; effectiveTheme: 'light' | 'dark' }) => void
 ): () => void {
-  const handler = (event: Event) => {
+  const handler = (event: Event): void => {
     const customEvent = event as CustomEvent;
     callback(customEvent.detail);
   };

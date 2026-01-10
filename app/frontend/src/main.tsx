@@ -1,8 +1,8 @@
 import './styles/index.css';
 
 import CssBaseline from '@mui/material/CssBaseline';
-import { createTheme,ThemeProvider } from '@mui/material/styles';
-import { useEffect,useState } from 'react';
+import { createTheme, type Theme, ThemeProvider } from '@mui/material/styles';
+import { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import App, { Splash } from './App';
@@ -65,7 +65,7 @@ initializeTheme();
 
 // MUI theme is primarily overridden by M3 CSS tokens in m3-mui-overrides.css
 // This theme ensures MUI respects dark mode and doesn't break
-function createMuiTheme(mode: 'light' | 'dark') {
+function createMuiTheme(mode: 'light' | 'dark'): Theme {
   return createTheme({
     palette: {
       mode,
@@ -89,7 +89,7 @@ function createMuiTheme(mode: 'light' | 'dark') {
 
 // Component wrapper to manage dynamic MUI theme
 // eslint-disable-next-line react-refresh/only-export-components
-function ThemedApp() {
+function ThemedApp(): JSX.Element {
   const [muiTheme, setMuiTheme] = useState(() => createMuiTheme(getCurrentEffectiveTheme()));
   const [mountSplash, setMountSplash] = useState(() => window.location.hash.includes('splash'));
   const [pluginsReady, setPluginsReady] = useState(false);
@@ -118,7 +118,7 @@ function ThemedApp() {
 
   useEffect(() => {
     // Listen for hash changes to transition from splash to app
-    const handleHashChange = () => {
+    const handleHashChange = (): void => {
       setMountSplash(window.location.hash.includes('splash'));
     };
 

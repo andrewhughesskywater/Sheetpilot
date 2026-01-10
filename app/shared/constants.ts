@@ -12,7 +12,7 @@
  * Lazy logger import to avoid circular dependency with logger.ts
  * @private
  */
-function getLogger() {
+function getLogger(): typeof import('./logger')['appLogger'] {
   // Use dynamic import to avoid circular dependency
   const { appLogger } = require('./logger');
   return appLogger;
@@ -81,7 +81,7 @@ export function setBrowserHeadless(value: boolean): void {
     });
   } catch {
     // Fallback to console if logger is not available (shouldn't happen in normal operation)
-    console.log('[Constants] Browser headless mode updated:', {
+    console.warn('[Constants] Browser headless mode updated:', {
       oldValue,
       newValue: value,
       appSettingsBrowserHeadless: appSettings.browserHeadless,

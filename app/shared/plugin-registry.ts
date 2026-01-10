@@ -9,7 +9,11 @@
  * @since 2025
  */
 
+import { createLogger } from "./logger";
 import type { IPlugin, PluginConfiguration, PluginRegistryConfig, PluginResolution } from './plugin-types';
+
+const logger = createLogger('plugin-registry');
+
 
 /**
  * Central registry for managing all application plugins
@@ -111,19 +115,19 @@ export class PluginRegistry {
 
     if (!targetName) {
       // Use debug level during initialization to avoid noise
-      console.debug(`No plugin name specified and no active plugin for namespace: ${namespace}`);
+      logger.verbose(`No plugin name specified and no active plugin for namespace: ${namespace}`);
       return null;
     }
 
     const namespacePlugins = this.plugins.get(namespace);
     if (!namespacePlugins) {
-      console.debug(`No plugins registered for namespace: ${namespace}`);
+      logger.verbose(`No plugins registered for namespace: ${namespace}`);
       return null;
     }
 
     const plugin = namespacePlugins.get(targetName);
     if (!plugin) {
-      console.warn(`Plugin ${namespace}:${targetName} not found`);
+      logger.warn(`Plugin ${namespace}:${targetName} not found`);
       return null;
     }
 

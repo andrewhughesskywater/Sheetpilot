@@ -170,7 +170,7 @@ export async function submitTimesheetWorkflow(params: {
     const pendingEntries = getPendingTimesheetEntries() as Array<{ id: number }>;
     const pendingEntryIds = pendingEntries.map((e) => e.id);
 
-    const progressCallback = (percent: number, message: string) => {
+    const progressCallback = (percent: number, message: string): void => {
       lastProgressTimeRef.current = Date.now();
       params.onProgress(percent, message, { pendingIds: pendingEntryIds });
       ipcLogger.verbose('Submission progress update', {

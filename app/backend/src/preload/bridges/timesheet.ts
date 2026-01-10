@@ -80,7 +80,7 @@ export const timesheetBridge = {
   }> => ipcRenderer.invoke('timesheet:exportToCSV'),
   onSubmissionProgress: (
     callback: (progress: { percent: number; current: number; total: number; message: string }) => void
-  ) => {
+  ): void => {
     ipcRenderer.removeAllListeners('timesheet:progress');
     ipcRenderer.on('timesheet:progress', (_event, progress) => callback(progress));
   },

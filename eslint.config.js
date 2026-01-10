@@ -68,14 +68,15 @@ module.exports = [
         ecmaVersion: 'latest',
         sourceType: 'module',
         ecmaFeatures: { jsx: true },
-        tsconfigRootDir: __dirname
+        tsconfigRootDir: __dirname,
+        noWarnOnMultipleProjects: true
       }
     },
     settings: {
       'import/resolver': {
         typescript: {
           alwaysTryTypes: true,
-          project: ['./tsconfig.json', './app/backend/tsconfig.json', './app/frontend/tsconfig.json']
+          project: ['./tsconfig.json']
         },
         node: true
       }
@@ -238,7 +239,8 @@ module.exports = [
     languageOptions: {
       parserOptions: {
         project: ['./tsconfig.typecheck.json'],
-        tsconfigRootDir: __dirname
+        tsconfigRootDir: __dirname,
+        noWarnOnMultipleProjects: true
       }
     },
     rules: {
@@ -265,7 +267,8 @@ module.exports = [
     languageOptions: {
       parserOptions: {
         project: ['./app/frontend/tsconfig.app.json'],
-        tsconfigRootDir: __dirname
+        tsconfigRootDir: __dirname,
+        noWarnOnMultipleProjects: true
       }
     },
     rules: {
@@ -292,7 +295,8 @@ module.exports = [
     languageOptions: {
       parserOptions: {
         project: ['./app/backend/src/services/bot/tsconfig.json'],
-        tsconfigRootDir: __dirname
+        tsconfigRootDir: __dirname,
+        noWarnOnMultipleProjects: true
       }
     },
     rules: {
@@ -407,6 +411,16 @@ module.exports = [
         vi: 'readonly',
         vitest: 'readonly'
       }
-    }
-  }
+    }  },
+
+  // Allow console statements in fallback logger files (they're intentionally console-based)
+  {
+    files: [
+      'app/backend/src/bootstrap/logging/shim-logger.ts',
+      'app/frontend/src/utils/logger-fallback.ts',
+      'app/frontend/src/utils/safe-init.ts'
+    ],
+    rules: {
+      'no-console': 'off'
+    }  }
 ];

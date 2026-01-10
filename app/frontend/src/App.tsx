@@ -26,7 +26,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import LinearProgress from '@mui/material/LinearProgress';
 import Typography from '@mui/material/Typography';
 import { APP_VERSION } from '@sheetpilot/shared/constants';
-import { lazy, Suspense, useEffect, useRef,useState } from 'react';
+import { type Dispatch, lazy, type SetStateAction,Suspense, useEffect, useRef, useState } from 'react';
 
 import logoImage from './assets/images/logo.svg';
 import LoginDialog from './components/LoginDialog';
@@ -59,7 +59,7 @@ const Settings = lazy(() => import('./components/Settings'));
  *
  * @returns About content with logo, version, and description
  */
-export function AboutBody() {
+export function AboutBody(): JSX.Element {
   return (
     <Box className="about-dialog-content">
       <img src={logoImage} alt="SheetPilot Logo" className="about-dialog-logo" />
@@ -93,7 +93,7 @@ export function AboutBody() {
  *
  * @returns Splash screen with progress indicator
  */
-export function Splash() {
+export function Splash(): JSX.Element {
   const [progress, setProgress] = useState<number | null>(null);
   const [status, setStatus] = useState<'checking' | 'downloading' | 'installing' | 'finalizing' | 'ready'>(() => {
     // Detect finalize state from URL hash to show appropriate message after app restart
@@ -102,7 +102,7 @@ export function Splash() {
   });
 
   useEffect(() => {
-    const transitionToApp = () => {
+    const transitionToApp = (): void => {
       setStatus('ready');
       // Remove splash hash to transition to main app
       if (window.location.hash.includes('splash')) {
@@ -142,7 +142,7 @@ export function Splash() {
     };
   }, [status]);
 
-  const renderStatus = () => {
+  const renderStatus = (): string => {
     switch (status) {
       case 'checking':
         return 'Checking for updates…';
@@ -192,7 +192,7 @@ interface TabDataRefreshConfig {
   timesheetDraftData: unknown[];
 }
 
-function useTabDataRefresh(config: TabDataRefreshConfig) {
+function useTabDataRefresh(config: TabDataRefreshConfig): void {
   const {
     activeTab,
     isLoggedIn,
@@ -232,12 +232,12 @@ function useTabDataRefresh(config: TabDataRefreshConfig) {
   }, [activeTab, isLoggedIn, refreshTimesheetDraft, refreshArchiveData, isTimesheetDraftLoading, timesheetDraftData]);
 }
 
-function useAccessibilityFix() {
+function useAccessibilityFix(): void {
   useEffect(() => {
     const rootElement = document.getElementById('root');
     if (!rootElement) return;
 
-    const handleAriaHiddenChange = () => {
+    const handleAriaHiddenChange = (): void => {
       const isHidden = rootElement.getAttribute('aria-hidden') === 'true';
       if (isHidden) {
         setTimeout(() => {
@@ -270,7 +270,15 @@ function useAccessibilityFix() {
   }, []);
 }
 
-function useUpdateDialog() {
+interface UpdateDialogState {
+  showUpdateDialog: boolean;
+  setShowUpdateDialog: Dispatch<SetStateAction<boolean>>;
+  updateVersion: string;
+  updateProgress: number;
+  updateStatus: 'downloading' | 'installing';
+}
+
+function useUpdateDialog(): UpdateDialogState {
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
   const [updateVersion, setUpdateVersion] = useState<string>('');
   const [updateProgress, setUpdateProgress] = useState(0);
@@ -327,7 +335,7 @@ function useUpdateDialog() {
  *
  * @returns Authenticated application shell with navigation and content
  */
-function AppContent() {
+function AppContent(): JSX.Element {
   const { isLoggedIn, isLoading: sessionLoading, login: sessionLogin } = useSession();
   const [activeTab, setActiveTab] = useState(0);
   const [displayedTab, setDisplayedTab] = useState(0);
@@ -354,7 +362,7 @@ function AppContent() {
     <div className="app-container">
       <Navigation
         activeTab={activeTab}
-        onTabChange={async (newTab) => {
+        onTabChange={async (newTab): Promise<void> => {
           if (isTransitioning || newTab === activeTab) return;
 
           logUserAction('tab-change', { from: activeTab, to: newTab });
@@ -413,7 +421,7 @@ function AppContent() {
   );
 }
 
-export default function App() {
+export default function App(): JSX.Element {
   return (
     <SessionProvider>
       <DataProvider>

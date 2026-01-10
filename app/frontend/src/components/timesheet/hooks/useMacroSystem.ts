@@ -1,15 +1,76 @@
 import type { HotTableRef } from '@handsontable/react-wrapper';
 import type { MutableRefObject } from 'react';
-import { useCallback,useState } from 'react';
+import { useCallback, useState } from 'react';
 
 import type { MacroRow } from '../../../utils/macroStorage';
-import { isMacroEmpty,loadMacros } from '../../../utils/macroStorage';
+import { isMacroEmpty, loadMacros } from '../../../utils/macroStorage';
 import type { TimesheetRow } from '../timesheet.schema';
 
 interface UseMacroSystemParams {
   hotTableRef?: MutableRefObject<HotTableRef | null>;
   timesheetDraftData?: TimesheetRow[];
   setTimesheetDraftData?: (rows: TimesheetRow[]) => void;
+}
+
+/**
+ * Gets the HotTable instance from the ref
+ */
+function getHotTableInstance(ref?: MutableRefObject<HotTableRef | null>) {
+  if (!ref?.current) return null;
+  return ref.current.hotInstance ?? ref.current;
+}
+
+/**
+ * Determines the row index from HotTable selection
+ */
+function getSelectedRow(hotTable: HotTableRef): number | undefined {
+  const lastSelection = hotTable.getSelectedLast?.();
+  const selected = lastSelection ?? hotTable.getSelected?.()?.[0];
+
+  let row: number | undefined;
+  if (Array.isArray(selected)) {
+    row = selected[0] as number | undefined;
+  }
+
+  if (typeof row === 'number' && !Number.isNaN(row)) {
+    return row;
+  }
+
+  const range = hotTable.getSelectedRangeLast?.();
+  const rangeRow = range?.from?.row ?? range?.to?.row;
+  if (typeof rangeRow === 'number' && !Number.isNaN(rangeRow)) {
+    return rangeRow;
+  }
+
+  return undefined;
+}
+
+/**
+ * Creates new row data with macro values applied
+ */
+function createMacroAppliedRow(
+  macro: MacroRow,
+  currentRow: TimesheetRow | undefined
+): TimesheetRow {
+  return {
+    ...currentRow,
+    timeIn: macro.timeIn || currentRow?.timeIn,
+    timeOut: macro.timeOut || currentRow?.timeOut,
+    project: macro.project || currentRow?.project,
+    tool: macro.tool !== undefined ? macro.tool : currentRow?.tool,
+    chargeCode: macro.chargeCode !== undefined ? macro.chargeCode : currentRow?.chargeCode,
+    taskDescription: macro.taskDescription || currentRow?.taskDescription,
+  };
+}
+
+/**
+ * Extracts the first row number from selection array
+ */
+function getFirstRowFromSelection(selected?: (number | string)[][]): number | undefined {
+  const firstSelection = selected?.[0];
+  if (!Array.isArray(firstSelection)) return undefined;
+  const row = firstSelection[0];
+  return typeof row === 'number' ? row : undefined;
 }
 
 export function useMacroSystem(params?: UseMacroSystemParams) {
@@ -25,37 +86,23 @@ export function useMacroSystem(params?: UseMacroSystemParams) {
 
   /**
    * Apply a macro to the currently selected row
-   * Fills in the selected row with macro data
    */
   const applyMacro = useCallback(
-    (index: number) => {
+    (index: number): void => {
       const macro = macros[index];
       if (!macro || isMacroEmpty(macro)) {
         window.logger?.warn('Macro is empty or not configured', { macroIndex: index });
         return;
       }
 
-      const hotTable = params?.hotTableRef?.current?.hotInstance ?? params?.hotTableRef?.current;
+      const hotTable = getHotTableInstance(params?.hotTableRef);
       if (!hotTable) {
         window.logger?.warn('HotTable reference not available');
         return;
       }
 
-      // Get the currently selected cell
-      const lastSelection = hotTable.getSelectedLast?.();
-      const selected = lastSelection ?? hotTable.getSelected?.()?.[0];
-
-      let row: number | undefined;
-      if (Array.isArray(selected)) {
-        row = selected[0] as number | undefined;
-      }
-
-      if (typeof row !== 'number' || Number.isNaN(row)) {
-        const range = hotTable.getSelectedRangeLast?.();
-        row = range?.from?.row ?? range?.to?.row;
-      }
-
-      if (typeof row !== 'number' || Number.isNaN(row)) {
+      const row = getSelectedRow(hotTable);
+      if (typeof row !== 'number') {
         window.logger?.warn('No cell selected');
         return;
       }
@@ -66,15 +113,7 @@ export function useMacroSystem(params?: UseMacroSystemParams) {
 
       // Create new row data with macro values
       const newData = [...params.timesheetDraftData];
-      newData[row] = {
-        ...newData[row],
-        timeIn: macro.timeIn || newData[row]?.timeIn,
-        timeOut: macro.timeOut || newData[row]?.timeOut,
-        project: macro.project || newData[row]?.project,
-        tool: macro.tool !== undefined ? macro.tool : newData[row]?.tool,
-        chargeCode: macro.chargeCode !== undefined ? macro.chargeCode : newData[row]?.chargeCode,
-        taskDescription: macro.taskDescription || newData[row]?.taskDescription,
-      };
+      newData[row] = createMacroAppliedRow(macro, newData[row]);
 
       params.setTimesheetDraftData(newData);
       window.logger?.info('Macro applied', { macroIndex: index, row });
@@ -82,20 +121,16 @@ export function useMacroSystem(params?: UseMacroSystemParams) {
     [macros, params]
   );
 
-  const duplicateSelectedRow = useCallback(() => {
-    const hotTable = params?.hotTableRef?.current;
+  const duplicateSelectedRow = useCallback((): void => {
+    const hotTable = getHotTableInstance(params?.hotTableRef);
     if (!hotTable || !params?.timesheetDraftData || !params?.setTimesheetDraftData) {
       return;
     }
 
     const selected = hotTable.getSelected?.();
-    if (!selected || selected.length === 0) {
-      window.logger?.warn('No row selected to duplicate');
-      return;
-    }
-
-    const [row] = selected[0] ?? [];
+    const row = getFirstRowFromSelection(selected);
     if (typeof row !== 'number') {
+      window.logger?.warn('No row selected to duplicate');
       return;
     }
 

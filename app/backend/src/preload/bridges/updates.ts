@@ -1,13 +1,13 @@
 import { ipcRenderer } from 'electron';
 
 export const updatesBridge = {
-  onUpdateAvailable: (callback: (version: string) => void) => {
+  onUpdateAvailable: (callback: (version: string) => void): void => {
     ipcRenderer.on('update-available', (_event, version) => callback(version));
   },
-  onDownloadProgress: (callback: (progress: { percent: number; transferred: number; total: number }) => void) => {
+  onDownloadProgress: (callback: (progress: { percent: number; transferred: number; total: number }) => void): void => {
     ipcRenderer.on('download-progress', (_event, progress) => callback(progress));
   },
-  onUpdateDownloaded: (callback: (version: string) => void) => {
+  onUpdateDownloaded: (callback: (version: string) => void): void => {
     ipcRenderer.on('update-downloaded', (_event, version) => callback(version));
   },
   cancelUpdate: (): void => {

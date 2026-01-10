@@ -6,11 +6,6 @@ async function handleResetInProgress(): Promise<void> {
   const resetResult = await resetInProgressIpc();
   if (resetResult.success) {
     logInfo('Reset in-progress entries', { count: resetResult.count || 0 });
-    if (resetResult.count && resetResult.count > 0) {
-      window.alert(
-        `✅ Reset ${resetResult.count} in-progress ${resetResult.count === 1 ? 'entry' : 'entries'} to pending status.`
-      );
-    }
   } else if (resetResult.error) {
     logWarn('Could not reset in-progress entries', { error: resetResult.error });
   }
@@ -32,7 +27,7 @@ async function handleLoadDraft(setTimesheetDraftData: (rows: TimesheetRow[]) => 
     logInfo('Table refreshed successfully', { count: draftData.length });
   } else {
     logWarn('Refresh failed', { error: response?.error });
-    window.alert(`⚠️ Could not load table data: ${response?.error || 'Unknown error'}`);
+    logWarn('Could not load table data', { error: response?.error || 'Unknown error' });
   }
 }
 
@@ -44,7 +39,6 @@ export function createRefreshHandler(setTimesheetDraftData: (rows: TimesheetRow[
       await handleLoadDraft(setTimesheetDraftData);
     } catch (error) {
       logError('Could not refresh table', { error: error instanceof Error ? error.message : String(error) });
-      window.alert(`❌ Could not refresh table: ${error instanceof Error ? error.message : String(error)}`);
     }
   };
 }

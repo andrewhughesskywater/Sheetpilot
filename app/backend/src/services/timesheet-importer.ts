@@ -257,7 +257,7 @@ function processSubmissionResult(result: SubmissionResult, dbRowsLength: number)
  *
  * @example
  * const result = await submitTimesheets('user@company.com', 'password123');
- * console.log(`Submitted ${result.successCount} entries, ${result.errorCount} errors`);
+ * logger.info(`Submitted ${result.successCount} entries, ${result.errorCount} errors`);
  */
 interface SubmitTimesheetsConfig {
   email: string;

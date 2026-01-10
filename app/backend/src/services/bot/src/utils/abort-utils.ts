@@ -32,7 +32,15 @@ export function checkAborted(
  * @param entryCount - Number of entries that were not processed
  * @returns Result object indicating cancellation
  */
-export function createCancelledResult(entryCount: number) {
+export function createCancelledResult(entryCount: number): {
+  ok: boolean;
+  submittedIds: number[];
+  removedIds: number[];
+  totalProcessed: number;
+  successCount: number;
+  removedCount: number;
+  error: string;
+} {
   return {
     ok: false,
     submittedIds: [] as number[],
@@ -60,7 +68,7 @@ export function setupAbortHandler(
     return undefined;
   }
 
-  const abortHandler = () => {
+  const abortHandler = (): void => {
     botLogger.info('Abort signal received, closing resource immediately', { resourceName });
     closeResource().catch((err) => {
       botLogger.error('Could not close resource during abort', {

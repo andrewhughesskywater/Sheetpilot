@@ -13,9 +13,6 @@ import { timesheetBridge } from './bridges/timesheet';
 import { updatesBridge } from './bridges/updates';
 
 export function exposePreloadBridges(): void {
-  // Log that preload script is executing
-  console.log('[Preload] Preload script executing');
-
   try {
     if (!contextBridge) {
       throw new Error('contextBridge is not available');
@@ -35,9 +32,7 @@ export function exposePreloadBridges(): void {
 
     // Verify auth bridge was exposed
     if (typeof window !== 'undefined' && (window as unknown as { auth?: unknown }).auth) {
-      console.log('[Preload] All bridges exposed successfully - auth API verified');
-    } else {
-      console.warn('[Preload] Bridges exposed but window.auth not accessible (may be context isolation)');
+      console.warn('[Preload] All bridges exposed successfully - auth API verified');
     }
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
@@ -47,7 +42,7 @@ export function exposePreloadBridges(): void {
     // Try to expose at least auth bridge even if others fail
     try {
       contextBridge.exposeInMainWorld('auth', authBridge);
-      console.log('[Preload] Auth bridge exposed as fallback');
+      console.warn('[Preload] Auth bridge exposed as fallback');
     } catch (authError) {
       const authErrorMsg = authError instanceof Error ? authError.message : String(authError);
       console.error('[Preload] Failed to expose auth bridge:', authErrorMsg);

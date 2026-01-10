@@ -40,7 +40,7 @@ let preventReconnection = false; // Test-only flag to prevent auto-reconnection
  * Sets the database file path
  * Closes existing connection if path changes and resets schema initialization state
  */
-export const setDbPath = (p: string) => {
+export const setDbPath = (p: string): void => {
   const newPath = path.resolve(p);
   if (newPath !== DB_PATH) {
     // Close existing connection if path changes
@@ -54,7 +54,7 @@ export const setDbPath = (p: string) => {
 /**
  * Gets the current database file path
  */
-export const getDbPath = () => DB_PATH;
+export const getDbPath = (): string => DB_PATH;
 
 /**
  * Check if the connection is open and healthy
@@ -177,7 +177,7 @@ function loadBetterSqlite3(): typeof import('better-sqlite3') {
  * Internal schema creation (takes an open database connection)
  * @private
  */
-export function ensureSchemaInternal(db: BetterSqlite3.Database) {
+export function ensureSchemaInternal(db: BetterSqlite3.Database): void {
   // Create timesheet table with comprehensive schema and constraints
   // Note: Core fields are nullable to allow saving partial/draft rows.
   // Required field validation is enforced at the application level before submission.
@@ -430,7 +430,7 @@ export function openDb(): BetterSqlite3.Database {
 /**
  * Ensures the database schema is created and up-to-date
  */
-export function ensureSchema() {
+export function ensureSchema(): void {
   // NOTE: Do NOT reset preventReconnection flag here
   // Tests that close connection should remain closed until explicitly reset
   // Schema initialization should only happen if connection is allowed

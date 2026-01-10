@@ -55,7 +55,7 @@ export function insertTimesheetEntry(entry: {
   tool?: string | null;
   detailChargeCode?: string | null;
   taskDescription: string;
-}) {
+}): { success: boolean; isDuplicate: boolean; changes: number } {
   const timer = dbLogger.startTimer('insert-timesheet-entry');
   const db = getDb();
 
@@ -261,7 +261,7 @@ export function getPendingTimesheetEntries(): TimesheetDbRow[] {
 /**
  * Marks timesheet entries as in-progress
  */
-export function markTimesheetEntriesAsInProgress(ids: number[]) {
+export function markTimesheetEntriesAsInProgress(ids: number[]): void {
   if (ids.length === 0) {
     dbLogger.debug('No entries to mark as in-progress');
     return;
@@ -289,7 +289,7 @@ export function markTimesheetEntriesAsInProgress(ids: number[]) {
 /**
  * Resets timesheet entries status back to NULL
  */
-export function resetTimesheetEntriesStatus(ids: number[]) {
+export function resetTimesheetEntriesStatus(ids: number[]): void {
   if (ids.length === 0) {
     dbLogger.debug('No entries to reset status');
     return;
@@ -317,7 +317,7 @@ export function resetTimesheetEntriesStatus(ids: number[]) {
 /**
  * Marks timesheet entries as successfully submitted
  */
-export function markTimesheetEntriesAsSubmitted(ids: number[]) {
+export function markTimesheetEntriesAsSubmitted(ids: number[]): void {
   if (ids.length === 0) {
     dbLogger.debug('No entries to mark as submitted');
     return;
@@ -364,7 +364,7 @@ export function markTimesheetEntriesAsSubmitted(ids: number[]) {
 /**
  * Reverts failed timesheet entries back to pending status
  */
-export function removeFailedTimesheetEntries(ids: number[]) {
+export function removeFailedTimesheetEntries(ids: number[]): void {
   if (ids.length === 0) {
     dbLogger.debug('No failed entries to revert');
     return;
@@ -410,7 +410,7 @@ export function removeFailedTimesheetEntries(ids: number[]) {
 /**
  * Gets timesheet entries by their IDs
  */
-export function getTimesheetEntriesByIds(ids: number[]) {
+export function getTimesheetEntriesByIds(ids: number[]): TimesheetDbRow[] {
   if (ids.length === 0) return [];
 
   const db = getDb();
@@ -422,13 +422,13 @@ export function getTimesheetEntriesByIds(ids: number[]) {
         ORDER BY date, time_in
     `);
 
-  return getByIds.all(...ids);
+  return getByIds.all(...ids) as TimesheetDbRow[];
 }
 
 /**
  * Gets all submitted timesheet entries for CSV export
  */
-export function getSubmittedTimesheetEntriesForExport() {
+export function getSubmittedTimesheetEntriesForExport(): TimesheetDbRow[] {
   const timer = dbLogger.startTimer('get-submitted-entries-export');
   const db = getDb();
 
@@ -450,7 +450,7 @@ export function getSubmittedTimesheetEntriesForExport() {
         ORDER BY date DESC, time_in DESC
     `);
 
-  const entries = getSubmitted.all();
+  const entries = getSubmitted.all() as TimesheetDbRow[];
   dbLogger.verbose('Submitted entries retrieved for export', { count: entries.length });
   timer.done({ count: entries.length });
   return entries;
