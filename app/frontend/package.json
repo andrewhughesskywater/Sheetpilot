@@ -1,6 +1,6 @@
 {
   "name": "@sheetpilot/frontend",
-  "version": "1.5.3.1",
+  "version": "1.5.8",
   "private": true,
   "type": "module",
   "scripts": {
@@ -10,11 +10,7 @@
     "lint": "eslint src --max-warnings 0 --cache",
     "lint:fix": "eslint src --max-warnings 0 --cache --fix",
     "preview": "vite preview --config src/config/vite.config.ts",
-    "typecheck": "tsc -p tsconfig.app.json --noEmit",
-    "test": "vitest --config tests/vitest.config.ts",
-    "test:run": "vitest run --config tests/vitest.config.ts",
-    "test:watch": "vitest --watch --config tests/vitest.config.ts",
-    "test:coverage": "vitest run --coverage --config tests/vitest.config.ts"
+    "typecheck": "tsc -p tsconfig.app.json --noEmit"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

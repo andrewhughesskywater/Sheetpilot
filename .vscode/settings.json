@@ -1,5 +1,53 @@
 {
     "editor.inlineSuggest.enabled": false,
+    // Vitest Configuration
     "vitest.enable": true,
-    "vitest.commandLine": "npm exec vitest --"
+    "vitest.commandLine": "npx vitest",
+    // Auto-run tests on file save in workspace folder
+    "vitest.autoRun": "off",
+    // Show test coverage in editor
+    "vitest.showCoverageOnLoad": false,
+    // Use a custom coverage provider
+    "vitest.coverageProvider": "v8",
+    // Watch mode for development
+    "testing.automaticallyOpenPeekView": "failureInVisibleDocument",
+    // Disable Python test discovery (this is a Node.js/TypeScript project)
+    "python.testing.pytestEnabled": false,
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestArgs": [],
+    // Use Vitest as the exclusive test provider
+    "[vitest]": {
+        "vitest.enable": true
+    },
+    // Editor settings for better test writing
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "[typescript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.fixAll.eslint": "explicit"
+        }
+    },
+    "[typescriptreact]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.fixAll.eslint": "explicit"
+        }
+    },
+    // Exclude test files from general search
+    "search.exclude": {
+        "**/*.spec.ts": true,
+        "**/*.spec.tsx": true,
+        "**/*.test.ts": true,
+        "**/*.test.tsx": true
+
+    },
+    // File nesting for better organization
+    "explorer.fileNesting.enabled": true,
+    "explorer.fileNesting.expand": false,
+    "explorer.fileNesting.patterns": {
+        "*.ts": "${basename}.spec.ts, ${basename}.test.ts",
+        "*.tsx": "${basename}.spec.tsx, ${basename}.test.tsx"
+    }
 }

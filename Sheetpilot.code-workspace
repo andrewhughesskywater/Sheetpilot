@@ -2,12 +2,52 @@
 	"folders": [
 		{
 			"path": "."
-		},
-		{
-			"path": "../../AppData/Roaming/sheetpilot"
 		}
 	],
 	"settings": {
-		"powershell.cwd": "Sheetpilot"
+		"powershell.cwd": "Sheetpilot",
+		// Vitest Configuration
+		"vitest.enable": true,
+		"vitest.commandLine": "npx vitest",
+		"vitest.autoRun": "off",
+		"vitest.showCoverageOnLoad": false,
+		"vitest.coverageProvider": "v8",
+		// Disable Python test discovery
+		"python.testing.pytestEnabled": false,
+		"python.testing.unittestEnabled": false,
+		"python.testing.pytestArgs": [],
+		// Testing configuration
+		"testing.automaticallyOpenPeekView": "failureInVisibleDocument",
+		// Editor defaults
+		"editor.defaultFormatter": "esbenp.prettier-vscode",
+		"editor.inlineSuggest.enabled": false,
+		"[typescript]": {
+			"editor.defaultFormatter": "esbenp.prettier-vscode",
+			"editor.formatOnSave": true,
+			"editor.codeActionsOnSave": {
+				"source.fixAll.eslint": "explicit"
+			}
+		},
+		"[typescriptreact]": {
+			"editor.defaultFormatter": "esbenp.prettier-vscode",
+			"editor.formatOnSave": true,
+			"editor.codeActionsOnSave": {
+				"source.fixAll.eslint": "explicit"
+			}
+		},
+		// Search exclusions for test files
+		"search.exclude": {
+			"**/*.spec.ts": true,
+			"**/*.spec.tsx": true,
+			"**/*.test.ts": true,
+			"**/*.test.tsx": true
+		},
+		// File nesting for better organization
+		"explorer.fileNesting.enabled": true,
+		"explorer.fileNesting.expand": false,
+		"explorer.fileNesting.patterns": {
+			"*.ts": "${basename}.spec.ts, ${basename}.test.ts",
+			"*.tsx": "${basename}.spec.tsx, ${basename}.test.tsx"
+		}
 	}
 }

@@ -1,0 +1,115 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Debug Vitest Tests",
+            "runtimeExecutable": "npx",
+            "runtimeArgs": [
+                "vitest",
+                "run",
+                "--no-coverage",
+                "--inspect-brk"
+            ],
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen",
+            "skipFiles": [
+                "<node_internals>/**",
+                "node_modules/**"
+            ]
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Debug Vitest (Current File)",
+            "runtimeExecutable": "npx",
+            "runtimeArgs": [
+                "vitest",
+                "run",
+                "${file}",
+                "--no-coverage",
+                "--inspect-brk"
+            ],
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen",
+            "skipFiles": [
+                "<node_internals>/**",
+                "node_modules/**"
+            ]
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Debug Vitest (Watch Mode)",
+            "runtimeExecutable": "npx",
+            "runtimeArgs": [
+                "vitest",
+                "--inspect-brk"
+            ],
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen",
+            "skipFiles": [
+                "<node_internals>/**",
+                "node_modules/**"
+            ]
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Debug Backend Unit Tests",
+            "runtimeExecutable": "npx",
+            "runtimeArgs": [
+                "vitest",
+                "run",
+                "--config",
+                "app/backend/vitest.config.unit.ts",
+                "--inspect-brk"
+            ],
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen",
+            "skipFiles": [
+                "<node_internals>/**",
+                "node_modules/**"
+            ]
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Debug Frontend Tests",
+            "runtimeExecutable": "npx",
+            "runtimeArgs": [
+                "vitest",
+                "run",
+                "--config",
+                "app/frontend/vitest.config.ts",
+                "--inspect-brk"
+            ],
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen",
+            "skipFiles": [
+                "<node_internals>/**",
+                "node_modules/**"
+            ]
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Debug Shared Tests",
+            "runtimeExecutable": "npx",
+            "runtimeArgs": [
+                "vitest",
+                "run",
+                "--config",
+                "app/shared/vitest.config.ts",
+                "--inspect-brk"
+            ],
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen",
+            "skipFiles": [
+                "<node_internals>/**",
+                "node_modules/**"
+            ]
+        }
+    ]
+}

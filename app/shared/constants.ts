@@ -1,9 +1,9 @@
 /**
  * @fileoverview Application Constants
- * 
+ *
  * Centralized location for application-wide constants.
  * This ensures a single source of truth for values like version numbers.
- * 
+ *
  * @author SheetPilot Team
  * @version 1.4.0
  */
@@ -14,7 +14,7 @@
  */
 function getLogger() {
   // Use dynamic import to avoid circular dependency
-  const { appLogger } = require('./logger');
+  const { appLogger } = require("./logger");
   return appLogger;
 }
 
@@ -23,17 +23,17 @@ function getLogger() {
  * This should match the version in package.json
  * Updated: 2025-11-04
  */
-export const APP_VERSION = '1.5.3.1';
+export const APP_VERSION = "1.5.8";
 
 /**
  * Application name
  */
-export const APP_NAME = 'Sheetpilot';
+export const APP_NAME = "Sheetpilot";
 
 /**
  * Product name for display purposes
  */
-export const PRODUCT_NAME = 'Sheetpilot';
+export const PRODUCT_NAME = "Sheetpilot";
 
 /**
  * Number of previous quarters allowed for date entry
@@ -72,21 +72,21 @@ export function getBrowserHeadless(): boolean {
 export function setBrowserHeadless(value: boolean): void {
   const oldValue = appSettings.browserHeadless;
   appSettings.browserHeadless = value;
-  
+
   // Use logger with lazy import to avoid circular dependency
   try {
     const logger = getLogger();
-    logger.info('Browser headless mode updated', { 
-      oldValue, 
+    logger.info("Browser headless mode updated", {
+      oldValue,
       newValue: value,
-      appSettingsBrowserHeadless: appSettings.browserHeadless 
+      appSettingsBrowserHeadless: appSettings.browserHeadless,
     });
   } catch {
     // Fallback to console if logger is not available (shouldn't happen in normal operation)
-    console.log('[Constants] Browser headless mode updated:', { 
-      oldValue, 
+    console.log("[Constants] Browser headless mode updated:", {
+      oldValue,
       newValue: value,
-      appSettingsBrowserHeadless: appSettings.browserHeadless 
+      appSettingsBrowserHeadless: appSettings.browserHeadless,
     });
   }
 }
