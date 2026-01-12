@@ -10,12 +10,13 @@ import { defineConfig } from "vitest/config";
  * - Backend: unit, integration, e2e, smoke tests
  * - Frontend: React component and integration tests
  * - Shared: Utility and library tests
+ * - App Tests: Cross-cutting tests (accessibility, e2e, integration, performance, security)
  *
  * Benefits:
  * - All tests are discoverable by VS Code Vitest extension
  * - Projects can run in parallel
  * - Each project maintains its own test environment and settings
- * - Supports different test types (unit, integration, e2e, smoke)
+ * - Supports different test types (unit, integration, e2e, smoke, accessibility, performance, security)
  */
 export default defineConfig({
   test: {
@@ -38,6 +39,8 @@ export default defineConfig({
       "app/frontend/vitest.config.ts",
       // Shared project
       "app/shared/vitest.config.ts",
+      // Cross-cutting tests (accessibility, e2e, integration, performance, security)
+      "app/tests/vitest.config.ts",
     ],
   },
 });
