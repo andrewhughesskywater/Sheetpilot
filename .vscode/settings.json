@@ -1,3 +1,5 @@
 {
-    "editor.inlineSuggest.enabled": false
+    "editor.inlineSuggest.enabled": false,
+    "vitest.enable": true,
+    "vitest.commandLine": "npm exec vitest --"
 }

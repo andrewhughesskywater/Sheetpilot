@@ -4,7 +4,7 @@
     "module": "CommonJS",
     "moduleResolution": "Node",
     "lib": ["ES2022", "DOM"],
-    "outDir": "dist",
+    "outDir": "../../../../../../../../build/bot",
     "strict": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
@@ -34,7 +34,7 @@
     "allowJs": false,
     "checkJs": false,
     "incremental": true,
-    "tsBuildInfoFile": "dist/.tsbuildinfo"
+    "tsBuildInfoFile": "../../../../../../../../build/bot/.tsbuildinfo"
   },
   "include": [
     "src/**/*",
@@ -42,7 +42,7 @@
   ],
   "exclude": [
     "node_modules",
-    "dist",
+    "../../../../../../../../build",
     "**/*.spec.ts",
     "**/*.test.ts"
   ],

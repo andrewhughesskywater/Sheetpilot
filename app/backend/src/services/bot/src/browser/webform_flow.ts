@@ -200,72 +200,187 @@ export class WebformFiller {
 
   async wait_for_form_ready(): Promise<void> {
     const page = this.require_page();
-    // This method is called for every row. Keep it fast and deterministic.
-    // Treat "form ready" as: required field exists, is visible, and is enabled.
-    const projectLocator =
-      cfg.FIELD_DEFINITIONS['project_code']?.locator ?? "input[aria-label='Project']";
+    const projectLocator = cfg.FIELD_DEFINITIONS['project_code']?.locator;
+    if (!projectLocator) {
+      throw new Error('project_code locator not defined in FIELD_DEFINITIONS');
+    }
 
-    await cfg.dynamic_wait(async () => {
-      const loc = page.locator(projectLocator).first();
-      const visible = await loc.isVisible().catch(() => false);
-      if (!visible) return false;
-      const enabled = await loc.isEnabled().catch(() => false);
-      return enabled;
+    botLogger.verbose('Waiting for form to be ready', { 
+      checkingLocator: projectLocator,
+      timeout: cfg.GLOBAL_TIMEOUT
+    });
+
+    const startTime = Date.now();
+    let lastError: string | null = null;
+
+    const isReady = await cfg.dynamic_wait(async () => {
+      try {
+        const loc = page.locator(projectLocator).first();
+        const visible = await loc.isVisible().catch((e) => {
+          lastError = String(e);
+          return false;
+        });
+        
+        if (!visible) {
+          botLogger.verbose('Project field not visible', { locator: projectLocator });
+          return false;
+        }
+
+        const enabled = await loc.isEnabled().catch((e) => {
+          lastError = String(e);
+          return false;
+        });
+
+        if (!enabled) {
+          botLogger.verbose('Project field not enabled', { locator: projectLocator });
+          return false;
+        }
+
+        botLogger.verbose('Project field is visible and enabled', { locator: projectLocator });
+        return true;
+      } catch (err) {
+        lastError = String(err);
+        botLogger.verbose('Error checking form readiness', { 
+          error: lastError,
+          locator: projectLocator
+        });
+        return false;
+      }
     }, cfg.DYNAMIC_WAIT_BASE_TIMEOUT, Math.min(cfg.GLOBAL_TIMEOUT, 2), cfg.DYNAMIC_WAIT_MULTIPLIER, 'form ready');
+
+    const elapsedMs = Date.now() - startTime;
+
+    if (!isReady) {
+      botLogger.error('Form did not become ready within timeout', {
+        locator: projectLocator,
+        timeoutSeconds: cfg.GLOBAL_TIMEOUT,
+        elapsedMs,
+        lastError
+      });
+    } else {
+      botLogger.debug('Form ready confirmation', {
+        locator: projectLocator,
+        elapsedMs
+      });
+    }
   }
 
   async inject_field_value(spec: Record<string, unknown>, value: string): Promise<void> {
     const locator = String(spec['locator']);
+    const label = spec['label'] || 'Unknown Field';
     const page = this.require_page();
     const field = page.locator(locator);
 
-    const ok = await cfg.dynamic_wait_for_element(page, locator, 'visible', 1, cfg.GLOBAL_TIMEOUT);
-    if (!ok) throw new Error(`Field ${locator} did not become visible`);
+    botLogger.debug('Attempting to inject field value', {
+      label,
+      locator,
+      value,
+      valueLength: String(value).length
+    });
 
-    await field.fill(String(value));
+    const ok = await cfg.dynamic_wait_for_element(page, locator, 'visible', 1, cfg.GLOBAL_TIMEOUT);
+    if (!ok) {
+      botLogger.error('Could not inject field value - field did not become visible', {
+        label,
+        locator,
+        value,
+        timeout: cfg.GLOBAL_TIMEOUT
+      });
+      throw new Error(`Field '${label}' (${locator}) did not become visible within ${cfg.GLOBAL_TIMEOUT}s`);
+    }
+
+    try {
+      await field.fill(String(value));
+      botLogger.debug('Field value injected successfully', {
+        label,
+        locator,
+        valueLength: String(value).length
+      });
+    } catch (error) {
+      botLogger.error('Could not fill field - exception during fill operation', {
+        label,
+        locator,
+        value,
+        error: String(error),
+        errorMessage: error instanceof Error ? error.message : 'Unknown error'
+      });
+      throw error;
+    }
   }
 
   async submit_form(): Promise<boolean> {
     const page = this.require_page();
     const timer = botLogger.startTimer('submit-form-total');
 
+    botLogger.info('Starting form submission', {
+      formUrl: this.formConfig.BASE_URL
+    });
+
     try {
       const monitor = new SubmissionMonitor(() => page);
+      botLogger.verbose('Submitting form via SubmissionMonitor');
       const ok = await monitor.submitForm();
+      
       if (!ok) {
+        botLogger.warn('Form submission failed - monitor returned false', {
+          reason: 'SubmissionMonitor.submitForm() returned false'
+        });
         timer.done({ success: false, reason: 'monitor returned false' });
         return false;
       }
 
+      botLogger.verbose('Form submission completed, waiting for form to clear');
+
       // You confirmed: successful submit clears the form.
       // Wait for a "form cleared" signal so the next row can start immediately.
-      const projectLocator =
-        cfg.FIELD_DEFINITIONS['project_code']?.locator ?? "input[aria-label='Project']";
-      const dateLocator =
-        cfg.FIELD_DEFINITIONS['date']?.locator ?? "input[placeholder='mm/dd/yyyy']";
-      const hoursLocator =
-        cfg.FIELD_DEFINITIONS['hours']?.locator ?? "input[aria-label='Hours']";
+      const projectLocator = cfg.FIELD_DEFINITIONS['project_code']?.locator;
+      const dateLocator = cfg.FIELD_DEFINITIONS['date']?.locator;
+      const hoursLocator = cfg.FIELD_DEFINITIONS['hours']?.locator;
+      
+      if (!projectLocator || !dateLocator || !hoursLocator) {
+        throw new Error('Form field locators not defined in FIELD_DEFINITIONS');
+      }
 
+      const clearStartTime = Date.now();
       const cleared = await cfg.dynamic_wait(
         async () => {
-          const proj = page.locator(projectLocator).first();
-          const date = page.locator(dateLocator).first();
-          const hours = page.locator(hoursLocator).first();
+          try {
+            const proj = page.locator(projectLocator).first();
+            const date = page.locator(dateLocator).first();
+            const hours = page.locator(hoursLocator).first();
 
-          const projVisible = await proj.isVisible().catch(() => false);
-          const projEnabled = await proj.isEnabled().catch(() => false);
-          if (!projVisible || !projEnabled) return false;
+            const projVisible = await proj.isVisible().catch(() => false);
+            const projEnabled = await proj.isEnabled().catch(() => false);
+            if (!projVisible || !projEnabled) {
+              botLogger.verbose('Form clear check: project field not visible/enabled');
+              return false;
+            }
 
-          const projVal = await proj.inputValue().catch(() => null);
-          const dateVal = await date.inputValue().catch(() => null);
-          const hoursVal = await hours.inputValue().catch(() => null);
+            const projVal = await proj.inputValue().catch(() => null);
+            const dateVal = await date.inputValue().catch(() => null);
+            const hoursVal = await hours.inputValue().catch(() => null);
 
-          const projEmpty = (projVal ?? '').trim().length === 0;
-          const dateEmpty = (dateVal ?? '').trim().length === 0;
-          const hoursEmpty = (hoursVal ?? '').trim().length === 0;
+            const projEmpty = (projVal ?? '').trim().length === 0;
+            const dateEmpty = (dateVal ?? '').trim().length === 0;
+            const hoursEmpty = (hoursVal ?? '').trim().length === 0;
 
-          // Project is the strongest signal; date/hours help confirm the clear.
-          return projEmpty && (dateEmpty || hoursEmpty);
+            const allCleared = projEmpty && (dateEmpty || hoursEmpty);
+            botLogger.verbose('Form clear check', {
+              projectValue: projVal,
+              dateValue: dateVal,
+              hoursValue: hoursVal,
+              projectEmpty: projEmpty,
+              dateEmpty: dateEmpty,
+              hoursEmpty: hoursEmpty,
+              isCleared: allCleared
+            });
+
+            // Project is the strongest signal; date/hours help confirm the clear.
+            return allCleared;
+          } catch (checkErr) {
+            botLogger.verbose('Error during form clear check', { error: String(checkErr) });
+            return false;
+          }
         },
         cfg.DYNAMIC_WAIT_BASE_TIMEOUT,
         Math.min(cfg.GLOBAL_TIMEOUT, 2),
@@ -273,11 +388,29 @@ export class WebformFiller {
         'form cleared after submit',
       );
 
+      const clearDurationMs = Date.now() - clearStartTime;
+      if (!cleared) {
+        botLogger.warn('Form did not clear after submission', {
+          durationMs: clearDurationMs,
+          timeoutSeconds: cfg.GLOBAL_TIMEOUT
+        });
+      } else {
+        botLogger.info('Form submission completed successfully', {
+          submissionDurationMs: timer.getDuration?.(),
+          formClearDurationMs: clearDurationMs
+        });
+      }
+
       timer.done({ success: true, cleared });
       return true;
     } catch (err: unknown) {
-      botLogger.warn('Could not submit form', { error: String(err) });
-      timer.done({ success: false, reason: 'exception' });
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      botLogger.error('Exception during form submission', { 
+        error: errorMsg,
+        errorType: err instanceof Error ? err.constructor.name : 'Unknown',
+        durationMs: timer.getDuration?.()
+      });
+      timer.done({ success: false, reason: 'exception', error: errorMsg });
       return false;
     }
   }

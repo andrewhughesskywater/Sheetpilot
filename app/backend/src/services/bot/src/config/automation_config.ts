@@ -373,7 +373,7 @@ export const LOGIN_STEPS: LoginStep[] = [
   { name: "Password Submit", action: "click", locator: "#submitButton", expects_navigation: true, optional: true },
   { name: "Stay Signed In Prompt", action: "wait", element_selector: "#idBtn_Back", wait_condition: "visible", optional: true },
   { name: "Stay Signed In — No", action: "click", locator: "#idBtn_Back", expects_navigation: true, optional: true },
-  { name: "Wait for Form Page Ready", action: "wait", element_selector: "input[aria-label='Project']", wait_condition: "visible", optional: false },
+  { name: "Wait for Form Page Ready", action: "wait", element_selector: "input[aria-label='Project Task']", wait_condition: "visible", optional: false },
 ];
 
 // ============================================================================
@@ -384,7 +384,7 @@ export const LOGIN_STEPS: LoginStep[] = [
 export const FIELD_DEFINITIONS: Record<string, FieldDefinition> = {
   project_code: {
     label: "Project",
-    locator: "input[aria-label='Project']",
+    locator: "input[aria-label='Project Task']",
     validation: (x: unknown) => x !== "DISALLOWED",
     error_message: (x: unknown) => `Project code '${String(x)}' is not allowed.`,
     inject_value: true,

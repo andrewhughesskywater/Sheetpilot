@@ -76,7 +76,7 @@ export const QUARTER_DEFINITIONS: QuarterDefinition[] = [
     id: 'Q1-2026',
     name: 'Q1 2026',
     startDate: '2026-01-01',
-    endDate: '2025-03-31',
+    endDate: '2026-03-31',
     formUrl: 'https://app.smartsheet.com/b/form/019b5b17a03a79ac9437e45996f49f4f',
     formId: '019b5b17a03a79ac9437e45996f49f4f'  
   }

@@ -59,10 +59,15 @@ describe('WebformFiller against mock form', () => {
     await filler.wait_for_form_ready();
 
     // Minimal set of fields to exercise submit
-    await filler.inject_field_value({ label: 'Project', locator: "input[aria-label='Project']" }, 'OSC-BBB');
-    await filler.inject_field_value({ label: 'Date', locator: "input[placeholder='mm/dd/yyyy']" }, '01/15/2025');
-    await filler.inject_field_value({ label: 'Hours', locator: "input[aria-label='Hours']" }, '1.0');
-    await filler.inject_field_value({ label: 'Task Description', locator: "role=textbox[name='Task Description']" }, 'Test task');
+    const projectSpec = { label: cfg.FIELD_DEFINITIONS['project_code']?.label, locator: cfg.FIELD_DEFINITIONS['project_code']?.locator };
+    const dateSpec = { label: cfg.FIELD_DEFINITIONS['date']?.label, locator: cfg.FIELD_DEFINITIONS['date']?.locator };
+    const hoursSpec = { label: cfg.FIELD_DEFINITIONS['hours']?.label, locator: cfg.FIELD_DEFINITIONS['hours']?.locator };
+    const taskSpec = { label: cfg.FIELD_DEFINITIONS['task_description']?.label, locator: cfg.FIELD_DEFINITIONS['task_description']?.locator };
+    
+    await filler.inject_field_value(projectSpec, 'OSC-BBB');
+    await filler.inject_field_value(dateSpec, '01/15/2025');
+    await filler.inject_field_value(hoursSpec, '1.0');
+    await filler.inject_field_value(taskSpec, 'Test task');
 
     const ok = await filler.submit_form();
     expect(ok).toBe(true);

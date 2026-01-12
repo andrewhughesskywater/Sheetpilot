@@ -628,34 +628,41 @@ export class BotOrchestrator {
    * @returns Promise that resolves when all fields are filled
    */
   private async _fill_fields(fields: Record<string, unknown>): Promise<void> {
-    botLogger.verbose('Processing fields for form filling', { fieldCount: Object.keys(fields).length, fields });
+    const fieldKeys = Object.keys(fields);
+    botLogger.info('Starting form field filling', { 
+      fieldCount: fieldKeys.length, 
+      fieldKeys: fieldKeys.join(', ')
+    });
     
+    const fillStats = {
+      total: fieldKeys.length,
+      processed: 0,
+      skipped: 0,
+      filled: 0,
+      failed: 0
+    };
+
     for (const [field_key, value] of Object.entries(fields)) {
       let specBase: Record<string, unknown> | undefined;
       try {
-        botLogger.debug('Processing field', { fieldKey: field_key, value });
-        
         specBase = Cfg.FIELD_DEFINITIONS[field_key] as unknown as Record<string, unknown>;
         if (!specBase) {
-          botLogger.debug('Skipping field', { fieldKey: field_key, reason: 'No specification found' });
+          botLogger.verbose('Field specification not found', { fieldKey: field_key });
+          fillStats.skipped++;
           continue;
         }
         
         // Skip empty values
         if (!this._should_process_field(field_key, fields)) {
-          botLogger.debug('Skipping field', { fieldKey: field_key, reason: 'Empty/invalid value', value: String(value) });
+          botLogger.verbose('Skipping field with empty/invalid value', { 
+            fieldKey: field_key, 
+            value: String(value),
+            reason: 'Empty, null, NaN, or "none"'
+          });
+          fillStats.skipped++;
           continue;
         }
-        
-        // Check if project needs tool/detail code fields
-        if (field_key === 'tool' || field_key === 'detail_code') {
-          const project_name = String(fields['project_code'] ?? 'Unknown');
-          if (!this._should_process_field(field_key, fields)) {
-            botLogger.debug('Skipping field', { fieldKey: field_key, reason: 'Not required for project', projectName: project_name });
-            continue;
-          }
-        }
-        
+
         const spec = { ...specBase };
         
         // Use project-specific locator for tool field if available
@@ -664,7 +671,7 @@ export class BotOrchestrator {
           const project_specific_locator = this.get_project_specific_tool_locator(project_name);
           if (project_specific_locator) {
             spec['locator'] = project_specific_locator;
-            botLogger.debug('Using project-specific locator', { 
+            botLogger.verbose('Using project-specific tool locator', { 
               fieldKey: field_key, 
               projectName: project_name, 
               locator: project_specific_locator 
@@ -672,28 +679,45 @@ export class BotOrchestrator {
           }
         }
         
-        // Log field specification details
-        botLogger.debug('Field specification', { 
+        // Log field specification for debugging
+        botLogger.verbose('Field configuration', { 
           fieldKey: field_key,
           label: spec['label'] || 'No label',
-          type: spec['type'] || 'text',
-          locator: spec['locator'] || 'No locator'
+          locator: spec['locator'] || 'No locator',
+          value: String(value),
+          valueType: typeof value
         });
         
         // Inject the field value
-        botLogger.debug('Injecting field value', { fieldKey: field_key, value: String(value) });
+        botLogger.verbose('Injecting field value', { fieldKey: field_key, valueLength: String(value).length });
         await this.webform_filler.inject_field_value(spec, String(value));
         
+        fillStats.filled++;
+        botLogger.verbose('Field filled successfully', { fieldKey: field_key });
+        
       } catch (error) {
-        botLogger.error('Could not process field', { 
+        fillStats.failed++;
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        botLogger.error('Could not fill form field', { 
           fieldKey: field_key, 
-          value, 
-          fieldSpec: specBase ? JSON.stringify(specBase) : 'Not available',
-          error: String(error) 
+          value: String(value),
+          valueType: typeof value,
+          fieldLabel: specBase ? String(specBase['label']) : 'Unknown',
+          fieldLocator: specBase ? String(specBase['locator']) : 'Unknown',
+          error: errorMessage,
+          errorType: error instanceof Error ? error.constructor.name : 'Unknown'
         });
         throw error;
       }
     }
+    
+    botLogger.info('Form field filling completed', {
+      total: fillStats.total,
+      processed: fillStats.filled + fillStats.failed,
+      filled: fillStats.filled,
+      skipped: fillStats.skipped,
+      failed: fillStats.failed
+    });
   }
 
   /**
