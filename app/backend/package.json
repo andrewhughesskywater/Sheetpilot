@@ -1,6 +1,6 @@
 {
   "name": "@sheetpilot/backend",
-  "version": "1.5.8",
+  "version": "1.6.0",
   "private": true,
   "description": "Sheetpilot Electron main process and backend services",
   "main": "src/main.ts",
