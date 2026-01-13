@@ -141,44 +141,6 @@ export function shutdownDatabase(): void {
 }
 
 /**
- * Module cache for better-sqlite3
- */
-let __betterSqlite3Module: (typeof import('better-sqlite3')) | null = null;
-
-function loadBetterSqlite3(): (typeof import('better-sqlite3')) {
-    if (__betterSqlite3Module) return __betterSqlite3Module;
-    try {
-        dbLogger.verbose('Loading better-sqlite3 native module');
-        // Use the statically imported module - in tests this will be the mocked version
-        // The mock is hoisted by Vitest, so the static import will use the mock
-        __betterSqlite3Module = { default: Database, Database } as unknown as (typeof import('better-sqlite3'));
-        if (!__betterSqlite3Module) {
-            throw new Error('Could not load better-sqlite3 module');
-        }
-        dbLogger.info('better-sqlite3 module loaded successfully');
-        return __betterSqlite3Module;
-    } catch (err: unknown) {
-        const message = [
-            'Could not load better-sqlite3 native module',
-            err instanceof Error ? err.message : String(err),
-            'Recommended actions:',
-            '- Run: npm run rebuild   (rebuilds native modules for current Electron)',
-            '- Or run: npx electron-rebuild -f -w better-sqlite3',
-            '- Ensure Electron and Node versions match the compiled native module'
-        ].join('\n');
-        dbLogger.error('Could not load better-sqlite3 module', { 
-            error: err instanceof Error ? err.message : String(err),
-            stack: err instanceof Error ? err.stack : undefined,
-            recommendedActions: [
-                'npm run rebuild',
-                'npx electron-rebuild -f -w better-sqlite3'
-            ]
-        });
-        throw new Error(message);
-    }
-}
-
-/**
  * Internal schema creation (takes an open database connection)
  * @private
  */
