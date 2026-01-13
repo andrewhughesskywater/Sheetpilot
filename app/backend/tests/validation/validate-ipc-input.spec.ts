@@ -200,6 +200,7 @@ describe('IPC Input Validation Utility', () => {
       
       expect(result.success).toBe(false);
       expect(result.error).toContain('password');
+      expect(result.error).toMatch(/password|Invalid input for password/);
       expect(result.data).toBeUndefined();
     });
 
@@ -245,6 +246,7 @@ describe('IPC Input Validation Utility', () => {
       
       expect(result.success).toBe(false);
       expect(result.error).toContain('userEmail');
+      expect(result.error).toMatch(/userEmail|Invalid input for userEmail/);
     });
   });
 
@@ -304,7 +306,7 @@ describe('IPC Input Validation Utility', () => {
       const result = validateInput(stringSchema, veryLong, 'test');
       
       expect(result.success).toBe(false);
-      expect(result.error).toContain('String must contain at most 100 character');
+      expect(result.error).toMatch(/Too big|at most 100|<=100/);
     });
 
     it('should handle unicode and special characters safely', () => {
@@ -367,8 +369,9 @@ describe('IPC Input Validation Utility', () => {
       expect(validateInput(numSchema, 0, 'test').success).toBe(true);
       expect(validateInput(numSchema, -1, 'test').success).toBe(true);
       expect(validateInput(numSchema, 1.5, 'test').success).toBe(true);
-      expect(validateInput(numSchema, Infinity, 'test').success).toBe(true);
-      expect(validateInput(numSchema, -Infinity, 'test').success).toBe(true);
+      // Zod rejects Infinity as it's not a finite number
+      expect(validateInput(numSchema, Infinity, 'test').success).toBe(false);
+      expect(validateInput(numSchema, -Infinity, 'test').success).toBe(false);
       expect(validateInput(numSchema, NaN, 'test').success).toBe(false);
     });
 

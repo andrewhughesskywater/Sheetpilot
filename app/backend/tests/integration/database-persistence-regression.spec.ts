@@ -30,7 +30,7 @@ import {
     markTimesheetEntriesAsSubmitted,
     removeFailedTimesheetEntries,
     closeConnection
-} from '../src/repositories';
+} from '../../src/repositories';
 
 describe('Database Persistence Regression Tests', () => {
     let testDbPath: string;

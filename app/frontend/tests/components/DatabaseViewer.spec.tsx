@@ -25,7 +25,7 @@ vi.mock('@handsontable/react-wrapper', () => ({
     }, 'Mocked Handsontable')
 }));
 
-import Archive from '../src/components/archive/DatabaseViewer';
+import Archive from '../../src/components/archive/DatabaseViewer';
 import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 

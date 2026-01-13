@@ -3,6 +3,9 @@ const typescript = require('@typescript-eslint/eslint-plugin');
 const react = require('eslint-plugin-react');
 const reactHooks = require('eslint-plugin-react-hooks');
 const reactRefresh = require('eslint-plugin-react-refresh');
+const sonarjs = require('eslint-plugin-sonarjs');
+
+// Complexity rule is built into ESLint, no plugin needed
 
 const TS_FILES = ['**/*.{ts,tsx,cts,mts}'];
 const TEST_FILES = [
@@ -51,6 +54,9 @@ module.exports = [
   ...typescriptRecommendedPreset,
   {
     files: TS_FILES,
+    plugins: {
+      sonarjs
+    },
     languageOptions: {
       parserOptions: {
         ecmaVersion: 'latest',
@@ -73,7 +79,174 @@ module.exports = [
         'ts-check': false
       }],
 
-      'no-case-declarations': 'error'
+      'no-case-declarations': 'error',
+      
+      // Default complexity rules (will be overridden by file-type-specific rules)
+      // Industry standard: 10 is recommended (McCabe), 15 acceptable, 20+ requires refactoring
+      // Complexity rule is built into ESLint core
+      'complexity': ['warn', 10],
+      
+      // Default max-lines rules (will be overridden by file-type-specific rules)
+      // Industry standard: 300 lines (common practice), 500 max for complex code
+      // max-lines rule is built into ESLint core
+      'max-lines': ['warn', { max: 300, skipBlankLines: false, skipComments: false }],
+      
+      // Default cognitive complexity rules (will be overridden by file-type-specific rules)
+      // Human-focused metric: measures how difficult code is to understand for humans
+      // Industry standard: 15 is recommended (SonarSource), more lenient than cyclomatic complexity
+      // cognitive-complexity rule from eslint-plugin-sonarjs
+      'sonarjs/cognitive-complexity': ['warn', 15]
+    }
+  },
+
+  // File-type-specific complexity rules - Backend Services (moderate tolerance for complex business logic)
+  {
+    files: ['app/backend/src/services/**/*.{ts,tsx}'],
+    rules: {
+      'complexity': ['warn', 20], // Industry max: 20 for complex business logic
+      'max-lines': ['warn', { max: 500, skipBlankLines: false, skipComments: false }], // Industry max: 500 for complex services
+      'sonarjs/cognitive-complexity': ['warn', 25] // Human-focused: 25 max for complex business logic
+    }
+  },
+
+  // Backend IPC Handlers
+  {
+    files: ['app/backend/src/ipc/**/*.{ts,tsx}'],
+    rules: {
+      'complexity': ['warn', 15], // Industry standard: 15 for moderate complexity
+      'max-lines': ['warn', { max: 400, skipBlankLines: false, skipComments: false }], // Industry standard: 400 for moderate files
+      'sonarjs/cognitive-complexity': ['warn', 18] // Human-focused: 18 for moderate complexity
+    }
+  },
+
+  // Backend Repositories (should be simple)
+  {
+    files: ['app/backend/src/repositories/**/*.{ts,tsx}'],
+    rules: {
+      'complexity': ['warn', 10], // Industry standard: 10 for simple code
+      'max-lines': ['warn', { max: 300, skipBlankLines: false, skipComments: false }], // Industry standard: 300 for standard files
+      'sonarjs/cognitive-complexity': ['warn', 12] // Human-focused: 12 for simple code
+    }
+  },
+
+  // Backend Logic
+  {
+    files: ['app/backend/src/logic/**/*.{ts,tsx}'],
+    rules: {
+      'complexity': ['warn', 15], // Industry standard: 15 for moderate complexity
+      'max-lines': ['warn', { max: 400, skipBlankLines: false, skipComments: false }], // Industry standard: 400 for moderate files
+      'sonarjs/cognitive-complexity': ['warn', 18] // Human-focused: 18 for moderate complexity
+    }
+  },
+
+  // Backend Bootstrap
+  {
+    files: ['app/backend/src/bootstrap/**/*.{ts,tsx}'],
+    rules: {
+      'complexity': ['warn', 15], // Industry standard: 15 for moderate complexity
+      'max-lines': ['warn', { max: 400, skipBlankLines: false, skipComments: false }], // Industry standard: 400 for moderate files
+      'sonarjs/cognitive-complexity': ['warn', 18] // Human-focused: 18 for moderate complexity
+    }
+  },
+
+  // Backend Preload (should be simple)
+  {
+    files: ['app/backend/src/preload/**/*.{ts,tsx}'],
+    rules: {
+      'complexity': ['warn', 10], // Industry standard: 10 for simple code
+      'max-lines': ['warn', { max: 300, skipBlankLines: false, skipComments: false }], // Industry standard: 300 for standard files
+      'sonarjs/cognitive-complexity': ['warn', 12] // Human-focused: 12 for simple code
+    }
+  },
+
+  // Backend Validation (should be simple)
+  {
+    files: ['app/backend/src/validation/**/*.{ts,tsx}'],
+    rules: {
+      'complexity': ['warn', 10], // Industry standard: 10 for simple code
+      'max-lines': ['warn', { max: 300, skipBlankLines: false, skipComments: false }], // Industry standard: 300 for standard files
+      'sonarjs/cognitive-complexity': ['warn', 12] // Human-focused: 12 for simple code
+    }
+  },
+
+  // Frontend Components (should be simple)
+  {
+    files: ['app/frontend/src/components/**/*.{ts,tsx}'],
+    rules: {
+      'complexity': ['warn', 10], // Industry standard: 10 for simple code
+      'max-lines': ['warn', { max: 300, skipBlankLines: false, skipComments: false }], // Industry standard: 300 for standard files
+      'sonarjs/cognitive-complexity': ['warn', 12] // Human-focused: 12 for simple code
+    }
+  },
+
+  // Frontend Services (should be simple)
+  {
+    files: ['app/frontend/src/services/**/*.{ts,tsx}'],
+    rules: {
+      'complexity': ['warn', 10], // Industry standard: 10 for simple code
+      'max-lines': ['warn', { max: 300, skipBlankLines: false, skipComments: false }], // Industry standard: 300 for standard files
+      'sonarjs/cognitive-complexity': ['warn', 12] // Human-focused: 12 for simple code
+    }
+  },
+
+  // Frontend Hooks
+  {
+    files: ['app/frontend/src/hooks/**/*.{ts,tsx}'],
+    rules: {
+      'complexity': ['warn', 15], // Industry standard: 15 for moderate complexity
+      'max-lines': ['warn', { max: 300, skipBlankLines: false, skipComments: false }], // Industry standard: 300 for standard files
+      'sonarjs/cognitive-complexity': ['warn', 18] // Human-focused: 18 for moderate complexity
+    }
+  },
+
+  // Frontend Contexts
+  {
+    files: ['app/frontend/src/contexts/**/*.{ts,tsx}'],
+    rules: {
+      'complexity': ['warn', 15], // Industry standard: 15 for moderate complexity
+      'max-lines': ['warn', { max: 400, skipBlankLines: false, skipComments: false }], // Industry standard: 400 for moderate files
+      'sonarjs/cognitive-complexity': ['warn', 18] // Human-focused: 18 for moderate complexity
+    }
+  },
+
+  // Frontend Utils (should be very simple)
+  {
+    files: ['app/frontend/src/utils/**/*.{ts,tsx}'],
+    rules: {
+      'complexity': ['warn', 8], // Industry standard: 8 for very simple code
+      'max-lines': ['warn', { max: 200, skipBlankLines: false, skipComments: false }], // Industry standard: 200 for simple utilities
+      'sonarjs/cognitive-complexity': ['warn', 10] // Human-focused: 10 for very simple code
+    }
+  },
+
+  // Shared Utils (should be very simple)
+  {
+    files: ['app/shared/utils/**/*.{ts,tsx}'],
+    rules: {
+      'complexity': ['warn', 8], // Industry standard: 8 for very simple code
+      'max-lines': ['warn', { max: 200, skipBlankLines: false, skipComments: false }], // Industry standard: 200 for simple utilities
+      'sonarjs/cognitive-complexity': ['warn', 10] // Human-focused: 10 for very simple code
+    }
+  },
+
+  // Shared Core
+  {
+    files: ['app/shared/*.{ts,tsx}'],
+    ignores: ['app/shared/utils/**'],
+    rules: {
+      'complexity': ['warn', 15], // Industry standard: 15 for moderate complexity
+      'max-lines': ['warn', { max: 400, skipBlankLines: false, skipComments: false }], // Industry standard: 400 for moderate files
+      'sonarjs/cognitive-complexity': ['warn', 18] // Human-focused: 18 for moderate complexity
+    }
+  },
+
+  // Test Files (can be more complex, but still maintainable)
+  {
+    files: TEST_FILES,
+    rules: {
+      'complexity': ['warn', 20], // Industry standard: 20 max for complex test scenarios
+      'max-lines': ['warn', { max: 500, skipBlankLines: false, skipComments: false }], // Industry standard: 500 max for comprehensive tests
+      'sonarjs/cognitive-complexity': ['warn', 25] // Human-focused: 25 max for complex test scenarios
     }
   },
 

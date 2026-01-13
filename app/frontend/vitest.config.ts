@@ -43,6 +43,25 @@ export default defineProject({
       functions: 70,
       branches: 70,
       statements: 70,
+      thresholds: {
+        lines: 70,
+        functions: 70,
+        branches: 70,
+        statements: 70,
+        // Critical components require higher coverage
+        'src/components/timesheet': {
+          lines: 75,
+          functions: 75,
+          branches: 75,
+          statements: 75,
+        },
+        'src/services': {
+          lines: 75,
+          functions: 75,
+          branches: 75,
+          statements: 75,
+        },
+      },
     },
     pool: "threads",
     poolOptions: {

@@ -124,7 +124,7 @@ describe('MacroManagerDialog Component', () => {
       const changes = [[0, 'name', 'Daily Entry', 'Updated Entry']];
       
       for (const [rowIdx, prop, , newVal] of changes) {
-        macros[rowIdx] = { ...macros[rowIdx], [prop]: newVal };
+        macros[rowIdx as number] = { ...macros[rowIdx as number], [prop as string]: newVal };
       }
       
       expect(macros[0].name).toBe('Updated Entry');
@@ -142,7 +142,7 @@ describe('MacroManagerDialog Component', () => {
     });
 
     it('should cascade project changes', () => {
-      let macro = {
+      let macro: { name: string; project: string; tool: string | null; chargeCode: string | null; taskDescription: string } = {
         name: 'Test',
         project: 'FL-Carver Techs',
         tool: '#1 Rinse and 2D marker',
@@ -163,7 +163,7 @@ describe('MacroManagerDialog Component', () => {
     });
 
     it('should cascade tool changes', () => {
-      let macro = {
+      let macro: { name: string; project: string; tool: string | null; chargeCode: string | null; taskDescription: string } = {
         name: 'Test',
         project: 'FL-Carver Techs',
         tool: '#1 Rinse and 2D marker',

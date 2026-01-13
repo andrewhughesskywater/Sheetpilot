@@ -96,3 +96,96 @@ export function validateField(
   }
 }
 
+/**
+ * Validate complete timesheet for submission readiness
+ * 
+ * Performs comprehensive validation including:
+ * - Required field presence (date, times, project, description)
+ * - Date and time format validation
+ * - Time range validation (end > start)
+ * - Business rule compliance (tool/charge code requirements)
+ * - Time overlap detection across all rows
+ * 
+ * Used by submit button to determine if submission can proceed.
+ * Only validates rows with at least one field populated (ignores empty rows).
+ * 
+ * @param rows - Array of timesheet rows to validate
+ * @returns Validation result with error flag and detailed error messages
+ */
+export function validateTimesheetRows(rows: TimesheetRow[]): { hasErrors: boolean; errorDetails: string[] } {
+  if (!rows || rows.length === 0) {
+    return { hasErrors: false, errorDetails: [] };
+  }
+
+  // Check if there's any real data (non-empty rows)
+  const realRows = rows.filter((row) => {
+    return row.date || row.timeIn || row.timeOut || row.project || row.taskDescription;
+  });
+
+  if (realRows.length === 0) {
+    return { hasErrors: false, errorDetails: [] };
+  }
+
+  let hasErrors = false;
+  const errorDetails: string[] = [];
+  
+  realRows.forEach((row, idx) => {
+    const rowNum = idx + 1;
+    
+    // Check required fields
+    if (!row.date) {
+      errorDetails.push(`Row ${rowNum}: Missing date`);
+      hasErrors = true;
+    } else if (!isValidDate(row.date)) {
+      errorDetails.push(`Row ${rowNum}: Invalid date format "${row.date}"`);
+      hasErrors = true;
+    }
+    
+    if (!row.timeIn) {
+      errorDetails.push(`Row ${rowNum}: Missing start time`);
+      hasErrors = true;
+    } else if (!isValidTime(row.timeIn)) {
+      errorDetails.push(`Row ${rowNum}: Invalid start time "${row.timeIn}" (must be HH:MM in 15-min increments)`);
+      hasErrors = true;
+    }
+    
+    if (!row.timeOut) {
+      errorDetails.push(`Row ${rowNum}: Missing end time`);
+      hasErrors = true;
+    } else if (!isValidTime(row.timeOut)) {
+      errorDetails.push(`Row ${rowNum}: Invalid end time "${row.timeOut}" (must be HH:MM in 15-min increments)`);
+      hasErrors = true;
+    }
+    
+    if (!row.project) {
+      errorDetails.push(`Row ${rowNum}: Missing project`);
+      hasErrors = true;
+    }
+    
+    if (!row.taskDescription) {
+      errorDetails.push(`Row ${rowNum}: Missing task description`);
+      hasErrors = true;
+    }
+    
+    // Check if tool is required
+    if (row.project && doesProjectNeedTools(row.project) && !row.tool) {
+      errorDetails.push(`Row ${rowNum}: Project "${row.project}" requires a tool`);
+      hasErrors = true;
+    }
+    
+    // Check if charge code is required
+    if (row.tool && doesToolNeedChargeCode(row.tool) && !row.chargeCode) {
+      errorDetails.push(`Row ${rowNum}: Tool "${row.tool}" requires a charge code`);
+      hasErrors = true;
+    }
+  });
+
+  // Check for time overlaps
+  rows.forEach((row, idx) => {
+    if (!hasTimeOverlapWithPreviousEntries(idx, rows)) return;
+    errorDetails.push(`Row ${idx + 1}: Time overlap detected on ${row.date}`);
+    hasErrors = true;
+  });
+
+  return { hasErrors, errorDetails };
+}

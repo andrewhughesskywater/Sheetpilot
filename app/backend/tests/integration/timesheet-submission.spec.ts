@@ -15,8 +15,8 @@ import {
     setDbPath,
     openDb,
     closeConnection
-} from '../src/repositories';
-import { submitTimesheets, getPendingEntries } from '../src/services/timesheet-importer';
+} from '../../src/repositories';
+import { submitTimesheets, getPendingEntries } from '../../src/services/timesheet-importer';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -273,10 +273,10 @@ describe('Timesheet Submission Integration', () => {
             // Verify both are marked as Complete  
             const db = openDb();
             // Query for entries that are NOT NULL (i.e., have been submitted)
-            const completeEntries = db.prepare('SELECT * FROM timesheet WHERE status IS NOT NULL').all();
+            const completeEntries = db.prepare('SELECT * FROM timesheet WHERE status IS NOT NULL').all() as Array<{ status: string | number }>;
             expect(completeEntries.length).toBe(2);
             // Verify status is either 'Complete' or 1 (both are valid representations)
-            completeEntries.forEach((entry: { status: string | number }) => {
+            completeEntries.forEach((entry) => {
                 expect(['Complete', 1].includes(entry.status)).toBe(true);
             });
         });
@@ -466,11 +466,11 @@ describe('Timesheet Submission Integration', () => {
             
             // Entries should appear in archive (Complete status)
             const db = openDb();
-            const archiveEntries = db.prepare('SELECT * FROM timesheet WHERE status IS NOT NULL').all();
+            const archiveEntries = db.prepare('SELECT * FROM timesheet WHERE status IS NOT NULL').all() as Array<{ status: string | number; submitted_at: string; project: string }>;
             expect(archiveEntries.length).toBe(2);
             
             // Verify all fields are intact
-            archiveEntries.forEach((entry: { status: string | number; submitted_at: string; project: string }) => {
+            archiveEntries.forEach((entry) => {
                 expect(['Complete', 1].includes(entry.status)).toBe(true);
                 expect(entry.submitted_at).toBeTruthy();
                 expect(entry.project).toBe('TestProject');

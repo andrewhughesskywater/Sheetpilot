@@ -43,7 +43,7 @@ describe('SubmitProgressBar Component', () => {
 
     it('should be disabled when explicitly disabled', () => {
       const disabled = true;
-      const status = 'ready';
+      const status: 'neutral' | 'ready' | 'warning' = 'neutral';
       
       const isDisabled = disabled || status === 'neutral' || status === 'warning';
       
@@ -206,8 +206,8 @@ describe('SubmitProgressBar Component', () => {
     });
 
     it('should not be complete mid-progress', () => {
-      const currentEntry = 5;
-      const totalEntries = 10;
+      const currentEntry: number = 5;
+      const totalEntries: number = 10;
       const isComplete = currentEntry === totalEntries;
       
       expect(isComplete).toBe(false);

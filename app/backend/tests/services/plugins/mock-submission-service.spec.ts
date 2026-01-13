@@ -164,6 +164,7 @@ describe('MockSubmissionService', () => {
 
     it('should detect missing date', () => {
       const entry: TimesheetEntry = {
+        date: '',
         timeIn: '08:00',
         timeOut: '17:00',
         project: 'Test Project',
@@ -178,6 +179,7 @@ describe('MockSubmissionService', () => {
     it('should detect missing timeIn', () => {
       const entry: TimesheetEntry = {
         date: '2025-01-15',
+        timeIn: '',
         timeOut: '17:00',
         project: 'Test Project',
         taskDescription: 'Test Task'

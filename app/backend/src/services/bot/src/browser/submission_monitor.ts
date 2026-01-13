@@ -10,7 +10,7 @@
  */
 import type { Locator, Page, Response } from "playwright";
 import * as cfg from "../config/automation_config";
-import { botLogger } from "@sheetpilot/shared/logger";
+import { botLogger } from "../../../../../../shared/logger";
 
 type RecordedResponse = { status: number; url: string; body?: string };
 type RecordedResponseSummary = { status: number; url: string };

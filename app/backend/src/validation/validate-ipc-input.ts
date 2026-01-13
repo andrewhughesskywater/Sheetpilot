@@ -101,9 +101,13 @@ export function validateMultiple(
   for (const [schema, input, fieldName] of validations) {
     const result = validateInput(schema, input, `${handlerName}.${fieldName}`);
     if (!result.success) {
+      // Include field name in error message
+      const errorMessage = result.error 
+        ? result.error.replace('Invalid input: ', `Invalid input for ${fieldName}: `)
+        : `Validation failed for ${fieldName}`;
       return {
         success: false,
-        error: result.error || 'Validation failed'
+        error: errorMessage
       };
     }
     data[fieldName] = result.data;

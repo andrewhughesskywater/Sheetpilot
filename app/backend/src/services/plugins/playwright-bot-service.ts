@@ -17,7 +17,7 @@ import type {
 import type { TimesheetEntry } from '../../../../shared/contracts/IDataService';
 import type { Credentials } from '../../../../shared/contracts/ICredentialService';
 import type { PluginMetadata } from '../../../../shared/plugin-types';
-import { runTimesheet } from '../bot/src/index';
+import { runTimesheet } from '../bot/src/core/index';
 import { botLogger } from '../../../../shared/logger';
 import { checkAborted, createCancelledResult } from '../bot/src/utils/abort-utils';
 import { processEntriesByQuarter } from '../bot/src/utils/quarter-processing';

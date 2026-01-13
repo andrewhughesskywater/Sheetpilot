@@ -1,10 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
-import * as Cfg from '../../../src/services/bot/src/automation_config';
-import { BotOrchestrator } from '../../../src/services/bot/src/bot_orchestation';
-import { createFormConfig } from '../../../src/services/bot/src/automation_config';
+import * as Cfg from '../../../src/services/bot/src/config/automation_config';
+import { BotOrchestrator } from '../../../src/services/bot/src/core/bot_orchestation';
+import { createFormConfig } from '../../../src/services/bot/src/config/automation_config';
 
 // Mock LoginManager to avoid waiting for URL changes (which causes timeouts)
-vi.mock('../../../src/services/bot/src/authentication_flow', () => {
+vi.mock('../../../src/services/bot/src/utils/authentication_flow', () => {
   return {
     LoginManager: class {
       async run_login_steps() {}
@@ -19,17 +19,18 @@ describe('BotOrchestrator small logic', () => {
   it('validate required fields logic', async () => {
     const bot = new BotOrchestrator(Cfg as typeof Cfg, dummyFormConfig, true, 'chromium');
     // @ts-ignore access private for test via any
-    const ok1 = (bot as Record<string, unknown>)._validate_required_fields({ hours: 1, project_code: 'P', date: '01/01/2025' }, 0);
+    const botAny = bot as any;
+    const ok1 = botAny._validate_required_fields({ hours: 1, project_code: 'P', date: '01/01/2025' }, 0);
     expect(ok1).toBe(true);
     // missing project_code
-    const ok2 = (bot as Record<string, unknown>)._validate_required_fields({ hours: 1, date: '01/01/2025' }, 0);
+    const ok2 = botAny._validate_required_fields({ hours: 1, date: '01/01/2025' }, 0);
     expect(ok2).toBe(false);
   });
 
   it('project-specific tool locator resolution', async () => {
     const bot = new BotOrchestrator(Cfg as typeof Cfg, dummyFormConfig, true, 'chromium');
     // @ts-ignore private
-    const selKnown = (bot as Record<string, unknown>).get_project_specific_tool_locator('OSC-BBB');
+    const selKnown = (bot as any).get_project_specific_tool_locator('OSC-BBB');
     expect(typeof selKnown === 'string' || selKnown === null).toBe(true);
   });
 
@@ -55,12 +56,17 @@ describe('BotOrchestrator small logic', () => {
     expect(errors[0][1]).toMatch(/Page is not available|start/i);
   }, 30000); // 30 second timeout for DOM-based waits
 
-  it.skip('should work when start() is called before run_automation()', async () => {
+  it('should work when start() is called before run_automation()', async () => {
     const bot = new BotOrchestrator(Cfg as typeof Cfg, dummyFormConfig, true, 'chromium');
     
     try {
       // Start the browser first
       await bot.start();
+      
+      // Verify browser is started by checking that page is available
+      // @ts-ignore - access private property for testing
+      const page = bot.page;
+      expect(page).toBeDefined();
       
       // This should not throw "Page is not available" error
       // It will fail later during authentication (expected), but proves browser was started
@@ -86,12 +92,16 @@ describe('BotOrchestrator small logic', () => {
       // The form filling might fail if selectors are not found, but that's fine.
       // We just check that the error is NOT about browser lifecycle.
       if (!success && errors.length > 0) {
-        expect(errors[0][1]).not.toContain('Page is not available');
-        expect(errors[0][1]).not.toContain('call start() first');
+        const errorMessage = errors[0][1] as string;
+        expect(errorMessage).not.toContain('Page is not available');
+        expect(errorMessage).not.toContain('call start() first');
       } else {
         // If it somehow succeeds (mocks are perfect), that's also fine for this test
-        expect(true).toBe(true);
+        expect(success || errors.length > 0).toBe(true);
       }
+      
+      // Verify bot is in a valid state
+      expect(bot).toBeDefined();
     } finally {
       // Always clean up
       await bot.close();

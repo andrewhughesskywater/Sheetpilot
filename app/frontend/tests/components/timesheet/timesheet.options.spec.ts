@@ -62,8 +62,8 @@ describe('Timesheet Options Module', () => {
     it('should identify projects without tools', () => {
       const expected = ['ERT', 'PTO/RTO', 'SWFL-CHEM/GAS', 'Training'];
       
-      expected.forEach(project => {
-        expect(projectsWithoutTools.has(project)).toBe(true);
+      expected.forEach((project: string) => {
+        expect(projectsWithoutTools.has(project as any)).toBe(true);
         expect(projectNeedsTools(project)).toBe(false);
       });
     });
@@ -71,8 +71,8 @@ describe('Timesheet Options Module', () => {
     it('should identify projects with tools', () => {
       const expected = ['FL-Carver Techs', 'FL-Carver Tools', 'OSC-BBB', 'SWFL-EQUIP'];
       
-      expected.forEach(project => {
-        expect(projectsWithoutTools.has(project)).toBe(false);
+      expected.forEach((project: string) => {
+        expect(projectsWithoutTools.has(project as any)).toBe(false);
         expect(projectNeedsTools(project)).toBe(true);
       });
     });
@@ -89,8 +89,8 @@ describe('Timesheet Options Module', () => {
     });
 
     it('should handle undefined project', () => {
-      expect(projectNeedsTools(undefined)).toBe(false);
-      expect(getToolOptions(undefined)).toEqual([]);
+      expect(projectNeedsTools(undefined as any)).toBe(false);
+      expect(getToolOptions(undefined as any)).toEqual([]);
     });
 
     it('should handle invalid project', () => {
@@ -107,8 +107,8 @@ describe('Timesheet Options Module', () => {
         'Non Tool Related', 'Admin', 'Training', 'N/A'
       ];
       
-      expected.forEach(tool => {
-        expect(toolsWithoutCharges.has(tool)).toBe(true);
+      expected.forEach((tool: string) => {
+        expect(toolsWithoutCharges.has(tool as any)).toBe(true);
         expect(toolNeedsChargeCode(tool)).toBe(false);
       });
     });
@@ -118,14 +118,14 @@ describe('Timesheet Options Module', () => {
         '#1 Rinse and 2D marker', '#2 Sputter', 'AFM101', 'ALD101'
       ];
       
-      expected.forEach(tool => {
-        expect(toolsWithoutCharges.has(tool)).toBe(false);
+      expected.forEach((tool: string) => {
+        expect(toolsWithoutCharges.has(tool as any)).toBe(false);
         expect(toolNeedsChargeCode(tool)).toBe(true);
       });
     });
 
     it('should handle undefined tool', () => {
-      expect(toolNeedsChargeCode(undefined)).toBe(false);
+      expect(toolNeedsChargeCode(undefined as any)).toBe(false);
     });
 
     it('should handle empty tool', () => {
@@ -191,9 +191,9 @@ describe('Timesheet Options Module', () => {
     });
 
     it('should have all projects categorized correctly', () => {
-      projects.forEach(project => {
+      projects.forEach((project: string) => {
         const needsTools = projectNeedsTools(project);
-        const isInWithoutTools = projectsWithoutTools.has(project);
+        const isInWithoutTools = projectsWithoutTools.has(project as any);
         
         expect(needsTools).toBe(!isInWithoutTools);
       });

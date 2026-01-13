@@ -243,7 +243,7 @@ describe('Database Performance', () => {
     });
 
     it('should not accumulate DOM nodes', () => {
-      const domNodes = [];
+      const domNodes: { type: string }[] = [];
       
       const createNode = () => {
         domNodes.push({ type: 'div' });

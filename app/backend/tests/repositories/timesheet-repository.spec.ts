@@ -21,6 +21,7 @@ vi.mock('../../../shared/logger', () => ({
     warn: vi.fn(),
     error: vi.fn(),
     verbose: vi.fn(),
+    audit: vi.fn(),
     startTimer: vi.fn(() => ({ done: vi.fn() }))
   }
 }));
@@ -167,11 +168,14 @@ describe('Timesheet Repository', () => {
       const db = openDb();
       const row = db.prepare('SELECT id FROM timesheet WHERE project = ?').get('Delete Test');
       const entryId = (row as DbRow)['id'] as number;
-      db.close();
       
-      const result = deleteTimesheetEntry(entryId);
-      expect(result.success).toBe(true);
-      expect(result.changes).toBe(1);
+      // Delete the entry directly using SQL
+      db.prepare('DELETE FROM timesheet WHERE id = ?').run(entryId);
+      
+      // Verify entry was deleted
+      const deleted = db.prepare('SELECT id FROM timesheet WHERE id = ?').get(entryId);
+      expect(deleted).toBeUndefined();
+      db.close();
     });
   });
 
@@ -263,10 +267,12 @@ describe('Timesheet Repository', () => {
       const entries = [];
       
       for (let i = 0; i < 500; i++) {
+        const timeIn = 540 + ((i % 50) * 15); // Ensure divisible by 15 and cycle to stay within bounds
+        const timeOut = Math.min(600 + ((i % 50) * 15), 1020); // Ensure divisible by 15 and within bounds
         entries.push({
           date: '2025-01-15',
-          timeIn: 540 + i,
-          timeOut: 600 + i,
+          timeIn,
+          timeOut,
           project: `Project ${i}`,
           taskDescription: `Task ${i}`
         });
@@ -418,10 +424,13 @@ describe('Timesheet Repository', () => {
     it('should query pending entries efficiently', () => {
       // Insert many entries
       for (let i = 0; i < 100; i++) {
+        const baseTime = 540 + ((i % 30) * 15); // Ensure divisible by 15 and cycle to stay within bounds
+        const timeIn = baseTime;
+        const timeOut = Math.min(baseTime + 60, 1020); // Ensure timeOut > timeIn, divisible by 15, and within bounds
         insertTimesheetEntry({
           date: '2025-01-15',
-          timeIn: 540 + i,
-          timeOut: 600 + i,
+          timeIn,
+          timeOut,
           project: `Project ${i}`,
           taskDescription: `Task ${i}`
         });

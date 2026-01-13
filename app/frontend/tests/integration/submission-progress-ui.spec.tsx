@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import { SubmitProgressBar } from '../../src/components/SubmitProgressBar';
 import { useState, useEffect } from 'react';
 
@@ -18,6 +18,15 @@ import { useState, useEffect } from 'react';
 type ProgressCallback = (progress: { percent: number; current: number; total: number; message: string }) => void;
 
 const mockProgressListeners: ProgressCallback[] = [];
+
+// Helper to call listeners within act()
+const callListeners = (update: { percent: number; current: number; total: number; message: string }) => {
+  mockProgressListeners.forEach(listener => {
+    act(() => {
+      listener(update);
+    });
+  });
+};
 
 const mockWindowAPI = {
   timesheet: {
@@ -37,7 +46,7 @@ const mockWindowAPI = {
       // Send progress updates asynchronously
       for (const update of progressUpdates) {
         await new Promise(resolve => setTimeout(resolve, 50));
-        mockProgressListeners.forEach(listener => listener(update));
+        callListeners(update);
       }
 
       return {
@@ -134,12 +143,13 @@ function TestSubmitProgressBar() {
 
 describe('Submission Progress UI Integration', () => {
   beforeEach(() => {
+    vi.useFakeTimers();
     vi.clearAllMocks();
     mockProgressListeners.length = 0;
   });
 
   afterEach(() => {
-    vi.clearAllTimers();
+    vi.useRealTimers();
   });
 
   it('should display button initially', () => {
@@ -149,34 +159,48 @@ describe('Submission Progress UI Integration', () => {
     expect(button).toBeInTheDocument();
   });
 
-  it.skip('should receive and display progress updates during submission', async () => {
-    // NOTE: Skipped - async progress callback timing is flaky in unit test environment
+  it('should receive and display progress updates during submission', async () => {
     render(<TestSubmitProgressBar />);
     
     const button = screen.getByRole('button', { name: /submit timesheet/i });
-    button.click();
+    
+    await act(async () => {
+      button.click();
+    });
 
     // Wait for submission to start
     await waitFor(() => {
       expect(screen.getByTestId('is-submitting').textContent).toBe('true');
     });
 
+    // Advance timers to trigger progress updates
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+      await Promise.resolve();
+    });
+
     // Wait for first progress update (10%)
     await waitFor(() => {
       const progress = parseInt(screen.getByTestId('progress-value').textContent || '0');
       expect(progress).toBeGreaterThanOrEqual(10);
-    }, { timeout: 2000 });
+    });
 
     // Verify login message
     await waitFor(() => {
       expect(screen.getByTestId('progress-message').textContent).toContain('Logging in');
     });
 
+    // Advance timers for processing updates
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+      await Promise.resolve();
+    });
+
     // Wait for processing updates
     await waitFor(() => {
       const progress = parseInt(screen.getByTestId('progress-value').textContent || '0');
       expect(progress).toBeGreaterThanOrEqual(30);
-    }, { timeout: 3000 });
+    });
 
     // Verify current/total are updated
     await waitFor(() => {
@@ -189,11 +213,17 @@ describe('Submission Progress UI Integration', () => {
       expect(total).toBe(5);
     });
 
+    // Advance timers to completion
+    await act(async () => {
+      vi.advanceTimersByTime(500);
+      await Promise.resolve();
+    });
+
     // Wait for completion (100%)
     await waitFor(() => {
       const progress = parseInt(screen.getByTestId('progress-value').textContent || '0');
       expect(progress).toBe(100);
-    }, { timeout: 5000 });
+    });
 
     // Verify completion message
     await waitFor(() => {
@@ -201,50 +231,67 @@ describe('Submission Progress UI Integration', () => {
     });
   });
 
-  it.skip('should show progress bar during submission', async () => {
-    // NOTE: Skipped - async progress callback timing is flaky in unit test environment
+  it('should show progress bar during submission', async () => {
     render(<TestSubmitProgressBar />);
     
     const button = screen.getByRole('button', { name: /submit timesheet/i });
-    button.click();
+    
+    await act(async () => {
+      button.click();
+    });
 
     // Wait for submission to start
     await waitFor(() => {
       expect(screen.getByTestId('is-submitting').textContent).toBe('true');
     });
 
+    // Advance timers to trigger progress updates
+    await act(async () => {
+      vi.advanceTimersByTime(100);
+      await Promise.resolve();
+    });
+
     // Progress bar should be visible (button is replaced by progress)
     await waitFor(() => {
       const progress = parseInt(screen.getByTestId('progress-value').textContent || '0');
       expect(progress).toBeGreaterThan(0);
-    }, { timeout: 2000 });
+    });
   });
 
-  it.skip('should track progress through all stages', async () => {
-    // NOTE: Skipped - async progress callback timing is flaky in unit test environment
+  it('should track progress through all stages', async () => {
     const progressValues: number[] = [];
     
     render(<TestSubmitProgressBar />);
     
     const button = screen.getByRole('button', { name: /submit timesheet/i });
-    button.click();
+    
+    await act(async () => {
+      button.click();
+    });
 
-    // Collect progress values
-    const checkInterval = setInterval(() => {
+    // Collect progress values as we advance timers
+    const checkProgress = () => {
       const progressEl = screen.getByTestId('progress-value');
       const progress = parseInt(progressEl.textContent || '0');
-      if (progress > 0) {
+      if (progress > 0 && !progressValues.includes(progress)) {
         progressValues.push(progress);
       }
-    }, 100);
+    };
+
+    // Advance timers incrementally and check progress
+    for (let i = 0; i < 10; i++) {
+      await act(async () => {
+        vi.advanceTimersByTime(50);
+        await Promise.resolve();
+      });
+      checkProgress();
+    }
 
     // Wait for completion
     await waitFor(() => {
       const progress = parseInt(screen.getByTestId('progress-value').textContent || '0');
       return progress === 100;
-    }, { timeout: 5000 });
-
-    clearInterval(checkInterval);
+    });
 
     // Verify we captured progress updates
     expect(progressValues.length).toBeGreaterThan(0);
@@ -260,26 +307,37 @@ describe('Submission Progress UI Integration', () => {
     expect(progressValues.some(p => p === 100)).toBe(true); // Completion
   });
 
-  it.skip('should display correct entry count messages', async () => {
-    // NOTE: Skipped - async progress callback timing is flaky in unit test environment
+  it('should display correct entry count messages', async () => {
     render(<TestSubmitProgressBar />);
     
     const button = screen.getByRole('button', { name: /submit timesheet/i });
-    button.click();
+    
+    await act(async () => {
+      button.click();
+    });
+
+    // Advance timers to trigger entry processing messages
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+      await Promise.resolve();
+    });
 
     // Wait for entry processing messages
     await waitFor(() => {
       const message = screen.getByTestId('progress-message').textContent || '';
       return message.includes('/5');
-    }, { timeout: 3000 });
+    });
 
     // Verify message format
     const message = screen.getByTestId('progress-message').textContent || '';
     expect(message).toMatch(/\d+\/5/); // Should contain "X/5" format
   });
 
-  it.skip('should reset progress listener on unmount', () => {
-    // NOTE: Skipped - mock setup is cleared by vi.clearAllMocks() making this test unreliable
+  it('should reset progress listener on unmount', () => {
+    // Clear mocks before render to start fresh
+    mockWindowAPI.timesheet.onSubmissionProgress.mockClear();
+    mockWindowAPI.timesheet.removeProgressListener.mockClear();
+    
     const { unmount } = render(<TestSubmitProgressBar />);
     
     // Verify listener was registered
@@ -302,12 +360,12 @@ describe('Submission Progress UI Integration', () => {
           // Send 50 rapid updates
           for (let i = 0; i <= 100; i += 2) {
             await new Promise(resolve => setTimeout(resolve, 10));
-            mockProgressListeners.forEach(listener => listener({
+            callListeners({
               percent: i,
               current: Math.floor(i / 20),
               total: 5,
               message: `Progress ${i}%`,
-            }));
+            });
           }
 
           return {
@@ -329,7 +387,7 @@ describe('Submission Progress UI Integration', () => {
     const button = screen.getByRole('button', { name: /submit timesheet/i });
     
     // Should not throw with rapid updates
-    expect(() => button.click()).not.toThrow();
+    button.click();
 
     // Wait for completion
     await waitFor(() => {
@@ -353,7 +411,7 @@ describe('Submission Progress UI Integration', () => {
 
           for (const update of updates) {
             await new Promise(resolve => setTimeout(resolve, 50));
-            mockProgressListeners.forEach(listener => listener(update));
+            callListeners(update);
           }
 
           return {
@@ -376,7 +434,11 @@ describe('Submission Progress UI Integration', () => {
     button.click();
 
     // Wait for updates to be processed
-    await new Promise(resolve => setTimeout(resolve, 300));
+    await waitFor(() => {
+      const progressEl = screen.getByTestId('progress-value');
+      const progress = parseInt(progressEl.textContent || '0');
+      return progress > 0;
+    }, { timeout: 500 });
 
     // Component should clamp values - verify via the rendered value
     const progressEl = screen.getByTestId('progress-value');

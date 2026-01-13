@@ -27,6 +27,7 @@
   "exclude": [
     "app/backend/tests/**/*",
     "app/shared/tests/**/*",
+    "app/shared/**/vitest.config.ts",
     "app/backend/src/services/bot/**/*",
     "node_modules",
     "build",

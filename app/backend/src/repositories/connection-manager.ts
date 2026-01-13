@@ -149,9 +149,9 @@ function loadBetterSqlite3(): (typeof import('better-sqlite3')) {
     if (__betterSqlite3Module) return __betterSqlite3Module;
     try {
         dbLogger.verbose('Loading better-sqlite3 native module');
-        // Use the statically imported module instead of dynamic require
-        // This allows test mocks to properly intercept the module
-        __betterSqlite3Module = { default: Database } as unknown as (typeof import('better-sqlite3'));
+        // Use the statically imported module - in tests this will be the mocked version
+        // The mock is hoisted by Vitest, so the static import will use the mock
+        __betterSqlite3Module = { default: Database, Database } as unknown as (typeof import('better-sqlite3'));
         if (!__betterSqlite3Module) {
             throw new Error('Could not load better-sqlite3 module');
         }
@@ -327,10 +327,9 @@ function getDbConnection(): BetterSqlite3.Database {
             
             dbLogger.verbose('Opening persistent database connection', { dbPath: DB_PATH });
             
-            const mod = loadBetterSqlite3() as unknown;
-            // Support both ES module default export and CommonJS direct export
-            const DatabaseCtor = (mod as { default?: unknown })?.default ?? (mod as { Database?: unknown })?.Database ?? mod;
-            const db = new (DatabaseCtor as new (path: string, opts?: BetterSqlite3.Options) => BetterSqlite3.Database)(DB_PATH);
+            // Use the statically imported Database - in tests this will be the mocked version
+            // Vitest mocks are hoisted, so the static import will use the mock
+            const db = new Database(DB_PATH);
             
             // Configure WAL mode for better concurrency
             db.pragma('journal_mode = WAL');

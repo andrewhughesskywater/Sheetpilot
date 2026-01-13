@@ -41,8 +41,8 @@ export {
 } from "./bot_orchestation";
 import { BotOrchestrator } from "./bot_orchestation";
 import * as Cfg from "../config/automation_config";
-import { appSettings } from "@sheetpilot/shared/constants";
-import { botLogger } from "@sheetpilot/shared/logger";
+import { appSettings } from "../../../../../../shared/constants";
+import { botLogger } from "../../../../../../shared/logger";
 
 // Authentication and login management
 export { LoginManager, BotNavigationError } from "../utils/authentication_flow";

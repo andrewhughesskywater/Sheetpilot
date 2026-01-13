@@ -1,14 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { processEntriesByQuarter } from '../../../../src/services/bot/src/utils/quarter-processing';
-import { getQuarterForDate, groupEntriesByQuarter } from '../../../../src/services/bot/src/quarter_config';
-import { createFormConfig } from '../../../../src/services/bot/src/automation_config';
+import { getQuarterForDate, groupEntriesByQuarter } from '../../../../src/services/bot/src/config/quarter_config';
+import { createFormConfig } from '../../../../src/services/bot/src/config/automation_config';
 import { botLogger } from '../../../../../shared/logger';
 import { checkAborted } from '../../../../src/services/bot/src/utils/abort-utils';
 import type { TimesheetEntry } from '../../../../../shared/contracts/IDataService';
 
 // Mock dependencies
-vi.mock('../../../../src/services/bot/src/quarter_config');
-vi.mock('../../../../src/services/bot/src/automation_config');
+vi.mock('../../../../src/services/bot/src/config/quarter_config');
+vi.mock('../../../../src/services/bot/src/config/automation_config');
 vi.mock('../../../../../shared/logger');
 vi.mock('../../../../src/services/bot/src/utils/abort-utils');
 

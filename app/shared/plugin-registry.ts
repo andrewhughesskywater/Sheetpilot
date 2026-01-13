@@ -9,7 +9,7 @@
  * @since 2025
  */
 
-import type { IPlugin, PluginConfiguration, PluginRegistryConfig, PluginResolution } from './plugin-types';
+import type { FeatureFlag, IPlugin, PluginConfiguration, PluginRegistryConfig, PluginResolution } from './plugin-types';
 
 /**
  * Central registry for managing all application plugins
@@ -94,7 +94,9 @@ export class PluginRegistry {
           // Remove plugin from registry if initialization fails
           namespacePlugins.delete(name);
           const errorMessage = err instanceof Error ? err.message : String(err);
-          throw new Error(`Could not initialize plugin ${namespace}:${name}: ${errorMessage}`);
+          const error = new Error(`Could not initialize plugin ${namespace}:${name}: ${errorMessage}`);
+          console.error(error);
+          throw error;
         }
       }
     }
@@ -247,7 +249,9 @@ export class PluginRegistry {
           await Promise.resolve(pluginWithDispose.dispose());
         } catch (err) {
           const errorMessage = err instanceof Error ? err.message : String(err);
-          throw new Error(`Could not dispose plugin ${namespace}:${name}: ${errorMessage}`);
+          const error = new Error(`Could not dispose plugin ${namespace}:${name}: ${errorMessage}`);
+          console.error(error);
+          throw error;
         }
       }
     }
@@ -297,7 +301,7 @@ export class PluginRegistry {
    * @param flagName Feature flag name
    * @returns Complete feature flag configuration or null
    */
-  public getFeatureFlagConfig(flagName: string): import('./plugin-types').FeatureFlag | null {
+  public getFeatureFlagConfig(flagName: string): FeatureFlag | null {
     if (!this.config || !this.config.featureFlags) {
       return null;
     }

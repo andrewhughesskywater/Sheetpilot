@@ -17,7 +17,7 @@
  *   constants (`BASE_URL`, `FORM_ID`, `SUBMISSION_ENDPOINT`) exist only for compatibility.
  */
 
-import { botLogger } from "@sheetpilot/shared/logger";
+import { botLogger } from "../../../../../../shared/logger";
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -624,6 +624,7 @@ export const PROJECT_TO_TOOL_LABEL: Record<string, string> = {
   "OSC-BBB": "BBB Tool",
   "FL-Carver Techs": "Carver Tool",
   "FL-Carver Tools": "Carver Tool",
+  "SWFL-EQUIP": "SWFL Tool",
 };
 
 // ============================================================================

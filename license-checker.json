@@ -1,0 +1,16 @@
+{
+  "start": ".",
+  "onlyAllow": "",
+  "excludePrivatePackages": true,
+  "excludePackages": "",
+  "customPath": "",
+  "json": true,
+  "out": "reports/metrics/licenses.json",
+  "relativeLicensePath": false,
+  "unknown": true,
+  "onlyunknown": false,
+  "direct": false,
+  "production": false,
+  "development": false,
+  "optional": false
+}

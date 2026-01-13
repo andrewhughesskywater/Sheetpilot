@@ -20,49 +20,29 @@
  * - Hidden ID column (col 0) as "Golden Rule" for Handsontable-SQL sync
  */
 
-import { useState, useCallback, useMemo, useEffect, useRef, useImperativeHandle, forwardRef, memo, type MutableRefObject } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef, useImperativeHandle, forwardRef, memo } from 'react';
 import { HotTable } from '@handsontable/react-wrapper';
 import { registerAllModules } from 'handsontable/registry';
 import { registerEditor } from 'handsontable/editors';
 import type { HotTableRef } from '@handsontable/react-wrapper';
-import Alert from '@mui/material/Alert';
-import Button from '@mui/material/Button';
-import CircularProgress from '@mui/material/CircularProgress';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import EditIcon from '@mui/icons-material/Edit';
-import RefreshIcon from '@mui/icons-material/Refresh';
-import StopIcon from '@mui/icons-material/Stop';
-import SaveIcon from '@mui/icons-material/Save';
 import 'handsontable/styles/handsontable.css';
 import 'handsontable/styles/ht-theme-horizon.css';
 import { useData } from '../../contexts/DataContext';
 import { useSession } from '../../contexts/SessionContext';
-import { SubmitProgressBar } from '../SubmitProgressBar';
 import './TimesheetGrid.css';
 import type { TimesheetRow } from './timesheet.schema';
 import MacroManagerDialog from './MacroManagerDialog';
 import KeyboardShortcutsHintDialog from '../KeyboardShortcutsHintDialog';
-import { ValidationErrors } from './ValidationErrors';
 import { ValidationErrorDialog } from './ValidationErrorDialog';
+import TimesheetGridLoadingState from './TimesheetGridLoadingState';
+import TimesheetGridHeader from './TimesheetGridHeader';
+import MacroToolbar from './MacroToolbar';
+import TimesheetGridFooter from './TimesheetGridFooter';
 import type { MacroRow } from '../../utils/macroStorage';
 import { loadMacros, isMacroEmpty } from '../../utils/macroStorage';
+import type { ValidationError } from './timesheet.cell-processing';
 
 type ButtonStatus = 'neutral' | 'ready' | 'warning';
-
-interface ValidationError {
-  row: number;
-  col: number;
-  field: string;
-  message: string;
-}
-
-// Handsontable type definitions
-/**
- * Represents a single cell change in Handsontable afterChange callback
- * Format: [rowIndex, propertyName, oldValue, newValue]
- * Note: Using unknown for prop to match Handsontable's ColumnDataGetterSetterFunction type
- */
-type HandsontableChange = [row: number, prop: unknown, oldValue: unknown, newValue: unknown];
 
 /**
  * Date picker options interface for Handsontable date editor
@@ -84,14 +64,20 @@ interface DateEditor {
   finishEditing: (restoreOriginalValue: boolean, ctrlDown: boolean) => void;
 }
 
-import { formatTimeInput, normalizeRowData, isValidDate, isValidTime, isTimeOutAfterTimeIn, hasTimeOverlapWithPreviousEntries, normalizeDateFormat } from './timesheet.schema';
-import { PROJECTS, CHARGE_CODES, getToolsForProject, doesToolNeedChargeCode, doesProjectNeedTools } from '../../../../shared/business-config';
+import { normalizeRowData, isTimeOutAfterTimeIn, hasTimeOverlapWithPreviousEntries } from './timesheet.schema';
+import { getToolsForProject, doesToolNeedChargeCode, doesProjectNeedTools } from '../../../../shared/business-config';
+import { getColumnDefinitions } from './timesheet.column-config';
+import { validateTimesheetRows } from './timesheet.validation';
 import { submitTimesheet } from './timesheet.submit';
-import { batchSaveToDatabase as batchSaveToDatabaseUtil, deleteDraftRows, saveRowToDatabase } from './timesheet.persistence';
+import { batchSaveToDatabase as batchSaveToDatabaseUtil, saveRowToDatabase } from './timesheet.persistence';
 import { SpellcheckEditor } from './SpellcheckEditor';
 import { detectWeekdayPattern, getSmartPlaceholder, incrementDate, formatDateForDisplay } from '../../utils/smartDate';
 import { cancelTimesheetSubmission, loadDraft as loadDraftIpc, resetInProgress as resetInProgressIpc } from '../../services/ipc/timesheet';
 import { logError, logInfo, logWarn, logVerbose } from '../../services/ipc/logger';
+import { processCellChange } from './timesheet.cell-processing';
+import { applyPastedToolAndChargeCode, normalizePastedRows, savePastedRows } from './timesheet.paste-handlers';
+import { createSaveAndReloadRow, createUpdateSaveButtonState, createApplyMacro, createDuplicateSelectedRow, createCellsFunction } from './timesheet.row-operations';
+import { createHandleAfterChange, createHandleAfterRemoveRow, createHandleAfterPaste, createHandleSubmitTimesheet, createHandleStopSubmission, createHandleBeforeKeyDown, createHandleAfterSelection, createHandleManualSave, createHandleRefresh } from './timesheet.handlers';
 
 // Register all Handsontable modules
 registerAllModules();
@@ -102,221 +88,7 @@ registerEditor('spellcheckText', SpellcheckEditor);
 // Wrapper functions to match expected signatures
 const projectNeedsToolsWrapper = (p?: string) => doesProjectNeedTools(p || '');
 const toolNeedsChargeCodeWrapper = (t?: string) => doesToolNeedChargeCode(t || '');
-
-/**
- * Process a single cell change with validation, formatting, and cascading rules
- * 
- * Handles all cell-level logic including:
- * - Date and time format validation
- * - Required field validation
- * - Auto-clearing invalid values (reverts to previous value)
- * - Cascading business rules (project → tool → charge code)
- * - Visual feedback via cell meta styling
- * 
- * WHY inline validation instead of column validators:
- * Column validators block editor closing and cause navigation issues.
- * This approach validates in afterChange hook and uses setCellMeta for visual feedback.
- * 
- * @param change - Handsontable change tuple [row, prop, oldValue, newValue]
- * @param currentRow - Current row data before change
- * @param hotInstance - Handsontable instance for cell manipulation
- * @returns Processing result with updated row, validation status, and error info
- */
-function processCellChange(
-  change: HandsontableChange,
-  currentRow: TimesheetRow,
-  hotInstance: { propToCol: (prop: string) => number | unknown; setDataAtCell: (row: number, col: number, value: unknown, source?: string) => void; setCellMeta: (row: number, col: number, key: string, value: unknown) => void }
-): {
-  updatedRow: TimesheetRow;
-  isValid: boolean;
-  error: ValidationError | null;
-  shouldSkip: boolean;
-} {
-  const [rowIdx, prop, oldVal, newVal] = change;
-  const propStr = typeof prop === 'string' ? prop : typeof prop === 'number' ? String(prop) : '';
-  const colIdxRaw = hotInstance.propToCol(propStr);
-  const colIdx = typeof colIdxRaw === 'number' ? colIdxRaw : -1;
-  
-  if (colIdx < 0) {
-    return { updatedRow: currentRow, isValid: true, error: null, shouldSkip: true };
-  }
-  
-  let isValid = true;
-  let errorMessage = '';
-  let shouldClear = false;
-  
-  // Validate and normalize dates
-  if (propStr === 'date' && newVal) {
-    const dateStr = String(newVal);
-    isValid = isValidDate(dateStr);
-    if (!isValid) {
-      errorMessage = `Invalid date format "${String(newVal)}" (must be MM/DD/YYYY or YYYY-MM-DD)`;
-      shouldClear = true;
-    }
-  }
-  // Validate times
-  else if ((propStr === 'timeIn' || propStr === 'timeOut') && newVal) {
-    isValid = isValidTime(String(newVal));
-    if (!isValid) {
-      const fieldName = propStr === 'timeIn' ? 'start time' : 'end time';
-      errorMessage = `Invalid ${fieldName} "${String(newVal)}" (must be HH:MM in 15-min increments)`;
-      shouldClear = true;
-    }
-  }
-  // Validate required fields
-  else if ((propStr === 'project' || propStr === 'taskDescription') && !newVal) {
-    isValid = false;
-    const fieldName = propStr === 'project' ? 'Project' : 'Task Description';
-    errorMessage = `${fieldName} is required`;
-    shouldClear = true;
-  }
-  
-  // AUTO-CLEAR: If invalid, revert to previous value
-  if (shouldClear && isValid === false) {
-    const revertValue = oldVal ?? '';
-    hotInstance.setDataAtCell(rowIdx, colIdx, revertValue);
-    hotInstance.setCellMeta(rowIdx, colIdx, 'className', 'htInvalid');
-    
-    return {
-      updatedRow: { ...currentRow, [propStr]: revertValue },
-      isValid: false,
-      error: {
-        row: rowIdx,
-        col: colIdx,
-        field: propStr,
-        message: errorMessage
-      },
-      shouldSkip: true
-    };
-  }
-  
-  // VALID CHANGE: Process normally
-  let updatedRow: TimesheetRow = currentRow;
-  
-  if (isValid) {
-    // Normalize and format date inputs
-    if (propStr === 'date' && newVal && newVal !== oldVal) {
-      updatedRow = { ...currentRow, date: normalizeDateFormat(String(newVal)) };
-    }
-    // Format time inputs
-    else if ((propStr === 'timeIn' || propStr === 'timeOut') && newVal && newVal !== oldVal) {
-      updatedRow = { ...currentRow, [propStr]: formatTimeInput(String(newVal)) };
-    }
-    // Cascade project → tool → chargeCode
-    else if (propStr === 'project' && newVal !== oldVal) {
-      const project = String(newVal ?? '');
-      updatedRow = !doesProjectNeedTools(project)
-        ? { ...currentRow, project, tool: null, chargeCode: null }
-        : { ...currentRow, project };
-    } else if (propStr === 'tool' && newVal !== oldVal) {
-      const tool = String(newVal ?? '');
-      updatedRow = !doesToolNeedChargeCode(tool)
-        ? { ...currentRow, tool, chargeCode: null }
-        : { ...currentRow, tool };
-    } else {
-      updatedRow = { ...currentRow, [propStr]: newVal ?? '' };
-    }
-    
-    // Clear invalid styling if previously invalid
-    hotInstance.setCellMeta(rowIdx, colIdx, 'className', '');
-  }
-  
-  return { updatedRow, isValid, error: null, shouldSkip: false };
-}
-
-/**
- * Validate complete timesheet for submission readiness
- * 
- * Performs comprehensive validation including:
- * - Required field presence (date, times, project, description)
- * - Date and time format validation
- * - Time range validation (end > start)
- * - Business rule compliance (tool/charge code requirements)
- * - Time overlap detection across all rows
- * 
- * Used by submit button to determine if submission can proceed.
- * Only validates rows with at least one field populated (ignores empty rows).
- * 
- * @param rows - Array of timesheet rows to validate
- * @returns Validation result with error flag and detailed error messages
- */
-function validateTimesheetRows(rows: TimesheetRow[]): { hasErrors: boolean; errorDetails: string[] } {
-  if (!rows || rows.length === 0) {
-    return { hasErrors: false, errorDetails: [] };
-  }
-
-  // Check if there's any real data (non-empty rows)
-  const realRows = rows.filter((row) => {
-    return row.date || row.timeIn || row.timeOut || row.project || row.taskDescription;
-  });
-
-  if (realRows.length === 0) {
-    return { hasErrors: false, errorDetails: [] };
-  }
-
-  let hasErrors = false;
-  const errorDetails: string[] = [];
-  
-  realRows.forEach((row, idx) => {
-    const rowNum = idx + 1;
-    
-    // Check required fields
-    if (!row.date) {
-      errorDetails.push(`Row ${rowNum}: Missing date`);
-      hasErrors = true;
-    } else if (!isValidDate(row.date)) {
-      errorDetails.push(`Row ${rowNum}: Invalid date format "${row.date}"`);
-      hasErrors = true;
-    }
-    
-    if (!row.timeIn) {
-      errorDetails.push(`Row ${rowNum}: Missing start time`);
-      hasErrors = true;
-    } else if (!isValidTime(row.timeIn)) {
-      errorDetails.push(`Row ${rowNum}: Invalid start time "${row.timeIn}" (must be HH:MM in 15-min increments)`);
-      hasErrors = true;
-    }
-    
-    if (!row.timeOut) {
-      errorDetails.push(`Row ${rowNum}: Missing end time`);
-      hasErrors = true;
-    } else if (!isValidTime(row.timeOut)) {
-      errorDetails.push(`Row ${rowNum}: Invalid end time "${row.timeOut}" (must be HH:MM in 15-min increments)`);
-      hasErrors = true;
-    }
-    
-    if (!row.project) {
-      errorDetails.push(`Row ${rowNum}: Missing project`);
-      hasErrors = true;
-    }
-    
-    if (!row.taskDescription) {
-      errorDetails.push(`Row ${rowNum}: Missing task description`);
-      hasErrors = true;
-    }
-    
-    // Check if tool is required
-    if (row.project && doesProjectNeedTools(row.project) && !row.tool) {
-      errorDetails.push(`Row ${rowNum}: Project "${row.project}" requires a tool`);
-      hasErrors = true;
-    }
-    
-    // Check if charge code is required
-    if (row.tool && doesToolNeedChargeCode(row.tool) && !row.chargeCode) {
-      errorDetails.push(`Row ${rowNum}: Tool "${row.tool}" requires a charge code`);
-      hasErrors = true;
-    }
-  });
-
-  // Check for time overlaps
-  rows.forEach((row, idx) => {
-    if (!hasTimeOverlapWithPreviousEntries(idx, rows)) return;
-    errorDetails.push(`Row ${idx + 1}: Time overlap detected on ${row.date}`);
-    hasErrors = true;
-  });
-
-  return { hasErrors, errorDetails };
-}
+const getToolsForProjectWrapper = (project: string) => [...getToolsForProject(project)];
 
 // NOTE: Column validators removed - they block editor closing and cause navigation issues
 // Validation now happens in afterChange hook using setCellMeta for visual feedback
@@ -499,393 +271,48 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
     rowsPendingRemovalRef.current = timesheetDraftData.slice(start, _end);
     window.logger?.verbose('[TimesheetGrid] Captured rows for deletion', { start, amount, captured: rowsPendingRemovalRef.current.length });
   }, [timesheetDraftData]);
-  const updateSaveButtonState = useCallback(() => {
-    const hasUnsavedRows = unsavedRowsRef.current.size > 0;
-    const hasInFlightSaves = inFlightSavesRef.current.size > 0;
-    
-    if (hasInFlightSaves) {
-      if (saveStartTimeRef.current === null) {
-        saveStartTimeRef.current = Date.now();
-        setSaveButtonState('saving');
-      }
-      
-      const elapsed = Date.now() - (saveStartTimeRef.current || Date.now());
-      const minDuration = 1000;
-      
-      if (elapsed >= minDuration) {
-        const stillHasInFlight = inFlightSavesRef.current.size > 0;
-        const stillHasUnsaved = unsavedRowsRef.current.size > 0;
-        
-        if (!stillHasInFlight && !stillHasUnsaved) {
-          setSaveButtonState('saved');
-          saveStartTimeRef.current = null;
-        } else if (!stillHasInFlight && stillHasUnsaved) {
-          setSaveButtonState('save');
-          saveStartTimeRef.current = null;
-        }
-      } else {
-        const remaining = minDuration - elapsed;
-        setTimeout(() => {
-          updateSaveButtonState();
-        }, remaining);
-      }
-    } else {
-      if (hasUnsavedRows) {
-        setSaveButtonState('save');
-      } else {
-        setSaveButtonState('saved');
-      }
-      saveStartTimeRef.current = null;
-    }
-  }, []);
-  const saveAndReloadRow = useCallback(async (row: TimesheetRow, rowIdx: number) => {
-    const existingController = inFlightSavesRef.current.get(rowIdx);
-    if (existingController) {
-      existingController.abort();
-      window.logger?.debug('Cancelled previous save operation for row', { rowIdx });
-    }
-    
-    const abortController = new AbortController();
-    inFlightSavesRef.current.set(rowIdx, abortController);
-    
-    try {
-      const saveResult = await saveRowToDatabase(row);
-      
-      if (abortController.signal.aborted) {
-        window.logger?.debug('Save operation aborted', { rowIdx });
-        return;
-      }
-      
-      if (saveResult.success && saveResult.entry) {
-        const savedEntry = saveResult.entry;
-        
-        const hotInstance = hotTableRef.current?.hotInstance;
-        if (hotInstance) {
-          const currentData = hotInstance.getSourceData() as TimesheetRow[];
-          const currentRow = currentData[rowIdx];
-          
-          if (!currentRow) {
-            window.logger?.warn('Current row not found for receipt check', { rowIdx });
-            unsavedRowsRef.current.delete(rowIdx);
-            return;
-          }
-          
-          const fieldsMatch = 
-            currentRow.date === savedEntry.date &&
-            currentRow.timeIn === savedEntry.timeIn &&
-            currentRow.timeOut === savedEntry.timeOut &&
-            currentRow.project === savedEntry.project &&
-            (currentRow.tool ?? null) === (savedEntry.tool ?? null) &&
-            (currentRow.chargeCode ?? null) === (savedEntry.chargeCode ?? null) &&
-            currentRow.taskDescription === savedEntry.taskDescription;
-          
-          if (fieldsMatch) {
-            unsavedRowsRef.current.delete(rowIdx);
-            window.logger?.verbose('Row synced successfully', { 
-              id: savedEntry.id,
-              rowIdx 
-            });
-          } else {
-            window.logger?.debug('Row values changed during save (race condition)', { 
-              rowIdx,
-              saved: savedEntry,
-              current: currentRow
-            });
-          }
-          
-          const needsUpdate = !currentRow.id || currentRow.id !== savedEntry.id ||
-                             currentRow.timeIn !== savedEntry.timeIn ||
-                             currentRow.timeOut !== savedEntry.timeOut;
+  // WHY: Factory function dependencies are correctly listed - ESLint cannot statically analyze factory functions
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const updateSaveButtonState = useCallback(
+    createUpdateSaveButtonState(unsavedRowsRef, inFlightSavesRef, saveStartTimeRef, setSaveButtonState),
+    [unsavedRowsRef, inFlightSavesRef, saveStartTimeRef, setSaveButtonState]
+  );
+  // WHY: Factory function dependencies are correctly listed - ESLint cannot statically analyze factory functions
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const saveAndReloadRow = useCallback(
+    createSaveAndReloadRow(hotTableRef, setTimesheetDraftData, onChange, updateSaveButtonState, inFlightSavesRef, unsavedRowsRef, pendingSaveRef),
+    [hotTableRef, setTimesheetDraftData, onChange, updateSaveButtonState, inFlightSavesRef, unsavedRowsRef, pendingSaveRef]
+  );
 
-          if (needsUpdate) {
-             const updatedData = [...currentData];
-             updatedData[rowIdx] = { ...currentRow, ...savedEntry };
-             
-             setTimesheetDraftData(updatedData);
-             onChange?.(updatedData);
-             
-             window.logger?.verbose('Row saved and state updated', { 
-               id: savedEntry.id,
-               rowIdx 
-             });
-          }
-        }
-      } else {
-        window.logger?.warn('Could not save row to database', { 
-          error: saveResult.error,
-          rowIdx 
-        });
-      }
-      
-      pendingSaveRef.current.delete(rowIdx);
-      inFlightSavesRef.current.delete(rowIdx);
-      
-      updateSaveButtonState();
-    } catch (error) {
-      if (abortController.signal.aborted) {
-        return;
-      }
-      
-      window.logger?.error('Encountered error saving and reloading row', { 
-        rowIdx,
-        error: error instanceof Error ? error.message : String(error) 
-      });
-      pendingSaveRef.current.delete(rowIdx);
-      inFlightSavesRef.current.delete(rowIdx);
-      
-      updateSaveButtonState();
-    }
-  }, [onChange, setTimesheetDraftData, updateSaveButtonState]);
-
-  const handleAfterChange = useCallback((changes: HandsontableChange[] | null, source: string) => {
-    if (!changes || source === 'loadData' || source === 'updateData' || source === 'internal') return;
-    
-    const hotInstance = hotTableRef.current?.hotInstance;
-    if (!hotInstance) return;
-    
-    isProcessingChangeRef.current = true;
-    
-    const next = [...timesheetDraftData];
-    const newErrors: ValidationError[] = [];
-    const cellsToClearErrors: Array<{ row: number; col: number }> = [];
-    let needsUpdate = false;
-    for (const change of changes) {
-      const [rowIdx] = change;
-      if (!next[rowIdx]) continue;
-      
-      const currentRow = next[rowIdx];
-      const result = processCellChange(change, currentRow, hotInstance);
-      
-      if (result.shouldSkip) {
-        if (result.error) {
-          newErrors.push(result.error);
-          window.logger?.verbose('Auto-cleared invalid data', { 
-            rowIdx, 
-            field: result.error.field, 
-            oldVal: result.updatedRow[result.error.field as keyof TimesheetRow] 
-          });
-        }
-        continue;
-      }
-      
-      next[rowIdx] = result.updatedRow;
-      needsUpdate = true;
-      const [_, prop] = change;
-      const propStr = typeof prop === 'string' ? prop : typeof prop === 'number' ? String(prop) : '';
-      const colIdxRaw = hotInstance.propToCol(propStr);
-      const colIdx = typeof colIdxRaw === 'number' ? colIdxRaw : -1;
-      if (colIdx >= 0) {
-        cellsToClearErrors.push({ row: rowIdx, col: colIdx });
-      }
-    }
-    
-    const normalized = next.map(row => normalizeRowData(row, projectNeedsToolsWrapper, toolNeedsChargeCodeWrapper));
-    const overlapErrors: ValidationError[] = [];
-    const overlapClearedRows: number[] = [];
-    for (let i = 0; i < normalized.length; i++) {
-      const row = normalized[i];
-      if (!row) continue;
-      
-      if (row.date && row.timeIn && row.timeOut) {
-        const hasOverlap = hasTimeOverlapWithPreviousEntries(i, normalized);
-        const dateColIdx = hotInstance.propToCol('date');
-        const timeInColIdx = hotInstance.propToCol('timeIn');
-        const timeOutColIdx = hotInstance.propToCol('timeOut');
-        
-        if (hasOverlap) {
-          // Mark overlap error on date column
-          [dateColIdx, timeInColIdx, timeOutColIdx].forEach(colIdx => {
-            if (typeof colIdx === 'number' && colIdx >= 0) {
-              hotInstance.setCellMeta(i, colIdx, 'className', 'htInvalid');
-            }
-          });
-          
-          if (typeof dateColIdx === 'number' && dateColIdx >= 0) {
-            overlapErrors.push({
-              row: i,
-              col: dateColIdx,
-              field: 'date',
-              message: `Time overlap detected on ${row.date || 'this date'}`
-            });
-          }
-        } else {
-          // No overlap - clear any existing overlap styling and track for error removal
-          [dateColIdx, timeInColIdx, timeOutColIdx].forEach(colIdx => {
-            if (typeof colIdx === 'number' && colIdx >= 0) {
-              const rawClass = hotInstance.getCellMeta(i, colIdx).className;
-              const currentClass = Array.isArray(rawClass) ? rawClass.join(' ') : (rawClass || '');
-              if (currentClass.includes('htInvalid')) {
-                hotInstance.setCellMeta(i, colIdx, 'className', currentClass.replace('htInvalid', '').trim());
-              }
-            }
-          });
-          overlapClearedRows.push(i);
-        }
-      }
-    }
-    newErrors.push(...overlapErrors);
-    
-    // Check for timeOut > timeIn validation errors
-    const timeOutErrors: ValidationError[] = [];
-    const timeOutClearedRows: number[] = [];
-    for (let i = 0; i < normalized.length; i++) {
-      const row = normalized[i];
-      if (!row) continue;
-      const timeOutColIdx = hotInstance.propToCol('timeOut');
-      
-      if (row.timeIn && row.timeOut) {
-        if (!isTimeOutAfterTimeIn(row.timeIn, row.timeOut)) {
-          // Mark error on timeOut column
-          if (typeof timeOutColIdx === 'number' && timeOutColIdx >= 0) {
-            hotInstance.setCellMeta(i, timeOutColIdx, 'className', 'htInvalid');
-            timeOutErrors.push({
-              row: i,
-              col: timeOutColIdx,
-              field: 'timeOut',
-              message: `End time ${row.timeOut} must be after start time ${row.timeIn}`
-            });
-          }
-        } else {
-          // Valid - clear any existing error styling on timeOut
-          if (typeof timeOutColIdx === 'number' && timeOutColIdx >= 0) {
-            const rawClass = hotInstance.getCellMeta(i, timeOutColIdx).className;
-            const currentClass = Array.isArray(rawClass) ? rawClass.join(' ') : (rawClass || '');
-            if (currentClass.includes('htInvalid')) {
-              hotInstance.setCellMeta(i, timeOutColIdx, 'className', currentClass.replace('htInvalid', '').trim());
-            }
-            timeOutClearedRows.push(i);
-          }
-        }
-      }
-    }
-    newErrors.push(...timeOutErrors);
-    
-    // Add overlap-cleared rows to cellsToClearErrors so their errors get removed
-    const dateColIdx = hotInstance.propToCol('date');
-    if (typeof dateColIdx === 'number' && dateColIdx >= 0) {
-      for (const rowIdx of overlapClearedRows) {
-        cellsToClearErrors.push({ row: rowIdx, col: dateColIdx });
-      }
-    }
-    
-    // Add timeOut-cleared rows to cellsToClearErrors
-    const timeOutColIdxForClearing = hotInstance.propToCol('timeOut');
-    if (typeof timeOutColIdxForClearing === 'number' && timeOutColIdxForClearing >= 0) {
-      for (const rowIdx of timeOutClearedRows) {
-        cellsToClearErrors.push({ row: rowIdx, col: timeOutColIdxForClearing });
-      }
-    }
-    
-    if (needsUpdate) {
-      setTimesheetDraftData(normalized);
-      onChange?.(normalized);
-    }
-    setValidationErrors(prev => {
-      let filtered = prev;
-      
-      if (cellsToClearErrors.length > 0) {
-        filtered = filtered.filter(prevErr => 
-          !cellsToClearErrors.some(clear => clear.row === prevErr.row && clear.col === prevErr.col)
-        );
-      }
-      
-      if (newErrors.length > 0) {
-        filtered = filtered.filter(prevErr => 
-          !newErrors.some(newErr => newErr.row === prevErr.row && newErr.col === prevErr.col)
-        );
-      }
-      
-      return [...filtered, ...newErrors];
-    });
-    for (const change of changes) {
-      const [rowIdx] = change;
-      if (normalized[rowIdx]) {
-        unsavedRowsRef.current.set(rowIdx, normalized[rowIdx]);
-      }
-    }
-    
-    if (changes.length > 0) {
-      setSaveButtonState('save');
-    }
-    
-    const DEBOUNCE_DELAY = 500;
-    for (const change of changes) {
-      const [rowIdx] = change;
-      const row = normalized[rowIdx];
-      if (!row) continue;
-      
-      // Note: We no longer skip saving overlapping rows - the validation error
-      // will still show and prevent submission, but data will be persisted
-      
-      const hasAnyData = row.date || row.timeIn || row.timeOut || row.project || row.taskDescription;
-      if (hasAnyData) {
-        const existingTimer = saveTimersRef.current.get(rowIdx);
-        if (existingTimer) {
-          clearTimeout(existingTimer);
-        }
-        const timer = setTimeout(() => {
-          void (async () => {
-            window.logger?.verbose('[TimesheetGrid] Saving individual row', { rowIdx });
-            await saveAndReloadRow(row, rowIdx);
-            saveTimersRef.current.delete(rowIdx);
-          })();
-        }, DEBOUNCE_DELAY);
-        
-        saveTimersRef.current.set(rowIdx, timer);
-      }
-    }
-    
-    hotInstance.render();
-    
-    setTimeout(() => {
-      isProcessingChangeRef.current = false;
-    }, 100);
-  }, [timesheetDraftData, setTimesheetDraftData, onChange, saveAndReloadRow]);
-  const handleAfterRemoveRow = useCallback(async (index: number, amount: number) => {
-    const removedRows = rowsPendingRemovalRef.current || [];
-    rowsPendingRemovalRef.current = [];
-
-    /**
-     * WHY: Handsontable sometimes calls afterRemoveRow without beforeRemoveRow hook,
-     * causing missing row capture. This safety check prevents data loss by detecting
-     * the edge case, though it means we skip DB deletion for those rows.
-     */
-    if (removedRows.length === 0) {
-      const start = Math.max(0, index);
-      window.logger?.warn('No captured rows before deletion; skipping DB delete', { index: start, amount });
-      return;
-    }
-
-    // Delete from database
-    const rowIds = removedRows
-      .filter(row => row?.id !== undefined && row?.id !== null)
-      .map(row => row.id!);
-    
-    if (rowIds.length > 0) {
-      const deletedCount = await deleteDraftRows(rowIds);
-      window.logger?.info('Rows removed from database successfully', { count: deletedCount, requested: amount });
-    }
-
-    /**
-     * WHY: Handsontable has already removed rows from its internal data at this point.
-     * We need to sync React state to match, otherwise the state becomes stale and causes
-     * inconsistencies in other operations.
-     */
-    if (!hotTableRef.current?.hotInstance) {
-      window.logger?.warn('Cannot sync state - Handsontable instance not available');
-      return;
-    }
-    
-    const hotData = hotTableRef.current.hotInstance.getSourceData() as TimesheetRow[];
-    window.logger?.verbose('Syncing state with Handsontable', {
-      hotDataLength: hotData.length,
-      oldStateLength: timesheetDraftData.length,
-      deletedRowsCount: amount
-    });
-    
-    setTimesheetDraftData(hotData);
-    onChange?.(hotData);
-  }, [timesheetDraftData, setTimesheetDraftData, onChange]);
+  // WHY: Factory function dependencies are correctly listed - ESLint cannot statically analyze factory functions
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const handleAfterChange = useCallback(
+    createHandleAfterChange(
+      hotTableRef,
+      timesheetDraftData,
+      setTimesheetDraftData,
+      onChange,
+      isProcessingChangeRef,
+      saveAndReloadRow,
+      setValidationErrors,
+      setSaveButtonState,
+      unsavedRowsRef,
+      saveTimersRef,
+      processCellChange,
+      normalizeRowData,
+      projectNeedsToolsWrapper,
+      toolNeedsChargeCodeWrapper,
+      hasTimeOverlapWithPreviousEntries,
+      isTimeOutAfterTimeIn
+    ),
+    [hotTableRef, timesheetDraftData, setTimesheetDraftData, onChange, isProcessingChangeRef, saveAndReloadRow, setValidationErrors, setSaveButtonState, unsavedRowsRef, saveTimersRef]
+  );
+  // WHY: Factory function dependencies are correctly listed - ESLint cannot statically analyze factory functions
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const handleAfterRemoveRow = useCallback(
+    createHandleAfterRemoveRow(hotTableRef, timesheetDraftData, setTimesheetDraftData, onChange, rowsPendingRemovalRef),
+    [hotTableRef, timesheetDraftData, setTimesheetDraftData, onChange, rowsPendingRemovalRef]
+  );
 
   /**
    * WHY: Handsontable's strict validation blocks paste for Tool/Charge Code dropdowns
@@ -896,175 +323,25 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
     return true;
   }, []);
 
-  // Apply pasted tool and charge code values to Handsontable
-  const applyPastedToolAndChargeCode = useCallback((
-    data: unknown[][],
-    startRow: number,
-    startCol: number,
-    hotInstance: { propToCol: (prop: string) => number | unknown; setCellMeta: (row: number, col: number, key: string, value: unknown) => void; setDataAtCell: (row: number, col: number, value: unknown, source?: string) => void }
-  ): void => {
-    const toolCol = hotInstance.propToCol('tool');
-    const chargeCodeCol = hotInstance.propToCol('chargeCode');
-    
-    data.forEach((row, i) => {
-      const targetRow = startRow + i;
-      if (targetRow < 0 || row.length < 7) return;
-      
-      const [_date, _timeIn, _timeOut, _project, tool, chargeCode, _taskDescription] = row;
-      
-      /**
-       * WHY: Temporarily relax validation to allow pasting Tool values that aren't
-       * in current project's dropdown. Without this, strict validation blocks the paste.
-       * Validation gets re-enabled after 10ms to restore normal behavior.
-       */
-      if (startCol <= 4 && tool !== undefined && tool !== null && tool !== '') {
-        if (typeof toolCol === 'number' && toolCol >= 0) {
-          hotInstance.setCellMeta(targetRow, toolCol, 'allowInvalid', true);
-          hotInstance.setCellMeta(targetRow, toolCol, 'strict', false);
-          hotInstance.setDataAtCell(targetRow, toolCol, tool, 'paste');
-          setTimeout(() => {
-            hotInstance.setCellMeta(targetRow, toolCol, 'allowInvalid', false);
-            hotInstance.setCellMeta(targetRow, toolCol, 'strict', true);
-          }, 10);
-        }
-      }
-      
-      if (startCol <= 5 && chargeCode !== undefined && chargeCode !== null && chargeCode !== '') {
-        if (typeof chargeCodeCol === 'number' && chargeCodeCol >= 0) {
-          hotInstance.setCellMeta(targetRow, chargeCodeCol, 'allowInvalid', true);
-          hotInstance.setCellMeta(targetRow, chargeCodeCol, 'strict', false);
-          hotInstance.setDataAtCell(targetRow, chargeCodeCol, chargeCode, 'paste');
-          setTimeout(() => {
-            hotInstance.setCellMeta(targetRow, chargeCodeCol, 'allowInvalid', false);
-            hotInstance.setCellMeta(targetRow, chargeCodeCol, 'strict', true);
-          }, 10);
-        }
-      }
-    });
-  }, []);
-
-  // Normalize pasted rows and update Handsontable if needed
-  const normalizePastedRows = useCallback((
-    pastedRowIndices: number[],
-    currentData: TimesheetRow[],
-    hotInstance: { propToCol: (prop: string) => number | unknown; setDataAtCell: (row: number, col: number, value: unknown, source?: string) => void; render: () => void }
-  ): { updatedData: TimesheetRow[]; hasChanges: boolean } => {
-    const updatedData = [...currentData];
-    let hasChanges = false;
-    
-    pastedRowIndices.forEach(rowIdx => {
-      const row = updatedData[rowIdx];
-      if (!row) return;
-      
-      const normalizedRow = normalizeRowData(row, projectNeedsToolsWrapper, toolNeedsChargeCodeWrapper);
-      
-      if (normalizedRow.tool !== row.tool || normalizedRow.chargeCode !== row.chargeCode) {
-        hasChanges = true;
-        updatedData[rowIdx] = normalizedRow;
-        
-        if (normalizedRow.tool !== row.tool) {
-          const toolCol = hotInstance.propToCol('tool');
-          if (typeof toolCol === 'number' && toolCol >= 0) {
-            hotInstance.setDataAtCell(rowIdx, toolCol, normalizedRow.tool, 'paste');
-          }
-        }
-        if (normalizedRow.chargeCode !== row.chargeCode) {
-          const chargeCodeCol = hotInstance.propToCol('chargeCode');
-          if (typeof chargeCodeCol === 'number' && chargeCodeCol >= 0) {
-            hotInstance.setDataAtCell(rowIdx, chargeCodeCol, normalizedRow.chargeCode, 'paste');
-          }
-        }
-      }
-    });
-    
-    return { updatedData, hasChanges };
-  }, []);
-
-  // Save complete pasted rows immediately (without debounce)
-  const savePastedRows = useCallback((
-    pastedRowIndices: number[],
-    normalizedData: TimesheetRow[],
-    saveTimersRef: MutableRefObject<Map<number, ReturnType<typeof setTimeout>>>,
-    pendingSaveRef: MutableRefObject<Map<number, TimesheetRow>>,
-    saveAndReloadRow: (row: TimesheetRow, rowIdx: number) => Promise<void>
-  ): void => {
-    pastedRowIndices.forEach(rowIdx => {
-      const normalizedRow = normalizedData[rowIdx];
-      if (!normalizedRow) return;
-      
-      // Check if row is complete (has all required fields)
-      // Note: We save even if there's overlap - validation will show errors but data is persisted
-      if (normalizedRow.date && normalizedRow.timeIn && normalizedRow.timeOut && 
-          normalizedRow.project && normalizedRow.taskDescription) {
-        // Clear any existing debounce timer for this row
-        const existingTimer = saveTimersRef.current.get(rowIdx);
-        if (existingTimer) {
-          clearTimeout(existingTimer);
-          saveTimersRef.current.delete(rowIdx);
-        }
-        
-        // Remove from pending saves if present
-        pendingSaveRef.current.delete(rowIdx);
-        
-        // Immediately save the row without debounce
-        window.logger?.verbose('Immediately saving pasted row', { rowIdx });
-        saveAndReloadRow(normalizedRow, rowIdx).catch(error => {
-          window.logger?.error('Could not save pasted row immediately', {
-            rowIdx,
-            error: error instanceof Error ? error.message : String(error)
-          });
-        });
-      }
-    });
-  }, []);
-
-  // After paste completes, manually apply Tool and Charge Code, then normalize and save
-  const handleAfterPaste = useCallback((data: unknown[][], coords: { startRow: number; startCol: number; endRow: number; endCol: number }[]) => {
-    if (!coords || coords.length === 0) return;
-    
-    const hotInstance = hotTableRef.current?.hotInstance;
-    if (!hotInstance) return;
-    
-    const firstCoord = coords[0];
-    if (!firstCoord) return;
-    const { startRow, startCol } = firstCoord;
-    
-    // First, manually apply Tool and Charge Code from pasted data
-    applyPastedToolAndChargeCode(data, startRow, startCol, hotInstance);
-    
-    // Wait for Handsontable to finish processing the paste, then normalize and validate
-    setTimeout(() => {
-      const hotInstanceAfterPaste = hotTableRef.current?.hotInstance;
-      if (!hotInstanceAfterPaste) return;
-      
-      const currentData = hotInstanceAfterPaste.getSourceData() as TimesheetRow[];
-      const pastedRowIndices: number[] = [];
-      
-      // Collect all pasted row indices
-      for (let i = startRow; i <= startRow + data.length - 1 && i < currentData.length; i++) {
-        if (i >= 0) {
-          pastedRowIndices.push(i);
-        }
-      }
-      
-      // Normalize each pasted row
-      const { updatedData, hasChanges } = normalizePastedRows(pastedRowIndices, currentData, hotInstanceAfterPaste);
-      
-      // Update state if normalization changed anything
-      if (hasChanges) {
-        setTimesheetDraftData(updatedData);
-        onChange?.(updatedData);
-        hotInstanceAfterPaste.render();
-      }
-      
-      // Now save all complete pasted rows immediately
-      const normalizedData = updatedData.map(row => 
-        normalizeRowData(row, projectNeedsToolsWrapper, toolNeedsChargeCodeWrapper)
-      );
-      
-      savePastedRows(pastedRowIndices, normalizedData, saveTimersRef, pendingSaveRef, saveAndReloadRow);
-    }, 100);
-  }, [applyPastedToolAndChargeCode, normalizePastedRows, savePastedRows, saveAndReloadRow, setTimesheetDraftData, onChange]);
+  // WHY: Factory function dependencies are correctly listed - ESLint cannot statically analyze factory functions
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const handleAfterPaste = useCallback(
+    createHandleAfterPaste(
+      hotTableRef,
+      setTimesheetDraftData,
+      onChange,
+      saveTimersRef,
+      pendingSaveRef,
+      saveAndReloadRow,
+      applyPastedToolAndChargeCode,
+      normalizePastedRows,
+      savePastedRows,
+      normalizeRowData,
+      projectNeedsToolsWrapper,
+      toolNeedsChargeCodeWrapper
+    ),
+    [hotTableRef, setTimesheetDraftData, onChange, saveTimersRef, pendingSaveRef, saveAndReloadRow]
+  );
 
   const handleAfterBeginEditing = useCallback((row: number, column: number) => {
     setValidationErrors(prev => prev.filter(err => !(err.row === row && err.col === column)));
@@ -1082,7 +359,7 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
         if (dateEditor.$datePicker && dateEditor.$datePicker._o) {
           const originalOnSelect = dateEditor.$datePicker._o.onSelect;
           // WHY: 'this' context must be preserved for picker's internal state management
-          // eslint-disable-next-line react-hooks/unsupported-syntax
+           
           dateEditor.$datePicker._o.onSelect = function(this: DatePickerOptions, date: Date) {
             if (originalOnSelect) originalOnSelect.call(this, date);
             setTimeout(() => {
@@ -1098,116 +375,19 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
 
 
 
-  // Apply macro to current or first empty row
-  const applyMacro = useCallback((macroIndex: number) => {
-    const hotInstance = hotTableRef.current?.hotInstance;
-    if (!hotInstance) {
-      window.logger?.warn('Cannot apply macro - Handsontable instance not available');
-      return;
-    }
+  // WHY: Factory function dependencies are correctly listed - ESLint cannot statically analyze factory functions
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const applyMacro = useCallback(
+    createApplyMacro(hotTableRef, setTimesheetDraftData, onChange, macros, isMacroEmpty, normalizeRowData, projectNeedsToolsWrapper, toolNeedsChargeCodeWrapper),
+    [hotTableRef, setTimesheetDraftData, onChange, macros, isMacroEmpty, normalizeRowData, projectNeedsToolsWrapper, toolNeedsChargeCodeWrapper]
+  );
 
-    const macro = macros[macroIndex];
-    if (!macro || isMacroEmpty(macro)) {
-      window.logger?.verbose('Macro is empty, skipping application', { macroIndex });
-      return;
-    }
-
-    // Get current selection or find first empty row
-    let targetRow = 0;
-    const selected = hotInstance.getSelected();
-    if (selected && selected.length > 0) {
-      const firstSelection = selected[0];
-      if (firstSelection && typeof firstSelection[0] === 'number') {
-        targetRow = firstSelection[0]; // First selected row
-      }
-    } else {
-      // Find first empty row
-      const sourceData = hotInstance.getSourceData() as TimesheetRow[];
-      const emptyRowIndex = sourceData.findIndex(row => 
-        !row.date && !row.timeIn && !row.timeOut && !row.project && !row.taskDescription
-      );
-      if (emptyRowIndex >= 0) {
-        targetRow = emptyRowIndex;
-      } else {
-        targetRow = sourceData.length; // Add to end if no empty row found
-      }
-    }
-
-    window.logger?.info('Applying macro to row', { macroIndex: macroIndex + 1, targetRow });
-
-    /**
-     * WHY: Using setDataAtCell() would trigger validation that might block macro application.
-     * Directly modifying source data bypasses these restrictions, then loadData() applies
-     * changes with proper validation through the normal afterChange flow.
-     */
-    const sourceData = hotInstance.getSourceData() as TimesheetRow[];
-    
-    if (!sourceData[targetRow]) {
-      sourceData[targetRow] = {
-        date: '',
-        timeIn: '',
-        timeOut: '',
-        project: '',
-        tool: null,
-        chargeCode: null,
-        taskDescription: ''
-      };
-    }
-
-    const updatedRow: TimesheetRow = { ...sourceData[targetRow] };
-    if (macro.timeIn) updatedRow.timeIn = macro.timeIn;
-    if (macro.timeOut) updatedRow.timeOut = macro.timeOut;
-    if (macro.project) updatedRow.project = macro.project;
-    if (macro.tool !== undefined) updatedRow.tool = macro.tool;
-    if (macro.chargeCode !== undefined) updatedRow.chargeCode = macro.chargeCode;
-    if (macro.taskDescription) updatedRow.taskDescription = macro.taskDescription;
-
-    const normalizedRow = normalizeRowData(updatedRow, projectNeedsToolsWrapper, toolNeedsChargeCodeWrapper);
-    
-    sourceData[targetRow] = normalizedRow;
-    
-    hotInstance.loadData(sourceData);
-    
-    setTimesheetDraftData(sourceData);
-    onChange?.(sourceData);
-
-    requestAnimationFrame(() => {
-      hotInstance.selectCell(targetRow, 1);
-    });
-  }, [macros, setTimesheetDraftData, onChange]);
-
-  const duplicateSelectedRow = useCallback(() => {
-    const hotInstance = hotTableRef.current?.hotInstance;
-    if (!hotInstance) {
-      window.logger?.warn('Cannot duplicate row - Handsontable instance not available');
-      return;
-    }
-
-    const selected = hotInstance.getSelected();
-    if (!selected || selected.length === 0) {
-      window.logger?.verbose('No row selected for duplication');
-      return;
-    }
-
-    const firstSelection = selected[0];
-    const selectedRow = firstSelection?.[0];
-    if (typeof selectedRow !== 'number') return;
-    const rowData = hotInstance.getDataAtRow(selectedRow);
-    
-    if (!rowData || rowData.every(cell => !cell)) {
-      window.logger?.verbose('Selected row is empty, skipping duplication');
-      return;
-    }
-
-    window.logger?.info('Duplicating row', { selectedRow });
-
-    hotInstance.alter('insert_row_below', selectedRow, 1);
-    
-    const newRow = selectedRow + 1;
-    hotInstance.populateFromArray(newRow, 0, [rowData], undefined, undefined, 'overwrite');
-    
-    hotInstance.selectCell(newRow, 1);
-  }, []);
+  // WHY: Factory function dependencies are correctly listed - ESLint cannot statically analyze factory functions
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const duplicateSelectedRow = useCallback(
+    createDuplicateSelectedRow(hotTableRef),
+    [hotTableRef]
+  );
   useEffect(() => {
     const handleKeyDown = (e: globalThis.KeyboardEvent) => {
       if (!e.ctrlKey) return;
@@ -1231,383 +411,60 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [applyMacro, duplicateSelectedRow]);
-  const handleSubmitTimesheet = async () => {
-    window.logger?.info('Submit button clicked');
-    
-    /**
-     * WHY: Use synchronous ref instead of state to prevent race condition where
-     * rapid clicks could start multiple submissions before state updates propagate.
-     */
-    if (isProcessingRef.current) {
-      window.logger?.warn('Submit ignored - already processing (ref)');
-      return;
-    }
+  const handleSubmitTimesheet = useMemo(
+    () => createHandleSubmitTimesheet(
+      isProcessingRef,
+      setIsProcessing,
+      isAdmin,
+      token,
+      timesheetDraftData,
+      refreshTimesheetDraft,
+      refreshArchiveData,
+      submitTimesheet,
+      logError,
+      logWarn,
+      logVerbose
+    ),
+    [isProcessingRef, setIsProcessing, isAdmin, token, timesheetDraftData, refreshTimesheetDraft, refreshArchiveData]
+  );
+  const handleStopSubmission = useMemo(
+    () => createHandleStopSubmission(
+      isProcessingRef,
+      setIsProcessing,
+      refreshTimesheetDraft,
+      refreshArchiveData,
+      cancelTimesheetSubmission,
+      logInfo,
+      logWarn,
+      logError
+    ),
+    [isProcessingRef, setIsProcessing, refreshTimesheetDraft, refreshArchiveData]
+  );
 
-    if (isAdmin) {
-      const errorMsg = '❌ Admin users cannot submit timesheet entries to SmartSheet.';
-      window.alert(errorMsg);
-      window.logger?.warn('Admin attempted timesheet submission');
-      return;
-    }
+  // WHY: Factory function dependencies are correctly listed - ESLint cannot statically analyze factory functions
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const cellsFunction = useCallback(
+    createCellsFunction(timesheetDraftData, weekdayPatternRef, getSmartPlaceholder, projectNeedsToolsWrapper, getToolsForProjectWrapper, toolNeedsChargeCodeWrapper),
+    [timesheetDraftData, weekdayPatternRef, getSmartPlaceholder]
+  );
 
-    if (!token) {
-      const errorMsg = '❌ Session token is required. Please log in again.';
-      window.alert(errorMsg);
-      window.logger?.warn('Submit attempted without session token');
-      return;
-    }
-    
-    if (!timesheetDraftData || timesheetDraftData.length === 0) {
-      const errorMsg = '❌ No timesheet data to submit.';
-      window.alert(errorMsg);
-      window.logger?.warn('Submit attempted with no data');
-      return;
-    }
-    
-    isProcessingRef.current = true;
-    setIsProcessing(true);
-    
-    let submissionError: Error | null = null;
-    let refreshError: Error | null = null;
-    
-    try {
-      const res = await submitTimesheet(token, async () => {
-        try {
-          await refreshTimesheetDraft();
-        } catch (err) {
-          refreshError = err instanceof Error ? err : new Error(String(err));
-          window.logger?.error('Could not refresh timesheet data after submission', { 
-            error: refreshError.message 
-          });
-        }
-        try {
-          await refreshArchiveData();
-        } catch (err) {
-          refreshError = err instanceof Error ? err : new Error(String(err));
-          window.logger?.error('Could not refresh archive data after submission', { 
-            error: refreshError.message 
-          });
-        }
-      });
-      
-      if (res.error) {
-        submissionError = new Error(res.error);
-        const errorMsg = `❌ Submission failed: ${res.error}`;
-        window.alert(errorMsg);
-        window.logger?.error('Timesheet submission failed', { error: res.error });
-        return;
-      }
-      
-      if (res.submitResult && !res.submitResult.ok) {
-        const errorDetails = res.submitResult.error || 'Unknown error';
-        submissionError = new Error(errorDetails);
-        const errorMsg = `❌ Submission failed: ${res.submitResult.successCount}/${res.submitResult.totalProcessed} entries processed, ${res.submitResult.removedCount} failed. Error: ${errorDetails}`;
-        window.alert(errorMsg);
-        window.logger?.error('Timesheet submission partially failed', { 
-          successCount: res.submitResult.successCount,
-          totalProcessed: res.submitResult.totalProcessed,
-          removedCount: res.submitResult.removedCount,
-          error: errorDetails
-        });
-        return;
-      }
-      
-      const submitMsg = res.submitResult ? 
-        `✅ Submitted ${res.submitResult.successCount}/${res.submitResult.totalProcessed} entries to SmartSheet` : 
-        '✅ No pending entries to submit';
-      window.alert(submitMsg);
-      window.logger?.info('Timesheet submission completed successfully', {
-        successCount: res.submitResult?.successCount,
-        totalProcessed: res.submitResult?.totalProcessed
-      });
-    } catch (error) {
-      submissionError = error instanceof Error ? error : new Error(String(error));
-      const errorMsg = `❌ Unexpected error during submission: ${submissionError.message}`;
-      window.logger?.error('Unexpected error during submission', { 
-        error: submissionError.message,
-        stack: submissionError.stack 
-      });
-      window.alert(errorMsg);
-    } finally {
-      /**
-       * WHY: Must reset state in finally block to prevent UI lockup if browser closed
-       * during submission or if errors occur. Without this, submit button stays disabled.
-       */
-      window.logger?.verbose('Resetting submission state in finally block');
-      isProcessingRef.current = false;
-      setIsProcessing(false);
-      
-      /**
-       * WHY: Refresh data even on error to handle partial successes where some entries
-       * submitted but others failed. Ensures UI reflects actual database state.
-       */
-      if (!submissionError) {
-        logVerbose('Refreshing data in finally block');
-        try {
-          await Promise.all([
-            refreshTimesheetDraft().catch(err => {
-              logError('Could not refresh timesheet data in finally block', { 
-                error: err instanceof Error ? err.message : String(err) 
-              });
-            }),
-            refreshArchiveData().catch(err => {
-              logError('Could not refresh archive data in finally block', { 
-                error: err instanceof Error ? err.message : String(err) 
-              });
-            })
-          ]);
-        } catch (err) {
-          logError('Error during data refresh in finally block', { 
-            error: err instanceof Error ? err.message : String(err) 
-          });
-        }
-      }
-      
-      if (refreshError !== null && !submissionError) {
-        const err: Error = refreshError as Error;
-        const errorMessage = err.message || String(refreshError);
-        logWarn('Submission succeeded but data refresh failed', { 
-          error: errorMessage
-        });
-      }
-    }
-  };
-  const handleStopSubmission = async () => {
-    logInfo('Stop button clicked');
-    
-    if (!isProcessingRef.current) {
-      logWarn('Stop ignored - no submission in progress');
-      return;
-    }
+  // WHY: Factory function dependencies are correctly listed - ESLint cannot statically analyze factory functions
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const handleBeforeKeyDown = useCallback(
+    createHandleBeforeKeyDown(hotTableRef, timesheetDraftData, weekdayPatternRef, getSmartPlaceholder, incrementDate, formatDateForDisplay),
+    [hotTableRef, timesheetDraftData, weekdayPatternRef, getSmartPlaceholder, incrementDate, formatDateForDisplay]
+  );
 
-    try {
-      const result = await cancelTimesheetSubmission();
-      if (result.success) {
-          logInfo('Submission cancelled successfully');
-          window.alert('⏹️ Submission cancelled. Entries have been reset to pending status.');
-          
-          // Reset processing state
-          isProcessingRef.current = false;
-          setIsProcessing(false);
-          
-          // Refresh data to show updated status
-          await refreshTimesheetDraft();
-          await refreshArchiveData();
-      } else {
-        logWarn('Could not cancel submission', { error: result.error });
-        window.alert(`⚠️ Could not cancel submission: ${result.error || 'Unknown error'}`);
-      }
-    } catch (error) {
-      logError('Unexpected error during cancellation', { error: error instanceof Error ? error.message : String(error) });
-      window.alert(`❌ Unexpected error during cancellation: ${error instanceof Error ? error.message : String(error)}`);
-    }
-  };
-
-  // Cell-level configuration (cascades over column config)
-  const cellsFunction = useCallback((row: number, col: number) => {
-    // Add bounds checking to prevent out-of-bounds access
-    if (row < 0 || row >= timesheetDraftData.length) {
-      return {};
-    }
-    
-    const rowData = timesheetDraftData[row];
-    if (!rowData) {
-      return {};
-    }
-    
-    // Date column (col 1, after hidden ID at col 0) - smart placeholder
-    if (col === 1 && !rowData.date) {
-      const previousRow = row > 0 ? timesheetDraftData[row - 1] : undefined;
-      const smartPlaceholder = getSmartPlaceholder(previousRow, timesheetDraftData, weekdayPatternRef.current);
-      return {
-        placeholder: smartPlaceholder
-      };
-    }
-    
-    // Tool column (col 5, after ID/Date/TimeIn/TimeOut/Project) - dynamic dropdown based on selected project
-    if (col === 5) {
-      const project = rowData?.project;
-      if (!project || !doesProjectNeedTools(project)) {
-        return { 
-          className: 'htDimmed', 
-          placeholder: project ? 'N/A' : '',
-          readOnly: false,
-          source: []
-        };
-      }
-      return { 
-        source: [...getToolsForProject(project)], 
-        placeholder: 'Pick a Tool',
-        readOnly: false
-      };
-    }
-    
-    // Charge code column (col 6) - conditional based on selected tool
-    if (col === 6) {
-      const tool = rowData?.tool;
-      if (!tool || !doesToolNeedChargeCode(tool)) {
-        return { 
-          className: 'htDimmed', 
-          placeholder: tool ? 'N/A' : '',
-          readOnly: false
-        };
-      }
-      return { 
-        placeholder: 'Pick a Charge Code',
-        readOnly: false
-      };
-    }
-    
-    return {};
-  }, [timesheetDraftData]);
-
-  // Keyboard shortcuts for date column
-  const handleBeforeKeyDown = useCallback((event: globalThis.KeyboardEvent) => {
-    const hotInstance = hotTableRef.current?.hotInstance;
-    if (!hotInstance) return;
-
-    const selected = hotInstance.getSelected();
-    if (!selected || selected.length === 0) return;
-
-    const firstSelection = selected[0];
-    if (!firstSelection) return;
-    const [row, col] = firstSelection;
-    if (typeof row !== 'number' || typeof col !== 'number') return;
-    
-    // Only handle date column (column 1, after hidden ID column)
-    if (col !== 1) return;
-
-    const rowData = timesheetDraftData[row];
-    if (!rowData) return;
-
-    let dateToInsert: string | null = null;
-    let shouldPreventDefault = false;
-
-    // Get the smart placeholder for this cell
-    const previousRow = row > 0 ? timesheetDraftData[row - 1] : undefined;
-    const smartPlaceholder = getSmartPlaceholder(previousRow, timesheetDraftData, weekdayPatternRef.current);
-
-    // Check if the date editor is currently open
-    const editor = hotInstance.getActiveEditor();
-    const isEditorOpen = editor && editor.isOpened && editor.isOpened();
-
-    // Handle different key combinations
-    if (event.key === 'Tab' && event.ctrlKey) {
-      // Ctrl+Tab: insert day after the last entry (regardless of smart suggestion)
-      const lastEntryWithDate = timesheetDraftData
-        .slice(0, row)
-        .reverse()
-        .find(r => r.date);
-      
-      if (lastEntryWithDate?.date) {
-        dateToInsert = incrementDate(lastEntryWithDate.date, 1, weekdayPatternRef.current);
-        shouldPreventDefault = true;
-      }
-    } else if (event.key === 'Tab' && event.shiftKey) {
-      // Shift+Tab: insert day after placeholder
-      if (!rowData.date && smartPlaceholder) {
-        dateToInsert = incrementDate(smartPlaceholder, 1, weekdayPatternRef.current);
-        shouldPreventDefault = true;
-      }
-    } else if (event.key === 'Tab') {
-      // Tab: accept placeholder value (works even when date picker is open)
-      if (!rowData.date && smartPlaceholder) {
-        dateToInsert = smartPlaceholder;
-        shouldPreventDefault = true;
-      }
-    } else if (event.ctrlKey && event.key === 't') {
-      // Insert today's date
-      dateToInsert = formatDateForDisplay(new Date());
-      shouldPreventDefault = true;
-    }
-
-    if (dateToInsert && shouldPreventDefault) {
-      event.preventDefault();
-      event.stopPropagation();
-      
-      // If editor is open, close it first
-      if (isEditorOpen && editor) {
-        editor.finishEditing(false, false);
-      }
-      
-      // Insert the date (column 1)
-      hotInstance.setDataAtCell(row, 1, dateToInsert);
-      
-      // Move focus to next column (timeIn at column 2)
-      setTimeout(() => {
-        hotInstance.selectCell(row, 2);
-      }, 10);
-    }
-  }, [timesheetDraftData]);
-
-  // Handle cell selection changes - clear invalid entries when user moves away
-  const handleAfterSelection = useCallback((row: number, col: number) => {
-    const hotInstance = hotTableRef.current?.hotInstance;
-    if (!hotInstance) return;
-
-    // Validate row and col are valid unsigned integers (Handsontable can pass -1 for headers)
-    if (row < 0 || col < 0 || !Number.isInteger(row) || !Number.isInteger(col)) {
-      return;
-    }
-
-    const prevSelection = previousSelectionRef.current;
-    
-    // If user moved away from a cell
-    if (prevSelection && (prevSelection.row !== row || prevSelection.col !== col)) {
-      // Validate previous selection coordinates before using them
-      if (prevSelection.row < 0 || prevSelection.col < 0 || 
-          !Number.isInteger(prevSelection.row) || !Number.isInteger(prevSelection.col)) {
-        // Update current selection and skip invalid cell cleanup
-        previousSelectionRef.current = { row, col };
-        return;
-      }
-      
-      // Check if previous cell was invalid
-      const cellMeta = hotInstance.getCellMeta(prevSelection.row, prevSelection.col);
-      if (cellMeta.className === 'htInvalid') {
-        // Clear the invalid cell value after a brief delay
-        setTimeout(() => {
-          hotInstance.setDataAtCell(prevSelection.row, prevSelection.col, '', 'clearInvalid');
-          
-          // Clear the validation error styling
-          hotInstance.setCellMeta(prevSelection.row, prevSelection.col, 'className', '');
-          hotInstance.render();
-          
-          // Remove the error from state
-          setValidationErrors(prev => 
-            prev.filter(err => !(err.row === prevSelection.row && err.col === prevSelection.col))
-          );
-          
-          window.logger?.verbose('Cleared invalid entry', { row: prevSelection.row, col: prevSelection.col });
-        }, 100);
-      }
-    }
-    
-    // Update previous selection
-    previousSelectionRef.current = { row, col };
-  }, []);
+  // WHY: Factory function dependencies are correctly listed - ESLint cannot statically analyze factory functions
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const handleAfterSelection = useCallback(
+    createHandleAfterSelection(hotTableRef, previousSelectionRef, setValidationErrors),
+    [hotTableRef, previousSelectionRef, setValidationErrors]
+  );
 
   // Column definitions - NO validators (validation happens in afterChange to prevent editor blocking)
   // CRITICAL: ID column must be first and hidden - this is the "Golden Rule" for Handsontable-SQL sync
-  const columnDefinitions = useMemo(() => [
-    { data: 'id', title: 'ID', type: 'numeric', width: 0.1, readOnly: true }, // Hidden ID column for row identity
-    { data: 'date', title: 'Date', type: 'date', dateFormat: 'MM/DD/YYYY', placeholder: 'MM/DD/YYYY', className: 'htCenter' },
-    { data: 'timeIn', title: 'Start Time', type: 'text', placeholder: '0000 to 2400', className: 'htCenter' },
-    { data: 'timeOut', title: 'End Time', type: 'text', placeholder: '0000 to 2400', className: 'htCenter' },
-    { data: 'project', 
-      title: 'Project', 
-      type: 'dropdown', 
-      source: [...PROJECTS], 
-      strict: true, 
-      allowInvalid: false, 
-      placeholder: 'Pick a project', 
-      className: 'htCenter',
-      trimDropdown: false
-    },
-    { data: 'tool', title: 'Tool', type: 'dropdown', source: [], strict: true, allowInvalid: false, placeholder: '', className: 'htCenter' },
-    { data: 'chargeCode', title: 'Charge Code', type: 'dropdown', source: [...CHARGE_CODES], strict: true, allowInvalid: false, placeholder: '', className: 'htCenter' },
-    { data: 'taskDescription', title: 'Task Description', editor: 'spellcheckText', placeholder: '', className: 'htLeft', maxLength: 120 }
-  ], []);
+  const columnDefinitions = useMemo(() => getColumnDefinitions(), []);
 
   // Validate timesheet data for button status - MUST be before early returns
   const buttonStatus: ButtonStatus = useMemo(() => {
@@ -1630,151 +487,29 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
     return 'ready';
   }, [timesheetDraftData]);
 
-  // Manual save handler - saves all unsaved rows
-  const handleManualSave = useCallback(async () => {
-    if (saveButtonState !== 'save') return;
-    
-    const unsavedRows = Array.from(unsavedRowsRef.current.entries());
-    if (unsavedRows.length === 0) return;
-    
-    // Set saving state
-    if (saveStartTimeRef.current === null) {
-      saveStartTimeRef.current = Date.now();
-    }
-    setSaveButtonState('saving');
-    
-    // Save all unsaved rows individually to get receipt checks
-    const savePromises = unsavedRows.map(([rowIdx, row]) => 
-      saveAndReloadRow(row, rowIdx).catch(error => {
-        window.logger?.error('Could not save row during manual save', {
-          rowIdx,
-          error: error instanceof Error ? error.message : String(error)
-        });
-      })
-    );
-    
-    await Promise.all(savePromises);
-    
-    // Update button state (with minimum duration enforcement)
-    updateSaveButtonState();
-  }, [saveButtonState, saveAndReloadRow, updateSaveButtonState]);
+  // WHY: Factory function dependencies are correctly listed - ESLint cannot statically analyze factory functions
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const handleManualSave = useCallback(
+    createHandleManualSave(saveButtonState, unsavedRowsRef, saveStartTimeRef, setSaveButtonState, saveAndReloadRow, updateSaveButtonState),
+    [saveButtonState, unsavedRowsRef, saveStartTimeRef, setSaveButtonState, saveAndReloadRow, updateSaveButtonState]
+  );
 
-  if (isTimesheetDraftLoading) {
-    return (
-      <div className="timesheet-page">
-        <h2 className="md-typescale-headline-medium">Timesheet</h2>
-        <p className="md-typescale-body-large">Loading draft data...</p>
-      </div>
-    );
-  }
+  // WHY: Factory function dependencies are correctly listed - ESLint cannot statically analyze factory functions
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const handleRefresh = useCallback(
+    createHandleRefresh(setTimesheetDraftData, logInfo, logWarn, logError, resetInProgressIpc, loadDraftIpc),
+    [setTimesheetDraftData]
+  );
 
-  if (timesheetDraftError) {
-    return (
-      <div className="timesheet-page">
-        <h2 className="md-typescale-headline-medium">Timesheet</h2>
-        <p className="md-typescale-body-large timesheet-error-message">
-          Error loading timesheet data: {timesheetDraftError}
-        </p>
-      </div>
-    );
+  if (isTimesheetDraftLoading || timesheetDraftError) {
+    return <TimesheetGridLoadingState isLoading={isTimesheetDraftLoading} error={timesheetDraftError} />;
   }
 
   return (
     <div className="timesheet-page">
-      <div className="timesheet-header">
-        {/* Save Button */}
-        <Button
-          className="save-button"
-          variant="contained"
-          onClick={handleManualSave}
-          disabled={saveButtonState === 'saving' || saveButtonState === 'saved'}
-          startIcon={
-            saveButtonState === 'saving' ? (
-              <CircularProgress size={16} sx={{ color: 'inherit' }} />
-            ) : (
-              <SaveIcon />
-            )
-          }
-          sx={{
-            backgroundColor: 
-              saveButtonState === 'saved' 
-                ? '#4CAF50' // Green for "Saved" state
-                : saveButtonState === 'saving'
-                ? 'var(--md-sys-color-primary)'
-                : '#2196F3', // Blue for "Save" state
-            color: 
-              saveButtonState === 'saved'
-                ? '#FFFFFF' // White text on green
-                : '#FFFFFF', // White text for blue/primary backgrounds
-            '&:disabled': {
-              backgroundColor: 
-                saveButtonState === 'saved'
-                  ? '#4CAF50' // Green for "Saved" state
-                  : saveButtonState === 'saving'
-                  ? 'var(--md-sys-color-primary)'
-                  : '#2196F3',
-              color: '#FFFFFF',
-            },
-            textTransform: 'none',
-            minWidth: 120,
-          }}
-        >
-          {saveButtonState === 'saved' 
-            ? 'Saved' 
-            : saveButtonState === 'saving' 
-            ? 'Saving' 
-            : 'Save'}
-        </Button>
-        
-        {isAdmin && (
-          <Alert severity="warning" sx={{ mb: 2 }}>
-            Admin users cannot submit timesheet entries to SmartSheet.
-          </Alert>
-        )}
-      </div>
+      <TimesheetGridHeader saveButtonState={saveButtonState} onSave={handleManualSave} isAdmin={isAdmin} />
       
-      {/* Macro Toolbar */}
-      <div className="macro-toolbar">
-        {macros.map((macro, index) => {
-          const isEmpty = isMacroEmpty(macro);
-          const displayName = macro.name?.trim() || `Macro ${index + 1}`;
-          const label = isEmpty 
-            ? `Macro ${index + 1}`
-            : displayName.length > 30
-              ? `${displayName.slice(0, 30)}...`
-              : displayName;
-          
-          const tooltipText = isEmpty 
-            ? `Macro ${index + 1} not configured`
-            : `${displayName}${macro.taskDescription ? ` - ${macro.taskDescription}` : ''}`;
-          
-          return (
-            <Button
-              key={index}
-              className="macro-button"
-              variant="outlined"
-              size="small"
-              disabled={isEmpty}
-              onClick={() => applyMacro(index)}
-              title={tooltipText}
-            >
-              <span className="macro-button-label">
-                {label}
-                <span className="macro-button-shortcut">Ctrl+{index + 1}</span>
-              </span>
-            </Button>
-          );
-        })}
-        <Button
-          className="macro-edit-button"
-          variant="text"
-          size="small"
-          startIcon={<EditIcon />}
-          onClick={() => setShowMacroDialog(true)}
-        >
-          Edit Macros...
-        </Button>
-      </div>
+      <MacroToolbar macros={macros} onApplyMacro={applyMacro} onEditMacros={() => setShowMacroDialog(true)} />
 
       <HotTable
         ref={hotTableRef}
@@ -1823,78 +558,17 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
         tabMoves={{ row: 0, col: 1 }}
         invalidCellClassName="htInvalid"
       />
-      <div className="timesheet-footer">
-        <ValidationErrors
-          errors={validationErrors}
-          onShowAllErrors={() => setShowErrorDialog(true)}
-        />
-        <div style={{ display: 'flex', gap: 'var(--sp-space-2)', alignItems: 'center' }}>
-          <Button
-            variant="outlined"
-            size="medium"
-            startIcon={<RefreshIcon />}
-            onClick={async () => {
-              logInfo('Refresh button clicked - resetting in-progress entries and reloading table');
-              try {
-                // First, explicitly reset in-progress entries
-                const resetResult = await resetInProgressIpc();
-                if (resetResult.success) {
-                  logInfo('Reset in-progress entries', { count: resetResult.count || 0 });
-                  if (resetResult.count && resetResult.count > 0) {
-                    window.alert(`✅ Reset ${resetResult.count} in-progress ${resetResult.count === 1 ? 'entry' : 'entries'} to pending status.`);
-                  }
-                } else if (resetResult.error) {
-                  logWarn('Could not reset in-progress entries', { error: resetResult.error });
-                }
-                
-                // Then refresh the table data
-                const response = await loadDraftIpc();
-                if (response?.success) {
-                  const draftData = response.entries || [];
-                  const rowsWithBlank =
-                    draftData.length > 0 && Object.keys(draftData[0] || {}).length > 0 ? [...draftData, {}] : [{}];
-                  setTimesheetDraftData(rowsWithBlank);
-                  logInfo('Table refreshed successfully', { count: draftData.length });
-                } else {
-                  logWarn('Refresh failed', { error: response?.error });
-                  window.alert(`⚠️ Could not load table data: ${response?.error || 'Unknown error'}`);
-                }
-              } catch (error) {
-                logError('Could not refresh table', { error: error instanceof Error ? error.message : String(error) });
-                window.alert(`❌ Could not refresh table: ${error instanceof Error ? error.message : String(error)}`);
-              }
-            }}
-            disabled={isTimesheetDraftLoading}
-            sx={{
-              minWidth: 'auto',
-              textTransform: 'none'
-            }}
-          >
-            Refresh
-          </Button>
-          <SubmitProgressBar
-            status={buttonStatus}
-            onSubmit={handleSubmitTimesheet}
-            isSubmitting={isProcessing}
-            icon={<PlayArrowIcon />}
-            disabled={isAdmin}
-          >
-            Submit Timesheet
-          </SubmitProgressBar>
-          {isProcessing && (
-            <Button
-              variant="contained"
-              size="large"
-              color="error"
-              startIcon={<StopIcon />}
-              onClick={handleStopSubmission}
-              sx={{ minWidth: 200 }}
-            >
-              Stop
-            </Button>
-          )}
-        </div>
-      </div>
+      <TimesheetGridFooter
+        validationErrors={validationErrors}
+        onShowAllErrors={() => setShowErrorDialog(true)}
+        onRefresh={handleRefresh}
+        buttonStatus={buttonStatus}
+        onSubmit={handleSubmitTimesheet}
+        isSubmitting={isProcessing}
+        onStop={handleStopSubmission}
+        isAdmin={isAdmin}
+        isLoading={isTimesheetDraftLoading}
+      />
 
       {/* Validation Error Dialog */}
       <ValidationErrorDialog

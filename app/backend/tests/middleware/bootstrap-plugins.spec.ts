@@ -13,8 +13,6 @@ import { MemoryDataService } from '../../src/services/plugins/memory-data-servic
 import { SQLiteCredentialService } from '../../src/services/plugins/sqlite-credential-service';
 import { ElectronBotService } from '../../src/services/plugins/electron-bot-service';
 import { MockSubmissionService } from '../../src/services/plugins/mock-submission-service';
-import { appLogger } from '../../../shared/logger';
-
 // Mock dependencies
 vi.mock('../../../shared/plugin-registry');
 vi.mock('../../../shared/plugin-config');
@@ -23,7 +21,6 @@ vi.mock('../../src/services/plugins/memory-data-service');
 vi.mock('../../src/services/plugins/sqlite-credential-service');
 vi.mock('../../src/services/plugins/electron-bot-service');
 vi.mock('../../src/services/plugins/mock-submission-service');
-vi.mock('../../../shared/logger');
 vi.mock('path', async (importOriginal) => {
   const actual = await importOriginal<typeof import('path')>();
   return {
@@ -62,8 +59,20 @@ describe('bootstrap-plugins', () => {
   });
 
   describe('registerDefaultPlugins', () => {
+    const mockLogger = {
+      info: vi.fn(),
+      verbose: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      debug: vi.fn(),
+      silly: vi.fn(),
+      audit: vi.fn(),
+      security: vi.fn(),
+      startTimer: vi.fn(() => ({ done: vi.fn() }))
+    };
+
     it('should load plugin configuration', async () => {
-      await registerDefaultPlugins();
+      await registerDefaultPlugins(mockLogger);
 
       expect(path.join).toHaveBeenCalledWith(process.cwd(), 'plugin-config.json');
       expect(loadPluginConfig).toHaveBeenCalled();
@@ -71,7 +80,7 @@ describe('bootstrap-plugins', () => {
     });
 
     it('should register all data services', async () => {
-      await registerDefaultPlugins();
+      await registerDefaultPlugins(mockLogger);
 
       expect(mockRegistry.registerPlugin).toHaveBeenCalledWith(
         'data',
@@ -86,7 +95,7 @@ describe('bootstrap-plugins', () => {
     });
 
     it('should register credential service', async () => {
-      await registerDefaultPlugins();
+      await registerDefaultPlugins(mockLogger);
 
       expect(mockRegistry.registerPlugin).toHaveBeenCalledWith(
         'credentials',
@@ -96,7 +105,7 @@ describe('bootstrap-plugins', () => {
     });
 
     it('should register submission services', async () => {
-      await registerDefaultPlugins();
+      await registerDefaultPlugins(mockLogger);
 
       expect(mockRegistry.registerPlugin).toHaveBeenCalledWith(
         'submission',
@@ -111,15 +120,15 @@ describe('bootstrap-plugins', () => {
     });
 
     it('should log success message', async () => {
-      await registerDefaultPlugins();
+      await registerDefaultPlugins(mockLogger);
 
-      expect(appLogger.info).toHaveBeenCalledWith('Default plugins registered successfully');
+      expect(mockLogger.info).toHaveBeenCalledWith('Default plugins registered successfully');
     });
 
     it('should log active plugins configuration', async () => {
-      await registerDefaultPlugins();
+      await registerDefaultPlugins(mockLogger);
 
-      expect(appLogger.verbose).toHaveBeenCalledWith(
+      expect(mockLogger.verbose).toHaveBeenCalledWith(
         'Active plugins configured',
         {
           data: 'sqlite',

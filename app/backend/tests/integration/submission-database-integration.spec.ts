@@ -23,10 +23,11 @@ import {
     getPendingTimesheetEntries,
     markTimesheetEntriesAsSubmitted,
     markTimesheetEntriesAsInProgress,
-    closeConnection
-} from '../src/repositories';
+    closeConnection,
+    type TimesheetDbRow
+} from '../../src/repositories';
 
-// Type for database row
+// Type for generic database rows from raw queries
 interface DbRow { [key: string]: unknown }
 
 describe('Submission-Database Integration Tests', () => {
@@ -70,7 +71,7 @@ describe('Submission-Database Integration Tests', () => {
             });
 
             const pendingEntries = getPendingTimesheetEntries();
-            const entryIds = pendingEntries.map((e: DbRow) => e['id'] as number);
+            const entryIds = pendingEntries.map((e: TimesheetDbRow) => e.id);
 
             // SIMULATE: Bot submission succeeds (entries go to Smartsheet)
             // But database update fails (e.g., wrong IDs provided)
@@ -84,7 +85,7 @@ describe('Submission-Database Integration Tests', () => {
             // VERIFY: Original entries are still pending (not lost)
             const stillPending = getPendingTimesheetEntries();
             expect(stillPending).toHaveLength(1);
-            expect((stillPending[0] as DbRow)['id']).toBe(entryIds[0]);
+            expect(stillPending[0]?.id).toBe(entryIds[0]);
 
             // VERIFY: No entries marked as Complete incorrectly
             const db = openDb();
@@ -107,7 +108,7 @@ describe('Submission-Database Integration Tests', () => {
 
             const pendingEntries = getPendingTimesheetEntries();
             expect(pendingEntries).toHaveLength(3);
-            const entryIds = pendingEntries.map((e: DbRow) => e['id'] as number);
+            const entryIds = pendingEntries.map((e: TimesheetDbRow) => e.id);
 
             // Mark as in_progress (simulating submission start)
             // Use markTimesheetEntriesAsInProgress to properly mark entries
@@ -149,7 +150,7 @@ describe('Submission-Database Integration Tests', () => {
             });
 
             const pendingEntries = getPendingTimesheetEntries();
-            const realId = (pendingEntries[0] as DbRow)['id'];
+            const realId = pendingEntries[0]?.id;
 
             // Try to mark with mixed valid and invalid IDs
             const mixedIds = [realId, 99999, 88888];
@@ -179,7 +180,7 @@ describe('Submission-Database Integration Tests', () => {
             });
 
             const pendingEntries = getPendingTimesheetEntries();
-            const entryId = (pendingEntries[0] as DbRow)['id'];
+            const entryId = pendingEntries[0]?.id;
 
             // First attempt with wrong ID (simulating failure)
             expect(() => {
@@ -211,7 +212,7 @@ describe('Submission-Database Integration Tests', () => {
             });
 
             const pendingEntries = getPendingTimesheetEntries();
-            const entryId = (pendingEntries[0] as DbRow)['id'];
+            const entryId = pendingEntries[0]?.id;
 
             // First update succeeds
             markTimesheetEntriesAsSubmitted([entryId]);
@@ -250,7 +251,7 @@ describe('Submission-Database Integration Tests', () => {
             });
 
             const pendingEntries = getPendingTimesheetEntries();
-            const realIds = pendingEntries.map((e: DbRow) => e['id'] as number);
+            const realIds = pendingEntries.map((e: TimesheetDbRow) => e.id);
 
             // Add fake IDs
             const invalidIds = [...realIds, 99999, 88888];
@@ -280,7 +281,7 @@ describe('Submission-Database Integration Tests', () => {
             }
 
             const pendingEntries = getPendingTimesheetEntries();
-            const entryIds = pendingEntries.map((e: DbRow) => e['id'] as number);
+            const entryIds = pendingEntries.map((e: TimesheetDbRow) => e.id);
 
             // Mark all as submitted
             markTimesheetEntriesAsSubmitted(entryIds);
@@ -303,7 +304,7 @@ describe('Submission-Database Integration Tests', () => {
             });
 
             const pendingEntries = getPendingTimesheetEntries();
-            const entryId = (pendingEntries[0] as DbRow)['id'];
+            const entryId = pendingEntries[0]?.id;
 
             // Mark as submitted
             markTimesheetEntriesAsSubmitted([entryId]);
@@ -327,7 +328,7 @@ describe('Submission-Database Integration Tests', () => {
             });
 
             const pendingEntries = getPendingTimesheetEntries();
-            const entryId = (pendingEntries[0] as DbRow)['id'];
+            const entryId = pendingEntries[0]?.id;
 
             markTimesheetEntriesAsSubmitted([entryId]);
 
@@ -356,7 +357,7 @@ describe('Submission-Database Integration Tests', () => {
             });
 
             const pendingEntries = getPendingTimesheetEntries();
-            const entryId = (pendingEntries[0] as DbRow)['id'];
+            const entryId = pendingEntries[0]?.id;
 
             // Mark as submitted
             markTimesheetEntriesAsSubmitted([entryId]);
@@ -395,7 +396,7 @@ describe('Submission-Database Integration Tests', () => {
             const pendingEntries = getPendingTimesheetEntries();
             expect(pendingEntries).toHaveLength(500);
 
-            const entryIds = pendingEntries.map((e: DbRow) => e['id'] as number);
+            const entryIds = pendingEntries.map((e: TimesheetDbRow) => e.id);
 
             // Mark all as submitted
             const updateStart = Date.now();
@@ -425,7 +426,7 @@ describe('Submission-Database Integration Tests', () => {
             }
 
             const pendingEntries = getPendingTimesheetEntries();
-            const entryIds = pendingEntries.map((e: DbRow) => e['id'] as number);
+            const entryIds = pendingEntries.map((e: TimesheetDbRow) => e.id);
 
             // Mark in batches of 10
             for (let i = 0; i < 5; i++) {

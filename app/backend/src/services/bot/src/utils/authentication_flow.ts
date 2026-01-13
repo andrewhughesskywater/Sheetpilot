@@ -18,7 +18,7 @@
 import type { Page } from "playwright";
 import * as C from "../config/automation_config";
 import type { LoginStep } from "../config/automation_config";
-import { authLogger } from "@sheetpilot/shared/logger";
+import { authLogger } from "../../../../../../shared/logger";
 
 /**
  * Interface for browser management that LoginManager requires.

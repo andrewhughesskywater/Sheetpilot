@@ -26,6 +26,7 @@ vi.mock('../../../shared/logger', () => ({
     warn: vi.fn(),
     error: vi.fn(),
     verbose: vi.fn(),
+    audit: vi.fn(),
     startTimer: vi.fn(() => ({ done: vi.fn() }))
   }
 }));

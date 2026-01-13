@@ -7,6 +7,7 @@ This document summarizes the test coverage added to prevent regression of the ti
 ## Root Cause
 
 The bug occurred because:
+
 1. Database updates to mark entries as "Complete" failed silently
 2. No validation that row count matched expected updates
 3. No WAL checkpoint to flush changes to disk
@@ -14,11 +15,12 @@ The bug occurred because:
 
 ## Test Files Added/Modified
 
-### 1. `timesheet_submission_integration.spec.ts` (Enhanced)
+### 1. `integration/timesheet-submission.spec.ts` (Enhanced)
 
 **New Test Suite: "Database Update Validation and Persistence"**
 
 Tests added:
+
 - ✅ Row count validation when marking entries as submitted
 - ✅ Error thrown when marking non-existent entries
 - ✅ Error thrown when marking already-submitted entries
@@ -30,67 +32,78 @@ Tests added:
 - ✅ Referential integrity across submission lifecycle
 
 **Coverage:**
+
 - Database update validation
 - Transaction atomicity
 - WAL checkpoint execution
 - Error handling
 - Data persistence across reconnections
 
-### 2. `database-persistence-regression.spec.ts` (New File)
+### 2. `integration/database-persistence-regression.spec.ts` (New File)
 
 **Purpose:** Regression tests specifically for the database persistence bug
 
 **Test Suites:**
 
 #### A. "Regression: Entries disappearing after successful submission"
+
 - ✅ Reproduces original bug scenario and verifies fix
 - ✅ Detects when database update affects fewer rows than expected
 - ✅ Handles WAL checkpoint failures gracefully
 - ✅ Verifies changes persist across database reconnections
 
 #### B. "Regression: Silent failures in database updates"
+
 - ✅ Throws error when trying to mark already-submitted entries
 - ✅ Throws error when reverting non-existent entries
 - ✅ Logs detailed error information on validation failure
 
 #### C. "Regression: Race conditions in status updates"
+
 - ✅ Handles concurrent marking of same entries safely
 - ✅ Maintains atomicity when updating multiple entries
 
 #### D. "Regression: Data loss prevention"
+
 - ✅ Never deletes entries, only updates status
 - ✅ Preserves all entry data during status transitions
 
 #### E. "Edge Cases"
+
 - ✅ Handles empty array of IDs gracefully
 - ✅ Handles very large batch of entries (100+)
 - ✅ Handles database reopening after marking entries
 
-### 3. `submission-database-integration.spec.ts` (New File)
+### 3. `integration/submission-database-integration.spec.ts` (New File)
 
 **Purpose:** Integration tests for submission service and database interactions
 
 **Test Suites:**
 
 #### A. "Critical Path: Smartsheet Success + Database Failure"
+
 - ✅ Handles scenario where submission succeeds but database update fails
 - ✅ Prevents data loss when marking fails after successful bot submission
 - ✅ Properly handles transaction rollback on validation failure
 
 #### B. "Error Recovery Scenarios"
+
 - ✅ Allows retry after failed database update
 - ✅ Maintains data integrity during concurrent status updates
 
 #### C. "Validation and Consistency Checks"
+
 - ✅ Validates that all provided IDs exist before updating
 - ✅ Verifies row count matches expected updates
 - ✅ Detects status mismatch when trying to update non-pending entries
 
 #### D. "Persistence and Durability"
+
 - ✅ Ensures changes are persisted across database reconnections
 - ✅ Handles database file corruption detection
 
 #### E. "Performance and Scalability"
+
 - ✅ Handles large batch updates efficiently (500+ entries)
 - ✅ Maintains performance with repeated updates
 
@@ -98,7 +111,7 @@ Tests added:
 
 ### Total Tests Added: **40+ new tests**
 
-### Coverage Areas:
+### Coverage Areas
 
 1. **Database Update Validation**: 8 tests
    - Row count validation
@@ -137,24 +150,27 @@ Tests added:
 
 ## How to Run Tests
 
-### Run all database tests:
+### Run all database tests
+
 ```bash
 npm test database
 ```
 
-### Run specific test files:
+### Run specific test files
+
 ```bash
 # Regression tests
-npm test database-persistence-regression.spec.ts
+npm test integration/database-persistence-regression.spec.ts
 
 # Integration tests
-npm test submission-database-integration.spec.ts
+npm test integration/submission-database-integration.spec.ts
 
 # Submission tests (enhanced)
-npm test timesheet_submission_integration.spec.ts
+npm test integration/timesheet-submission.spec.ts
 ```
 
-### Run with coverage:
+### Run with coverage
+
 ```bash
 npm test -- --coverage
 ```
@@ -164,9 +180,10 @@ npm test -- --coverage
 ### Scenario 1: Original Bug (Entries Disappearing)
 
 **Test:** `should reproduce the original bug scenario and verify fix`
-**File:** `database-persistence-regression.spec.ts`
+**File:** `integration/database-persistence-regression.spec.ts`
 
 **Steps:**
+
 1. Insert 5 timesheet entries (full week)
 2. Mark all as submitted
 3. Close and reopen database
@@ -177,9 +194,10 @@ npm test -- --coverage
 ### Scenario 2: Silent Database Failure
 
 **Test:** `should detect when database update affects fewer rows than expected`
-**File:** `database-persistence-regression.spec.ts`
+**File:** `integration/database-persistence-regression.spec.ts`
 
 **Steps:**
+
 1. Insert 2 entries
 2. Try to mark 3 entries as submitted (2 real + 1 fake ID)
 3. Verify error is thrown
@@ -190,9 +208,10 @@ npm test -- --coverage
 ### Scenario 3: Smartsheet Success + Database Failure
 
 **Test:** `should handle scenario where submission succeeds but database update fails`
-**File:** `submission-database-integration.spec.ts`
+**File:** `integration/submission-database-integration.spec.ts`
 
 **Steps:**
+
 1. Insert entries
 2. Simulate bot submission success
 3. Try to mark with wrong IDs
@@ -203,9 +222,10 @@ npm test -- --coverage
 ### Scenario 4: WAL Persistence
 
 **Test:** `should persist changes to disk with WAL checkpoint`
-**File:** `timesheet_submission_integration.spec.ts`
+**File:** `integration/timesheet-submission.spec.ts`
 
 **Steps:**
+
 1. Insert entry
 2. Mark as submitted (includes WAL checkpoint)
 3. Close and reopen database
@@ -215,17 +235,20 @@ npm test -- --coverage
 
 ## Assertions Used
 
-### Database State Assertions:
+### Database State Assertions
+
 - `expect(pendingEntries).toHaveLength(X)` - Verify pending count
 - `expect(completeEntries).toHaveLength(X)` - Verify archive count
 - `expect(entry.status).toBe('Complete')` - Verify status
 - `expect(entry.submitted_at).toBeTruthy()` - Verify timestamp
 
-### Error Assertions:
+### Error Assertions
+
 - `expect(() => fn()).toThrow(/Database update mismatch/)` - Verify validation
 - `expect(result.changes).toBe(X)` - Verify row count
 
-### Data Integrity Assertions:
+### Data Integrity Assertions
+
 - `expect(entry.project).toBe(originalValue)` - Verify data unchanged
 - `expect(totalCount).toBe(X)` - Verify no data loss
 
@@ -250,6 +273,7 @@ npm test -- --coverage
 ## Maintenance
 
 When modifying database update functions:
+
 1. Run full test suite: `npm test`
 2. Verify all regression tests pass
 3. Add new tests for new edge cases
@@ -264,6 +288,7 @@ When modifying database update functions:
 ## Conclusion
 
 The test coverage added ensures that the database persistence bug cannot recur without tests failing. The tests cover:
+
 - The exact bug scenario
 - All related edge cases
 - Error handling paths
@@ -271,5 +296,3 @@ The test coverage added ensures that the database persistence bug cannot recur w
 - Performance characteristics
 
 All tests are isolated, use temporary databases, and clean up after themselves.
-
-

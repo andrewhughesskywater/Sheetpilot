@@ -18,9 +18,17 @@ import { z } from 'zod';
 /**
  * Email validation schema
  * Ensures valid email format and reasonable length
+ * Uses regex to accept valid emails including short ones like 'a@b.c'
+ * Rejects emails with consecutive dots, spaces, or invalid formats
  */
 export const emailSchema = z.string()
-  .email('Invalid email format')
+  .regex(/^(?!\.)(?!.*\.\.)[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Invalid email format')
+  .refine((email) => {
+    // Additional validation: no consecutive dots in local or domain part
+    const [local, domain] = email.split('@');
+    if (!local || !domain) return false;
+    return !local.includes('..') && !domain.includes('..');
+  }, 'Invalid email format')
   .min(3, 'Email must be at least 3 characters')
   .max(255, 'Email must not exceed 255 characters');
 
@@ -53,10 +61,11 @@ export const dateSchema = z.string()
   .regex(/^(\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}\/\d{4})$/, 'Invalid date format. Use YYYY-MM-DD or MM/DD/YYYY');
 
 /**
- * Time validation schema (HH:MM)
+ * Time validation schema (H:MM or HH:MM)
+ * Accepts single or double digit hours and minutes
  */
 export const timeSchema = z.string()
-  .regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Invalid time format. Use HH:MM');
+  .regex(/^([0-1]?[0-9]|2[0-3]):[0-5]?[0-9]$/, 'Invalid time format. Use H:MM or HH:MM');
 
 /**
  * Project name validation schema
@@ -135,32 +144,23 @@ export const getCurrentSessionSchema = z.object({
  */
 export const saveDraftSchema = z.object({
   id: z.number().int().positive().nullable().optional(),
-  date: dateSchema.optional(),
-  timeIn: timeSchema.optional(),
-  timeOut: timeSchema.optional(),
-  project: z.string().max(500).optional(),
+  date: dateSchema,
+  timeIn: timeSchema,
+  timeOut: timeSchema,
+  project: projectNameSchema,
   tool: z.string().max(500).nullable().optional(),
   chargeCode: z.string().max(100).nullable().optional(),
-  taskDescription: z.string().max(5000).optional()
+  taskDescription: taskDescriptionSchema
 }).refine((data) => {
-  // Only validate timeOut > timeIn if both are present
-  if (data.timeIn && data.timeOut) {
-    const parseTime = (time: string) => {
-      const [hours, minutes] = time.split(':').map(Number);
-      return (hours || 0) * 60 + (minutes || 0);
-    };
-    return parseTime(data.timeOut) > parseTime(data.timeIn);
-  }
-  return true; // Allow partial data without time validation
+  // Validate timeOut > timeIn
+  const parseTime = (time: string) => {
+    const [hours, minutes] = time.split(':').map(Number);
+    return (hours || 0) * 60 + (minutes || 0);
+  };
+  return parseTime(data.timeOut) > parseTime(data.timeIn);
 }, {
   message: 'Time Out must be after Time In',
   path: ['timeOut']
-}).refine((data) => {
-  // At least one field must be present (not counting id)
-  return data.date || data.timeIn || data.timeOut || data.project || data.taskDescription;
-}, {
-  message: 'At least one field must be provided',
-  path: []
 });
 
 /**

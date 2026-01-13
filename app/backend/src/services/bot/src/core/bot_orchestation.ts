@@ -92,14 +92,14 @@ export class BotOrchestrator {
    * @param injected_config - Configuration object for automation settings
    * @param formConfig - Dynamic form configuration (required)
    * @param headless - Whether to run browser in headless mode (default: null = use appSettings.browserHeadless)
-   * @param browser - Browser type to use (deprecated, ignored)
+   * @param _browser - Browser type to use (deprecated, ignored)
    * @param progress_callback - Optional callback for progress updates
    */
   constructor(
     injected_config: typeof Cfg,
     formConfig: FormConfig,
     headless: boolean | null = null,
-    browser: string | null = null,
+    _browser: string | null = null,
     progress_callback?: (pct: number, msg: string) => void
   ) {
     if (!formConfig) {
@@ -331,18 +331,16 @@ export class BotOrchestrator {
   }
 
   /**
-   * Validates that the entry date matches the quarter of the configured form
+   * Parses a date string and converts it to ISO format (YYYY-MM-DD)
    * @private
-   * @param dateValue - Date value to validate (mm/dd/yyyy format)
+   * @param dateValue - Date value to parse (mm/dd/yyyy format)
    * @param rowIndex - Row index for error reporting
-   * @returns Error message if validation fails, null if validation passes
+   * @returns Object with isoDate string if successful, error message if failed
    */
-  private _validateQuarterMatch(
+  private _parseDateToISO(
     dateValue: unknown,
     rowIndex: number
-  ): string | null {
-    if (!dateValue) return null;
-
+  ): { isoDate: string; error: null } | { isoDate: null; error: string } {
     try {
       const dateStr = String(dateValue).trim();
 
@@ -350,12 +348,18 @@ export class BotOrchestrator {
       // Quarter routing uses `YYYY-MM-DD`, so we convert.
       const dateMatch = dateStr.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
       if (!dateMatch) {
-        return `Invalid date format: ${dateStr}. Expected mm/dd/yyyy`;
+        return {
+          isoDate: null,
+          error: `Invalid date format: ${dateStr}. Expected mm/dd/yyyy`,
+        };
       }
 
       const [, monthStr, dayStr, yearStr] = dateMatch;
       if (!monthStr || !dayStr || !yearStr) {
-        return `Invalid date format: ${dateStr}. Expected mm/dd/yyyy`;
+        return {
+          isoDate: null,
+          error: `Invalid date format: ${dateStr}. Expected mm/dd/yyyy`,
+        };
       }
 
       const month = parseInt(monthStr, 10);
@@ -374,21 +378,13 @@ export class BotOrchestrator {
         year < 1900 ||
         year > 2100
       ) {
-        return `Invalid date values: ${dateStr}`;
+        return { isoDate: null, error: `Invalid date values: ${dateStr}` };
       }
 
       const isoDate = `${year}-${String(month).padStart(2, "0")}-${String(
         day
       ).padStart(2, "0")}`;
-      const quarterDef = getQuarterForDate(isoDate);
-
-      if (quarterDef && quarterDef.formId !== this.formConfig.FORM_ID) {
-        // Protect against “wrong quarter form” submissions: a date in Q3 should not
-        // submit to a Q4 form (or vice versa). This check intentionally blocks.
-        return `Date ${dateStr} belongs to ${quarterDef.name} but form configured for different quarter`;
-      }
-
-      return null;
+      return { isoDate, error: null };
     } catch (dateError) {
       botLogger.error("Error parsing date", {
         rowIndex,
@@ -396,7 +392,64 @@ export class BotOrchestrator {
         error:
           dateError instanceof Error ? dateError.message : String(dateError),
       });
+      return {
+        isoDate: null,
+        error: `Could not parse date: ${String(dateValue)}`,
+      };
+    }
+  }
+
+  /**
+   * Validates that the entry date matches the quarter of the configured form
+   * @private
+   * @param dateValue - Date value to validate (mm/dd/yyyy format)
+   * @param rowIndex - Row index for error reporting
+   * @returns Error message if validation fails, null if validation passes
+   */
+  private _validateQuarterMatch(
+    dateValue: unknown,
+    rowIndex: number
+  ): string | null {
+    if (!dateValue) return null;
+
+    const parseResult = this._parseDateToISO(dateValue, rowIndex);
+    if (parseResult.error) {
+      return parseResult.error;
+    }
+
+    if (!parseResult.isoDate) {
       return `Could not parse date: ${String(dateValue)}`;
+    }
+
+    const quarterDef = getQuarterForDate(parseResult.isoDate);
+
+    if (quarterDef && quarterDef.formId !== this.formConfig.FORM_ID) {
+      // Protect against "wrong quarter form" submissions: a date in Q3 should not
+      // submit to a Q4 form (or vice versa). This check intentionally blocks.
+      const dateStr = String(dateValue).trim();
+      return `Date ${dateStr} belongs to ${quarterDef.name} but form configured for different quarter`;
+    }
+
+    return null;
+  }
+
+  /**
+   * Attempts to recover from a row processing error by navigating back to the base form URL
+   * @private
+   * @param rowIndex - Row index for logging
+   */
+  private async _attemptRecovery(rowIndex: number): Promise<void> {
+    try {
+      botLogger.info("Attempting recovery", { rowIndex });
+      const page = this.require_page();
+      await page.goto(this.formConfig.BASE_URL, {
+        timeout: Cfg.GLOBAL_TIMEOUT * 1000,
+      });
+    } catch (recoveryError) {
+      botLogger.error("Could not recover from page error", {
+        rowIndex,
+        recoveryError: String(recoveryError),
+      });
     }
   }
 
@@ -497,19 +550,6 @@ export class BotOrchestrator {
       await this._fill_fields(fields);
       fillTimer.done({ rowIndex });
 
-      // CRITICAL: Wait for the last field (Detail Charge Code) to be processed by the form
-      // before attempting submission. This is essential because the last field's selection
-      // may still be updating the form state.
-      botLogger.info(
-        "⏳ [PRE_SUBMIT_WAIT] Waiting for last field to settle before submission",
-        { rowIndex }
-      );
-      await new Promise((resolve) => setTimeout(resolve, 1500)); // 1.5 second wait
-      botLogger.info(
-        "✅ [PRE_SUBMIT_WAIT_DONE] Last field settled, proceeding to submit",
-        { rowIndex }
-      );
-
       // Submit is optional: tests and debugging sometimes run in "fill-only" mode.
       if (Cfg.SUBMIT_FORM_AFTER_FILLING) {
         // Submit with retry (Initial + Level 1 + Level 2 = 3 attempts)
@@ -541,30 +581,22 @@ export class BotOrchestrator {
   }
 
   /**
-   * Submits form with two-level retry logic:
-   * - Level 1 retry: Quick retry - just click submit again after 1s delay (no form re-fill)
-   * - Level 2 retry: Full retry - re-fill form and submit after 2s delay
-   *
-   * Flow: Initial → failed → Level 1 retry → failed → Level 2 retry → failed → give up
-   *
+   * Attempts initial form submission
    * @private
+   * @param monitor - SubmissionMonitor instance
    * @param rowIndex - Row index for logging
-   * @param fields - Fields to fill if Level 2 retry is needed
    * @returns Promise resolving to true if submission succeeded, false otherwise
    */
-  private async _submitWithRetryWithFields(
-    rowIndex: number,
-    fields: Record<string, unknown>
+  private async _attemptInitialSubmission(
+    monitor: SubmissionMonitor,
+    rowIndex: number
   ): Promise<boolean> {
-    const monitor = new SubmissionMonitor(() => this.require_page());
-
-    // Attempt 1: Initial submit
     botLogger.info("Attempting initial submission", {
       rowIndex,
       attempt: 1,
       retryLevel: "initial",
     });
-    let success = await monitor.submitForm();
+    const success = await monitor.submitForm();
 
     if (success) {
       botLogger.info("Initial submission succeeded", {
@@ -582,8 +614,20 @@ export class BotOrchestrator {
       retryLevel: "initial",
       result: "failed",
     });
+    return false;
+  }
 
-    // Attempt 2: Level 1 retry - quick retry, just click submit again (no form re-fill)
+  /**
+   * Attempts Level 1 retry submission (quick re-click, no form re-fill)
+   * @private
+   * @param monitor - SubmissionMonitor instance
+   * @param rowIndex - Row index for logging
+   * @returns Promise resolving to true if submission succeeded, false otherwise
+   */
+  private async _attemptLevel1Retry(
+    monitor: SubmissionMonitor,
+    rowIndex: number
+  ): Promise<boolean> {
     const level1Delay = Cfg.SUBMIT_CLICK_RETRY_DELAY_S;
     botLogger.info("Starting Level 1 retry (quick re-click, no form re-fill)", {
       rowIndex,
@@ -598,7 +642,7 @@ export class BotOrchestrator {
       attempt: 2,
       retryLevel: "level-1",
     });
-    success = await monitor.submitForm();
+    const success = await monitor.submitForm();
 
     if (success) {
       botLogger.info("Level 1 retry succeeded", {
@@ -616,8 +660,22 @@ export class BotOrchestrator {
       retryLevel: "level-1",
       result: "failed",
     });
+    return false;
+  }
 
-    // Attempt 3: Level 2 retry - re-fill form and submit
+  /**
+   * Attempts Level 2 retry submission (re-fill form and submit)
+   * @private
+   * @param monitor - SubmissionMonitor instance
+   * @param rowIndex - Row index for logging
+   * @param fields - Fields to fill for Level 2 retry
+   * @returns Promise resolving to true if submission succeeded, false otherwise
+   */
+  private async _attemptLevel2Retry(
+    monitor: SubmissionMonitor,
+    rowIndex: number,
+    fields: Record<string, unknown>
+  ): Promise<boolean> {
     const level2Delay = Cfg.SUBMIT_RETRY_DELAY;
     botLogger.info("Starting Level 2 retry (re-fill form and submit)", {
       rowIndex,
@@ -645,7 +703,7 @@ export class BotOrchestrator {
       attempt: 3,
       retryLevel: "level-2",
     });
-    success = await monitor.submitForm();
+    const success = await monitor.submitForm();
 
     if (success) {
       botLogger.info("Level 2 retry succeeded", {
@@ -654,6 +712,45 @@ export class BotOrchestrator {
         retryLevel: "level-2",
         result: "success",
       });
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Submits form with two-level retry logic:
+   * - Level 1 retry: Quick retry - just click submit again after 1s delay (no form re-fill)
+   * - Level 2 retry: Full retry - re-fill form and submit after 2s delay
+   *
+   * Flow: Initial → failed → Level 1 retry → failed → Level 2 retry → failed → give up
+   *
+   * @private
+   * @param rowIndex - Row index for logging
+   * @param fields - Fields to fill if Level 2 retry is needed
+   * @returns Promise resolving to true if submission succeeded, false otherwise
+   */
+  private async _submitWithRetryWithFields(
+    rowIndex: number,
+    fields: Record<string, unknown>
+  ): Promise<boolean> {
+    const monitor = new SubmissionMonitor(() => this.require_page());
+
+    // Attempt 1: Initial submit
+    let success = await this._attemptInitialSubmission(monitor, rowIndex);
+    if (success) {
+      return true;
+    }
+
+    // Attempt 2: Level 1 retry - quick retry, just click submit again (no form re-fill)
+    success = await this._attemptLevel1Retry(monitor, rowIndex);
+    if (success) {
+      return true;
+    }
+
+    // Attempt 3: Level 2 retry - re-fill form and submit
+    success = await this._attemptLevel2Retry(monitor, rowIndex, fields);
+    if (success) {
       return true;
     }
 
@@ -773,18 +870,7 @@ export class BotOrchestrator {
 
           // Attempt to recover by returning to the base form URL. This provides
           // a clean starting point for the next row after transient UI errors.
-          try {
-            botLogger.info("Attempting recovery", { rowIndex: idx });
-            const page = this.require_page();
-            await page.goto(this.formConfig.BASE_URL, {
-              timeout: Cfg.GLOBAL_TIMEOUT * 1000,
-            });
-          } catch (recoveryError) {
-            botLogger.error("Could not recover from page error", {
-              rowIndex: idx,
-              recoveryError: String(recoveryError),
-            });
-          }
+          await this._attemptRecovery(idx);
         }
       }
 
@@ -850,6 +936,102 @@ export class BotOrchestrator {
   }
 
   /**
+   * Processes a single field during form filling
+   * @private
+   * @param field_key - Field key to process
+   * @param value - Field value
+   * @param fields - All field values
+   * @param fillStats - Statistics object to update
+   * @returns Promise that resolves to true if field was processed, false if skipped
+   * @throws Error if field processing fails
+   */
+  private async _processField(
+    field_key: string,
+    value: unknown,
+    fields: Record<string, unknown>,
+    fillStats: { skipped: number; filled: number; failed: number }
+  ): Promise<boolean> {
+    let specBase: Record<string, unknown> | undefined;
+    try {
+      specBase = Cfg.FIELD_DEFINITIONS[field_key] as unknown as Record<
+        string,
+        unknown
+      >;
+      if (!specBase) {
+        botLogger.verbose("Field specification not found", {
+          fieldKey: field_key,
+        });
+        fillStats.skipped++;
+        return false;
+      }
+
+      // Skip empty values
+      if (!this._should_process_field(field_key, fields)) {
+        botLogger.verbose("Skipping field with empty/invalid value", {
+          fieldKey: field_key,
+          value: String(value),
+          reason: 'Empty, null, NaN, or "none"',
+        });
+        fillStats.skipped++;
+        return false;
+      }
+
+      const spec = { ...specBase };
+
+      // Use project-specific locator for tool field if available
+      if (field_key === "tool") {
+        const project_name = String(fields["project_code"] ?? "Unknown");
+        const project_specific_locator =
+          this.get_project_specific_tool_locator(project_name);
+        if (project_specific_locator) {
+          spec["locator"] = project_specific_locator;
+          botLogger.verbose("Using project-specific tool locator", {
+            fieldKey: field_key,
+            projectName: project_name,
+            locator: project_specific_locator,
+          });
+        }
+      }
+
+      // Log field specification for debugging
+      botLogger.info(`[FIELD_LOOP] Processing field: ${field_key}`, {
+        fieldKey: field_key,
+        label: spec["label"] || "No label",
+        locator: spec["locator"] || "No locator",
+        value: String(value).substring(0, 100),
+        valueType: typeof value,
+      });
+
+      // Inject the field value using FormInteractor
+      botLogger.info(`[INJECT_START] About to inject ${field_key}`, {
+        fieldKey: field_key,
+        valueLength: String(value).length,
+      });
+      await this.formInteractor!.fillField(spec as FieldSpec, String(value));
+
+      fillStats.filled++;
+      botLogger.info(`[INJECT_SUCCESS] Successfully injected ${field_key}`, {
+        fieldKey: field_key,
+      });
+      return true;
+    } catch (error) {
+      fillStats.failed++;
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      botLogger.error(`❌ [INJECT_ERROR] Failed to fill ${field_key}`, {
+        fieldKey: field_key,
+        value: String(value).substring(0, 50),
+        valueType: typeof value,
+        fieldLabel: specBase ? String(specBase["label"]) : "Unknown",
+        fieldLocator: specBase ? String(specBase["locator"]) : "Unknown",
+        error: errorMessage,
+        errorType: error instanceof Error ? error.constructor.name : "Unknown",
+      });
+      throw error;
+    }
+  }
+
+  /**
    * Fills form fields with provided values
    * @private
    * @param fields - Object containing field keys and their values
@@ -879,84 +1061,7 @@ export class BotOrchestrator {
           value: String(value).substring(0, 50),
         }
       );
-      let specBase: Record<string, unknown> | undefined;
-      try {
-        specBase = Cfg.FIELD_DEFINITIONS[field_key] as unknown as Record<
-          string,
-          unknown
-        >;
-        if (!specBase) {
-          botLogger.verbose("Field specification not found", {
-            fieldKey: field_key,
-          });
-          fillStats.skipped++;
-          continue;
-        }
-
-        // Skip empty values
-        if (!this._should_process_field(field_key, fields)) {
-          botLogger.verbose("Skipping field with empty/invalid value", {
-            fieldKey: field_key,
-            value: String(value),
-            reason: 'Empty, null, NaN, or "none"',
-          });
-          fillStats.skipped++;
-          continue;
-        }
-
-        const spec = { ...specBase };
-
-        // Use project-specific locator for tool field if available
-        if (field_key === "tool") {
-          const project_name = String(fields["project_code"] ?? "Unknown");
-          const project_specific_locator =
-            this.get_project_specific_tool_locator(project_name);
-          if (project_specific_locator) {
-            spec["locator"] = project_specific_locator;
-            botLogger.verbose("Using project-specific tool locator", {
-              fieldKey: field_key,
-              projectName: project_name,
-              locator: project_specific_locator,
-            });
-          }
-        }
-
-        // Log field specification for debugging
-        botLogger.info(`[FIELD_LOOP] Processing field: ${field_key}`, {
-          fieldKey: field_key,
-          label: spec["label"] || "No label",
-          locator: spec["locator"] || "No locator",
-          value: String(value).substring(0, 100),
-          valueType: typeof value,
-        });
-
-        // Inject the field value using FormInteractor
-        botLogger.info(`[INJECT_START] About to inject ${field_key}`, {
-          fieldKey: field_key,
-          valueLength: String(value).length,
-        });
-        await this.formInteractor!.fillField(spec as FieldSpec, String(value));
-
-        fillStats.filled++;
-        botLogger.info(`[INJECT_SUCCESS] Successfully injected ${field_key}`, {
-          fieldKey: field_key,
-        });
-      } catch (error) {
-        fillStats.failed++;
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
-        botLogger.error(`❌ [INJECT_ERROR] Failed to fill ${field_key}`, {
-          fieldKey: field_key,
-          value: String(value).substring(0, 50),
-          valueType: typeof value,
-          fieldLabel: specBase ? String(specBase["label"]) : "Unknown",
-          fieldLocator: specBase ? String(specBase["locator"]) : "Unknown",
-          error: errorMessage,
-          errorType:
-            error instanceof Error ? error.constructor.name : "Unknown",
-        });
-        throw error;
-      }
+      await this._processField(field_key, value, fields, fillStats);
     }
 
     botLogger.info(

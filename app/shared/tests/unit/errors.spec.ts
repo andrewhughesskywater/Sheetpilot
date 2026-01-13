@@ -18,7 +18,7 @@ import {
   ConfigurationError,
   BusinessLogicError,
   SystemError
-} from '../errors';
+} from '../../errors';
 
 describe('errors', () => {
   describe('AppError', () => {

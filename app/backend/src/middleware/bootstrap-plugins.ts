@@ -9,6 +9,7 @@
  * @since 2025
  */
 
+import type { LoggerLike } from '../bootstrap/logging/logger-contract';
 import { PluginRegistry } from '../../../shared/plugin-registry';
 import { loadPluginConfig } from '../../../shared/plugin-config';
 import { SQLiteDataService } from '../services/plugins/sqlite-data-service';
@@ -16,13 +17,12 @@ import { MemoryDataService } from '../services/plugins/memory-data-service';
 import { SQLiteCredentialService } from '../services/plugins/sqlite-credential-service';
 import { ElectronBotService } from '../services/plugins/electron-bot-service';
 import { MockSubmissionService } from '../services/plugins/mock-submission-service';
-import { appLogger } from '../../../shared/logger';
 import * as path from 'path';
 
 /**
  * Register all default plugins with the registry
  */
-export async function registerDefaultPlugins(): Promise<void> {
+export async function registerDefaultPlugins(logger: LoggerLike): Promise<void> {
   const registry = PluginRegistry.getInstance();
   
   // Load configuration
@@ -41,8 +41,8 @@ export async function registerDefaultPlugins(): Promise<void> {
   await registry.registerPlugin('submission', 'electron', new ElectronBotService());
   await registry.registerPlugin('submission', 'mock', new MockSubmissionService());
   
-  appLogger.info('Default plugins registered successfully');
-  appLogger.verbose('Active plugins configured', {
+  logger.info('Default plugins registered successfully');
+  logger.verbose('Active plugins configured', {
     data: registry.getActivePluginName('data'),
     credentials: registry.getActivePluginName('credentials'),
     submission: registry.getActivePluginName('submission')

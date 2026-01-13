@@ -61,3 +61,6 @@ window-state.json
 # Dev
 dev-app-update.yml
 test-results/*
+
+# Metrics reports
+reports/

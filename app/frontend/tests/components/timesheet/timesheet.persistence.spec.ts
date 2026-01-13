@@ -215,9 +215,7 @@ describe('Timesheet Persistence Module', () => {
       expect(mockWindow.timesheet.saveDraft).toHaveBeenCalledTimes(1); // Only complete row
     });
 
-    it.skip('should delete orphaned rows from database', async () => {
-      // NOTE: This test is skipped because orphan deletion is not implemented in batchSaveToDatabase.
-      // The current implementation only saves complete rows without checking for orphans.
+    it('should delete orphaned rows from database', async () => {
       mockWindow.timesheet.loadDraft.mockResolvedValue({
         success: true,
         entries: [

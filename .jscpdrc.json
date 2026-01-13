@@ -1,0 +1,27 @@
+{
+  "threshold": 3,
+  "reporters": ["json", "console"],
+  "ignore": [
+    "**/node_modules/**",
+    "**/build/**",
+    "**/dist/**",
+    "**/coverage/**",
+    "**/release/**",
+    "**/*.spec.ts",
+    "**/*.test.ts",
+    "**/tests/**",
+    "**/__tests__/**",
+    "**/*.d.ts",
+    "**/*.js.map",
+    "**/*.log",
+    "**/*.sqlite",
+    "**/*.db"
+  ],
+  "format": [
+    "typescript"
+  ],
+  "minLines": 5,
+  "minTokens": 50,
+  "absolute": true,
+  "output": "reports/metrics/temp"
+}

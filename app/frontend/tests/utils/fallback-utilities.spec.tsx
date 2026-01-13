@@ -27,17 +27,17 @@ describe('Development Fallback Tests', () => {
 
   describe('Logger Fallback', () => {
     it('should initialize logger fallback in development mode', async () => {
-      const { initializeLoggerFallback } = await import('../src/utils/logger-fallback');
+      const { initializeLoggerFallback } = await import('../../src/utils/logger-fallback');
       
       initializeLoggerFallback();
       
       expect(window.logger).toBeDefined();
-      expect(window.logger.error).toBeDefined();
-      expect(window.logger.warn).toBeDefined();
-      expect(window.logger.info).toBeDefined();
-      expect(window.logger.verbose).toBeDefined();
-      expect(window.logger.debug).toBeDefined();
-      expect(window.logger.userAction).toBeDefined();
+      expect(window.logger!.error).toBeDefined();
+      expect(window.logger!.warn).toBeDefined();
+      expect(window.logger!.info).toBeDefined();
+      expect(window.logger!.verbose).toBeDefined();
+      expect(window.logger!.debug).toBeDefined();
+      expect(window.logger!.userAction).toBeDefined();
     });
 
     it('should not override existing logger', async () => {
@@ -52,7 +52,7 @@ describe('Development Fallback Tests', () => {
       
       window.logger = existingLogger;
       
-      const { initializeLoggerFallback } = await import('../src/utils/logger-fallback');
+      const { initializeLoggerFallback } = await import('../../src/utils/logger-fallback');
       initializeLoggerFallback();
       
       expect(window.logger).toBe(existingLogger);
@@ -66,12 +66,12 @@ describe('Development Fallback Tests', () => {
     });
 
     it('should log messages correctly', async () => {
-      const { initializeLoggerFallback } = await import('../src/utils/logger-fallback');
+      const { initializeLoggerFallback } = await import('../../src/utils/logger-fallback');
       initializeLoggerFallback();
       
       const consoleSpy = vi.spyOn(console, 'info');
       
-      window.logger.info('Test message', { data: 'test' });
+      window.logger!.info('Test message', { data: 'test' });
       
       expect(consoleSpy).toHaveBeenCalledWith(
         expect.stringContaining('[INFO] Test message | Data: {"data":"test"}')
@@ -81,7 +81,7 @@ describe('Development Fallback Tests', () => {
 
   describe('API Fallback', () => {
     it('should initialize API fallbacks in development mode', async () => {
-      const { initializeAPIFallback } = await import('../src/utils/api-fallback');
+      const { initializeAPIFallback } = await import('../../src/utils/api-fallback');
       
       initializeAPIFallback();
       
@@ -99,9 +99,9 @@ describe('Development Fallback Tests', () => {
         submit: vi.fn(),
         exportToCSV: vi.fn()
       };
-      window.timesheet = existingTimesheet;
+      window.timesheet = existingTimesheet as any;
       
-      const { initializeAPIFallback } = await import('../src/utils/api-fallback');
+      const { initializeAPIFallback } = await import('../../src/utils/api-fallback');
       initializeAPIFallback();
       
       expect(window.timesheet).toBe(existingTimesheet);
@@ -115,10 +115,10 @@ describe('Development Fallback Tests', () => {
     });
 
     it('should provide mock data for timesheet API', async () => {
-      const { initializeAPIFallback } = await import('../src/utils/api-fallback');
+      const { initializeAPIFallback } = await import('../../src/utils/api-fallback');
       initializeAPIFallback();
       
-      const result = await window.timesheet.loadDraft();
+      const result = await window.timesheet!.loadDraft();
       
       expect(result.success).toBe(true);
       expect(result.entries).toBeDefined();
@@ -126,10 +126,10 @@ describe('Development Fallback Tests', () => {
     });
 
     it('should provide mock data for credentials API', async () => {
-      const { initializeAPIFallback } = await import('../src/utils/api-fallback');
+      const { initializeAPIFallback } = await import('../../src/utils/api-fallback');
       initializeAPIFallback();
       
-      const result = await window.credentials.list();
+      const result = await window.credentials!.list();
       
       expect(result.success).toBe(true);
       expect(result.credentials).toBeDefined();
@@ -137,11 +137,11 @@ describe('Development Fallback Tests', () => {
     });
 
     it('should provide mock data for database API', async () => {
-      const { initializeAPIFallback } = await import('../src/utils/api-fallback');
+      const { initializeAPIFallback } = await import('../../src/utils/api-fallback');
       initializeAPIFallback();
       
       // getAllTimesheetEntries requires a token parameter
-      const result = await window.database.getAllTimesheetEntries('mock-session-token');
+      const result = await window.database!.getAllTimesheetEntries('mock-session-token');
       
       expect(result.success).toBe(true);
       expect(result.entries).toBeDefined();
@@ -149,10 +149,10 @@ describe('Development Fallback Tests', () => {
     });
 
     it('should provide mock data for logs API', async () => {
-      const { initializeAPIFallback } = await import('../src/utils/api-fallback');
+      const { initializeAPIFallback } = await import('../../src/utils/api-fallback');
       initializeAPIFallback();
       
-      const result = await window.logs.getLogPath();
+      const result = await window.logs!.getLogPath('mock-session-token');
       
       expect(result.success).toBe(true);
       expect(result.logPath).toBeDefined();
@@ -161,8 +161,8 @@ describe('Development Fallback Tests', () => {
 
   describe('Integration Tests', () => {
     it('should work together without conflicts', async () => {
-      const { initializeLoggerFallback } = await import('../src/utils/logger-fallback');
-      const { initializeAPIFallback } = await import('../src/utils/api-fallback');
+      const { initializeLoggerFallback } = await import('../../src/utils/logger-fallback');
+      const { initializeAPIFallback } = await import('../../src/utils/api-fallback');
       
       initializeLoggerFallback();
       initializeAPIFallback();
@@ -175,15 +175,15 @@ describe('Development Fallback Tests', () => {
       expect(window.logs).toBeDefined();
       
       // Should be able to use them together
-      const result = await window.timesheet.loadDraft();
-      window.logger.info('API call completed', { result });
+      const result = await window.timesheet!.loadDraft();
+      window.logger!.info('API call completed', { result });
       
       expect(result.success).toBe(true);
     });
 
     it('should handle multiple initializations gracefully', async () => {
-      const { initializeLoggerFallback } = await import('../src/utils/logger-fallback');
-      const { initializeAPIFallback } = await import('../src/utils/api-fallback');
+      const { initializeLoggerFallback } = await import('../../src/utils/logger-fallback');
+      const { initializeAPIFallback } = await import('../../src/utils/api-fallback');
       
       // Initialize multiple times
       initializeLoggerFallback();

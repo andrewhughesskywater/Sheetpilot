@@ -10,8 +10,8 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { PluginRegistry } from '../plugin-registry';
-import type { IPlugin } from '../plugin-types';
+import { PluginRegistry } from '../../plugin-registry';
+import type { IPlugin } from '../../plugin-types';
 
 describe('Plugin Registry', () => {
   let registry: PluginRegistry;
@@ -99,9 +99,7 @@ describe('Plugin Registry', () => {
       
       const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
       
-      registry.registerPlugin('data', 'failing-plugin', mockPlugin);
-      
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await expect(registry.registerPlugin('data', 'failing-plugin', mockPlugin)).rejects.toThrow();
       
       expect(consoleError).toHaveBeenCalled();
       consoleError.mockRestore();
@@ -256,8 +254,8 @@ describe('Plugin Registry', () => {
       
       const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
       
-      registry.registerPlugin('data', 'failing', mockPlugin);
-      await registry.unregisterPlugin('data', 'failing');
+      await registry.registerPlugin('data', 'failing', mockPlugin);
+      await expect(registry.unregisterPlugin('data', 'failing')).rejects.toThrow();
       
       expect(consoleError).toHaveBeenCalled();
       consoleError.mockRestore();

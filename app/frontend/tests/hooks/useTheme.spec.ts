@@ -241,7 +241,7 @@ describe('useTheme Hook', () => {
     });
 
     it('should have mutually exclusive isLight and isDark', () => {
-      const effectiveTheme = 'light';
+      const effectiveTheme = 'light' as 'light' | 'dark';
       const isLight = effectiveTheme === 'light';
       const isDark = effectiveTheme === 'dark';
       

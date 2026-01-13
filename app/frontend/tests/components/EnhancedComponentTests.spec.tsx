@@ -337,7 +337,8 @@ describe('Enhanced Component Tests', () => {
         
         return {
           ...row,
-          tool: newTool
+          tool: newTool,
+          chargeCode: (row as { chargeCode?: unknown }).chargeCode
         };
       };
 
@@ -367,7 +368,7 @@ describe('Enhanced Component Tests', () => {
         changes: 1
       });
 
-      const result = await window.timesheet.saveDraft({
+      const result = await window.timesheet!.saveDraft({
         date: '2025-01-15',
         timeIn: '09:00',
         timeOut: '17:00',
@@ -404,7 +405,7 @@ describe('Enhanced Component Tests', () => {
         entries: mockData
       });
 
-      const result = await window.timesheet.loadDraft();
+      const result = await window.timesheet!.loadDraft();
 
       expect(result.success).toBe(true);
       expect(result.entries).toEqual(mockData);
@@ -425,7 +426,7 @@ describe('Enhanced Component Tests', () => {
         taskDescription: string;
       }) => {
         try {
-          return await window.timesheet.saveDraft(row);
+          return await window.timesheet!.saveDraft(row);
         } catch (error) {
           return {
             success: false,

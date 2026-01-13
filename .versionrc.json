@@ -1,0 +1,31 @@
+{
+  "types": [
+    { "type": "feat", "section": "Features" },
+    { "type": "fix", "section": "Bug Fixes" },
+    { "type": "perf", "section": "Performance Improvements" },
+    { "type": "refactor", "section": "Code Refactoring" },
+    { "type": "docs", "section": "Documentation", "hidden": false },
+    { "type": "chore", "section": "Miscellaneous", "hidden": false },
+    { "type": "test", "section": "Tests", "hidden": false },
+    { "type": "build", "section": "Build System", "hidden": false },
+    { "type": "ci", "section": "Continuous Integration", "hidden": false }
+  ],
+  "scripts": {
+    "postchangelog": "node scripts/sync-version.js && node scripts/update-constants.js"
+  },
+  "skip": {
+    "tag": false
+  },
+  "packageFiles": [
+    "package.json",
+    "app/backend/package.json",
+    "app/frontend/package.json",
+    "app/shared/package.json"
+  ],
+  "bumpFiles": [
+    "package.json",
+    "app/backend/package.json",
+    "app/frontend/package.json",
+    "app/shared/package.json"
+  ]
+}

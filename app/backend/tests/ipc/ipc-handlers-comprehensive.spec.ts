@@ -222,9 +222,9 @@ vi.mock('../../shared/logger', () => {
 });
 
 // Import after mocks
-import { registerAllIPCHandlers } from '../src/ipc/index';
-import * as repo from '../src/repositories';
-import * as imp from '../src/services/timesheet-importer';
+import { registerAllIPCHandlers } from '../../src/ipc/index';
+import * as repo from '../../src/repositories';
+import * as imp from '../../src/services/timesheet-importer';
 
 type VMock = ReturnType<typeof vi.fn>;
 const mdb = repo as unknown as {
@@ -853,7 +853,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
           };
         } else {
           // Second call is for the SELECT query - should throw error
-          expect(sql).toContain('SELECT * FROM timesheet');
+          expect(_sql).toContain('SELECT * FROM timesheet');
           return {
             all: vi.fn(() => {
               throw new Error('Database error');

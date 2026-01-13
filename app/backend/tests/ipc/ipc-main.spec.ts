@@ -185,11 +185,11 @@ vi.mock('../../shared/logger', () => {
 });
 
 // Import main.ts AFTER mocks so its side-effects (handler registration) use our stubs
-import { registerAllIPCHandlers } from '../src/ipc/index';
+import { registerAllIPCHandlers } from '../../src/ipc/index';
 
 // Re-get typed references to mocked modules for assertions
-import * as repo from '../src/repositories';
-import * as imp from '../src/services/timesheet-importer';
+import * as repo from '../../src/repositories';
+import * as imp from '../../src/services/timesheet-importer';
 
 const mimps = imp as unknown as { submitTimesheets: ReturnType<typeof vi.fn> };
 

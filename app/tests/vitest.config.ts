@@ -45,10 +45,17 @@ export default defineProject({
       functions: 70,
       branches: 70,
       statements: 70,
+      thresholds: {
+        lines: 70,
+        functions: 70,
+        branches: 70,
+        statements: 70,
+      },
     },
     pool: "threads",
     poolOptions: {
       threads: {
+        // @ts-expect-error - poolOptions typing issue in vitest config
         maxThreads: 2,
         minThreads: 1,
       },

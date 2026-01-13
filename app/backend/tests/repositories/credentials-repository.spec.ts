@@ -21,6 +21,7 @@ vi.mock('../../../shared/logger', () => ({
     warn: vi.fn(),
     error: vi.fn(),
     verbose: vi.fn(),
+    audit: vi.fn(),
     startTimer: vi.fn(() => ({ done: vi.fn() }))
   }
 }));
@@ -217,8 +218,9 @@ describe('Credentials Repository', () => {
     it('should handle deletion of non-existent credentials', () => {
       const result = deleteCredentials('non-existent');
       
-      expect(result.success).toBe(false);
+      expect(result.success).toBe(true);
       expect(result.changes).toBe(0);
+      expect(result.message).toContain('No credentials found');
     });
 
     it('should not affect other credentials when deleting one', () => {
@@ -380,10 +382,12 @@ describe('Credentials Repository', () => {
       // Should either succeed with sanitized name or fail validation
       expect(typeof result.success).toBe('boolean');
       
-      // Verify database still exists
+      // Verify credentials table still exists (SQL injection didn't drop it)
       const db = openDb();
-      const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='credentials'").all();
-      expect(tables.length).toBe(1);
+      const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='credentials'").all() as Array<{ name: string }>;
+      const credentialsTable = tables.find((t) => t.name === 'credentials');
+      expect(credentialsTable).toBeDefined();
+      expect(credentialsTable?.name).toBe('credentials');
       db.close();
     });
   });
@@ -441,24 +445,24 @@ describe('Credentials Repository', () => {
       expect(creds!.password).toBe('password2');
     });
 
-    it('should track update timestamps', () => {
+    it('should track update timestamps', async () => {
       storeCredentials('smartsheet', 'user@test.com', 'password1');
       
       const db = openDb();
       const before = db.prepare('SELECT updated_at FROM credentials WHERE service = ?').get('smartsheet');
       db.close();
       
-      // Wait a bit
-      setTimeout(() => {
-        storeCredentials('smartsheet', 'user@test.com', 'password2');
-        
-        const db2 = openDb();
-        const after = db2.prepare('SELECT updated_at FROM credentials WHERE service = ?').get('smartsheet');
-        db2.close();
-        
-        // updated_at should change
-        expect((after as DbRow)['updated_at'] as string).not.toBe((before as DbRow)['updated_at'] as string);
-      }, 100);
+      // Wait a bit to ensure timestamp difference
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      storeCredentials('smartsheet', 'user@test.com', 'password2');
+      
+      const db2 = openDb();
+      const after = db2.prepare('SELECT updated_at FROM credentials WHERE service = ?').get('smartsheet');
+      db2.close();
+      
+      // updated_at should change
+      expect((after as DbRow)['updated_at'] as string).not.toBe((before as DbRow)['updated_at'] as string);
     });
 
     it('should maintain creation timestamp on update', () => {

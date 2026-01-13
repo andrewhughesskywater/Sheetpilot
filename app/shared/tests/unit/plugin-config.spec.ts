@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { loadPluginConfig } from '../plugin-config';
-import type { PluginRegistryConfig } from '../plugin-types';
+import { loadPluginConfig } from '../../plugin-config';
+import type { PluginRegistryConfig } from '../../plugin-types';
 
 // Mock fs and path for Node.js environment
 vi.mock('fs', () => ({
@@ -162,7 +162,7 @@ describe('plugin-config', () => {
     });
 
     it('should return default config in browser environment', () => {
-      (globalThis as { window: typeof window }).window = {} as Window;
+      (globalThis as { window?: typeof window }).window = {} as Window & typeof globalThis;
 
       const config = loadPluginConfig('/path/to/config.json');
 

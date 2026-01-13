@@ -35,8 +35,8 @@ app/
 │
 ├── shared/
 │   └── tests/
-│       ├── utils/             # Shared utility tests
-│       └── [feature]/         # Feature-specific tests
+│       ├── unit/              # Unit tests for shared modules
+│       └── utils/             # Shared utility tests
 │
 └── tests/                     # Cross-cutting tests
     ├── accessibility/         # Accessibility tests
@@ -379,8 +379,80 @@ tests/
 4. **Update documentation** if changing test organization
 5. **Run all tests** after refactoring
 
+## Quality Metrics
+
+### Overview
+
+Test quality is measured using objective metrics to ensure tests are maintainable, reliable, and follow best practices. See [TEST_QUALITY_METRICS.md](./TEST_QUALITY_METRICS.md) for detailed definitions.
+
+### Metrics
+
+1. **Coverage Thresholds**: Ensure adequate test coverage (70% baseline, 80-90% for critical paths)
+2. **Test Execution Time**: Identify slow tests (< 5s unit, < 30s integration, < 2min e2e)
+3. **Test Organization Compliance**: Validate file locations and naming conventions (100% target)
+4. **Test Isolation**: Detect shared state and missing cleanup (zero errors target)
+5. **Test Maintainability**: Assess complexity, duplication, and documentation (> 80% docs target)
+
+### Running Quality Checks
+
+**Validate Test Organization**:
+```bash
+npx tsx scripts/validate-test-organization.ts
+```
+
+**Analyze Test Quality**:
+```bash
+npx tsx scripts/analyze-test-quality.ts
+```
+
+### Quality Thresholds and Targets
+
+- **Coverage**: 70% baseline, 80-90% for critical paths
+- **Execution Time**: Unit < 5s, Integration < 30s, E2E < 2min
+- **Organization Compliance**: 100%
+- **Isolation Errors**: 0
+- **Documentation Coverage**: > 80%
+- **Complexity**: Average < 10
+- **Duplication**: < 30%
+
+### Examples
+
+**Compliant Test**:
+```typescript
+/**
+ * @fileoverview Timesheet validation tests
+ */
+describe('TimesheetValidation', () => {
+  beforeEach(() => {
+    // Setup isolated test data
+  });
+
+  afterEach(() => {
+    // Cleanup
+  });
+
+  it('should validate date format correctly', () => {
+    // Test implementation
+  });
+});
+```
+
+**Non-Compliant Test**:
+```typescript
+// Missing documentation
+describe('test validation', () => {  // Wrong naming
+  // Missing cleanup hooks
+  const sharedState = {};  // Shared state
+
+  it('validates dates', () => {  // Missing "should"
+    // Test implementation
+  });
+});
+```
+
 ## Related Documentation
 
+- [Test Quality Metrics](./TEST_QUALITY_METRICS.md) - Quality metrics definitions and guidelines
 - [Vitest Setup Guide](./VITEST_SETUP.md) - Test runner configuration
 - [Testing Strategy](./DEVELOPER_WIKI.md#testing-strategy) - Overall testing approach
 - [File Structure Guidelines](../.cursor/rules/filestructure.mdc) - Project structure

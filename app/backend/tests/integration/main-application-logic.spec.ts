@@ -68,7 +68,11 @@ vi.mock('fs', () => ({
   existsSync: vi.fn(),
   readFileSync: vi.fn(),
   writeFileSync: vi.fn(),
-  mkdirSync: vi.fn()
+  mkdirSync: vi.fn(),
+  promises: {
+    mkdir: vi.fn(),
+    writeFile: vi.fn()
+  }
 }));
 
 describe('Main Application Logic Tests', () => {
@@ -214,7 +218,7 @@ describe('Main Application Logic Tests', () => {
           if (args.length === 0) {
             super(2025, 0, 15); // January 15, 2025
           } else {
-            super(...args);
+            super(...(args as Parameters<DateConstructor>));
           }
         }
       } as typeof Date;
@@ -287,7 +291,7 @@ describe('Main Application Logic Tests', () => {
   });
 
   describe('Window State Management', () => {
-    const mockFs = fs as unknown as { existsSync: Mock; readFileSync: Mock; writeFileSync: Mock; mkdirSync: Mock };
+    const mockFs = fs as unknown as { existsSync: Mock; readFileSync: Mock; writeFileSync: Mock; mkdirSync: Mock; promises: { mkdir: Mock; writeFile: Mock } };
 
     const getWindowState = (): { width: number; height: number; x?: number; y?: number; isMaximized?: boolean } => {
       const defaultWidth = 1200;

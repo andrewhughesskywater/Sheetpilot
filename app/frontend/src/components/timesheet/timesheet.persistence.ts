@@ -1,5 +1,5 @@
 import type { TimesheetRow } from './timesheet.schema';
-import { deleteDraft, saveDraft } from '../../services/ipc/timesheet';
+import { deleteDraft, saveDraft, loadDraft } from '../../services/ipc/timesheet';
 import { logDebug, logError, logInfo, logVerbose, logWarn } from '../../services/ipc/logger';
 
 const LOCAL_BACKUP_KEY = 'sheetpilot_timesheet_backup';
@@ -92,16 +92,12 @@ export async function batchSaveToDatabase(
       row.date && row.timeIn && row.timeOut && row.project && row.taskDescription
     );
     
-    if (completeRows.length === 0) {
-      logVerbose('No complete rows to save to database');
-      return;
-    }
-    
     logInfo('Batch saving rows to database', { count: completeRows.length });
     
     let savedCount = 0;
     let errorCount = 0;
     
+    // Save all complete rows
     for (const row of completeRows) {
       try {
         // Ensure optional fields get sent explicitly as null when not present.
@@ -131,6 +127,57 @@ export async function batchSaveToDatabase(
           error: error instanceof Error ? error.message : String(error) 
         });
       }
+    }
+    
+    // Delete orphaned rows (rows in database that are not in current data)
+    try {
+      const loadResult = await loadDraft();
+      if (loadResult.success && loadResult.entries) {
+        const currentIds = new Set(
+          completeRows
+            .map(row => row.id)
+            .filter((id): id is number => id !== undefined && id !== null)
+        );
+        
+        const orphanedRows = loadResult.entries.filter(
+          entry => entry.id !== undefined && entry.id !== null && !currentIds.has(entry.id)
+        );
+        
+        if (orphanedRows.length > 0) {
+          logInfo('Deleting orphaned rows from database', { count: orphanedRows.length });
+          
+          let deletedCount = 0;
+          for (const orphan of orphanedRows) {
+            if (orphan.id !== undefined && orphan.id !== null) {
+              try {
+                const deleteResult = await deleteDraft(orphan.id);
+                if (deleteResult.success) {
+                  deletedCount++;
+                } else {
+                  logWarn('Could not delete orphaned row', { 
+                    id: orphan.id,
+                    error: deleteResult.error 
+                  });
+                }
+              } catch (error) {
+                logError('Encountered error deleting orphaned row', { 
+                  id: orphan.id,
+                  error: error instanceof Error ? error.message : String(error) 
+                });
+              }
+            }
+          }
+          
+          logInfo('Orphan deletion completed', { 
+            total: orphanedRows.length,
+            deleted: deletedCount
+          });
+        }
+      }
+    } catch (error) {
+      logWarn('Could not check for orphaned rows', { 
+        error: error instanceof Error ? error.message : String(error) 
+      });
     }
     
     logInfo('Batch save completed', { 

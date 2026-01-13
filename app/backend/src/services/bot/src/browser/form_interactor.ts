@@ -11,7 +11,7 @@
  */
 import type { Locator, Page } from "playwright";
 import * as cfg from "../config/automation_config";
-import { botLogger } from "@sheetpilot/shared/logger";
+import { botLogger } from "../../../../../../shared/logger";
 
 export type FieldSpec = {
   label?: string;

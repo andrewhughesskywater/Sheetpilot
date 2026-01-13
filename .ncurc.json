@@ -1,0 +1,17 @@
+{
+  "upgrade": false,
+  "reject": [],
+  "target": "latest",
+  "packageFile": "package.json",
+  "workspacePackages": [
+    "app/backend",
+    "app/frontend",
+    "app/shared"
+  ],
+  "dep": [
+    "prod",
+    "dev"
+  ],
+  "interactive": false,
+  "jsonUpgraded": true
+}

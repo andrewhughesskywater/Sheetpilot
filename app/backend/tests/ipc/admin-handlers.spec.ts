@@ -32,6 +32,11 @@ vi.mock('../../src/validation/validate-ipc-input', () => ({
   validateInput: vi.fn((schema, data) => ({ success: true, data }))
 }));
 
+// Mock trusted sender check
+vi.mock('../../src/ipc/handlers/timesheet/main-window', () => ({
+  isTrustedIpcSender: vi.fn(() => true)
+}));
+
 describe('admin-handlers', () => {
   beforeEach(() => {
     vi.clearAllMocks();

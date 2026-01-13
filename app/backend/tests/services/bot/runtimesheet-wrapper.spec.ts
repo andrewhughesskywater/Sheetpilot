@@ -8,11 +8,11 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { runTimesheet } from '../../../src/services/bot/src/index';
-import { createFormConfig } from '../../../src/services/bot/src/automation_config';
+import { runTimesheet } from '../../../src/services/bot/src/core/index';
+import { createFormConfig } from '../../../src/services/bot/src/config/automation_config';
 
 // Mock LoginManager to fail authentication immediately to prevent timeouts
-vi.mock('../../../src/services/bot/src/authentication_flow', () => {
+vi.mock('../../../src/services/bot/src/utils/authentication_flow', () => {
   return {
     LoginManager: class {
       async run_login_steps() { throw new Error('Authentication failed (mock)'); }

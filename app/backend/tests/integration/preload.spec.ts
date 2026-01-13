@@ -19,7 +19,7 @@ describe('preload.ts', () => {
     vi.clearAllMocks();
     vi.resetModules();
     // Import preload fresh for each test
-    await import('../src/preload');
+    await import('../../src/preload');
   });
 
   it('should expose api.ping handler', async () => {
