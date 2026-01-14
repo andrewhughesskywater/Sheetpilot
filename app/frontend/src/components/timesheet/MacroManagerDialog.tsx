@@ -14,9 +14,9 @@ import 'handsontable/styles/handsontable.css';
 import 'handsontable/styles/ht-theme-horizon.css';
 import './TimesheetGrid.css'; // Reuse TimesheetGrid styles
 
-import type { MacroRow } from '../../utils/macroStorage';
-import { saveMacros, loadMacros } from '../../utils/macroStorage';
-import { PROJECTS, CHARGE_CODES, getToolsForProject, doesToolNeedChargeCode, doesProjectNeedTools } from '../../../../shared/business-config';
+import type { MacroRow } from '@/utils/macroStorage';
+import { saveMacros, loadMacros } from '@/utils/macroStorage';
+import { PROJECTS, CHARGE_CODES, getToolsForProject, doesToolNeedChargeCode, doesProjectNeedTools } from '@sheetpilot/shared/business-config';
 import { formatTimeInput } from './timesheet.schema';
 import { SpellcheckEditor } from './SpellcheckEditor';
 

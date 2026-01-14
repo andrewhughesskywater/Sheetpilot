@@ -9,19 +9,21 @@
  * @since 2025
  */
 
-import type { IPlugin } from '../plugin-types';
+import type { IPlugin } from "@sheetpilot/shared/plugin-types";
 
 /**
  * Log levels
  */
-export enum LogLevel {
-  ERROR = 'error',
-  WARN = 'warn',
-  INFO = 'info',
-  VERBOSE = 'verbose',
-  DEBUG = 'debug',
-  SILLY = 'silly'
-}
+export const LogLevel = {
+  ERROR: 'error',
+  WARN: 'warn',
+  INFO: 'info',
+  VERBOSE: 'verbose',
+  DEBUG: 'debug',
+  SILLY: 'silly'
+} as const;
+
+export type LogLevel = typeof LogLevel[keyof typeof LogLevel];
 
 /**
  * Timer interface for performance tracking

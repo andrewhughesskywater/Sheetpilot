@@ -17,7 +17,7 @@
  *   constants (`BASE_URL`, `FORM_ID`, `SUBMISSION_ENDPOINT`) exist only for compatibility.
  */
 
-import { botLogger } from "../../../../../../shared/logger";
+import { botLogger } from "@sheetpilot/shared/logger";
 
 // ============================================================================
 // TYPE DEFINITIONS

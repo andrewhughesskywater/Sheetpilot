@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SQLiteCredentialService } from '../../../src/services/plugins/sqlite-credential-service';
-import * as db from '../../../src/repositories';
+import * as db from '../../../src/models';
 
 // Mock database
 vi.mock('../../../src/repositories', () => ({

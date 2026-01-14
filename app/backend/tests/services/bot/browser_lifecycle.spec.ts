@@ -6,13 +6,14 @@
  */
 
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { BotOrchestrator } from '../../../src/services/bot/src/core/bot_orchestation';
-import * as Cfg from '../../../src/services/bot/src/config/automation_config';
-import { createFormConfig } from '../../../src/services/bot/src/config/automation_config';
+import { BotOrchestrator, createFormConfig } from '@sheetpilot/bot';
+import * as Cfg from '@sheetpilot/bot';
 
 // Mock LoginManager to prevent timeouts
-vi.mock('../../../src/services/bot/src/utils/authentication_flow', () => {
+vi.mock('@sheetpilot/bot', async () => {
+  const actual = await vi.importActual<typeof import('@sheetpilot/bot')>('@sheetpilot/bot');
   return {
+    ...actual,
     LoginManager: class {
       async run_login_steps(email: string) {
         // Fail for bad credentials to support error handling tests

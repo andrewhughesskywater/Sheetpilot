@@ -19,9 +19,9 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import { useSession } from './SessionContext';
-import { loadDraft } from '../services/ipc/timesheet';
-import { getAllArchiveData } from '../services/ipc/database';
-import { logError, logInfo, logVerbose, logWarn, logDebug } from '../services/ipc/logger';
+import { loadDraft } from '@/services/ipc/timesheet';
+import { getAllArchiveData } from '@/services/ipc/database';
+import { logError, logInfo, logVerbose, logWarn, logDebug } from '@/services/ipc/logger';
 
 // Define data types
 

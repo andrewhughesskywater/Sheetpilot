@@ -11,7 +11,7 @@
  */
 import type { Locator, Page } from "playwright";
 import * as cfg from "../config/automation_config";
-import { botLogger } from "../../../../../../shared/logger";
+import { botLogger } from "@sheetpilot/shared/logger";
 
 export type FieldSpec = {
   label?: string;
@@ -22,7 +22,11 @@ export type FieldSpec = {
 };
 
 export class FormInteractor {
-  constructor(private readonly getPage: () => Page) {}
+  private readonly getPage: () => Page;
+
+  constructor(getPage: () => Page) {
+    this.getPage = getPage;
+  }
 
   async fillField(spec: FieldSpec, value: string): Promise<void> {
     // `label` comes from the field spec. It is used only for logs and errors.

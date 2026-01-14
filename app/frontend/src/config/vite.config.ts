@@ -40,6 +40,7 @@ export default defineConfig(({ mode }) => {
   base: './', // Use relative paths for assets in production builds
   resolve: {
     alias: {
+      '@': path.resolve(__dirname, '..'),
       '/fonts': path.resolve(__dirname, 'assets/fonts'),
       '@emotion/react': path.resolve(__dirname, '../../../../node_modules/@emotion/react'),
       '@emotion/styled': path.resolve(__dirname, '../../../../node_modules/@emotion/styled'),

@@ -1,9 +1,8 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import path from "path";
 import type { Page, Route } from "playwright";
-import * as cfg from "../../../src/services/bot/src/config/automation_config";
-import { BotOrchestrator } from "../../../src/services/bot/src/core/bot_orchestation";
-import { createFormConfig } from "../../../src/services/bot/src/config/automation_config";
+import { BotOrchestrator, createFormConfig } from "@sheetpilot/bot";
+import * as cfg from "@sheetpilot/bot";
 
 describe("WebformFiller against mock form", () => {
   let bot: BotOrchestrator;

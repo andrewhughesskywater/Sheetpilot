@@ -31,8 +31,8 @@ import {
   getCredentials,
   listCredentials,
   deleteCredentials
-} from '../../src/repositories/credentials-repository';
-import { setDbPath, openDb, ensureSchema, shutdownDatabase } from '../../src/repositories';
+} from '../../src/models/credentials-repository';
+import { setDbPath, openDb, ensureSchema, shutdownDatabase } from '../../src/models';
 
 // Type for database row
 interface DbRow { [key: string]: unknown }

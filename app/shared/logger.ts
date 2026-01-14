@@ -22,9 +22,9 @@ import log from 'electron-log';
 import * as os from 'os';
 import * as crypto from 'crypto';
 import { app } from 'electron';
-import { APP_VERSION } from './constants';
+import { APP_VERSION } from './src/constants';
 import { configureLogger, getStoredLogPath } from './logger-config';
-import { Logger, type LogContext } from './logger-class';
+import { Logger } from './logger-class';
 
 // ============================================================================
 // LOGGER CONFIGURATION

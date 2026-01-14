@@ -1,3 +1,8 @@
+import * as pathModule from 'path';
+import { createRequire } from 'module';
+
+const require = createRequire(import.meta.url);
+
 export function configureBackendNodeModuleResolution(params: {
   packagedLike: boolean;
   isSmoke: boolean;
@@ -5,7 +10,6 @@ export function configureBackendNodeModuleResolution(params: {
 }): void {
   // Add backend node_modules to module resolution path (dev and packaged-like)
   // Keep logic aligned with previous behavior in backend/src/main.ts
-  const pathModule = require('path') as typeof import('path');
   const modulePaths: string[] = [];
 
   if (params.packagedLike && !params.isSmoke) {

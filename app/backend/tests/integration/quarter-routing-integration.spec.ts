@@ -14,14 +14,8 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { BotOrchestrator } from "../../src/services/bot/src/core/bot_orchestation";
-import {
-  WebformSessionManager as _WebformFiller,
-  type FormConfig,
-} from "../../src/services/bot/src/browser/webform_session";
-import { createFormConfig } from "../../src/services/bot/src/config/automation_config";
-import * as Cfg from "../../src/services/bot/src/config/automation_config";
-import { QUARTER_DEFINITIONS } from "../../src/services/bot/src/config/quarter_config";
+import { BotOrchestrator, WebformSessionManager as _WebformFiller, type FormConfig, createFormConfig, QUARTER_DEFINITIONS } from "@sheetpilot/bot";
+import * as Cfg from "@sheetpilot/bot";
 
 // Mock the logger
 vi.mock("../src/shared/logger", () => ({

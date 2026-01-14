@@ -1,16 +1,27 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { processEntriesByQuarter } from '../../../../src/services/bot/src/utils/quarter-processing';
-import { getQuarterForDate, groupEntriesByQuarter } from '../../../../src/services/bot/src/config/quarter_config';
-import { createFormConfig } from '../../../../src/services/bot/src/config/automation_config';
-import { botLogger } from '../../../../../shared/logger';
-import { checkAborted } from '../../../../src/services/bot/src/utils/abort-utils';
-import type { TimesheetEntry } from '../../../../../shared/contracts/IDataService';
+import { processEntriesByQuarter, getQuarterForDate, groupEntriesByQuarter, createFormConfig, checkAborted } from '@sheetpilot/bot';
+import { botLogger } from '@sheetpilot/shared/logger';
+import type { TimesheetEntry } from '@sheetpilot/shared';
 
 // Mock dependencies
-vi.mock('../../../../src/services/bot/src/config/quarter_config');
-vi.mock('../../../../src/services/bot/src/config/automation_config');
-vi.mock('../../../../../shared/logger');
-vi.mock('../../../../src/services/bot/src/utils/abort-utils');
+vi.mock('@sheetpilot/bot', async () => {
+  const actual = await vi.importActual('@sheetpilot/bot');
+  return {
+    ...actual,
+    getQuarterForDate: vi.fn(),
+    groupEntriesByQuarter: vi.fn(),
+    createFormConfig: vi.fn(),
+    checkAborted: vi.fn()
+  };
+});
+vi.mock('@sheetpilot/shared/logger', () => ({
+  botLogger: {
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    verbose: vi.fn()
+  }
+}));
 
 describe('quarter-processing', () => {
   const mockQuarterDef = {

@@ -31,10 +31,10 @@ vi.mock('../../../shared/logger', () => ({
   }
 }));
 
-import { setDbPath, ensureSchema, openDb, shutdownDatabase } from '../../src/repositories';
-import { createSession, validateSession } from '../../src/repositories/session-repository';
-import { storeCredentials, getCredentials } from '../../src/repositories/credentials-repository';
-import { insertTimesheetEntry, getPendingTimesheetEntries } from '../../src/repositories/timesheet-repository';
+import { setDbPath, ensureSchema, openDb, shutdownDatabase } from '../../src/models';
+import { createSession, validateSession } from '../../src/models/session-repository';
+import { storeCredentials, getCredentials } from '../../src/models/credentials-repository';
+import { insertTimesheetEntry, getPendingTimesheetEntries } from '../../src/models/timesheet-repository';
 
 describe('Full Workflow Integration', () => {
   let testDbPath: string;

@@ -10,7 +10,7 @@
  */
 
 import { projectNeedsTools, toolNeedsChargeCode } from './dropdown-logic';
-import { validateQuarterAvailability } from '../services/bot/src/config/quarter_config';
+import { validateQuarterAvailability } from '@sheetpilot/bot';
 
 /**
  * Timesheet row interface

@@ -9,14 +9,14 @@
  * in the same order as `botRows`, so `ids[i]` maps bot index `i` to `TimesheetEntry.id`.
  */
 
-import type { TimesheetEntry } from "../../../../../../shared/contracts/IDataService";
-import type { SubmissionResult } from "../../../../../../shared/contracts/ISubmissionService";
+import type { TimesheetEntry } from "@sheetpilot/shared";
+import type { SubmissionResult } from "@sheetpilot/shared";
 import {
   getQuarterForDate,
   groupEntriesByQuarter,
-} from "../config/quarter_config";
-import { createFormConfig } from "../config/automation_config";
-import { botLogger } from "../../../../../../shared/logger";
+} from "../../engine/config/quarter_config";
+import { createFormConfig } from "../../engine/config/automation_config";
+import { botLogger } from "@sheetpilot/shared/logger";
 import { checkAborted } from "./abort-utils";
 
 /**

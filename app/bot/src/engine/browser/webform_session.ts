@@ -12,7 +12,7 @@
  */
 import type { Browser, BrowserContext, Page } from "playwright";
 import * as cfg from "../config/automation_config";
-import { botLogger } from "../../../../../../shared/logger";
+import { botLogger } from "@sheetpilot/shared/logger";
 
 export type FormConfig = {
   BASE_URL: string;
@@ -35,11 +35,13 @@ export type BrowserSession = {
 export class WebformSessionManager {
   private sessions: BrowserSession[] = [];
   private defaultSessionIndex = 0;
+  private readonly browser: Browser;
+  private readonly formConfig: FormConfig;
 
-  constructor(
-    private readonly browser: Browser,
-    private readonly formConfig: FormConfig
-  ) {}
+  constructor(browser: Browser, formConfig: FormConfig) {
+    this.browser = browser;
+    this.formConfig = formConfig;
+  }
 
   async initContexts(count: number = 1): Promise<void> {
     // Create contexts up-front so callers can address them by index.

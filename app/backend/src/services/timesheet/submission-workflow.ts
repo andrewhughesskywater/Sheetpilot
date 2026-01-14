@@ -1,4 +1,4 @@
-import { ipcLogger } from '../../../../shared/logger';
+import { ipcLogger } from '@sheetpilot/shared/logger';
 import {
   getDbPath,
   getPendingTimesheetEntries,
@@ -6,9 +6,9 @@ import {
   resetInProgressTimesheetEntries,
   resetTimesheetEntriesStatus,
   validateSession
-} from '../../repositories';
-import { submitTimesheets } from '../timesheet-importer';
-import { createUserFriendlyMessage, extractErrorCode } from '../../../../shared/errors';
+} from '@/models';
+import { submitTimesheets } from '@/services/timesheet-importer';
+import { createUserFriendlyMessage, extractErrorCode } from '@sheetpilot/shared/errors';
 
 export interface SubmitWorkflowResult {
   submitResult?: { ok: boolean; successCount: number; removedCount: number; totalProcessed: number };

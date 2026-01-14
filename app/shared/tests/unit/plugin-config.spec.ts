@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { loadPluginConfig } from '../../plugin-config';
-import type { PluginRegistryConfig } from '../../plugin-types';
+import { loadPluginConfig } from '@sheetpilot/shared/plugin-config';
+import type { PluginRegistryConfig } from '@sheetpilot/shared/plugin-types';
+import * as fs from 'fs';
 
 // Mock fs and path for Node.js environment
 vi.mock('fs', () => ({
@@ -53,7 +54,6 @@ describe('plugin-config', () => {
     });
 
     it('should load config from file when path provided', () => {
-      const fs = require('fs');
       const mockConfig: PluginRegistryConfig = {
         plugins: {
           data: { active: 'memory', alternatives: ['sqlite'] },
@@ -78,7 +78,6 @@ describe('plugin-config', () => {
     });
 
     it('should return default config when file does not exist', () => {
-      const fs = require('fs');
       vi.mocked(fs.existsSync).mockReturnValue(false);
 
       const config = loadPluginConfig('/path/to/nonexistent.json');
@@ -87,7 +86,6 @@ describe('plugin-config', () => {
     });
 
     it('should handle file read errors gracefully', () => {
-      const fs = require('fs');
       vi.mocked(fs.existsSync).mockReturnValue(true);
       vi.mocked(fs.readFileSync).mockImplementation(() => {
         throw new Error('Read error');
@@ -103,7 +101,6 @@ describe('plugin-config', () => {
     });
 
     it('should handle invalid JSON in config file', () => {
-      const fs = require('fs');
       vi.mocked(fs.existsSync).mockReturnValue(true);
       vi.mocked(fs.readFileSync).mockReturnValue('invalid json');
 
@@ -144,7 +141,6 @@ describe('plugin-config', () => {
     });
 
     it('should merge user config with defaults', () => {
-      const fs = require('fs');
       const userConfig: Partial<PluginRegistryConfig> = {
         plugins: {
           data: { active: 'memory' }

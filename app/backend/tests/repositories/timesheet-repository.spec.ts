@@ -33,8 +33,8 @@ import {
   getSubmittedTimesheetEntriesForExport,
   markTimesheetEntriesAsSubmitted,
   removeFailedTimesheetEntries
-} from '../../src/repositories/timesheet-repository';
-import { setDbPath, openDb, ensureSchema, shutdownDatabase } from '../../src/repositories';
+} from '../../src/models/timesheet-repository';
+import { setDbPath, openDb, ensureSchema, shutdownDatabase } from '../../src/models';
 
 // Type for database row
 interface DbRow { [key: string]: unknown }

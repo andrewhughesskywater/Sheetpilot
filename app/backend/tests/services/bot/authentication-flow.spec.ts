@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import * as C from '../../../src/services/bot/src/config/automation_config';
-import { LoginManager, type BrowserManager } from '../../../src/services/bot/src/utils/authentication_flow';
+import * as C from '@sheetpilot/bot';
+import { LoginManager, type BrowserManager } from '@sheetpilot/bot';
 import type { Page } from 'playwright';
 
 class FakeFiller implements BrowserManager {

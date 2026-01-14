@@ -12,7 +12,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { setDbPath, ensureSchema, getDb } from '../src/repositories';
+import { setDbPath, ensureSchema, getDb } from '../src/models';
 
 /**
  * Creates a temporary test database with a unique name

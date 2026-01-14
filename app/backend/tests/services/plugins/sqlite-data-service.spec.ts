@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { SQLiteDataService } from '../../../src/services/plugins/sqlite-data-service';
-import type { TimesheetEntry } from '../../../../shared/contracts/IDataService';
-import { getDb, ensureSchema, closeConnectionForTesting, resetPreventReconnectionFlag } from '../../../src/repositories';
+import type { TimesheetEntry } from '@sheetpilot/shared';
+import { getDb, ensureSchema, closeConnectionForTesting, resetPreventReconnectionFlag } from '../../../src/models';
 
 describe('SQLiteDataService', () => {
   let service: SQLiteDataService;

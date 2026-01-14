@@ -1,7 +1,7 @@
 import * as path from 'path';
 import type { App } from 'electron';
-import type { LoggerLike } from '../logging/logger-contract';
-import { ensureSchema, getDb, getDbPath, runMigrations, setDbPath } from '../../repositories';
+import type { LoggerLike } from '@/bootstrap/logging/logger-contract';
+import { ensureSchema, getDb, getDbPath, runMigrations, setDbPath } from '@/models';
 
 export function bootstrapDatabase(app: App, logger: LoggerLike): void {
   const timer = logger.startTimer('bootstrap-database');

@@ -6,7 +6,7 @@
  * CRITICAL: ID column must be first and hidden - this is the "Golden Rule" for Handsontable-SQL sync
  */
 
-import { PROJECTS, CHARGE_CODES } from '../../../../shared/business-config';
+import { PROJECTS, CHARGE_CODES } from '@sheetpilot/shared/business-config';
 
 /**
  * Get column definitions for timesheet grid

@@ -1,11 +1,12 @@
 import { describe, it, expect, vi } from 'vitest';
-import * as Cfg from '../../../src/services/bot/src/config/automation_config';
-import { BotOrchestrator } from '../../../src/services/bot/src/core/bot_orchestation';
-import { createFormConfig } from '../../../src/services/bot/src/config/automation_config';
+import * as Cfg from '@sheetpilot/bot';
+import { BotOrchestrator, createFormConfig } from '@sheetpilot/bot';
 
 // Mock LoginManager to avoid waiting for URL changes (which causes timeouts)
-vi.mock('../../../src/services/bot/src/utils/authentication_flow', () => {
+vi.mock('@sheetpilot/bot', async () => {
+  const actual = await vi.importActual<typeof import('@sheetpilot/bot')>('@sheetpilot/bot');
   return {
+    ...actual,
     LoginManager: class {
       async run_login_steps() {}
       async validate_login_state() { return true; }

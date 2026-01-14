@@ -9,15 +9,15 @@
  */
 
 import { ipcMain } from 'electron';
-import { ipcLogger } from '../../../shared/logger';
+import { ipcLogger } from '@sheetpilot/shared/logger';
 import { isTrustedIpcSender } from './handlers/timesheet/main-window';
 import { 
   validateSession,
   clearAllCredentials,
   rebuildDatabase
-} from '../repositories';
-import { validateInput } from '../validation/validate-ipc-input';
-import { adminTokenSchema } from '../validation/ipc-schemas';
+} from '@/models';
+import { validateInput } from '@/validation/validate-ipc-input';
+import { adminTokenSchema } from '@/validation/ipc-schemas';
 
 /**
  * Register all admin-related IPC handlers

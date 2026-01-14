@@ -12,8 +12,8 @@ export interface SubmitResponse {
   dbPath?: string;
 }
 
-import { submitTimesheet as submitTimesheetIpc } from '../../services/ipc/timesheet';
-import { logError, logInfo, logWarn } from '../../services/ipc/logger';
+import { submitTimesheet as submitTimesheetIpc } from '@/services/ipc/timesheet';
+import { logError, logInfo, logWarn } from '@/services/ipc/logger';
 
 async function submitTimesheet(
   token: string,

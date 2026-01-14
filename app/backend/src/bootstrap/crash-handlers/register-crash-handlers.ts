@@ -1,5 +1,5 @@
 import type { App } from 'electron';
-import type { LoggerLike } from '../logging/logger-contract';
+import type { LoggerLike } from '@/bootstrap/logging/logger-contract';
 
 export function registerCrashHandlers(app: App, logger: LoggerLike): void {
   // Global safety nets for unhandled errors

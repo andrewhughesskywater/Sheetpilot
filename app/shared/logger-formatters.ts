@@ -8,7 +8,7 @@
  * @since 2025-09-30
  */
 
-import { APP_VERSION } from './constants';
+import { APP_VERSION } from './src/constants';
 
 /**
  * Extract message and context from log data

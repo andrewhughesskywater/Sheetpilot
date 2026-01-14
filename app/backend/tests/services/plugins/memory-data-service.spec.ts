@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { MemoryDataService } from '../../../src/services/plugins/memory-data-service';
-import type { TimesheetEntry } from '../../../../shared/contracts/IDataService';
+import type { TimesheetEntry } from '@sheetpilot/shared';
 
 describe('MemoryDataService', () => {
   let service: MemoryDataService;

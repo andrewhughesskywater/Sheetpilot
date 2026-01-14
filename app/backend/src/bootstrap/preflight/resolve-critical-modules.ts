@@ -1,9 +1,14 @@
 import type { App } from 'electron';
-import type { LoggerLike } from '../logging/logger-contract';
+import { dialog } from 'electron';
+import type { LoggerLike } from '@/bootstrap/logging/logger-contract';
+import { createRequire } from 'module';
 
 export function preflightResolveCriticalModules(app: App, logger: LoggerLike): void {
   const criticalModules = ['electron-log', 'electron-updater', 'better-sqlite3'];
   const failures: Array<{ name: string; error: string }> = [];
+
+  // Create a require function for module resolution (ES modules compatible)
+  const require = createRequire(import.meta.url);
 
   for (const name of criticalModules) {
     try {
@@ -41,7 +46,6 @@ export function preflightResolveCriticalModules(app: App, logger: LoggerLike): v
     .whenReady()
     .then(() => {
       try {
-        const { dialog } = require('electron') as typeof import('electron');
         dialog.showErrorBox(
           'Application Startup Error',
           `Could not start application. Missing required dependencies:\n\n${details}\n\nPlease reinstall the application.\n\nCheck the log file in: ${app.getPath('userData')}`

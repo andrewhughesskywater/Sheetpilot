@@ -9,7 +9,7 @@
  * @since 2025
  */
 
-import type { IPlugin } from '../plugin-types';
+import type { IPlugin } from "@sheetpilot/shared/plugin-types";
 
 /**
  * Timesheet entry data structure

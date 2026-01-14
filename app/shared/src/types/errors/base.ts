@@ -53,14 +53,16 @@ export abstract class AppError extends Error {
 /**
  * Error categories for filtering and monitoring
  */
-export enum ErrorCategory {
-    DATABASE = 'database',
-    CREDENTIALS = 'credentials',
-    SUBMISSION = 'submission',
-    VALIDATION = 'validation',
-    NETWORK = 'network',
-    IPC = 'ipc',
-    CONFIGURATION = 'configuration',
-    BUSINESS_LOGIC = 'business_logic',
-    SYSTEM = 'system'
-}
+export const ErrorCategory = {
+    DATABASE: 'database',
+    CREDENTIALS: 'credentials',
+    SUBMISSION: 'submission',
+    VALIDATION: 'validation',
+    NETWORK: 'network',
+    IPC: 'ipc',
+    CONFIGURATION: 'configuration',
+    BUSINESS_LOGIC: 'business_logic',
+    SYSTEM: 'system'
+} as const;
+
+export type ErrorCategory = typeof ErrorCategory[keyof typeof ErrorCategory];

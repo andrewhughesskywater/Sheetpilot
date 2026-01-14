@@ -10,7 +10,7 @@
  */
 
 import type { BrowserWindow } from 'electron';
-import { appLogger } from '../../../shared/logger';
+import { appLogger } from '@sheetpilot/shared/logger';
 import { registerAuthHandlers } from './auth-handlers';
 import { registerCredentialsHandlers } from './credentials-handlers';
 import { registerTimesheetHandlers, setMainWindow } from './timesheet-handlers';

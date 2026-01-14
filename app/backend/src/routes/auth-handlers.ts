@@ -9,7 +9,7 @@
  */
 
 import { ipcMain } from 'electron';
-import { ipcLogger, appLogger } from '../../../shared/logger';
+import { ipcLogger, appLogger } from '@sheetpilot/shared/logger';
 import { isTrustedIpcSender } from './handlers/timesheet/main-window';
 import { 
   storeCredentials,
@@ -18,14 +18,14 @@ import {
   validateSession, 
   clearSession, 
   clearUserSessions 
-} from '../repositories';
-import { validateInput } from '../validation/validate-ipc-input';
+} from '@/models';
+import { validateInput } from '@/validation/validate-ipc-input';
 import { 
   loginSchema,
   validateSessionSchema,
   logoutSchema,
   getCurrentSessionSchema
-} from '../validation/ipc-schemas';
+} from '@/validation/ipc-schemas';
 
 // Admin credentials from environment variables
 // For production: Set SHEETPILOT_ADMIN_USERNAME and SHEETPILOT_ADMIN_PASSWORD

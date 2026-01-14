@@ -25,7 +25,7 @@ import {
     markTimesheetEntriesAsInProgress,
     closeConnection,
     type TimesheetDbRow
-} from '../../src/repositories';
+} from '../../src/models';
 
 // Type for generic database rows from raw queries
 interface DbRow { [key: string]: unknown }

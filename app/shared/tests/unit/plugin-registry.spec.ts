@@ -10,8 +10,8 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { PluginRegistry } from '../../plugin-registry';
-import type { IPlugin } from '../../plugin-types';
+import { PluginRegistry } from '@sheetpilot/shared/plugin-registry';
+import type { IPlugin } from '@sheetpilot/shared/plugin-types';
 
 describe('Plugin Registry', () => {
   let registry: PluginRegistry;

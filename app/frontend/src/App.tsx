@@ -37,7 +37,7 @@ import { DataProvider, useData } from './contexts/DataContext';
 import { SessionProvider, useSession } from './contexts/SessionContext';
 import { initializeTheme } from './utils/theme-manager';
 import logoImage from './assets/images/logo.svg';
-import { APP_VERSION } from '../../shared/constants';
+import { APP_VERSION } from '@sheetpilot/shared';
 import './styles/App.css';
 import './styles/transitions.css';
 import { onDownloadProgress, onUpdateAvailable, onUpdateDownloaded, removeAllUpdateListeners } from './services/ipc/updates';

@@ -7,7 +7,7 @@ import {
   appSettings,
   getBrowserHeadless,
   setBrowserHeadless
-} from '../../constants';
+} from '@sheetpilot/shared/src/constants';
 
 // Mock logger to avoid circular dependency issues
 vi.mock('../logger', () => ({

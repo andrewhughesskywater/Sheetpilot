@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron';
-import { ipcLogger } from '../../../../../shared/logger';
-import { cancelTimesheetSubmission, submitTimesheetWorkflow } from '../../../services/timesheet/submission-workflow';
+import { ipcLogger } from '@sheetpilot/shared/logger';
+import { cancelTimesheetSubmission, submitTimesheetWorkflow } from '@/services/timesheet/submission-workflow';
 import { emitSubmissionProgress } from './main-window';
 import { isTrustedIpcSender } from './main-window';
 

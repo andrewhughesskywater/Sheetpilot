@@ -23,22 +23,34 @@
  * immediate browser cleanup (via `setupAbortHandler`).
  */
 
-import * as Cfg from "../config/automation_config";
-import { BrowserLauncher } from "../browser/browser_launcher";
+import * as Cfg from "../../engine/config/automation_config";
+import { BrowserLauncher } from "../../engine/browser/browser_launcher";
 import {
   WebformSessionManager,
   type FormConfig,
-} from "../browser/webform_session";
-import { FormInteractor, type FieldSpec } from "../browser/form_interactor";
-import { SubmissionMonitor } from "../browser/submission_monitor";
+} from "../../engine/browser/webform_session";
+import {
+  FormInteractor,
+  type FieldSpec,
+} from "../../engine/browser/form_interactor";
+import { SubmissionMonitor } from "../../engine/browser/submission_monitor";
 import {
   LoginManager,
   type BrowserManager,
 } from "../utils/authentication_flow";
-import { botLogger } from "../../../../../../shared/logger";
-import { getQuarterForDate } from "../config/quarter_config";
-import { appSettings } from "../../../../../../shared/constants";
+import { botLogger } from "@sheetpilot/shared/logger";
+import { getQuarterForDate } from "../../engine/config/quarter_config";
+import { appSettings } from "@sheetpilot/shared";
 import { checkAborted, setupAbortHandler } from "../utils/abort-utils";
+
+/**
+ * Extended configuration type that includes optional status-related properties
+ * that may be accessed at runtime but aren't part of the base config module.
+ */
+type ExtendedConfig = typeof Cfg & {
+  STATUS_COLUMN_NAME?: string;
+  STATUS_COMPLETE?: unknown;
+};
 
 /**
  * Result object returned after automation execution
@@ -62,7 +74,7 @@ export type AutomationResult = {
 /**
  * Main orchestrator class for timesheet automation.
  *
- * Keep this class focused on workflow decisions (“what happens next”).
+ * Keep this class focused on workflow decisions ("what happens next").
  * Delegate browser details (selectors, waits, submission verification) to the
  * browser/auth layers so you can change UI tactics without rewriting flow.
  */
@@ -71,7 +83,7 @@ export class BotOrchestrator {
    * Invariant: call `start()` before any method that requires a page/context.
    */
   /** Configuration object containing automation settings */
-  cfg: typeof Cfg;
+  cfg: ExtendedConfig;
   /** Whether to run browser in headless mode */
   headless: boolean;
   /** Browser launcher instance */
@@ -96,7 +108,7 @@ export class BotOrchestrator {
    * @param progress_callback - Optional callback for progress updates
    */
   constructor(
-    injected_config: typeof Cfg,
+    injected_config: ExtendedConfig,
     formConfig: FormConfig,
     headless: boolean | null = null,
     _browser: string | null = null,
@@ -821,12 +833,8 @@ export class BotOrchestrator {
       botLogger.info("Login complete", { progress: 20 });
       this.progress_callback?.(20, "Login complete");
 
-      const status_col =
-        ((this.cfg as Record<string, unknown>)[
-          "STATUS_COLUMN_NAME"
-        ] as string) ?? "Status";
-      const complete_val =
-        (this.cfg as Record<string, unknown>)["STATUS_COMPLETE"] ?? "Complete";
+      const status_col = this.cfg.STATUS_COLUMN_NAME ?? "Status";
+      const complete_val = this.cfg.STATUS_COMPLETE ?? "Complete";
       botLogger.info("Processing rows", {
         totalRows: total_rows,
         statusColumn: status_col,

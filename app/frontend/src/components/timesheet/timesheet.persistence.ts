@@ -1,6 +1,6 @@
 import type { TimesheetRow } from './timesheet.schema';
-import { deleteDraft, saveDraft, loadDraft } from '../../services/ipc/timesheet';
-import { logDebug, logError, logInfo, logVerbose, logWarn } from '../../services/ipc/logger';
+import { deleteDraft, saveDraft, loadDraft } from '@/services/ipc/timesheet';
+import { logDebug, logError, logInfo, logVerbose, logWarn } from '@/services/ipc/logger';
 
 const LOCAL_BACKUP_KEY = 'sheetpilot_timesheet_backup';
 
@@ -140,7 +140,7 @@ export async function batchSaveToDatabase(
         );
         
         const orphanedRows = loadResult.entries.filter(
-          entry => entry.id !== undefined && entry.id !== null && !currentIds.has(entry.id)
+          (entry: TimesheetRow) => entry.id !== undefined && entry.id !== null && !currentIds.has(entry.id)
         );
         
         if (orphanedRows.length > 0) {

@@ -30,8 +30,8 @@ import {
   validateSession,
   clearSession,
   clearUserSessions
-} from '../../src/repositories/session-repository';
-import { setDbPath, openDb, ensureSchema, shutdownDatabase } from '../../src/repositories';
+} from '../../src/models/session-repository';
+import { setDbPath, openDb, ensureSchema, shutdownDatabase } from '../../src/models';
 
 // Type for database row
 interface DbRow { [key: string]: unknown }

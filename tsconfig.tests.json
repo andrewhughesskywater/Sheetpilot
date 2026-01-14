@@ -15,11 +15,7 @@
   "include": [
     "app/backend/tests/**/*.ts",
     "app/shared/tests/**/*.ts",
-    "app/tests/**/*.ts",
-    "app/frontend/tests/**/*.ts",
-    "app/frontend/tests/**/*.tsx",
-    "app/frontend/src/contracts/window.ts",
-    "app/frontend/src/utils/safe-init.ts"
+    "app/tests/**/*.ts"
   ],
   "exclude": [
     "node_modules",

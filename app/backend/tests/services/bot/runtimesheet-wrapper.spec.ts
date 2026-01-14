@@ -8,12 +8,13 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { runTimesheet } from '../../../src/services/bot/src/core/index';
-import { createFormConfig } from '../../../src/services/bot/src/config/automation_config';
+import { runTimesheet, createFormConfig } from '@sheetpilot/bot';
 
 // Mock LoginManager to fail authentication immediately to prevent timeouts
-vi.mock('../../../src/services/bot/src/utils/authentication_flow', () => {
+vi.mock('@sheetpilot/bot', async () => {
+  const actual = await vi.importActual<typeof import('@sheetpilot/bot')>('@sheetpilot/bot');
   return {
+    ...actual,
     LoginManager: class {
       async run_login_steps() { throw new Error('Authentication failed (mock)'); }
       async validate_login_state() { return false; }

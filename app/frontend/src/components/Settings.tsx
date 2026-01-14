@@ -37,16 +37,16 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import SecurityIcon from '@mui/icons-material/Security';
 import SettingsIcon from '@mui/icons-material/Settings';
 import UserManual from './UserManual';
-import { useSession } from '../contexts/SessionContext';
-import { APP_VERSION } from '../../../shared/constants';
-import logoImage from '../assets/images/logo.svg';
+import { useSession } from '@/contexts/SessionContext';
+import { APP_VERSION } from '@sheetpilot/shared';
+import logoImage from '@/assets/images/logo.svg';
 import './Settings.css';
-import { autoCompleteEmailDomain } from '../utils/emailAutoComplete';
-import { clearCredentials as clearCredentialsIpc, rebuildDatabase as rebuildDatabaseIpc } from '../services/ipc/admin';
-import { listCredentials as listCredentialsIpc, storeCredentials as storeCredentialsIpc } from '../services/ipc/credentials';
-import { getLogPath as getLogPathIpc, exportLogs as exportLogsIpc } from '../services/ipc/logs';
-import { getSetting, setSetting } from '../services/ipc/settings';
-import { logError, logInfo, logUserAction, logWarn } from '../services/ipc/logger';
+import { autoCompleteEmailDomain } from '@/utils/emailAutoComplete';
+import { clearCredentials as clearCredentialsIpc, rebuildDatabase as rebuildDatabaseIpc } from '@/services/ipc/admin';
+import { listCredentials as listCredentialsIpc, storeCredentials as storeCredentialsIpc } from '@/services/ipc/credentials';
+import { getLogPath as getLogPathIpc, exportLogs as exportLogsIpc } from '@/services/ipc/logs';
+import { getSetting, setSetting } from '@/services/ipc/settings';
+import { logError, logInfo, logUserAction, logWarn } from '@/services/ipc/logger';
 
 /**
  * Settings page component

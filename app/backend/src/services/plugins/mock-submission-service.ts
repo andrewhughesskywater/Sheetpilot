@@ -12,11 +12,11 @@
 import type {
   ISubmissionService,
   SubmissionResult,
-  ValidationResult
-} from '../../../../shared/contracts/ISubmissionService';
-import type { TimesheetEntry } from '../../../../shared/contracts/IDataService';
-import type { Credentials } from '../../../../shared/contracts/ICredentialService';
-import type { PluginMetadata } from '../../../../shared/plugin-types';
+  ValidationResult,
+  TimesheetEntry,
+  Credentials,
+  PluginMetadata
+} from '@sheetpilot/shared';
 
 /**
  * Mock submission service for testing

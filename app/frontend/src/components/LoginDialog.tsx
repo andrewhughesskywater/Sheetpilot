@@ -26,10 +26,10 @@ import Alert from '@mui/material/Alert';
 import CircularProgress from '@mui/material/CircularProgress';
 import Box from '@mui/material/Box';
 import './LoginDialog.css';
-import { autoCompleteEmailDomain } from '../utils/emailAutoComplete';
-import { login as loginIpc } from '../services/ipc/auth';
-import { listCredentials } from '../services/ipc/credentials';
-import { logError, logInfo, logUserAction } from '../services/ipc/logger';
+import { autoCompleteEmailDomain } from '@/utils/emailAutoComplete';
+import { login as loginIpc } from '@/services/ipc/auth';
+import { listCredentials } from '@/services/ipc/credentials';
+import { logError, logInfo, logUserAction } from '@/services/ipc/logger';
 
 interface LoginDialogProps {
   open: boolean;

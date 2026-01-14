@@ -12,7 +12,7 @@
  */
 import { chromium, type Browser } from "playwright";
 import * as cfg from "../config/automation_config";
-import { botLogger } from "../../../../../../shared/logger";
+import { botLogger } from "@sheetpilot/shared/logger";
 
 type BrowserProcessInfo = {
   spawnfile?: string;
@@ -67,8 +67,11 @@ function getSpawnedExecutablePath(browser: Browser): string | null {
 
 export class BrowserLauncher {
   private browser: Browser | null = null;
+  private readonly headless: boolean;
 
-  constructor(private readonly headless: boolean) {}
+  constructor(headless: boolean) {
+    this.headless = headless;
+  }
 
   async launch(): Promise<Browser> {
     if (this.browser) return this.browser;

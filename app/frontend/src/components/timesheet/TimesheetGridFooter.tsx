@@ -3,7 +3,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import StopIcon from '@mui/icons-material/Stop';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import { ValidationErrors } from './ValidationErrors';
-import { SubmitProgressBar } from '../SubmitProgressBar';
+import { SubmitProgressBar } from '@/components/SubmitProgressBar';
 import type { ValidationError } from './timesheet.cell-processing';
 
 type ButtonStatus = 'neutral' | 'ready' | 'warning';

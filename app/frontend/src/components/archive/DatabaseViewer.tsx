@@ -8,8 +8,8 @@ import Tooltip from '@mui/material/Tooltip';
 import CircularProgress from '@mui/material/CircularProgress';
 import 'handsontable/styles/handsontable.css';
 import 'handsontable/styles/ht-theme-horizon.css';
-import { useData } from '../../contexts/DataContext';
-import { StatusButton } from '../StatusButton';
+import { useData } from '@/contexts/DataContext';
+import { StatusButton } from '@/components/StatusButton';
 import './DatabaseViewer.css';
 
 type ButtonStatus = 'neutral' | 'ready' | 'warning';
@@ -114,6 +114,7 @@ function Archive() {
     return formatted;
   };
 
+
   const formatCredentialsData = (credentials: Credential[]) => {
     return credentials.map(cred => ({
       service: cred.service,
@@ -124,7 +125,7 @@ function Archive() {
   };
 
   const timesheetColumns = [
-    { data: 'date', title: 'Date', width: 100 },
+    { data: 'date', title: 'Date', type: 'date', dateFormat: 'MM/DD/YYYY', width: 100 },
     { data: 'timeIn', title: 'Time In', width: 80 },
     { data: 'timeOut', title: 'Time Out', width: 80 },
     { data: 'hours', title: 'Hours', width: 70 },
@@ -255,6 +256,12 @@ function Archive() {
           currentRowClassName=""
           currentColClassName=""
           activeHeaderClassName=""
+          columnSorting={{
+            initialConfig: {
+              column: 0,
+              sortOrder: 'desc'
+            }
+          }}
         />
       ) : (
         <HotTable

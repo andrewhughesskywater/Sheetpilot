@@ -9,7 +9,10 @@
     "moduleResolution": "bundler",
     "paths": {
       "@sheetpilot/shared": ["app/shared/index.ts"],
-      "@sheetpilot/shared/*": ["app/shared/*"]
+      "@sheetpilot/shared/*": ["app/shared/*"],
+      "@sheetpilot/bot": ["app/bot/src/index.ts"],
+      "@sheetpilot/bot/*": ["app/bot/src/*"],
+      "@/*": ["app/backend/src/*"]
     },
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,

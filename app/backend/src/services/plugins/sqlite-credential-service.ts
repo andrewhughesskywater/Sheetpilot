@@ -13,15 +13,15 @@ import type {
   ICredentialService,
   CredentialResult,
   CredentialListResult,
-  CredentialGetResult
-} from '../../../../shared/contracts/ICredentialService';
-import type { PluginMetadata } from '../../../../shared/plugin-types';
+  CredentialGetResult,
+  PluginMetadata
+} from '@sheetpilot/shared';
 import {
   storeCredentials,
   getCredentials,
   listCredentials,
   deleteCredentials
-} from '../../repositories';
+} from '@/models';
 
 /**
  * SQLite implementation of the credential service

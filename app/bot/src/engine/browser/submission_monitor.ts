@@ -10,13 +10,17 @@
  */
 import type { Locator, Page, Response } from "playwright";
 import * as cfg from "../config/automation_config";
-import { botLogger } from "../../../../../../shared/logger";
+import { botLogger } from "@sheetpilot/shared/logger";
 
 type RecordedResponse = { status: number; url: string; body?: string };
 type RecordedResponseSummary = { status: number; url: string };
 
 export class SubmissionMonitor {
-  constructor(private readonly getPage: () => Page) {}
+  private readonly getPage: () => Page;
+
+  constructor(getPage: () => Page) {
+    this.getPage = getPage;
+  }
 
   async submitForm(): Promise<boolean> {
     const page = this.getPage();

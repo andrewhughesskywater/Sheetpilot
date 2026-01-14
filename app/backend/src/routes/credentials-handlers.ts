@@ -9,19 +9,19 @@
  */
 
 import { ipcMain } from 'electron';
-import { ipcLogger } from '../../../shared/logger';
+import { ipcLogger } from '@sheetpilot/shared/logger';
 import { isTrustedIpcSender } from './handlers/timesheet/main-window';
 import { 
   storeCredentials, 
   listCredentials, 
   deleteCredentials 
-} from '../repositories';
-import { CredentialsStorageError } from '../../../shared/errors';
-import { validateInput } from '../validation/validate-ipc-input';
+} from '@/models';
+import { CredentialsStorageError } from '@sheetpilot/shared/errors';
+import { validateInput } from '@/validation/validate-ipc-input';
 import { 
   storeCredentialsSchema,
   deleteCredentialsSchema 
-} from '../validation/ipc-schemas';
+} from '@/validation/ipc-schemas';
 
 /**
  * Register all credentials-related IPC handlers

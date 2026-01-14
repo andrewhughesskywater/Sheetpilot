@@ -3,6 +3,7 @@
   "version": "1.6.0",
   "private": true,
   "type": "module",
+  "sideEffects": false,
   "scripts": {
     "dev": "vite --config src/config/vite.config.ts",
     "build": "tsc -b && vite build --config src/config/vite.config.ts",

@@ -13,7 +13,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { IpcMainInvokeEvent } from 'electron';
 
 // Import the modules we need to test
-import { ensureSchema } from '../../src/repositories';
+import { ensureSchema } from '../../src/models';
 import { 
   isValidDate, 
   isValidTime, 

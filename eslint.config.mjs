@@ -1,9 +1,17 @@
-const js = require('@eslint/js');
-const typescript = require('@typescript-eslint/eslint-plugin');
-const react = require('eslint-plugin-react');
-const reactHooks = require('eslint-plugin-react-hooks');
-const reactRefresh = require('eslint-plugin-react-refresh');
-const sonarjs = require('eslint-plugin-sonarjs');
+import js from '@eslint/js';
+import typescript from '@typescript-eslint/eslint-plugin';
+import react from 'eslint-plugin-react';
+import reactHooks from 'eslint-plugin-react-hooks';
+import reactRefresh from 'eslint-plugin-react-refresh';
+import sonarjs from 'eslint-plugin-sonarjs';
+import importAlias from '@dword-design/eslint-plugin-import-alias';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// Extract the plugin object from the recommended config
+const importAliasPlugin = importAlias.configs.recommended.plugins['@dword-design/import-alias'];
 
 // Complexity rule is built into ESLint, no plugin needed
 
@@ -21,7 +29,7 @@ const typescriptRecommendedPreset = typescript.configs['flat/recommended'].map((
   files: cfg.files ?? TS_FILES
 }));
 
-module.exports = [
+export default [
   {
     ignores: [
       'build/**',
@@ -31,10 +39,6 @@ module.exports = [
       '**/*.d.ts',
       'node_modules/**',
       'release/**',
-      '**/tests/**',
-      '**/__tests__/**',
-      '**/*.spec.*',
-      '**/*.test.*',
       '*.log',
       '*.sqlite',
       '*.db'
@@ -55,7 +59,8 @@ module.exports = [
   {
     files: TS_FILES,
     plugins: {
-      sonarjs
+      sonarjs,
+      '@dword-design/import-alias': importAliasPlugin
     },
     languageOptions: {
       parserOptions: {
@@ -78,6 +83,9 @@ module.exports = [
         'ts-nocheck': false,
         'ts-check': false
       }],
+      // Enforce aliased imports: automatically reads aliases from tsconfig.json paths
+      // Supports autofixing with --fix flag
+      '@dword-design/import-alias/prefer-alias': 'error',
 
       'no-case-declarations': 'error',
       
@@ -253,7 +261,12 @@ module.exports = [
   // Type-aware rules: backend/shared (match `npm run type-check:root`)
   {
     files: ['app/backend/src/**/*.{ts,tsx}', 'app/shared/**/*.{ts,tsx}'],
-    ignores: ['app/backend/src/services/bot/**'],
+    ignores: [
+      'app/backend/src/services/bot/**',
+      '**/vitest.config*.ts',
+      '**/tests/**',
+      'app/shared/tests/**'
+    ],
     languageOptions: {
       parserOptions: {
         project: ['./tsconfig.typecheck.json'],

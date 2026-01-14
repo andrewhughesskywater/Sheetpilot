@@ -11,7 +11,7 @@
 
 import { expect } from 'vitest';
 import type { TimesheetRow } from '../../src/logic/timesheet-validation';
-import type { DbTimesheetEntry } from '../../../shared/contracts/IDataService';
+import type { DbTimesheetEntry } from '@sheetpilot/shared';
 import { isValidDate, isValidTime, isTimeOutAfterTimeIn } from '../../src/logic/timesheet-validation';
 
 /**

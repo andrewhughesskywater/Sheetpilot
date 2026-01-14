@@ -8,8 +8,8 @@
  * @version 1.0.0
  */
 
-import type { TimesheetRow } from '../components/timesheet/timesheet.schema';
-import { ALLOWED_PREVIOUS_QUARTERS } from '../../../shared/constants';
+import type { TimesheetRow } from '@/components/timesheet/timesheet.schema';
+import { ALLOWED_PREVIOUS_QUARTERS } from '@sheetpilot/shared';
 
 /**
  * Get the quarter (1-4) for a given date

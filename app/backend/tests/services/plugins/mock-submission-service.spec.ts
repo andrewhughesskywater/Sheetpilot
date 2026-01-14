@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { MockSubmissionService } from '../../../src/services/plugins/mock-submission-service';
-import type { TimesheetEntry } from '../../../../shared/contracts/IDataService';
-import type { Credentials } from '../../../../shared/contracts/ICredentialService';
+import type { TimesheetEntry, Credentials } from '@sheetpilot/shared';
 
 describe('MockSubmissionService', () => {
   let service: MockSubmissionService;

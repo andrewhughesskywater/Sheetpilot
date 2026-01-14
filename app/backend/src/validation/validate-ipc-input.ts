@@ -9,7 +9,7 @@
  */
 
 import { z } from 'zod';
-import { ipcLogger } from '../../../shared/logger';
+import { ipcLogger } from '@sheetpilot/shared/logger';
 
 /**
  * Validation result for IPC inputs

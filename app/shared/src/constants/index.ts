@@ -10,12 +10,33 @@
 
 /**
  * Lazy logger import to avoid circular dependency with logger.ts
+ * Uses ES module dynamic import with caching
  * @private
  */
-function getLogger() {
-  // Use dynamic import to avoid circular dependency
-  const { appLogger } = require("./logger");
-  return appLogger;
+let cachedLogger: { info: (message: string, context?: object) => void } | null = null;
+let loggerImportPromise: Promise<{ appLogger: { info: (message: string, context?: object) => void } }> | null = null;
+
+async function getLoggerAsync(): Promise<{ info: (message: string, context?: object) => void }> {
+  if (cachedLogger) {
+    return cachedLogger;
+  }
+  
+  if (!loggerImportPromise) {
+    loggerImportPromise = import("../../logger");
+  }
+  
+  const module = await loggerImportPromise;
+  cachedLogger = module.appLogger;
+  return cachedLogger;
+}
+
+/**
+ * Get logger synchronously - returns null if logger not yet loaded
+ * Used for functions that can handle logger not being available
+ * @private
+ */
+function getLogger(): { info: (message: string, context?: object) => void } | null {
+  return cachedLogger;
 }
 
 /**
@@ -74,19 +95,31 @@ export function setBrowserHeadless(value: boolean): void {
   appSettings.browserHeadless = value;
 
   // Use logger with lazy import to avoid circular dependency
-  try {
-    const logger = getLogger();
+  // Since this is synchronous, we log asynchronously without blocking
+  const logger = getLogger();
+  if (logger) {
     logger.info("Browser headless mode updated", {
       oldValue,
       newValue: value,
       appSettingsBrowserHeadless: appSettings.browserHeadless,
     });
-  } catch {
-    // Fallback to console if logger is not available (shouldn't happen in normal operation)
-    console.log("[Constants] Browser headless mode updated:", {
-      oldValue,
-      newValue: value,
-      appSettingsBrowserHeadless: appSettings.browserHeadless,
-    });
+  } else {
+    // Logger not yet loaded - initialize async and log
+    getLoggerAsync()
+      .then((log) => {
+        log.info("Browser headless mode updated", {
+          oldValue,
+          newValue: value,
+          appSettingsBrowserHeadless: appSettings.browserHeadless,
+        });
+      })
+      .catch(() => {
+        // Fallback to console if logger initialization fails
+        console.log("[Constants] Browser headless mode updated:", {
+          oldValue,
+          newValue: value,
+          appSettingsBrowserHeadless: appSettings.browserHeadless,
+        });
+      });
   }
 }

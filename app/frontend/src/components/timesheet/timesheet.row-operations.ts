@@ -8,7 +8,7 @@
 import type { TimesheetRow } from './timesheet.schema';
 import type { MutableRefObject } from 'react';
 import type { HotTableRef } from '@handsontable/react-wrapper';
-import type { MacroRow } from '../../utils/macroStorage';
+import type { MacroRow } from '@/utils/macroStorage';
 import { saveRowToDatabase } from './timesheet.persistence';
 
 type ButtonStatus = 'saved' | 'saving' | 'save';

@@ -1,7 +1,7 @@
 import Button from '@mui/material/Button';
 import EditIcon from '@mui/icons-material/Edit';
-import type { MacroRow } from '../../utils/macroStorage';
-import { isMacroEmpty } from '../../utils/macroStorage';
+import type { MacroRow } from '@/utils/macroStorage';
+import { isMacroEmpty } from '@/utils/macroStorage';
 
 interface MacroToolbarProps {
   macros: MacroRow[];

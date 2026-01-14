@@ -1,17 +1,17 @@
 /**
  * @fileoverview Submission Service Contract
- * 
+ *
  * Defines the interface for timesheet submission operations.
  * Any submission implementation (browser automation, API, etc.) must implement this interface.
- * 
+ *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025
  */
 
-import type { IPlugin } from '../plugin-types';
-import type { TimesheetEntry } from './IDataService';
-import type { Credentials } from './ICredentialService';
+import type { IPlugin } from "@sheetpilot/shared/plugin-types";
+import type { TimesheetEntry } from "./IDataService";
+import type { Credentials } from "./ICredentialService";
 
 /**
  * Validation result for a timesheet entry
@@ -48,7 +48,13 @@ export interface ISubmissionService extends IPlugin {
    * @param abortSignal Optional abort signal for cancellation support
    * @returns Result of submission operation
    */
-  submit(entries: TimesheetEntry[], credentials: Credentials, progressCallback?: (percent: number, message: string) => void, abortSignal?: {aborted: boolean; reason?: unknown}, useMockWebsite?: boolean): Promise<SubmissionResult>;
+  submit(
+    entries: TimesheetEntry[],
+    credentials: Credentials,
+    progressCallback?: (percent: number, message: string) => void,
+    abortSignal?: { aborted: boolean; reason?: unknown },
+    useMockWebsite?: boolean
+  ): Promise<SubmissionResult>;
 
   /**
    * Validate a timesheet entry before submission
@@ -63,4 +69,3 @@ export interface ISubmissionService extends IPlugin {
    */
   isAvailable(): Promise<boolean>;
 }
-

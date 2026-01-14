@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import type { App, BrowserWindow } from 'electron';
-import type { LoggerLike } from '../logging/logger-contract';
+import type { LoggerLike } from '@/bootstrap/logging/logger-contract';
 
 export async function loadRenderer(params: {
   app: App;

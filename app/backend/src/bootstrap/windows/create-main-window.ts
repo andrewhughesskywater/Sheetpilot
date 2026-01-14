@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import type { App, BrowserWindow } from 'electron';
 import { BrowserWindow as ElectronBrowserWindow } from 'electron';
-import type { LoggerLike } from '../logging/logger-contract';
+import type { LoggerLike } from '@/bootstrap/logging/logger-contract';
 import type { WindowState } from './window-state';
 
 export function createMainWindow(params: {

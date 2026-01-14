@@ -16,14 +16,14 @@ import type {
   LoadResult,
   DeleteResult,
   ArchiveResult,
-  DbTimesheetEntry
-} from '../../../../shared/contracts/IDataService';
-import type { PluginMetadata } from '../../../../shared/plugin-types';
-import { getDb } from '../../repositories';
+  DbTimesheetEntry,
+  PluginMetadata
+} from '@sheetpilot/shared';
+import { getDb } from '@/models';
 import {
   parseTimeToMinutes,
   formatMinutesToTime
-} from '../../../../shared/utils/format-conversions';
+} from '@sheetpilot/shared';
 
 /**
  * SQLite implementation of the data service

@@ -11,11 +11,11 @@
 import { ipcMain, app } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
-import { ipcLogger } from '../../../shared/logger';
-import { validateSession } from '../repositories';
+import { ipcLogger } from '@sheetpilot/shared/logger';
+import { validateSession } from '@/models';
 import { isTrustedIpcSender } from './handlers/timesheet/main-window';
-import { validateInput } from '../validation/validate-ipc-input';
-import { exportLogsSchema } from '../validation/ipc-schemas';
+import { validateInput } from '@/validation/validate-ipc-input';
+import { exportLogsSchema } from '@/validation/ipc-schemas';
 
 /**
  * Register all logs-related IPC handlers

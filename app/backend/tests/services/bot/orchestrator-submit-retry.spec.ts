@@ -1,10 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { BotOrchestrator } from '../../../src/services/bot/src/core/bot_orchestation';
-import { createFormConfig } from '../../../src/services/bot/src/config/automation_config';
+import { BotOrchestrator, createFormConfig } from '@sheetpilot/bot';
 
 // Mock the automation config with all required exports
-vi.mock('../../../src/services/bot/src/config/automation_config', async () => {
-  const actual = await vi.importActual<typeof import('../../../src/services/bot/src/config/automation_config')>('../../../src/services/bot/src/config/automation_config');
+vi.mock('@sheetpilot/bot', async () => {
+  const actual = await vi.importActual<typeof import('@sheetpilot/bot')>('@sheetpilot/bot');
   return {
     // Spread all actual exports first
     ...actual,
@@ -32,7 +31,7 @@ vi.mock('../../../src/services/bot/src/config/automation_config', async () => {
   };
 });
 
-import * as Cfg from '../../../src/services/bot/src/config/automation_config';
+import * as Cfg from '@sheetpilot/bot';
 
 // Use Q3 2025 form config to match the test dates (07/15/2025)
 const dummyFormConfig = createFormConfig(

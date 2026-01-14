@@ -18,7 +18,7 @@ import {
   ConfigurationError,
   BusinessLogicError,
   SystemError
-} from '../../errors';
+} from '@sheetpilot/shared/errors';
 
 describe('errors', () => {
   describe('AppError', () => {

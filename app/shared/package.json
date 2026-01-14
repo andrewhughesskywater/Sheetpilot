@@ -2,9 +2,14 @@
   "name": "@sheetpilot/shared",
   "version": "1.6.0",
   "private": true,
+  "type": "module",
   "description": "Shared TypeScript contracts and utilities for Sheetpilot",
   "main": "./index.ts",
   "types": "./index.ts",
+  "sideEffects": [
+    "./logger.ts",
+    "./logger-config.ts"
+  ],
   "exports": {
     ".": "./index.ts",
     "./*": "./*.ts"

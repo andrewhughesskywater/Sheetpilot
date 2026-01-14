@@ -11,7 +11,7 @@
 
 import type { ReactElement } from 'react';
 import type { TimesheetRow } from '../../../backend/src/logic/timesheet-validation';
-import type { IPlugin } from '../../../shared/plugin-types';
+import type { IPlugin } from '@sheetpilot/shared/plugin-types';
 
 /**
  * Validation result for a timesheet entry

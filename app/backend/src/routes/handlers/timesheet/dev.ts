@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron';
-import { ipcLogger } from '../../../../../shared/logger';
-import { getDb } from '../../../repositories';
+import { ipcLogger } from '@sheetpilot/shared/logger';
+import { getDb } from '@/models';
 import { isTrustedIpcSender } from './main-window';
 
 export function registerTimesheetDevHandlers(): void {

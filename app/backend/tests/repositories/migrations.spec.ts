@@ -33,8 +33,8 @@ import {
   runMigrations,
   needsMigration,
   CURRENT_SCHEMA_VERSION
-} from '../../src/repositories/migrations';
-import { setDbPath, getDb, closeConnection, ensureSchema, getDbPath } from '../../src/repositories/connection-manager';
+} from '../../src/models/migrations';
+import { setDbPath, getDb, closeConnection, ensureSchema, getDbPath } from '../../src/models/connection-manager';
 
 describe('Database Migrations', () => {
   let testDbPath: string;

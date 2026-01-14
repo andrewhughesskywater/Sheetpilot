@@ -1,5 +1,5 @@
 import type { App } from 'electron';
-import type { LoggerLike } from '../logging/logger-contract';
+import type { LoggerLike } from '@/bootstrap/logging/logger-contract';
 
 export function setAppUserModelId(app: App, logger: LoggerLike, appId: string): void {
   // Ensure Windows taskbar uses our app identity (affects icon/notifications)

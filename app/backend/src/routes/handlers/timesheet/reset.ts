@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron';
-import { ipcLogger } from '../../../../../shared/logger';
-import { resetInProgressTimesheetEntries } from '../../../repositories';
+import { ipcLogger } from '@sheetpilot/shared/logger';
+import { resetInProgressTimesheetEntries } from '@/models';
 import { isTrustedIpcSender } from './main-window';
 
 export function registerTimesheetResetHandlers(): void {

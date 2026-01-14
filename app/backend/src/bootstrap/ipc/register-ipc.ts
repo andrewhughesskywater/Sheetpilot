@@ -1,6 +1,6 @@
 import type { BrowserWindow } from 'electron';
-import type { LoggerLike } from '../logging/logger-contract';
-import { registerAllIPCHandlers, setMainWindow } from '../../ipc/index';
+import type { LoggerLike } from '@/bootstrap/logging/logger-contract';
+import { registerAllIPCHandlers, setMainWindow } from '@/routes/index';
 
 let ipcModuleLoaded = false;
 
@@ -9,7 +9,7 @@ export function registerIpcHandlers(params: {
   backendRequire: NodeRequire;
   backendDirname: string;
 }): void {
-  params.logger.verbose('Loading IPC handlers module', { path: './ipc/index' });
+  params.logger.verbose('Loading IPC handlers module', { path: './routes/index' });
 
   try {
     params.logger.verbose('IPC handlers module loaded successfully');

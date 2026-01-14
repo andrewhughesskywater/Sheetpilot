@@ -27,19 +27,19 @@ import { registerEditor } from 'handsontable/editors';
 import type { HotTableRef } from '@handsontable/react-wrapper';
 import 'handsontable/styles/handsontable.css';
 import 'handsontable/styles/ht-theme-horizon.css';
-import { useData } from '../../contexts/DataContext';
-import { useSession } from '../../contexts/SessionContext';
+import { useData } from '@/contexts/DataContext';
+import { useSession } from '@/contexts/SessionContext';
 import './TimesheetGrid.css';
 import type { TimesheetRow } from './timesheet.schema';
 import MacroManagerDialog from './MacroManagerDialog';
-import KeyboardShortcutsHintDialog from '../KeyboardShortcutsHintDialog';
+import KeyboardShortcutsHintDialog from '@/components/KeyboardShortcutsHintDialog';
 import { ValidationErrorDialog } from './ValidationErrorDialog';
 import TimesheetGridLoadingState from './TimesheetGridLoadingState';
 import TimesheetGridHeader from './TimesheetGridHeader';
 import MacroToolbar from './MacroToolbar';
 import TimesheetGridFooter from './TimesheetGridFooter';
-import type { MacroRow } from '../../utils/macroStorage';
-import { loadMacros, isMacroEmpty } from '../../utils/macroStorage';
+import type { MacroRow } from '@/utils/macroStorage';
+import { loadMacros, isMacroEmpty } from '@/utils/macroStorage';
 import type { ValidationError } from './timesheet.cell-processing';
 
 type ButtonStatus = 'neutral' | 'ready' | 'warning';
@@ -65,15 +65,15 @@ interface DateEditor {
 }
 
 import { normalizeRowData, isTimeOutAfterTimeIn, hasTimeOverlapWithPreviousEntries } from './timesheet.schema';
-import { getToolsForProject, doesToolNeedChargeCode, doesProjectNeedTools } from '../../../../shared/business-config';
+import { getToolsForProject, doesToolNeedChargeCode, doesProjectNeedTools } from '@sheetpilot/shared/business-config';
 import { getColumnDefinitions } from './timesheet.column-config';
 import { validateTimesheetRows } from './timesheet.validation';
 import { submitTimesheet } from './timesheet.submit';
 import { batchSaveToDatabase as batchSaveToDatabaseUtil, saveRowToDatabase } from './timesheet.persistence';
 import { SpellcheckEditor } from './SpellcheckEditor';
-import { detectWeekdayPattern, getSmartPlaceholder, incrementDate, formatDateForDisplay } from '../../utils/smartDate';
-import { cancelTimesheetSubmission, loadDraft as loadDraftIpc, resetInProgress as resetInProgressIpc } from '../../services/ipc/timesheet';
-import { logError, logInfo, logWarn, logVerbose } from '../../services/ipc/logger';
+import { detectWeekdayPattern, getSmartPlaceholder, incrementDate, formatDateForDisplay } from '@/utils/smartDate';
+import { cancelTimesheetSubmission, loadDraft as loadDraftIpc, resetInProgress as resetInProgressIpc } from '@/services/ipc/timesheet';
+import { logError, logInfo, logWarn, logVerbose } from '@/services/ipc/logger';
 import { processCellChange } from './timesheet.cell-processing';
 import { applyPastedToolAndChargeCode, normalizePastedRows, savePastedRows } from './timesheet.paste-handlers';
 import { createSaveAndReloadRow, createUpdateSaveButtonState, createApplyMacro, createDuplicateSelectedRow, createCellsFunction } from './timesheet.row-operations';

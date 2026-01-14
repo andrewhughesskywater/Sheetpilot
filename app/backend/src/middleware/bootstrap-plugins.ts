@@ -9,14 +9,14 @@
  * @since 2025
  */
 
-import type { LoggerLike } from '../bootstrap/logging/logger-contract';
-import { PluginRegistry } from '../../../shared/plugin-registry';
-import { loadPluginConfig } from '../../../shared/plugin-config';
-import { SQLiteDataService } from '../services/plugins/sqlite-data-service';
-import { MemoryDataService } from '../services/plugins/memory-data-service';
-import { SQLiteCredentialService } from '../services/plugins/sqlite-credential-service';
-import { ElectronBotService } from '../services/plugins/electron-bot-service';
-import { MockSubmissionService } from '../services/plugins/mock-submission-service';
+import type { LoggerLike } from '@/bootstrap/logging/logger-contract';
+import { PluginRegistry } from '@sheetpilot/shared/plugin-registry';
+import { loadPluginConfig } from '@sheetpilot/shared/plugin-config';
+import { SQLiteDataService } from '@/services/plugins/sqlite-data-service';
+import { MemoryDataService } from '@/services/plugins/memory-data-service';
+import { SQLiteCredentialService } from '@/services/plugins/sqlite-credential-service';
+import { ElectronBotService } from '@/services/plugins/electron-bot-service';
+import { MockSubmissionService } from '@/services/plugins/mock-submission-service';
 import * as path from 'path';
 
 /**

@@ -13,21 +13,16 @@ import type {
   ISubmissionService,
   SubmissionResult,
   ValidationResult,
-} from "../../../../shared/contracts/ISubmissionService";
-import type { TimesheetEntry } from "../../../../shared/contracts/IDataService";
-import type { Credentials } from "../../../../shared/contracts/ICredentialService";
-import type { PluginMetadata } from "../../../../shared/plugin-types";
-import { runTimesheet } from "../bot/src/core/index";
-import { botLogger } from "../../../../shared/logger";
-import {
-  checkAborted,
-  createCancelledResult,
-} from "../bot/src/utils/abort-utils";
-import { processEntriesByQuarter } from "../bot/src/utils/quarter-processing";
+  TimesheetEntry,
+  Credentials,
+  PluginMetadata
+} from "@sheetpilot/shared";
+import { runTimesheet, checkAborted, createCancelledResult, processEntriesByQuarter } from "@sheetpilot/bot";
+import { botLogger } from "@sheetpilot/shared/logger";
 import {
   parseTimeToMinutes,
   convertDateToUSFormat,
-} from "../../../../shared/utils/format-conversions";
+} from "@sheetpilot/shared";
 
 /**
  * Electron-based submission service using browser automation
@@ -88,7 +83,7 @@ export class ElectronBotService implements ISubmissionService {
         return createCancelledResult(entries.length);
       }
       const result = await processEntriesByQuarter(entries, {
-        toBotRow: (entry) => this.toBotRow(entry),
+        toBotRow: (entry: TimesheetEntry) => this.toBotRow(entry),
         runBot: runTimesheet,
         email: credentials.email,
         password: credentials.password,

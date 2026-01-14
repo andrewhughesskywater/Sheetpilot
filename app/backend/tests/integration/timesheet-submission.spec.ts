@@ -15,7 +15,7 @@ import {
     setDbPath,
     openDb,
     closeConnection
-} from '../../src/repositories';
+} from '../../src/models';
 import { submitTimesheets, getPendingEntries } from '../../src/services/timesheet-importer';
 import * as fs from 'fs';
 import * as path from 'path';

@@ -44,22 +44,8 @@ export function loadPluginConfig(configPath?: string): PluginRegistryConfig {
   }
 
   // In Node.js/Electron main process, try to load from file
-  if (configPath) {
-    try {
-      const fs = require('fs');
-      const path = require('path');
-      const fullPath = path.resolve(configPath);
-      
-      if (fs.existsSync(fullPath)) {
-        const configData = fs.readFileSync(fullPath, 'utf-8');
-        const config = JSON.parse(configData) as PluginRegistryConfig;
-        console.log(`Loaded plugin configuration from ${fullPath}`);
-        return mergeWithDefaults(config);
-      }
-    } catch (error) {
-      console.error(`Error loading plugin config from ${configPath}:`, error);
-    }
-  }
+  // Note: File loading is handled separately in Node.js context
+  // This function only uses environment variables and defaults in shared context
 
   // Fall back to environment variables or defaults
   return loadConfigFromEnvironment() || DEFAULT_CONFIG;

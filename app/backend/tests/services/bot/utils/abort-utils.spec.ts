@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach as _afterEach } from 'vitest';
-import { checkAborted, createCancelledResult, setupAbortHandler } from '../../../../src/services/bot/src/utils/abort-utils';
-import { botLogger } from '../../../../../shared/logger';
+import { checkAborted, createCancelledResult, setupAbortHandler } from '@sheetpilot/bot';
+import { botLogger } from '@sheetpilot/shared/logger';
 
 // Mock logger
 vi.mock('../../../../../shared/logger', () => ({

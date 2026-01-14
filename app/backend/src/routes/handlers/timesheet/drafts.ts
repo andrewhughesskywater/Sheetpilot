@@ -1,9 +1,9 @@
 import { ipcMain } from 'electron';
-import { ipcLogger } from '../../../../../shared/logger';
-import { getDb, resetInProgressTimesheetEntries } from '../../../repositories';
-import { validateInput } from '../../../validation/validate-ipc-input';
-import { deleteDraftSchema, saveDraftSchema } from '../../../validation/ipc-schemas';
-import { formatMinutesToTime, parseTimeToMinutes } from '../../../../../shared/utils/format-conversions';
+import { ipcLogger } from '@sheetpilot/shared/logger';
+import { getDb, resetInProgressTimesheetEntries } from '@/models';
+import { validateInput } from '@/validation/validate-ipc-input';
+import { deleteDraftSchema, saveDraftSchema } from '@/validation/ipc-schemas';
+import { formatMinutesToTime, parseTimeToMinutes } from '@sheetpilot/shared';
 import { isTrustedIpcSender } from './main-window';
 
 export function registerTimesheetDraftHandlers(): void {

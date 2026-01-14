@@ -22,7 +22,7 @@ import {
   getQuarterById,
   getCurrentQuarter,
   type QuarterDefinition
-} from '../../src/services/bot/src/config/quarter_config';
+} from '@sheetpilot/bot';
 
 describe('Quarter Configuration', () => {
   describe('Rolling Window Requirements', () => {

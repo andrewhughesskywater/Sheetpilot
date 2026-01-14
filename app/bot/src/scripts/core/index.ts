@@ -40,27 +40,27 @@ export {
   type AutomationResult,
 } from "./bot_orchestation";
 import { BotOrchestrator } from "./bot_orchestation";
-import * as Cfg from "../config/automation_config";
-import { appSettings } from "../../../../../../shared/constants";
-import { botLogger } from "../../../../../../shared/logger";
+import * as Cfg from "../../engine/config/automation_config";
+import { appSettings } from "@sheetpilot/shared";
+import { botLogger } from "@sheetpilot/shared/logger";
 
 // Authentication and login management
 export { LoginManager, BotNavigationError } from "../utils/authentication_flow";
 
 // Composable browser automation helpers (preferred)
-export { BrowserLauncher } from "../browser/browser_launcher";
+export { BrowserLauncher } from "../../engine/browser/browser_launcher";
 export {
   WebformSessionManager,
   type FormConfig,
-} from "../browser/webform_session";
-export { FormInteractor, type FieldSpec } from "../browser/form_interactor";
-export { SubmissionMonitor } from "../browser/submission_monitor";
+} from "../../engine/browser/webform_session";
+export { FormInteractor, type FieldSpec } from "../../engine/browser/form_interactor";
+export { SubmissionMonitor } from "../../engine/browser/submission_monitor";
 
 // Configuration constants and utilities
-export * from "../config/automation_config";
+export * from "../../engine/config/automation_config";
 
 // Quarter configuration and routing
-export * from "../config/quarter_config";
+export * from "../../engine/config/quarter_config";
 
 /**
  * Runs timesheet automation for a batch of rows.

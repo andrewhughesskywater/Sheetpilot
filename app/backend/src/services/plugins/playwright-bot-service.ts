@@ -12,19 +12,18 @@
 import type {
   ISubmissionService,
   SubmissionResult,
-  ValidationResult
-} from '../../../../shared/contracts/ISubmissionService';
-import type { TimesheetEntry } from '../../../../shared/contracts/IDataService';
-import type { Credentials } from '../../../../shared/contracts/ICredentialService';
-import type { PluginMetadata } from '../../../../shared/plugin-types';
-import { runTimesheet } from '../bot/src/core/index';
-import { botLogger } from '../../../../shared/logger';
-import { checkAborted, createCancelledResult } from '../bot/src/utils/abort-utils';
-import { processEntriesByQuarter } from '../bot/src/utils/quarter-processing';
+  ValidationResult,
+  TimesheetEntry,
+  Credentials,
+  PluginMetadata
+} from '@sheetpilot/shared';
+import { runTimesheet } from '@sheetpilot/bot';
+import { botLogger } from '@sheetpilot/shared/logger';
+import { checkAborted, createCancelledResult, processEntriesByQuarter } from '@sheetpilot/bot';
 import {
   parseTimeToMinutes,
   convertDateToUSFormat
-} from '../../../../shared/utils/format-conversions';
+} from '@sheetpilot/shared';
 
 /**
  * Playwright-based submission service using browser automation
@@ -74,7 +73,7 @@ export class PlaywrightBotService implements ISubmissionService {
         return createCancelledResult(entries.length);
       }
       const result = await processEntriesByQuarter(entries, {
-        toBotRow: (entry) => this.toBotRow(entry),
+        toBotRow: (entry: TimesheetEntry) => this.toBotRow(entry),
         runBot: runTimesheet,
         email: credentials.email,
         password: credentials.password,

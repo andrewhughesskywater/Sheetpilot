@@ -16,9 +16,9 @@ import type {
   LoadResult,
   DeleteResult,
   ArchiveResult,
-  DbTimesheetEntry
-} from '../../../../shared/contracts/IDataService';
-import type { PluginMetadata } from '../../../../shared/plugin-types';
+  DbTimesheetEntry,
+  PluginMetadata
+} from '@sheetpilot/shared';
 
 /**
  * In-memory implementation of the data service
