@@ -252,7 +252,7 @@ describe('Backend Timesheet Validation Logic', () => {
 
     describe('Date Field Validation', () => {
       it('should accept valid dates', () => {
-        const result = validateField('01/15/2025', 0, 'date', mockRows, mockProjects, mockChargeCodes);
+        const result = validateField('10/15/2025', 0, 'date', mockRows, mockProjects, mockChargeCodes);
         expect(result).toBeNull();
       });
 

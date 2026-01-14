@@ -36,7 +36,7 @@ const DEFAULT_CONFIG: PluginRegistryConfig = {
  * @param configPath Optional path to config file (for Node.js/Electron main process)
  * @returns Plugin registry configuration
  */
-export function loadPluginConfig(configPath?: string): PluginRegistryConfig {
+export function loadPluginConfig(_configPath?: string): PluginRegistryConfig {
   // In browser/renderer, we can't load files directly
   // Configuration should be passed via IPC or bundled
   if (typeof window !== 'undefined') {

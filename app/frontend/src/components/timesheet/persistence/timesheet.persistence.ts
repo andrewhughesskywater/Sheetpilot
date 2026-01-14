@@ -1,4 +1,4 @@
-import type { TimesheetRow } from './timesheet.schema';
+import type { TimesheetRow } from '@/components/timesheet/schema/timesheet.schema';
 import { deleteDraft, saveDraft, loadDraft } from '@/services/ipc/timesheet';
 import { logDebug, logError, logInfo, logVerbose, logWarn } from '@/services/ipc/logger';
 

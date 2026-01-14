@@ -6,8 +6,8 @@
  * Used by Handsontable for inline validation during data entry.
  */
 
-import type { TimesheetRow } from './timesheet.schema';
-import { isValidDate, isValidTime, isTimeOutAfterTimeIn, hasTimeOverlapWithPreviousEntries } from './timesheet.schema';
+import type { TimesheetRow } from '@/components/timesheet/schema/timesheet.schema';
+import { isValidDate, isValidTime, isTimeOutAfterTimeIn, hasTimeOverlapWithPreviousEntries } from '@/components/timesheet/schema/timesheet.schema';
 import { doesProjectNeedTools, doesToolNeedChargeCode } from '@sheetpilot/shared/business-config';
 import { isDateInAllowedRange } from '@/utils/smartDate';
 

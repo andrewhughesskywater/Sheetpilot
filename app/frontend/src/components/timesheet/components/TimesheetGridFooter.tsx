@@ -2,9 +2,9 @@ import Button from '@mui/material/Button';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import StopIcon from '@mui/icons-material/Stop';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import { ValidationErrors } from './ValidationErrors';
+import { ValidationErrors } from '@/components/timesheet/validation/ValidationErrors';
 import { SubmitProgressBar } from '@/components/SubmitProgressBar';
-import type { ValidationError } from './timesheet.cell-processing';
+import type { ValidationError } from '@/components/timesheet/cell-processing/timesheet.cell-processing';
 
 type ButtonStatus = 'neutral' | 'ready' | 'warning';
 

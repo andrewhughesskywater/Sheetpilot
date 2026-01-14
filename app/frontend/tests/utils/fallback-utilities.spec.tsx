@@ -3,11 +3,11 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 describe('Development Fallback Tests', () => {
   beforeEach(() => {
     // Reset window object
-    delete window.logger;
-    delete window.timesheet;
-    delete window.credentials;
-    delete window.database;
-    delete window.logs;
+    delete (window as Record<string, unknown>).logger;
+    delete (window as Record<string, unknown>).timesheet;
+    delete (window as Record<string, unknown>).credentials;
+    delete (window as Record<string, unknown>).database;
+    delete (window as Record<string, unknown>).logs;
     
     // Mock Vite environment
     vi.stubEnv('DEV', true);

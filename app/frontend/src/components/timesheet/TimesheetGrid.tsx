@@ -30,17 +30,17 @@ import 'handsontable/styles/ht-theme-horizon.css';
 import { useData } from '@/contexts/DataContext';
 import { useSession } from '@/contexts/SessionContext';
 import './TimesheetGrid.css';
-import type { TimesheetRow } from './timesheet.schema';
-import MacroManagerDialog from './MacroManagerDialog';
+import type { TimesheetRow } from './schema/timesheet.schema';
+import MacroManagerDialog from './macros/MacroManagerDialog';
 import KeyboardShortcutsHintDialog from '@/components/KeyboardShortcutsHintDialog';
-import { ValidationErrorDialog } from './ValidationErrorDialog';
-import TimesheetGridLoadingState from './TimesheetGridLoadingState';
-import TimesheetGridHeader from './TimesheetGridHeader';
-import MacroToolbar from './MacroToolbar';
-import TimesheetGridFooter from './TimesheetGridFooter';
+import { ValidationErrorDialog } from './validation/ValidationErrorDialog';
+import TimesheetGridLoadingState from './components/TimesheetGridLoadingState';
+import TimesheetGridHeader from './components/TimesheetGridHeader';
+import MacroToolbar from './macros/MacroToolbar';
+import TimesheetGridFooter from './components/TimesheetGridFooter';
 import type { MacroRow } from '@/utils/macroStorage';
 import { loadMacros, isMacroEmpty } from '@/utils/macroStorage';
-import type { ValidationError } from './timesheet.cell-processing';
+import type { ValidationError } from './cell-processing/timesheet.cell-processing';
 
 type ButtonStatus = 'neutral' | 'ready' | 'warning';
 
@@ -64,20 +64,20 @@ interface DateEditor {
   finishEditing: (restoreOriginalValue: boolean, ctrlDown: boolean) => void;
 }
 
-import { normalizeRowData, isTimeOutAfterTimeIn, hasTimeOverlapWithPreviousEntries } from './timesheet.schema';
+import { normalizeRowData, isTimeOutAfterTimeIn, hasTimeOverlapWithPreviousEntries } from './schema/timesheet.schema';
 import { getToolsForProject, doesToolNeedChargeCode, doesProjectNeedTools } from '@sheetpilot/shared/business-config';
-import { getColumnDefinitions } from './timesheet.column-config';
-import { validateTimesheetRows } from './timesheet.validation';
-import { submitTimesheet } from './timesheet.submit';
-import { batchSaveToDatabase as batchSaveToDatabaseUtil, saveRowToDatabase } from './timesheet.persistence';
-import { SpellcheckEditor } from './SpellcheckEditor';
+import { getColumnDefinitions } from './column-config/timesheet.column-config';
+import { validateTimesheetRows } from './validation/timesheet.validation';
+import { submitTimesheet } from './submit/timesheet.submit';
+import { batchSaveToDatabase as batchSaveToDatabaseUtil, saveRowToDatabase } from './persistence/timesheet.persistence';
+import { SpellcheckEditor } from './editors/SpellcheckEditor';
 import { detectWeekdayPattern, getSmartPlaceholder, incrementDate, formatDateForDisplay } from '@/utils/smartDate';
 import { cancelTimesheetSubmission, loadDraft as loadDraftIpc, resetInProgress as resetInProgressIpc } from '@/services/ipc/timesheet';
 import { logError, logInfo, logWarn, logVerbose } from '@/services/ipc/logger';
-import { processCellChange } from './timesheet.cell-processing';
-import { applyPastedToolAndChargeCode, normalizePastedRows, savePastedRows } from './timesheet.paste-handlers';
-import { createSaveAndReloadRow, createUpdateSaveButtonState, createApplyMacro, createDuplicateSelectedRow, createCellsFunction } from './timesheet.row-operations';
-import { createHandleAfterChange, createHandleAfterRemoveRow, createHandleAfterPaste, createHandleSubmitTimesheet, createHandleStopSubmission, createHandleBeforeKeyDown, createHandleAfterSelection, createHandleManualSave, createHandleRefresh } from './timesheet.handlers';
+import { processCellChange } from './cell-processing/timesheet.cell-processing';
+import { applyPastedToolAndChargeCode, normalizePastedRows, savePastedRows } from './paste-handlers/timesheet.paste-handlers';
+import { createSaveAndReloadRow, createUpdateSaveButtonState, createApplyMacro, createDuplicateSelectedRow, createCellsFunction } from './row-operations/timesheet.row-operations';
+import { createHandleAfterChange, createHandleAfterRemoveRow, createHandleAfterPaste, createHandleSubmitTimesheet, createHandleStopSubmission, createHandleBeforeKeyDown, createHandleAfterSelection, createHandleManualSave, createHandleRefresh } from './handlers/timesheet.handlers';
 
 // Register all Handsontable modules
 registerAllModules();
@@ -388,28 +388,33 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(functi
     createDuplicateSelectedRow(hotTableRef),
     [hotTableRef]
   );
+  // Register custom shortcuts using Handsontable's built-in addShortcut() method
   useEffect(() => {
-    const handleKeyDown = (e: globalThis.KeyboardEvent) => {
-      if (!e.ctrlKey) return;
+    const hotInstance = hotTableRef.current?.hotInstance;
+    if (!hotInstance) return;
 
-      if (e.key >= '1' && e.key <= '5') {
-        e.preventDefault();
-        const macroIndex = parseInt(e.key, 10) - 1;
-        applyMacro(macroIndex);
-        return;
-      }
+    const gridContext = hotInstance.getShortcutManager().getContext('grid');
 
-      if (e.key === 'd' || e.key === 'D') {
-        e.preventDefault();
+    // Register macro shortcuts (Ctrl+1-5)
+    for (let i = 1; i <= 5; i++) {
+      gridContext.addShortcut({
+        keys: [['Ctrl', i.toString()]],
+        callback: () => {
+          const macroIndex = i - 1;
+          applyMacro(macroIndex);
+        }
+      });
+    }
+
+    // Register duplicate row shortcut (Ctrl+D)
+    gridContext.addShortcut({
+      keys: [['Ctrl', 'd']],
+      callback: () => {
         duplicateSelectedRow();
-        return;
       }
-    };
+    });
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-    };
+    // Cleanup is handled automatically by Handsontable when instance is destroyed
   }, [applyMacro, duplicateSelectedRow]);
   const handleSubmitTimesheet = useMemo(
     () => createHandleSubmitTimesheet(

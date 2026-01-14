@@ -5,7 +5,7 @@
  * normalization, and immediate saving of pasted rows.
  */
 
-import type { TimesheetRow } from './timesheet.schema';
+import type { TimesheetRow } from '@/components/timesheet/schema/timesheet.schema';
 import type { MutableRefObject } from 'react';
 
 /**

@@ -7,22 +7,26 @@ export type ThemeMode = "light" | "dark" | "auto";
 
 const THEME_STORAGE_KEY = "sheetpilot-theme-mode";
 
+type WindowLogger = {
+  logger?: {
+    error?: (msg: string, data?: unknown) => void;
+    warn?: (msg: string, data?: unknown) => void;
+    debug?: (msg: string, data?: unknown) => void;
+  };
+};
+
+function getWindowLogger(): WindowLogger["logger"] {
+  return (window as unknown as WindowLogger).logger;
+}
+
 /**
  * Get the current system theme preference
  */
 export function getSystemTheme(): "light" | "dark" {
-  if (typeof window === "undefined") return "light";
-
-  if (!window.matchMedia) {
-    return "light";
-  }
-
+  if (typeof window === "undefined" || !window.matchMedia) return "light";
   try {
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    const prefersDark = mediaQuery?.matches || false;
-    return prefersDark ? "dark" : "light";
+    return window.matchMedia("(prefers-color-scheme: dark)")?.matches ? "dark" : "light";
   } catch {
-    // Fallback to light theme if matchMedia fails
     return "light";
   }
 }
@@ -32,17 +36,12 @@ export function getSystemTheme(): "light" | "dark" {
  */
 export function getStoredTheme(): ThemeMode | null {
   if (typeof window === "undefined") return null;
-
   try {
     const stored = localStorage.getItem(THEME_STORAGE_KEY);
-    if (stored === "light" || stored === "dark" || stored === "auto") {
-      return stored;
-    }
+    return stored === "light" || stored === "dark" || stored === "auto" ? stored : null;
   } catch {
-    // Ignore localStorage errors
+    return null;
   }
-
-  return null;
 }
 
 /**
@@ -50,14 +49,10 @@ export function getStoredTheme(): ThemeMode | null {
  */
 export function setStoredTheme(mode: ThemeMode): void {
   if (typeof window === "undefined") return;
-
   try {
     localStorage.setItem(THEME_STORAGE_KEY, mode);
   } catch (error) {
-    const win = window as unknown as {
-      logger?: { error: (msg: string, data?: unknown) => void };
-    };
-    win.logger?.error("Failed to store theme", {
+    getWindowLogger()?.error?.("Failed to store theme", {
       error: error instanceof Error ? error.message : String(error),
     });
   }
@@ -88,15 +83,10 @@ export function applyTheme(mode: ThemeMode): void {
   document.documentElement.style.colorScheme = effectiveTheme;
 
   // Dispatch custom event for components that need to react to theme changes
-  const themeChangeEvent = new CustomEvent("theme-change", {
-    detail: { mode, effectiveTheme },
-  });
-  window.dispatchEvent(themeChangeEvent);
-
-  const win = window as unknown as {
-    logger?: { debug: (msg: string, data?: unknown) => void };
-  };
-  win.logger?.debug("[ThemeManager] Applied theme", {
+  window.dispatchEvent(
+    new CustomEvent("theme-change", { detail: { mode, effectiveTheme } })
+  );
+  getWindowLogger()?.debug?.("[ThemeManager] Applied theme", {
     theme: effectiveTheme,
     mode,
   });
@@ -120,10 +110,7 @@ function setupSystemThemeListener(): void {
       });
     }
   } catch (error) {
-    const win = window as unknown as {
-      logger?: { warn: (msg: string, data?: unknown) => void };
-    };
-    win.logger?.warn("Could not set up theme change listener", {
+    getWindowLogger()?.warn?.("Could not set up theme change listener", {
       error: String(error),
     });
   }

@@ -22,23 +22,6 @@ vi.stubGlobal('import', {
   }
 });
 
-// Mock window.matchMedia
-Object.defineProperty(globalThis.window, 'matchMedia', {
-  writable: true,
-  value: vi.fn().mockImplementation(query => ({
-    matches: query === '(prefers-color-scheme: dark)' ? false : false,
-    media: query,
-    onchange: null,
-    addListener: vi.fn(), // deprecated
-    removeListener: vi.fn(), // deprecated
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    dispatchEvent: vi.fn(),
-  })),
-});
-
-
-
 // Mock IntersectionObserver
 global.IntersectionObserver = vi.fn().mockImplementation(() => ({
   observe: vi.fn(),
@@ -54,30 +37,60 @@ global.requestIdleCallback = vi.fn().mockImplementation((callback) => {
 
 global.cancelIdleCallback = vi.fn();
 
-// Mock localStorage
+// Mock localStorage - create storage-like object
 const localStorageMock = {
   getItem: vi.fn(),
   setItem: vi.fn(),
   removeItem: vi.fn(),
   clear: vi.fn(),
+  length: 0,
+  key: vi.fn(),
 };
-Object.defineProperty(globalThis.window, 'localStorage', {
-  value: localStorageMock
-});
 
-// Mock sessionStorage
+// Mock sessionStorage - create storage-like object
 const sessionStorageMock = {
   getItem: vi.fn(),
   setItem: vi.fn(),
   removeItem: vi.fn(),
   clear: vi.fn(),
+  length: 0,
+  key: vi.fn(),
 };
-Object.defineProperty(globalThis.window, 'sessionStorage', {
-  value: sessionStorageMock
-});
 
 // Global test setup
 beforeAll(() => {
+  // Ensure window exists (jsdom should provide it, but check just in case)
+  if (typeof window !== 'undefined') {
+    // Mock window.matchMedia
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      configurable: true,
+      value: vi.fn().mockImplementation(query => ({
+        matches: query === '(prefers-color-scheme: dark)' ? false : false,
+        media: query,
+        onchange: null,
+        addListener: vi.fn(), // deprecated
+        removeListener: vi.fn(), // deprecated
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    });
+
+    // Mock localStorage
+    Object.defineProperty(window, 'localStorage', {
+      writable: true,
+      configurable: true,
+      value: localStorageMock
+    });
+
+    // Mock sessionStorage
+    Object.defineProperty(window, 'sessionStorage', {
+      writable: true,
+      configurable: true,
+      value: sessionStorageMock
+    });
+  }
   // Suppress console warnings during tests
   const originalWarn = console.warn;
   const originalError = console.error;

@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import React from 'react';
 
 // Mock the DataContext to provide test data
-vi.mock('../src/contexts/DataContext', () => ({
+vi.mock('../../src/contexts/DataContext', () => ({
   useData: () => ({
     archiveData: {
       timesheet: [],

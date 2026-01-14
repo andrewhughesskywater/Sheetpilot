@@ -66,7 +66,7 @@ export default defineProject({
   },
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, ".."),
+      "@": path.resolve(__dirname, "../backend/src"),
     },
   },
 });

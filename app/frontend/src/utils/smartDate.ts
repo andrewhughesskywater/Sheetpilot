@@ -8,7 +8,7 @@
  * @version 1.0.0
  */
 
-import type { TimesheetRow } from '@/components/timesheet/timesheet.schema';
+import type { TimesheetRow } from '@/components/timesheet/schema/timesheet.schema';
 import { ALLOWED_PREVIOUS_QUARTERS } from '@sheetpilot/shared';
 
 /**

@@ -4,8 +4,8 @@
  * Handles validation, formatting, and cascading rules for individual cell changes.
  */
 
-import type { TimesheetRow } from './timesheet.schema';
-import { isValidDate, isValidTime, normalizeDateFormat, formatTimeInput } from './timesheet.schema';
+import type { TimesheetRow } from '@/components/timesheet/schema/timesheet.schema';
+import { isValidDate, isValidTime, normalizeDateFormat, formatTimeInput } from '@/components/timesheet/schema/timesheet.schema';
 import { doesProjectNeedTools, doesToolNeedChargeCode } from '@sheetpilot/shared/business-config';
 
 export interface ValidationError {

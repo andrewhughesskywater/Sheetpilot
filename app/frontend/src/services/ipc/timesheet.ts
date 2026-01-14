@@ -1,4 +1,4 @@
-import type { TimesheetRow } from '@/components/timesheet/timesheet.schema';
+import type { TimesheetRow } from '@/components/timesheet/schema/timesheet.schema';
 
 export interface SubmitResult {
   ok: boolean;
