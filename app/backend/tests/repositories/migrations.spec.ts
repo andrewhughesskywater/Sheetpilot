@@ -271,4 +271,168 @@ describe('Database Migrations', () => {
       expect(tableNames).toContain('schema_info');
     });
   });
+
+  describe('Migration 3: Fix Generated Hours Column', () => {
+    it('should convert generated hours column to regular column', () => {
+      const db = getDb();
+      ensureSchema();
+      
+      // Drop any existing timesheet table first
+      db.exec(`DROP TABLE IF EXISTS timesheet`);
+      
+      // Create a table with hours as a generated column (simulating the problematic schema)
+      db.exec(`
+        CREATE TABLE timesheet (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          time_in INTEGER,
+          time_out INTEGER,
+          hours REAL GENERATED ALWAYS AS (CASE 
+            WHEN time_in IS NOT NULL AND time_out IS NOT NULL 
+            THEN (time_out - time_in) / 60.0
+            ELSE NULL
+          END) STORED,
+          date TEXT,
+          project TEXT,
+          tool TEXT,
+          detail_charge_code TEXT,
+          task_description TEXT,
+          status TEXT DEFAULT NULL,
+          submitted_at DATETIME DEFAULT NULL
+        )
+      `);
+      
+      // Insert test data with time_in/time_out
+      const insertStmt = db.prepare(`
+        INSERT INTO timesheet (time_in, time_out, date, project, task_description)
+        VALUES (?, ?, ?, ?, ?)
+      `);
+      const insertResult = insertStmt.run(540, 1020, '2025-01-15', 'FL-Carver Techs', 'Test task');
+      
+      // Verify row was inserted
+      expect(insertResult.changes).toBe(1);
+      const countBefore = db.prepare('SELECT COUNT(*) as count FROM timesheet').get() as { count: number };
+      expect(countBefore.count).toBe(1);
+      
+      // Recreate indexes
+      db.exec(`
+        CREATE INDEX IF NOT EXISTS idx_timesheet_date ON timesheet(date);
+        CREATE INDEX IF NOT EXISTS idx_timesheet_project ON timesheet(project);
+        CREATE INDEX IF NOT EXISTS idx_timesheet_status ON timesheet(status);
+        CREATE UNIQUE INDEX IF NOT EXISTS uq_timesheet_nk
+          ON timesheet(date, project, task_description)
+          WHERE date IS NOT NULL 
+            AND project IS NOT NULL 
+            AND task_description IS NOT NULL
+      `);
+      
+      // Set version to 2 to trigger migration 3
+      setSchemaVersion(db, 2);
+      
+      // Verify we can't insert into hours (it's generated) - error happens at execution
+      try {
+        db.prepare(`
+          INSERT INTO timesheet (date, hours, project, task_description)
+          VALUES (?, ?, ?, ?)
+        `).run('2025-01-16', 8.0, 'FL-Carver Tools', 'Another task');
+        // If we get here, the insert succeeded which means hours is not generated
+        // This should not happen if our test setup is correct
+        throw new Error('Expected INSERT to fail with generated column error');
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        expect(errorMsg).toMatch(/generated column|cannot INSERT into/i);
+      }
+      
+      // Verify row exists with test data
+      const existingData = db.prepare('SELECT id, date, project, task_description FROM timesheet WHERE id = 1').get() as {
+        id: number;
+        date: string;
+        project: string;
+        task_description: string;
+      } | null;
+      
+      expect(existingData).not.toBeNull();
+      if (existingData) {
+        expect(existingData.date).toBe('2025-01-15');
+        expect(existingData.project).toBe('FL-Carver Techs');
+      }
+      
+      // Run migrations - migration 3 should fix the generated column issue
+      const result = runMigrations(db, testDbPath);
+      
+      expect(result.success).toBe(true);
+      // Migration 3 should run (may run with other migrations if schema wasn't at version 2)
+      expect(result.migrationsRun).toBeGreaterThanOrEqual(1);
+      
+      // The key test: Verify hours is now a regular column (can be inserted)
+      // This is what migration 3 fixes - converting generated column to regular
+      const insertAfterMigration = db.prepare(`
+        INSERT INTO timesheet (date, hours, project, task_description)
+        VALUES (?, ?, ?, ?)
+      `);
+      
+      // Before migration, this would throw "cannot INSERT into generated column"
+      // After migration, it should succeed
+      const insertAfterResult = insertAfterMigration.run('2025-01-16', 4.0, 'FL-Carver Tools', 'Another task');
+      expect(insertAfterResult.changes).toBe(1);
+      
+      // Verify the insert actually worked by checking the row we just inserted
+      const newRowId = insertAfterResult.lastInsertRowid;
+      const newRow = db.prepare('SELECT * FROM timesheet WHERE id = ?').get(newRowId) as {
+        hours: number;
+        date: string;
+        project: string;
+      } | undefined;
+      expect(newRow).toBeDefined();
+      expect(newRow!.hours).toBe(4.0);
+      expect(newRow!.date).toBe('2025-01-16');
+      expect(newRow!.project).toBe('FL-Carver Tools');
+      
+      // Verify we can update hours
+      const updateStmt = db.prepare(`
+        UPDATE timesheet SET hours = ? WHERE id = 1
+      `);
+      expect(() => {
+        updateStmt.run(7.5);
+      }).not.toThrow();
+      
+      // Verify data was preserved during migration
+      const preservedData = db.prepare('SELECT * FROM timesheet WHERE id = 1').get() as {
+        hours: number;
+        date: string;
+        project: string;
+      } | undefined;
+      expect(preservedData).toBeDefined();
+      expect(preservedData!.date).toBe('2025-01-15');
+      expect(preservedData!.project).toBe('FL-Carver Techs');
+      
+      // New entry verification already done above using lastInsertRowid
+    });
+
+    it('should skip migration if hours is already a regular column', () => {
+      const db = getDb();
+      ensureSchema();
+      setSchemaVersion(db, 2);
+      
+      // Verify hours is a regular column (from ensureSchema)
+      const insertStmt = db.prepare(`
+        INSERT INTO timesheet (date, hours, project, task_description)
+        VALUES (?, ?, ?, ?)
+      `);
+      expect(() => {
+        insertStmt.run('2025-01-15', 8.0, 'FL-Carver Techs', 'Test');
+      }).not.toThrow();
+      
+      // Run migrations - migration 3 should detect that hours is already regular and skip the fix
+      const result = runMigrations(db, testDbPath);
+      
+      expect(result.success).toBe(true);
+      // Migration 3 runs (it's version 3), but it should skip the table recreation since hours is not generated
+      expect(result.migrationsRun).toBeGreaterThanOrEqual(1);
+      
+      // Verify we can still insert
+      expect(() => {
+        insertStmt.run('2025-01-16', 4.0, 'FL-Carver Tools', 'Another test');
+      }).not.toThrow();
+    });
+  });
 });

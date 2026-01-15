@@ -115,6 +115,25 @@
   z-index: 1600 !important;
 }
 
+/* Ensure dropdown menus match column width exactly */
+.handsontable .htDropdownEditor .ht_master .htCore .htAutocompleteList,
+.handsontable .handsontableEditor .htAutocompleteList,
+.handsontable .autocompleteEditor .htAutocompleteList,
+.handsontable .htAutocompleteList,
+.handsontable .htDropdownEditor .htAutocompleteList {
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Ensure dropdown container matches column width */
+.handsontable .htDropdownEditor .ht_master,
+.handsontable .handsontableEditor .ht_master,
+.handsontable .htDropdownEditor,
+.handsontable .handsontableEditor {
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
 /* Macro Toolbar Styles */
 .macro-toolbar {
   display: flex;

@@ -2,7 +2,7 @@
  * Helper functions for cell operations
  */
 
-import type { TimesheetRow } from '@/components/timesheet/schema/timesheet.schema';
+import type { TimesheetRow } from "@/components/timesheet/schema/timesheet.schema";
 
 /**
  * Get date column cell configuration
@@ -12,13 +12,21 @@ export function getDateColumnCellConfig(
   row: number,
   timesheetDraftData: TimesheetRow[],
   weekdayPattern: boolean,
-  getSmartPlaceholder: (previousRow: TimesheetRow | undefined, allRows: TimesheetRow[], weekdayPattern: boolean) => string
+  getSmartPlaceholder: (
+    previousRow: TimesheetRow | undefined,
+    allRows: TimesheetRow[],
+    weekdayPattern: boolean
+  ) => string
 ): Record<string, unknown> | null {
   if (!rowData.date) {
     const previousRow = row > 0 ? timesheetDraftData[row - 1] : undefined;
-    const smartPlaceholder = getSmartPlaceholder(previousRow, timesheetDraftData, weekdayPattern);
+    const smartPlaceholder = getSmartPlaceholder(
+      previousRow,
+      timesheetDraftData,
+      weekdayPattern
+    );
     return {
-      placeholder: smartPlaceholder
+      placeholder: smartPlaceholder,
     };
   }
   return null;
@@ -26,6 +34,9 @@ export function getDateColumnCellConfig(
 
 /**
  * Get tool column cell configuration
+ * Tool cell is locked when:
+ * - Project doesn't need tools (N/A case)
+ * When project needs tools, tool cell is unlocked to allow tool selection
  */
 export function getToolColumnCellConfig(
   rowData: TimesheetRow,
@@ -34,22 +45,26 @@ export function getToolColumnCellConfig(
 ): Record<string, unknown> {
   const project = rowData?.project;
   if (!project || !doesProjectNeedToolsFn(project)) {
-    return { 
-      className: 'htDimmed', 
-      placeholder: project ? 'N/A' : '',
-      readOnly: false,
-      source: []
+    return {
+      className: "htDimmed",
+      placeholder: project ? "N/A" : "",
+      readOnly: true,
+      source: [],
     };
   }
-  return { 
-    source: [...getToolsForProjectFn(project)], 
-    placeholder: 'Pick a Tool',
-    readOnly: false
+  // Project is set and needs tools - unlock cell to allow tool selection
+  return {
+    source: [...getToolsForProjectFn(project)],
+    placeholder: "Pick a Tool",
+    readOnly: false,
   };
 }
 
 /**
  * Get charge code column cell configuration
+ * Charge code cell is locked when:
+ * - Tool doesn't need charge code (N/A case), OR
+ * - Charge code is empty/null (when tool needs charge code, empty charge code cell is locked)
  */
 export function getChargeCodeColumnCellConfig(
   rowData: TimesheetRow,
@@ -57,14 +72,19 @@ export function getChargeCodeColumnCellConfig(
 ): Record<string, unknown> {
   const tool = rowData?.tool;
   if (!tool || !doesToolNeedChargeCodeFn(tool)) {
-    return { 
-      className: 'htDimmed', 
-      placeholder: tool ? 'N/A' : '',
-      readOnly: false
+    return {
+      className: "htDimmed",
+      placeholder: tool ? "N/A" : "",
+      readOnly: true,
     };
   }
-  return { 
-    placeholder: 'Pick a Charge Code',
-    readOnly: false
+  // Tool is set and needs charge code
+  const chargeCode = rowData?.chargeCode;
+  const hasChargeCode =
+    chargeCode !== null && chargeCode !== undefined && chargeCode !== "";
+  // Lock when charge code is empty
+  return {
+    placeholder: "Pick a Charge Code",
+    readOnly: !hasChargeCode,
   };
 }

@@ -11,9 +11,14 @@ import { PROJECTS, CHARGE_CODES } from "@sheetpilot/shared/business-config";
 /**
  * Get column definitions for timesheet grid
  *
+ * @param projects - Optional projects array (defaults to static PROJECTS)
+ * @param chargeCodes - Optional charge codes array (defaults to static CHARGE_CODES)
  * @returns Array of column definition objects
  */
-export function getColumnDefinitions() {
+export function getColumnDefinitions(
+  projects?: readonly string[],
+  chargeCodes?: readonly string[]
+) {
   return [
     { data: "id", title: "ID", type: "numeric", width: 0.1, readOnly: true }, // Hidden ID column for row identity
     {
@@ -35,12 +40,12 @@ export function getColumnDefinitions() {
       data: "project",
       title: "Project",
       type: "dropdown",
-      source: [...PROJECTS],
+      source: [...(projects || PROJECTS)],
       strict: true,
       allowInvalid: false,
       placeholder: "Pick a project",
       className: "htCenter",
-      trimDropdown: false,
+      trimDropdown: true,
     },
     {
       data: "tool",
@@ -51,16 +56,18 @@ export function getColumnDefinitions() {
       allowInvalid: false,
       placeholder: "",
       className: "htCenter",
+      trimDropdown: true,
     },
     {
       data: "chargeCode",
       title: "Charge Code",
       type: "dropdown",
-      source: [...CHARGE_CODES],
+      source: [...(chargeCodes || CHARGE_CODES)],
       strict: true,
       allowInvalid: false,
       placeholder: "",
       className: "htCenter",
+      trimDropdown: true,
     },
     {
       data: "taskDescription",

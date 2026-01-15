@@ -32,16 +32,15 @@ export async function processSubmission(
   refreshError: Error | null;
 }> {
   const res = await submitTimesheetFn(token, async () => {
-    const refreshError = await handleRefreshAfterSubmission();
-    return refreshError;
+    await handleRefreshAfterSubmission();
+    // Return void for onSuccess callback
+    return;
   });
   const refreshError = await handleRefreshAfterSubmission();
   return { res, refreshError };
 }
 
-export function handleSubmissionException(
-  error: unknown
-): {
+export function handleSubmissionException(error: unknown): {
   submissionError: Error;
   errorMsg: string;
 } {

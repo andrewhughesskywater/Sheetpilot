@@ -15,6 +15,158 @@
  * @since 2025-10-01
  */
 
+// Type declaration for window.businessConfig (used in browser context)
+// This matches the declaration in app/frontend/src/contracts/window.businessConfig.ts
+declare global {
+  interface Window {
+    businessConfig?: {
+      getAllProjects: () => Promise<{
+        success: boolean;
+        projects?: readonly string[];
+        error?: string;
+      }>;
+      getProjectsWithoutTools: () => Promise<{
+        success: boolean;
+        projects?: readonly string[];
+        error?: string;
+      }>;
+      getToolsForProject: (project: string) => Promise<{
+        success: boolean;
+        tools?: readonly string[];
+        error?: string;
+      }>;
+      getAllTools: () => Promise<{
+        success: boolean;
+        tools?: readonly string[];
+        error?: string;
+      }>;
+      getToolsWithoutChargeCodes: () => Promise<{
+        success: boolean;
+        tools?: readonly string[];
+        error?: string;
+      }>;
+      getAllChargeCodes: () => Promise<{
+        success: boolean;
+        chargeCodes?: readonly string[];
+        error?: string;
+      }>;
+      validateProject: (project: string) => Promise<{
+        success: boolean;
+        isValid?: boolean;
+        error?: string;
+      }>;
+      validateToolForProject: (
+        tool: string,
+        project: string
+      ) => Promise<{
+        success: boolean;
+        isValid?: boolean;
+        error?: string;
+      }>;
+      validateChargeCode: (chargeCode: string) => Promise<{
+        success: boolean;
+        isValid?: boolean;
+        error?: string;
+      }>;
+      updateProject: (
+        token: string,
+        id: number,
+        updates: {
+          name?: string;
+          requires_tools?: boolean;
+          display_order?: number;
+          is_active?: boolean;
+        }
+      ) => Promise<{
+        success: boolean;
+        error?: string;
+      }>;
+      updateTool: (
+        token: string,
+        id: number,
+        updates: {
+          name?: string;
+          requires_charge_code?: boolean;
+          display_order?: number;
+          is_active?: boolean;
+        }
+      ) => Promise<{
+        success: boolean;
+        error?: string;
+      }>;
+      updateChargeCode: (
+        token: string,
+        id: number,
+        updates: {
+          name?: string;
+          display_order?: number;
+          is_active?: boolean;
+        }
+      ) => Promise<{
+        success: boolean;
+        error?: string;
+      }>;
+      addProject: (
+        token: string,
+        project: {
+          name: string;
+          requires_tools?: boolean;
+          display_order?: number;
+          is_active?: boolean;
+        }
+      ) => Promise<{
+        success: boolean;
+        id?: number;
+        error?: string;
+      }>;
+      addTool: (
+        token: string,
+        tool: {
+          name: string;
+          requires_charge_code?: boolean;
+          display_order?: number;
+          is_active?: boolean;
+        }
+      ) => Promise<{
+        success: boolean;
+        id?: number;
+        error?: string;
+      }>;
+      addChargeCode: (
+        token: string,
+        chargeCode: {
+          name: string;
+          display_order?: number;
+          is_active?: boolean;
+        }
+      ) => Promise<{
+        success: boolean;
+        id?: number;
+        error?: string;
+      }>;
+      linkToolToProject: (
+        token: string,
+        projectId: number,
+        toolId: number,
+        displayOrder?: number
+      ) => Promise<{
+        success: boolean;
+        error?: string;
+      }>;
+      unlinkToolFromProject: (
+        token: string,
+        projectId: number,
+        toolId: number
+      ) => Promise<{
+        success: boolean;
+        error?: string;
+      }>;
+    };
+  }
+}
+
+export {};
+
 /**
  * Projects that do not require tools
  * When these projects are selected, tool and charge code fields are cleared and disabled
@@ -31,7 +183,7 @@ export const PROJECTS_WITHOUT_TOOLS = [
  * When these tools are selected, charge code field is cleared and disabled
  */
 export const TOOLS_WITHOUT_CHARGES = [
-  "Internal Meeting", 
+  "Internal Meeting",
   "DECA Meeting",
   "Logistics",
   "Meeting",
@@ -486,4 +638,242 @@ export function normalizeTimesheetRow(row: TimesheetRow): TimesheetRow {
   }
 
   return normalized;
+}
+
+// ============================================================================
+// ASYNC FUNCTIONS (Database-backed with static fallback)
+// ============================================================================
+
+/**
+ * Module-level cache for loaded configuration
+ */
+let cachedConfig: {
+  projects?: readonly string[];
+  projectsWithoutTools?: readonly string[];
+  tools?: readonly string[];
+  toolsWithoutChargeCodes?: readonly string[];
+  chargeCodes?: readonly string[];
+  toolsByProject?: Map<string, readonly string[]>;
+} | null = null;
+
+/**
+ * Checks if we're in a browser environment with IPC available
+ */
+function isIpcAvailable(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    typeof window.businessConfig !== "undefined"
+  );
+}
+
+/**
+ * Gets all available projects (async, database-first with static fallback)
+ */
+export async function getAllProjectsAsync(): Promise<readonly string[]> {
+  if (cachedConfig?.projects) {
+    return cachedConfig.projects;
+  }
+
+  if (isIpcAvailable() && window.businessConfig) {
+    try {
+      const result = await window.businessConfig.getAllProjects();
+      if (result.success && result.projects) {
+        if (!cachedConfig) {
+          cachedConfig = {};
+        }
+        cachedConfig.projects = result.projects;
+        return result.projects;
+      }
+    } catch (error) {
+      // Fall through to static fallback
+      console.warn(
+        "Could not load projects from database, using static fallback",
+        error
+      );
+    }
+  }
+
+  // Static fallback
+  return getAllProjects();
+}
+
+/**
+ * Gets projects that do not require tools (async, database-first with static fallback)
+ */
+export async function getProjectsWithoutToolsAsync(): Promise<
+  readonly string[]
+> {
+  if (cachedConfig?.projectsWithoutTools) {
+    return cachedConfig.projectsWithoutTools;
+  }
+
+  if (isIpcAvailable() && window.businessConfig) {
+    try {
+      const result = await window.businessConfig.getProjectsWithoutTools();
+      if (result.success && result.projects) {
+        if (!cachedConfig) {
+          cachedConfig = {};
+        }
+        cachedConfig.projectsWithoutTools = result.projects;
+        return result.projects;
+      }
+    } catch (error) {
+      console.warn(
+        "Could not load projects without tools from database, using static fallback",
+        error
+      );
+    }
+  }
+
+  // Static fallback
+  return PROJECTS_WITHOUT_TOOLS;
+}
+
+/**
+ * Gets tools for a specific project (async, database-first with static fallback)
+ */
+export async function getToolsForProjectAsync(
+  project: string
+): Promise<readonly string[]> {
+  if (!project) {
+    return [];
+  }
+
+  // Check cache first
+  if (cachedConfig?.toolsByProject?.has(project)) {
+    return cachedConfig.toolsByProject.get(project)!;
+  }
+
+  // Check if project requires tools (use static check for immediate response)
+  if (isProjectWithoutTools(project)) {
+    return [];
+  }
+
+  if (isIpcAvailable() && window.businessConfig) {
+    try {
+      const result = await window.businessConfig.getToolsForProject(project);
+      if (result.success && result.tools) {
+        if (!cachedConfig) {
+          cachedConfig = {};
+        }
+        if (!cachedConfig.toolsByProject) {
+          cachedConfig.toolsByProject = new Map();
+        }
+        cachedConfig.toolsByProject.set(project, result.tools);
+        return result.tools;
+      }
+    } catch (error) {
+      console.warn(
+        "Could not load tools for project from database, using static fallback",
+        error
+      );
+    }
+  }
+
+  // Static fallback
+  return getToolsForProject(project);
+}
+
+/**
+ * Gets all available tools (async, database-first with static fallback)
+ */
+export async function getAllToolsAsync(): Promise<readonly string[]> {
+  if (cachedConfig?.tools) {
+    return cachedConfig.tools;
+  }
+
+  if (isIpcAvailable() && window.businessConfig) {
+    try {
+      const result = await window.businessConfig.getAllTools();
+      if (result.success && result.tools) {
+        if (!cachedConfig) {
+          cachedConfig = {};
+        }
+        cachedConfig.tools = result.tools;
+        return result.tools;
+      }
+    } catch (error) {
+      console.warn(
+        "Could not load tools from database, using static fallback",
+        error
+      );
+    }
+  }
+
+  // Static fallback - collect all unique tools from TOOLS_BY_PROJECT
+  const allToolsSet = new Set<string>();
+  Object.values(TOOLS_BY_PROJECT).forEach((tools) => {
+    tools.forEach((tool) => allToolsSet.add(tool));
+  });
+  return Array.from(allToolsSet);
+}
+
+/**
+ * Gets tools that do not require charge codes (async, database-first with static fallback)
+ */
+export async function getToolsWithoutChargeCodesAsync(): Promise<
+  readonly string[]
+> {
+  if (cachedConfig?.toolsWithoutChargeCodes) {
+    return cachedConfig.toolsWithoutChargeCodes;
+  }
+
+  if (isIpcAvailable() && window.businessConfig) {
+    try {
+      const result = await window.businessConfig.getToolsWithoutChargeCodes();
+      if (result.success && result.tools) {
+        if (!cachedConfig) {
+          cachedConfig = {};
+        }
+        cachedConfig.toolsWithoutChargeCodes = result.tools;
+        return result.tools;
+      }
+    } catch (error) {
+      console.warn(
+        "Could not load tools without charge codes from database, using static fallback",
+        error
+      );
+    }
+  }
+
+  // Static fallback
+  return TOOLS_WITHOUT_CHARGES;
+}
+
+/**
+ * Gets all available charge codes (async, database-first with static fallback)
+ */
+export async function getAllChargeCodesAsync(): Promise<readonly string[]> {
+  if (cachedConfig?.chargeCodes) {
+    return cachedConfig.chargeCodes;
+  }
+
+  if (isIpcAvailable() && window.businessConfig) {
+    try {
+      const result = await window.businessConfig.getAllChargeCodes();
+      if (result.success && result.chargeCodes) {
+        if (!cachedConfig) {
+          cachedConfig = {};
+        }
+        cachedConfig.chargeCodes = result.chargeCodes;
+        return result.chargeCodes;
+      }
+    } catch (error) {
+      console.warn(
+        "Could not load charge codes from database, using static fallback",
+        error
+      );
+    }
+  }
+
+  // Static fallback
+  return getAllChargeCodes();
+}
+
+/**
+ * Invalidates the module-level cache
+ * Call this when configuration is updated
+ */
+export function invalidateConfigCache(): void {
+  cachedConfig = null;
 }

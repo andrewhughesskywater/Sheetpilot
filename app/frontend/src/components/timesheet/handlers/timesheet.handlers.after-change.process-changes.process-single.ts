@@ -13,6 +13,18 @@ function processSingleChange(
   next: TimesheetRow[],
   hotInstance: {
     propToCol: (prop: string) => number | unknown;
+    setDataAtCell: (
+      row: number,
+      col: number,
+      value: unknown,
+      source?: string
+    ) => void;
+    setCellMeta: (
+      row: number,
+      col: number,
+      key: string,
+      value: unknown
+    ) => void;
   },
   processCellChangeFn: (
     change: HandsontableChange,
@@ -80,6 +92,18 @@ export function processCellChanges(
   timesheetDraftData: TimesheetRow[],
   hotInstance: {
     propToCol: (prop: string) => number | unknown;
+    setDataAtCell: (
+      row: number,
+      col: number,
+      value: unknown,
+      source?: string
+    ) => void;
+    setCellMeta: (
+      row: number,
+      col: number,
+      key: string,
+      value: unknown
+    ) => void;
   },
   processCellChangeFn: (
     change: HandsontableChange,

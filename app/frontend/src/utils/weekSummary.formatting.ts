@@ -77,7 +77,8 @@ export function formatWeekRange(sunday: Date, saturday: Date): string {
  */
 export function getDayName(date: Date): string {
   const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  return dayNames[date.getDay()];
+  const dayIndex = date.getDay();
+  return dayNames[dayIndex] ?? "Unknown";
 }
 
 /**

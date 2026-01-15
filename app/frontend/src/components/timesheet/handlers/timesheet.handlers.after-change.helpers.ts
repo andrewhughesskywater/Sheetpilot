@@ -3,14 +3,16 @@
  */
 
 import type { TimesheetRow } from "@/components/timesheet/schema/timesheet.schema";
+import type { HandsontableChange } from "@/components/timesheet/cell-processing/timesheet.cell-processing";
 
 
 export function scheduleRowSaves(
-  changes: Array<[number, string | number, unknown, unknown]>,
+  changes: HandsontableChange[],
   normalized: TimesheetRow[],
   saveTimersRef: {
     get: (key: number) => ReturnType<typeof setTimeout> | undefined;
     set: (key: number, value: ReturnType<typeof setTimeout>) => void;
+    delete: (key: number) => boolean;
   },
   saveAndReloadRow: (row: TimesheetRow, rowIdx: number) => Promise<void>
 ): void {

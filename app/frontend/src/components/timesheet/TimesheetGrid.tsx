@@ -48,51 +48,22 @@ import TimesheetGridHeader from "./components/TimesheetGridHeader";
 import MacroToolbar from "./macros/MacroToolbar";
 import TimesheetGridFooter from "./components/TimesheetGridFooter";
 import type { MacroRow } from "@/utils/macroStorage";
-import { loadMacros, isMacroEmpty } from "@/utils/macroStorage";
+import { isMacroEmpty } from "@/utils/macroStorage";
 import type { ValidationError } from "./cell-processing/timesheet.cell-processing";
-
-type ButtonStatus = "neutral" | "ready" | "warning";
-
-/**
- * Date picker options interface for Handsontable date editor
- */
-interface DatePickerOptions {
-  onSelect?: (this: DatePickerOptions, date: Date) => void;
-  [key: string]: unknown;
-}
-
-/**
- * Date editor interface for Handsontable date editor
- * Extends the base editor with date picker specific properties
- */
-interface DateEditor {
-  $datePicker?: {
-    _o?: DatePickerOptions;
-  };
-  isOpened?: () => boolean;
-  finishEditing: (restoreOriginalValue: boolean, ctrlDown: boolean) => void;
-}
-
+import type { ButtonStatus } from "./TimesheetGrid.types";
 import { normalizeRowData } from "./schema/timesheet.schema";
-import {
-  getToolsForProject,
-  doesToolNeedChargeCode,
-  doesProjectNeedTools,
-} from "@sheetpilot/shared/business-config";
 import { getColumnDefinitions } from "./column-config/timesheet.column-config";
-import { validateTimesheetRows } from "./validation/timesheet.validation";
 import { submitTimesheet } from "./submit/timesheet.submit";
-import {
-  batchSaveToDatabase as batchSaveToDatabaseUtil,
-  saveRowToDatabase,
-} from "./persistence/timesheet.persistence";
 import { SpellcheckEditor } from "./editors/SpellcheckEditor";
 import {
-  detectWeekdayPattern,
   getSmartPlaceholder,
   incrementDate,
   formatDateForDisplay,
 } from "@/utils/smartDate";
+import {
+  getAllProjectsAsync,
+  getAllChargeCodesAsync,
+} from "@sheetpilot/shared/business-config";
 import {
   cancelTimesheetSubmission,
   loadDraft as loadDraftIpc,
@@ -123,21 +94,32 @@ import {
   createHandleManualSave,
   createHandleRefresh,
 } from "./handlers/timesheet.handlers";
+import {
+  projectNeedsToolsWrapper,
+  toolNeedsChargeCodeWrapper,
+  getToolsForProjectWrapper,
+  registerTimesheetShortcuts,
+  calculateButtonStatus,
+} from "./TimesheetGrid.helpers";
+import {
+  HOTTABLE_CONTEXT_MENU,
+  HOTTABLE_COLUMN_SORTING,
+} from "./TimesheetGrid.config";
+import {
+  useLoadMacros,
+  useWeekdayPattern,
+  useDialogScrollbarFix,
+  useFlushPendingSavesOnUnmount,
+  useSyncTimesheetData,
+  useBatchSaveToDatabase,
+  useHandleBeforePaste,
+  useHandleAfterBeginEditing,
+} from "./TimesheetGrid.hooks";
 
 // Register all Handsontable modules
 registerAllModules();
-
 // Register custom spellcheck editor
 registerEditor("spellcheckText", SpellcheckEditor);
-
-// Wrapper functions to match expected signatures
-const projectNeedsToolsWrapper = (p?: string) => doesProjectNeedTools(p || "");
-const toolNeedsChargeCodeWrapper = (t?: string) =>
-  doesToolNeedChargeCode(t || "");
-const getToolsForProjectWrapper = (project: string) => [
-  ...getToolsForProject(project),
-];
-
 // NOTE: Column validators removed - they block editor closing and cause navigation issues
 // Validation now happens in afterChange hook using setCellMeta for visual feedback
 
@@ -235,104 +217,83 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(
       [onChange]
     );
 
-    const isInitialLoadRef = useRef(true);
     const isProcessingChangeRef = useRef(false);
-    const previousDataRef = useRef<TimesheetRow[]>(timesheetDraftData);
+    useSyncTimesheetData(
+      timesheetDraftData,
+      hotTableRef,
+      updateTableData,
+      onChange
+    );
+    useLoadMacros((macros) => setMacros(macros as MacroRow[]));
+    useWeekdayPattern(timesheetDraftData, weekdayPatternRef);
+    useDialogScrollbarFix(showMacroDialog, hotTableRef);
+
+    // Load business config asynchronously and update column sources
     useEffect(() => {
-      if (isProcessingChangeRef.current) {
-        return;
-      }
+      let isMounted = true;
 
-      if (isInitialLoadRef.current) {
-        isInitialLoadRef.current = false;
-        previousDataRef.current = timesheetDraftData;
-        onChange?.(timesheetDraftData);
-      } else if (timesheetDraftData && hotTableRef.current?.hotInstance) {
-        const dataChanged =
-          previousDataRef.current.length !== timesheetDraftData.length ||
-          JSON.stringify(previousDataRef.current.slice(0, 3)) !==
-            JSON.stringify(timesheetDraftData.slice(0, 3));
+      async function loadBusinessConfig() {
+        try {
+          const [projectsResult, chargeCodesResult] = await Promise.all([
+            getAllProjectsAsync(),
+            getAllChargeCodesAsync(),
+          ]);
 
-        if (dataChanged) {
-          previousDataRef.current = timesheetDraftData;
-          updateTableData(timesheetDraftData);
+          if (!isMounted) return;
+
+          // Update column sources if HotTable is available
+          if (hotTableRef.current?.hotInstance) {
+            const hot = hotTableRef.current.hotInstance;
+            const columns = hot.getSettings().columns;
+
+            if (Array.isArray(columns) && projectsResult.length > 0) {
+              // Update project column (index 3)
+              if (columns[3]) {
+                columns[3].source = [...projectsResult];
+                hot.updateSettings({ columns });
+                logVerbose("Updated project column sources from database");
+              }
+            }
+
+            if (Array.isArray(columns) && chargeCodesResult.length > 0) {
+              // Update charge code column (index 5)
+              if (columns[5]) {
+                columns[5].source = [...chargeCodesResult];
+                hot.updateSettings({ columns });
+                logVerbose("Updated charge code column sources from database");
+              }
+            }
+          }
+        } catch (error) {
+          logWarn(
+            "Could not load business config from database, using static config",
+            {
+              error: error instanceof Error ? error.message : String(error),
+            }
+          );
         }
       }
-    }, [timesheetDraftData, updateTableData, onChange]);
-    useEffect(() => {
-      const loaded = loadMacros();
-      setMacros(loaded);
-    }, []);
 
-    useEffect(() => {
-      if (timesheetDraftData && timesheetDraftData.length > 0) {
-        weekdayPatternRef.current = detectWeekdayPattern(timesheetDraftData);
-      }
-    }, [timesheetDraftData]);
-
-    /**
-     * WHY: MUI Dialog modifies body overflow which breaks Handsontable scrollbar.
-     * Force layout recalculation after dialog closes to restore scrollbar visibility.
-     */
-    useEffect(() => {
-      if (showMacroDialog) return;
-
-      const hotInstance = hotTableRef.current?.hotInstance;
-      if (!hotInstance) return;
-
+      // Load config after a short delay to allow grid to initialize
       const timer = setTimeout(() => {
-        if (document.body.style.overflow === "hidden") {
-          document.body.style.overflow = "";
-        }
-        window.dispatchEvent(new Event("resize"));
-        hotInstance.render();
+        loadBusinessConfig();
       }, 100);
 
-      return () => clearTimeout(timer);
-    }, [showMacroDialog]);
-    const batchSaveToDatabase = useCallback(async () => {
-      await batchSaveToDatabaseUtil(timesheetDraftData);
-    }, [timesheetDraftData]);
-
-    // Expose batch save function to parent component via ref
-    useImperativeHandle(
-      ref,
-      () => ({
-        batchSaveToDatabase,
-      }),
-      [batchSaveToDatabase]
-    );
-
-    useEffect(() => {
-      const saveTimers = saveTimersRef.current;
-      const pendingSaves = pendingSaveRef.current;
-      const inFlightSaves = inFlightSavesRef.current;
-
       return () => {
-        window.logger?.info(
-          "[TimesheetGrid] Component unmounting, flushing pending saves"
-        );
-
-        inFlightSaves.forEach((controller) => {
-          controller.abort();
-        });
-        inFlightSaves.clear();
-
-        saveTimers.forEach((timer) => clearTimeout(timer));
-        saveTimers.clear();
-
-        const pendingRows = Array.from(pendingSaves.entries());
-        for (const [rowIdx, row] of pendingRows) {
-          saveRowToDatabase(row).catch((error) => {
-            window.logger?.error("Could not flush pending save on unmount", {
-              rowIdx,
-              error: error instanceof Error ? error.message : String(error),
-            });
-          });
-        }
-        pendingSaves.clear();
+        isMounted = false;
+        clearTimeout(timer);
       };
-    }, []);
+    }, [logVerbose, logWarn]);
+    const batchSaveToDatabase = useBatchSaveToDatabase(timesheetDraftData);
+    // Expose batch save function to parent component via ref
+    useImperativeHandle(ref, () => ({ batchSaveToDatabase }), [
+      batchSaveToDatabase,
+    ]);
+    useFlushPendingSavesOnUnmount(
+      saveTimersRef,
+      pendingSaveRef,
+      inFlightSavesRef
+    );
 
     const rowsPendingRemovalRef = useRef<TimesheetRow[]>([]);
     const handleBeforeRemoveRow = useCallback(
@@ -381,7 +342,6 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(
         pendingSaveRef,
       ]
     );
-
     // WHY: Factory function dependencies are correctly listed - ESLint cannot statically analyze factory functions
     // eslint-disable-next-line react-hooks/exhaustive-deps
     const handleAfterChange = useCallback(
@@ -432,15 +392,10 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(
         rowsPendingRemovalRef,
       ]
     );
-
-    /**
-     * WHY: Handsontable's strict validation blocks paste for Tool/Charge Code dropdowns
-     * when values aren't in current dropdown source. We bypass this by allowing paste,
-     * then manually applying Tool/Charge Code in afterPaste with relaxed validation.
-     */
-    const handleBeforePaste = useCallback(() => {
-      return true;
-    }, []);
+    // WHY: Handsontable's strict validation blocks paste for Tool/Charge Code dropdowns
+    // when values aren't in current dropdown source. We bypass this by allowing paste,
+    // then manually applying Tool/Charge Code in afterPaste with relaxed validation.
+    const handleBeforePaste = useHandleBeforePaste();
 
     // WHY: Factory function dependencies are correctly listed - ESLint cannot statically analyze factory functions
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -468,45 +423,10 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(
         saveAndReloadRow,
       ]
     );
-
-    const handleAfterBeginEditing = useCallback(
-      (row: number, column: number) => {
-        setValidationErrors((prev) =>
-          prev.filter((err) => !(err.row === row && err.col === column))
-        );
-
-        /**
-         * WHY: Handsontable's date picker sometimes doesn't close after selection,
-         * leaving the editor stuck open and blocking navigation. We override the
-         * onSelect callback to forcibly close the editor after date selection.
-         */
-        if (column === 0) {
-          const hotInstance = hotTableRef.current?.hotInstance;
-          const editor = hotInstance?.getActiveEditor();
-          if (editor) {
-            const dateEditor = editor as DateEditor;
-            if (dateEditor.$datePicker && dateEditor.$datePicker._o) {
-              const originalOnSelect = dateEditor.$datePicker._o.onSelect;
-              // WHY: 'this' context must be preserved for picker's internal state management
-
-              dateEditor.$datePicker._o.onSelect = function (
-                this: DatePickerOptions,
-                date: Date
-              ) {
-                if (originalOnSelect) originalOnSelect.call(this, date);
-                setTimeout(() => {
-                  if (dateEditor.isOpened && dateEditor.isOpened()) {
-                    dateEditor.finishEditing(false, false);
-                  }
-                }, 50);
-              };
-            }
-          }
-        }
-      },
-      []
+    const handleAfterBeginEditing = useHandleAfterBeginEditing(
+      hotTableRef,
+      setValidationErrors
     );
-
     // WHY: Factory function dependencies are correctly listed - ESLint cannot statically analyze factory functions
     // eslint-disable-next-line react-hooks/exhaustive-deps
     const applyMacro = useCallback(
@@ -540,32 +460,7 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(
     );
     // Register custom shortcuts using Handsontable's built-in addShortcut() method
     useEffect(() => {
-      const hotInstance = hotTableRef.current?.hotInstance;
-      if (!hotInstance) return;
-
-      const gridContext = hotInstance.getShortcutManager().getContext("grid");
-
-      // Register macro shortcuts (Ctrl+1-5)
-      for (let i = 1; i <= 5; i++) {
-        gridContext.addShortcut({
-          keys: [["Ctrl", i.toString()]],
-          callback: () => {
-            const macroIndex = i - 1;
-            applyMacro(macroIndex);
-          },
-          group: "timesheet-macros",
-        });
-      }
-
-      // Register duplicate row shortcut (Ctrl+D)
-      gridContext.addShortcut({
-        keys: [["Ctrl", "d"]],
-        callback: () => {
-          duplicateSelectedRow();
-        },
-        group: "timesheet-actions",
-      });
-
+      registerTimesheetShortcuts(hotTableRef, applyMacro, duplicateSelectedRow);
       // Cleanup is handled automatically by Handsontable when instance is destroyed
     }, [applyMacro, duplicateSelectedRow]);
     const handleSubmitTimesheet = useMemo(
@@ -612,7 +507,6 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(
         refreshArchiveData,
       ]
     );
-
     // WHY: Factory function dependencies are correctly listed - ESLint cannot statically analyze factory functions
     // eslint-disable-next-line react-hooks/exhaustive-deps
     const cellsFunction = useCallback(
@@ -647,7 +541,6 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(
         formatDateForDisplay,
       ]
     );
-
     // WHY: Factory function dependencies are correctly listed - ESLint cannot statically analyze factory functions
     // eslint-disable-next-line react-hooks/exhaustive-deps
     const handleAfterSelection = useCallback(
@@ -658,34 +551,14 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(
       ),
       [hotTableRef, previousSelectionRef, setValidationErrors]
     );
-
     // Column definitions - NO validators (validation happens in afterChange to prevent editor blocking)
     // CRITICAL: ID column must be first and hidden - this is the "Golden Rule" for Handsontable-SQL sync
     const columnDefinitions = useMemo(() => getColumnDefinitions(), []);
-
     // Validate timesheet data for button status - MUST be before early returns
-    const buttonStatus: ButtonStatus = useMemo(() => {
-      if (!timesheetDraftData || timesheetDraftData.length === 0) {
-        return "neutral";
-      }
-
-      const validation = validateTimesheetRows(timesheetDraftData);
-
-      // Log validation errors for debugging
-      if (validation.hasErrors) {
-        window.logger?.warn("Timesheet validation errors detected", {
-          errorCount: validation.errorDetails.length,
-          errors: validation.errorDetails,
-        });
-        return "warning";
-      }
-
-      window.logger?.debug(
-        "All timesheet validations passed - button is ready"
-      );
-      return "ready";
-    }, [timesheetDraftData]);
-
+    const buttonStatus: ButtonStatus = useMemo(
+      () => calculateButtonStatus(timesheetDraftData),
+      [timesheetDraftData]
+    );
     // WHY: Factory function dependencies are correctly listed - ESLint cannot statically analyze factory functions
     // eslint-disable-next-line react-hooks/exhaustive-deps
     const handleManualSave = useCallback(
@@ -706,7 +579,6 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(
         updateSaveButtonState,
       ]
     );
-
     // WHY: Factory function dependencies are correctly listed - ESLint cannot statically analyze factory functions
     // eslint-disable-next-line react-hooks/exhaustive-deps
     const handleRefresh = useCallback(
@@ -720,7 +592,6 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(
       ),
       [setTimesheetDraftData]
     );
-
     if (isTimesheetDraftLoading || timesheetDraftError) {
       return (
         <TimesheetGridLoadingState
@@ -738,13 +609,11 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(
           isAdmin={isAdmin}
           archiveEntries={archiveData.timesheet}
         />
-
         <MacroToolbar
           macros={macros}
           onApplyMacro={applyMacro}
           onEditMacros={() => setShowMacroDialog(true)}
         />
-
         <HotTable
           ref={hotTableRef}
           id="sheetpilot-timesheet-grid"
@@ -764,17 +633,7 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(
           rowHeaders={true}
           colHeaders={true}
           customBorders={[]}
-          contextMenu={[
-            "row_above",
-            "row_below",
-            "remove_row",
-            "---------",
-            "undo",
-            "redo",
-            "---------",
-            "copy",
-            "cut",
-          ]}
+          contextMenu={HOTTABLE_CONTEXT_MENU as any}
           manualColumnResize={true}
           manualRowResize={true}
           stretchH="all"
@@ -789,11 +648,7 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(
           selectionMode="range"
           outsideClickDeselects={true}
           viewportRowRenderingOffset={24}
-          columnSorting={{
-            indicator: true,
-            headerAction: true,
-            sortEmptyCells: true,
-          }}
+          columnSorting={HOTTABLE_COLUMN_SORTING}
           tabNavigation={true}
           navigableHeaders={true}
           copyPaste={true}
@@ -813,14 +668,12 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(
           isAdmin={isAdmin}
           isLoading={isTimesheetDraftLoading}
         />
-
         {/* Validation Error Dialog */}
         <ValidationErrorDialog
           open={showErrorDialog}
           errors={validationErrors}
           onClose={() => setShowErrorDialog(false)}
         />
-
         {/* Macro Manager Dialog */}
         <MacroManagerDialog
           open={showMacroDialog}
@@ -832,7 +685,6 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(
             });
           }}
         />
-
         {/* Keyboard Shortcuts Hint Dialog */}
         <KeyboardShortcutsHintDialog
           open={showShortcutsHint}

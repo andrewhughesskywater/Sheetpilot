@@ -216,6 +216,137 @@ export const exportLogsSchema = z.object({
 });
 
 // ============================================================================
+// BUSINESS CONFIG SCHEMAS
+// ============================================================================
+
+/**
+ * Schema for business-config:getToolsForProject
+ */
+export const getToolsForProjectSchema = z.object({
+  project: z.string().min(1).max(500)
+});
+
+/**
+ * Schema for business-config:validateProject
+ */
+export const validateProjectSchema = z.object({
+  project: z.string().min(1).max(500)
+});
+
+/**
+ * Schema for business-config:validateToolForProject
+ */
+export const validateToolForProjectSchema = z.object({
+  tool: z.string().min(1).max(500),
+  project: z.string().min(1).max(500)
+});
+
+/**
+ * Schema for business-config:validateChargeCode
+ */
+export const validateChargeCodeSchema = z.object({
+  chargeCode: z.string().min(1).max(100)
+});
+
+/**
+ * Schema for business-config:updateProject
+ */
+export const businessConfigProjectUpdateSchema = z.object({
+  token: sessionTokenSchema,
+  id: z.number().int().positive(),
+  updates: z.object({
+    name: z.string().min(1).max(500).optional(),
+    requires_tools: z.boolean().optional(),
+    display_order: z.number().int().optional(),
+    is_active: z.boolean().optional()
+  })
+});
+
+/**
+ * Schema for business-config:updateTool
+ */
+export const businessConfigToolUpdateSchema = z.object({
+  token: sessionTokenSchema,
+  id: z.number().int().positive(),
+  updates: z.object({
+    name: z.string().min(1).max(500).optional(),
+    requires_charge_code: z.boolean().optional(),
+    display_order: z.number().int().optional(),
+    is_active: z.boolean().optional()
+  })
+});
+
+/**
+ * Schema for business-config:updateChargeCode
+ */
+export const businessConfigChargeCodeUpdateSchema = z.object({
+  token: sessionTokenSchema,
+  id: z.number().int().positive(),
+  updates: z.object({
+    name: z.string().min(1).max(100).optional(),
+    display_order: z.number().int().optional(),
+    is_active: z.boolean().optional()
+  })
+});
+
+/**
+ * Schema for business-config:addProject
+ */
+export const businessConfigProjectCreateSchema = z.object({
+  token: sessionTokenSchema,
+  project: z.object({
+    name: z.string().min(1).max(500),
+    requires_tools: z.boolean().optional(),
+    display_order: z.number().int().optional(),
+    is_active: z.boolean().optional()
+  })
+});
+
+/**
+ * Schema for business-config:addTool
+ */
+export const businessConfigToolCreateSchema = z.object({
+  token: sessionTokenSchema,
+  tool: z.object({
+    name: z.string().min(1).max(500),
+    requires_charge_code: z.boolean().optional(),
+    display_order: z.number().int().optional(),
+    is_active: z.boolean().optional()
+  })
+});
+
+/**
+ * Schema for business-config:addChargeCode
+ */
+export const businessConfigChargeCodeCreateSchema = z.object({
+  token: sessionTokenSchema,
+  chargeCode: z.object({
+    name: z.string().min(1).max(100),
+    display_order: z.number().int().optional(),
+    is_active: z.boolean().optional()
+  })
+});
+
+/**
+ * Schema for business-config:linkToolToProject
+ */
+export const linkToolToProjectSchema = z.object({
+  token: sessionTokenSchema,
+  projectId: z.number().int().positive(),
+  toolId: z.number().int().positive(),
+  displayOrder: z.number().int().optional()
+});
+
+/**
+ * Schema for business-config:unlinkToolFromProject
+ */
+export const unlinkToolFromProjectSchema = z.object({
+  token: sessionTokenSchema,
+  projectId: z.number().int().positive(),
+  toolId: z.number().int().positive()
+});
+
+// ============================================================================
 // TYPE EXPORTS
 // ============================================================================
 
@@ -233,5 +364,17 @@ export type AdminToken = z.infer<typeof adminTokenSchema>;
 export type GetAllTimesheetEntries = z.infer<typeof getAllTimesheetEntriesSchema>;
 export type ReadLogFile = z.infer<typeof readLogFileSchema>;
 export type ExportLogs = z.infer<typeof exportLogsSchema>;
+export type GetToolsForProject = z.infer<typeof getToolsForProjectSchema>;
+export type ValidateProject = z.infer<typeof validateProjectSchema>;
+export type ValidateToolForProject = z.infer<typeof validateToolForProjectSchema>;
+export type ValidateChargeCode = z.infer<typeof validateChargeCodeSchema>;
+export type BusinessConfigProjectUpdate = z.infer<typeof businessConfigProjectUpdateSchema>;
+export type BusinessConfigToolUpdate = z.infer<typeof businessConfigToolUpdateSchema>;
+export type BusinessConfigChargeCodeUpdate = z.infer<typeof businessConfigChargeCodeUpdateSchema>;
+export type BusinessConfigProjectCreate = z.infer<typeof businessConfigProjectCreateSchema>;
+export type BusinessConfigToolCreate = z.infer<typeof businessConfigToolCreateSchema>;
+export type BusinessConfigChargeCodeCreate = z.infer<typeof businessConfigChargeCodeCreateSchema>;
+export type LinkToolToProject = z.infer<typeof linkToolToProjectSchema>;
+export type UnlinkToolFromProject = z.infer<typeof unlinkToolFromProjectSchema>;
 
 

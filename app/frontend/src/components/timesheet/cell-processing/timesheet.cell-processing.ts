@@ -120,7 +120,7 @@ export function processCellChange(
     // Handle hours input (convert to number if string)
     else if (propStr === 'hours' && newVal !== undefined && newVal !== null && newVal !== '') {
       const hoursValue = typeof newVal === 'number' ? newVal : Number(newVal);
-      updatedRow = { ...currentRow, hours: !isNaN(hoursValue) ? hoursValue : newVal };
+      updatedRow = { ...currentRow, hours: !isNaN(hoursValue) ? hoursValue : (typeof newVal === 'number' ? newVal : 0) };
     }
     // Cascade project → tool → chargeCode
     else if (propStr === 'project' && newVal !== oldVal) {

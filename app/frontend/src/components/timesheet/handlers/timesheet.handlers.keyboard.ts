@@ -32,7 +32,14 @@ export function createHandleBeforeKeyDown(
     const hotInstance = hotTableRef.current?.hotInstance;
     if (!hotInstance) return;
 
-    const validation = validateKeyboardInput(hotInstance, timesheetDraftData);
+    const selected = hotInstance.getSelected();
+    const selectedArray: Array<[number, number]> | null = selected
+      ? selected.map((sel) => [sel[0], sel[1]] as [number, number])
+      : null;
+    const validation = validateKeyboardInput(
+      { getSelected: () => selectedArray },
+      timesheetDraftData
+    );
     if (!validation.isValid || !validation.rowData) return;
 
     const { row, rowData } = validation;
@@ -47,7 +54,16 @@ export function createHandleBeforeKeyDown(
 
     // Check if the date editor is currently open
     const editor = hotInstance.getActiveEditor();
-    const isEditorOpen = editor && editor.isOpened && editor.isOpened();
+    const editorWrapper =
+      editor && editor.isOpened
+        ? {
+            isOpened: () => editor.isOpened(),
+            finishEditing: (restoreOriginalValue: boolean, ctrlDown: boolean) => {
+              editor.finishEditing(restoreOriginalValue, ctrlDown);
+            },
+          }
+        : null;
+    const isEditorOpen = editorWrapper?.isOpened() ?? false;
 
     const { dateToInsert, shouldPreventDefault } = handleKeyCombination(
       event,
@@ -65,11 +81,19 @@ export function createHandleBeforeKeyDown(
       event.stopPropagation();
 
       insertDateAndMoveFocus(
-        hotInstance,
+        {
+          getActiveEditor: () => editorWrapper,
+          setDataAtCell: (row: number, col: number, value: string) => {
+            hotInstance.setDataAtCell(row, col, value);
+          },
+          selectCell: (row: number, col: number) => {
+            hotInstance.selectCell(row, col);
+          },
+        },
         row,
         dateToInsert,
         isEditorOpen,
-        editor
+        editorWrapper
       );
     }
   };

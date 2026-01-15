@@ -17,9 +17,11 @@ type RecordedResponseSummary = { status: number; url: string };
 
 export class SubmissionMonitor {
   private readonly getPage: () => Page;
+  private readonly submitSuccessResponseUrlPatterns: string[];
 
-  constructor(getPage: () => Page) {
+  constructor(getPage: () => Page, submitSuccessResponseUrlPatterns: string[]) {
     this.getPage = getPage;
+    this.submitSuccessResponseUrlPatterns = submitSuccessResponseUrlPatterns;
   }
 
   async submitForm(): Promise<boolean> {
@@ -108,10 +110,7 @@ export class SubmissionMonitor {
       const matched =
         status >= cfg.SUBMIT_SUCCESS_MIN_STATUS &&
         status <= cfg.SUBMIT_SUCCESS_MAX_STATUS &&
-        this._matchesAnyUrlPattern(
-          url,
-          cfg.SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS
-        );
+        this._matchesAnyUrlPattern(url, this.submitSuccessResponseUrlPatterns);
 
       if (!matched) return;
 

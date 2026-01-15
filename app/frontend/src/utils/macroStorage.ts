@@ -40,7 +40,6 @@ export interface MacroRow {
 function createEmptyMacro(): MacroRow {
   return {
     name: '',
-    hours: undefined,
     project: '',
     tool: null,
     chargeCode: null,

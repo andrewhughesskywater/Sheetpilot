@@ -26,9 +26,9 @@ export function syncStateWithHandsontable(
   hotTableRef: {
     current: {
       hotInstance: {
-        getSourceData: () => TimesheetRow[];
-      };
-    } | null;
+        getSourceData: () => unknown;
+      } | null;
+    } | null | undefined;
   },
   timesheetDraftData: TimesheetRow[],
   amount: number,
@@ -42,8 +42,8 @@ export function syncStateWithHandsontable(
     return;
   }
 
-  const hotData =
-    hotTableRef.current.hotInstance.getSourceData() as TimesheetRow[];
+  const hotDataRaw = hotTableRef.current.hotInstance.getSourceData();
+  const hotData = (Array.isArray(hotDataRaw) ? hotDataRaw : []) as TimesheetRow[];
   window.logger?.verbose("Syncing state with Handsontable", {
     hotDataLength: hotData.length,
     oldStateLength: timesheetDraftData.length,

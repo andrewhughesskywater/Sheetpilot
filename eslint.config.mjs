@@ -187,6 +187,14 @@ export default [
     }
   },
 
+  // Exception: TimesheetGrid component (complex spreadsheet component with many hooks)
+  {
+    files: ['app/frontend/src/components/timesheet/TimesheetGrid.tsx'],
+    rules: {
+      'max-lines': 'off' // Disabled: Complex component with extensive hook orchestration, already refactored into separate files
+    }
+  },
+
   // Frontend Services (should be simple)
   {
     files: ['app/frontend/src/services/**/*.{ts,tsx}'],

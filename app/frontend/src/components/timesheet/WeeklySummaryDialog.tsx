@@ -83,7 +83,7 @@ const WeeklySummaryDialog = ({
       return currentWeekKey;
     }
     return allWeeks.length > 0
-      ? allWeeks[allWeeks.length - 1]
+      ? (allWeeks[allWeeks.length - 1] ?? getWeekKey(currentWeekStart))
       : getWeekKey(currentWeekStart);
   }, [allWeeks, currentWeekStart]);
 
@@ -105,7 +105,7 @@ const WeeklySummaryDialog = ({
     // Use setTimeout to avoid calling setState synchronously in effect
     if (open && (wasClosed || (wasEmpty && nowHasData))) {
       setTimeout(() => {
-        setCurrentWeekKey(initialWeekKey);
+        setCurrentWeekKey(initialWeekKey ?? getWeekKey(currentWeekStart));
       }, 0);
     }
   }, [open, initialWeekKey, allWeeks.length]);
@@ -113,7 +113,13 @@ const WeeklySummaryDialog = ({
   // Parse current week Sunday date
   const currentWeekSunday = useMemo(() => {
     try {
-      const [year, month, day] = currentWeekKey.split("-").map(Number);
+      const parts = currentWeekKey.split("-").map(Number);
+      const year = parts[0];
+      const month = parts[1];
+      const day = parts[2];
+      if (year === undefined || month === undefined || day === undefined) {
+        throw new Error("Invalid date parts");
+      }
       const date = new Date(year, month - 1, day);
       if (isNaN(date.getTime())) {
         // Fallback to current week if parsing fails
@@ -154,7 +160,9 @@ const WeeklySummaryDialog = ({
     ];
     weekSummary.forEach((summary) => {
       summary.days.forEach((hours, dayIndex) => {
-        totals[dayIndex] += hours;
+        if (dayIndex >= 0 && dayIndex < totals.length && totals[dayIndex] !== undefined) {
+          totals[dayIndex]! += hours;
+        }
       });
     });
     return totals;
@@ -179,13 +187,15 @@ const WeeklySummaryDialog = ({
         // Find the latest week that is before prevKey
         // Since allWeeks is sorted, we can find the last one that's less than prevKey
         for (let i = allWeeks.length - 1; i >= 0; i--) {
-          if (allWeeks[i] < prevKey) {
-            return allWeeks[i];
+          const week = allWeeks[i];
+          if (week && week < prevKey) {
+            return week;
           }
         }
         return prevKey; // No previous week found
       } else if (currentIndex > 0) {
-        return allWeeks[currentIndex - 1];
+        const week = allWeeks[currentIndex - 1];
+        return week ?? prevKey;
       }
       return prevKey; // Already at first week
     });
@@ -204,13 +214,15 @@ const WeeklySummaryDialog = ({
         // Find the earliest week that is after prevKey
         // Since allWeeks is sorted, we can find the first one that's greater than prevKey
         for (let i = 0; i < allWeeks.length; i++) {
-          if (allWeeks[i] > prevKey) {
-            return allWeeks[i];
+          const week = allWeeks[i];
+          if (week && week > prevKey) {
+            return week;
           }
         }
         return prevKey; // No next week found
       } else if (currentIndex < allWeeks.length - 1) {
-        return allWeeks[currentIndex + 1];
+        const week = allWeeks[currentIndex + 1];
+        return week ?? prevKey;
       }
       return prevKey; // Already at last week
     });

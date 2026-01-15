@@ -10,19 +10,25 @@ import type { MutableRefObject } from "react";
 import type { HotTableRef } from "@handsontable/react-wrapper";
 import type { MacroRow } from "@/utils/macroStorage";
 import { saveRowToDatabase } from "@/components/timesheet/persistence/timesheet.persistence";
+import { handleInFlightSaveButtonState } from "./timesheet.row-operations.helpers";
 import {
-  handleInFlightSaveButtonState,
-  checkRowFieldsMatch,
-  rowNeedsUpdate,
-} from "./timesheet.row-operations.helpers";
+  setupSaveAbortController,
+  processSaveResult,
+  cleanupSaveOperation,
+  handleSaveError,
+} from "./timesheet.row-operations.save-helpers";
 import {
-  applyMacroToRow,
-} from "./timesheet.row-operations.macro-helpers";
+  validateMacroApplication,
+  getMacroTargetRow,
+  ensureRowExists,
+  applyMacroAndNormalize,
+} from "./timesheet.row-operations.macro-application-helpers";
 import {
-  getDateColumnCellConfig,
-  getToolColumnCellConfig,
-  getChargeCodeColumnCellConfig,
-} from "./timesheet.row-operations.cell-helpers";
+  validateDuplication,
+  getSelectedRowForDuplication,
+  performRowDuplication,
+} from "./timesheet.row-operations.duplicate-helpers";
+import { getCellConfigForColumn } from "./timesheet.row-operations.cells-helpers";
 
 type ButtonStatus = "saved" | "saving" | "save";
 
@@ -71,98 +77,36 @@ export function createSaveAndReloadRow(
   pendingSaveRef: MutableRefObject<Map<number, TimesheetRow>>
 ): (row: TimesheetRow, rowIdx: number) => Promise<void> {
   return async (row: TimesheetRow, rowIdx: number) => {
-    const existingController = inFlightSavesRef.current.get(rowIdx);
-    if (existingController) {
-      existingController.abort();
-      window.logger?.debug("Cancelled previous save operation for row", {
-        rowIdx,
-      });
-    }
-
-    const abortController = new AbortController();
-    inFlightSavesRef.current.set(rowIdx, abortController);
+    const abortController = setupSaveAbortController(inFlightSavesRef, rowIdx);
 
     try {
       const saveResult = await saveRowToDatabase(row);
 
-      if (abortController.signal.aborted) {
-        window.logger?.debug("Save operation aborted", { rowIdx });
-        return;
-      }
-
-      if (saveResult.success && saveResult.entry) {
-        const savedEntry = saveResult.entry;
-        const hotInstance = hotTableRef.current?.hotInstance;
-        if (hotInstance) {
-          const currentData = hotInstance.getSourceData() as TimesheetRow[];
-          const currentRow = currentData[rowIdx];
-
-          if (!currentRow) {
-            window.logger?.warn("Current row not found for receipt check", {
-              rowIdx,
-            });
-            unsavedRowsRef.current.delete(rowIdx);
-            return;
-          }
-
-          const fieldsMatch = checkRowFieldsMatch(currentRow, savedEntry);
-
-          if (fieldsMatch) {
-            unsavedRowsRef.current.delete(rowIdx);
-            window.logger?.verbose("Row synced successfully", {
-              id: savedEntry.id,
-              rowIdx,
-            });
-          } else {
-            window.logger?.debug(
-              "Row values changed during save (race condition)",
-              {
-                rowIdx,
-                saved: savedEntry,
-                current: currentRow,
-              }
-            );
-          }
-
-          const needsUpdate = rowNeedsUpdate(currentRow, savedEntry);
-
-          if (needsUpdate) {
-            const updatedData = [...currentData];
-            updatedData[rowIdx] = { ...currentRow, ...savedEntry };
-
-            setTimesheetDraftData(updatedData);
-            onChange?.(updatedData);
-
-            window.logger?.verbose("Row saved and state updated", {
-              id: savedEntry.id,
-              rowIdx,
-            });
-          }
-        }
-      } else {
-        window.logger?.warn("Could not save row to database", {
-          error: saveResult.error,
-          rowIdx,
-        });
-      }
-
-      pendingSaveRef.current.delete(rowIdx);
-      inFlightSavesRef.current.delete(rowIdx);
-
-      updateSaveButtonState();
-    } catch (error) {
-      if (abortController.signal.aborted) {
-        return;
-      }
-
-      window.logger?.error("Encountered error saving and reloading row", {
+      await processSaveResult(
+        saveResult,
+        abortController,
         rowIdx,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      pendingSaveRef.current.delete(rowIdx);
-      inFlightSavesRef.current.delete(rowIdx);
+        hotTableRef,
+        unsavedRowsRef,
+        setTimesheetDraftData,
+        onChange
+      );
 
-      updateSaveButtonState();
+      cleanupSaveOperation(
+        rowIdx,
+        pendingSaveRef,
+        inFlightSavesRef,
+        updateSaveButtonState
+      );
+    } catch (error) {
+      handleSaveError(
+        error,
+        rowIdx,
+        abortController,
+        pendingSaveRef,
+        inFlightSavesRef,
+        updateSaveButtonState
+      );
     }
   };
 }
@@ -185,36 +129,26 @@ export function createApplyMacro(
   toolNeedsChargeCodeWrapper: (t?: string) => boolean
 ): (macroIndex: number) => void {
   return (macroIndex: number) => {
-    const hotInstance = hotTableRef.current?.hotInstance;
-    if (!hotInstance) {
-      window.logger?.warn(
-        "Cannot apply macro - Handsontable instance not available"
-      );
-      return;
-    }
-
+    const hotInstance = hotTableRef.current?.hotInstance ?? null;
     const macro = macros[macroIndex];
-    if (!macro || isMacroEmptyFn(macro)) {
-      window.logger?.verbose("Macro is empty, skipping application", {
-        macroIndex,
-      });
+
+    const validation = validateMacroApplication(
+      hotInstance,
+      macro,
+      isMacroEmptyFn,
+      macroIndex
+    );
+    if (!validation.valid) {
       return;
     }
 
-    const selected = hotInstance.getSelected();
-    if (!selected || selected.length === 0) {
-      window.logger?.warn("Cannot apply macro - no cell selected");
+    const targetRowValidation = getMacroTargetRow(validation.hotInstance);
+    if (!targetRowValidation.valid) {
       return;
     }
 
-    const firstSelection = selected[0];
-    if (!firstSelection || typeof firstSelection[0] !== 'number') {
-      window.logger?.warn("Cannot apply macro - invalid selection");
-      return;
-    }
-
-    const targetRow = firstSelection[0];
-    const sourceData = hotInstance.getSourceData() as TimesheetRow[];
+    const targetRow = targetRowValidation.targetRow;
+    const sourceData = validation.hotInstance.getSourceData() as TimesheetRow[];
 
     window.logger?.info("Applying macro to row", {
       macroIndex: macroIndex + 1,
@@ -226,34 +160,24 @@ export function createApplyMacro(
      * Directly modifying source data bypasses these restrictions, then loadData() applies
      * changes with proper validation through the normal afterChange flow.
      */
-    if (!sourceData[targetRow]) {
-      sourceData[targetRow] = {
-        date: "",
-        hours: undefined,
-        project: "",
-        tool: null,
-        chargeCode: null,
-        taskDescription: "",
-      };
-    }
+    ensureRowExists(sourceData, targetRow);
 
-    const updatedRow = applyMacroToRow(sourceData[targetRow], macro);
-
-    const normalizedRow = normalizeRowDataFn(
-      updatedRow,
+    applyMacroAndNormalize(
+      sourceData,
+      targetRow,
+      validation.macro,
+      normalizeRowDataFn,
       projectNeedsToolsWrapper,
       toolNeedsChargeCodeWrapper
     );
 
-    sourceData[targetRow] = normalizedRow;
-
-    hotInstance.loadData(sourceData);
+    validation.hotInstance.loadData(sourceData);
 
     setTimesheetDraftData(sourceData);
     onChange?.(sourceData);
 
     requestAnimationFrame(() => {
-      hotInstance.selectCell(targetRow, 1);
+      validation.hotInstance.selectCell(targetRow, 1);
     });
   };
 }
@@ -265,45 +189,21 @@ export function createDuplicateSelectedRow(
   hotTableRef: MutableRefObject<HotTableRef | null>
 ): () => void {
   return () => {
-    const hotInstance = hotTableRef.current?.hotInstance;
-    if (!hotInstance) {
-      window.logger?.warn(
-        "Cannot duplicate row - Handsontable instance not available"
-      );
+    const validation = validateDuplication(hotTableRef.current?.hotInstance ?? null);
+    if (!validation.valid) {
       return;
     }
 
-    const selected = hotInstance.getSelected();
-    if (!selected || selected.length === 0) {
-      window.logger?.verbose("No row selected for duplication");
+    const rowValidation = getSelectedRowForDuplication(validation.hotInstance);
+    if (!rowValidation.valid) {
       return;
     }
 
-    const firstSelection = selected[0];
-    const selectedRow = firstSelection?.[0];
-    if (typeof selectedRow !== "number") return;
-    const rowData = hotInstance.getDataAtRow(selectedRow);
-
-    if (!rowData || rowData.every((cell) => !cell)) {
-      window.logger?.verbose("Selected row is empty, skipping duplication");
-      return;
-    }
-
-    window.logger?.info("Duplicating row", { selectedRow });
-
-    hotInstance.alter("insert_row_below", selectedRow, 1);
-
-    const newRow = selectedRow + 1;
-    hotInstance.populateFromArray(
-      newRow,
-      0,
-      [rowData],
-      undefined,
-      undefined,
-      "overwrite"
+    performRowDuplication(
+      validation.hotInstance,
+      rowValidation.selectedRow,
+      rowValidation.rowData
     );
-
-    hotInstance.selectCell(newRow, 1);
   };
 }
 
@@ -332,32 +232,16 @@ export function createCellsFunction(
       return {};
     }
 
-    // Date column (col 1, after hidden ID at col 0) - smart placeholder
-    if (col === 1) {
-      const dateConfig = getDateColumnCellConfig(
-        rowData,
-        row,
-        timesheetDraftData,
-        weekdayPatternRef.current,
-        getSmartPlaceholder
-      );
-      if (dateConfig) return dateConfig;
-    }
-
-    // Tool column (col 5, after ID/Date/TimeIn/TimeOut/Project) - dynamic dropdown based on selected project
-    if (col === 5) {
-      return getToolColumnCellConfig(
-        rowData,
-        doesProjectNeedToolsFn,
-        getToolsForProjectFn
-      );
-    }
-
-    // Charge code column (col 6) - conditional based on selected tool
-    if (col === 6) {
-      return getChargeCodeColumnCellConfig(rowData, doesToolNeedChargeCodeFn);
-    }
-
-    return {};
+    return getCellConfigForColumn(
+      col,
+      rowData,
+      row,
+      timesheetDraftData,
+      weekdayPatternRef,
+      getSmartPlaceholder,
+      doesProjectNeedToolsFn,
+      getToolsForProjectFn,
+      doesToolNeedChargeCodeFn
+    );
   };
 }

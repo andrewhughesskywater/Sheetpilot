@@ -746,7 +746,10 @@ export class BotOrchestrator {
     rowIndex: number,
     fields: Record<string, unknown>
   ): Promise<boolean> {
-    const monitor = new SubmissionMonitor(() => this.require_page());
+    const monitor = new SubmissionMonitor(
+      () => this.require_page(),
+      this.formConfig.SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS
+    );
 
     // Attempt 1: Initial submit
     let success = await this._attemptInitialSubmission(monitor, rowIndex);

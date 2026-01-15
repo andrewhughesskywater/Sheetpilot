@@ -9,6 +9,7 @@ import { logsBridge } from './bridges/logs';
 import { loggerBridge } from './bridges/logger';
 import { updatesBridge } from './bridges/updates';
 import { settingsBridge } from './bridges/settings';
+import { businessConfigBridge } from './bridges/business-config';
 
 export function exposePreloadBridges(): void {
   contextBridge.exposeInMainWorld('api', apiBridge);
@@ -21,6 +22,7 @@ export function exposePreloadBridges(): void {
   contextBridge.exposeInMainWorld('logger', loggerBridge);
   contextBridge.exposeInMainWorld('updates', updatesBridge);
   contextBridge.exposeInMainWorld('settings', settingsBridge);
+  contextBridge.exposeInMainWorld('businessConfig', businessConfigBridge);
 }
 
 

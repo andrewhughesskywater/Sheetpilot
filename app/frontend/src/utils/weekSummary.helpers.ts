@@ -42,10 +42,14 @@ function normalizeDate(dateStr: string): string | null {
   // Try to parse MM/DD/YYYY format
   const mmddyyyyMatch = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if (mmddyyyyMatch) {
-    const [, month, day, year] = mmddyyyyMatch;
-    const monthPadded = month.padStart(2, "0");
-    const dayPadded = day.padStart(2, "0");
-    return `${year}-${monthPadded}-${dayPadded}`;
+    const month = mmddyyyyMatch[1];
+    const day = mmddyyyyMatch[2];
+    const year = mmddyyyyMatch[3];
+    if (month && day && year) {
+      const monthPadded = month.padStart(2, "0");
+      const dayPadded = day.padStart(2, "0");
+      return `${year}-${monthPadded}-${dayPadded}`;
+    }
   }
 
   // Try to parse as Date object and format

@@ -19,6 +19,7 @@ import { registerDatabaseHandlers } from './database-handlers';
 import { registerLogsHandlers } from './logs-handlers';
 import { registerLoggerHandlers } from './logger-handlers';
 import { registerSettingsHandlers } from './settings-handlers';
+import { registerBusinessConfigHandlers } from './business-config-handlers';
 
 /**
  * Register all IPC handlers
@@ -69,6 +70,10 @@ export function registerAllIPCHandlers(mainWindow?: BrowserWindow | null): void 
     registerSettingsHandlers();
     appLogger.verbose('Settings handlers registered successfully');
     
+    appLogger.verbose('Registering business config handlers');
+    registerBusinessConfigHandlers();
+    appLogger.verbose('Business config handlers registered successfully');
+    
     appLogger.info('All IPC handler modules registered successfully', { 
       modulesRegistered: [
         'auth', 
@@ -78,7 +83,8 @@ export function registerAllIPCHandlers(mainWindow?: BrowserWindow | null): void 
         'database', 
         'logs', 
         'logger',
-        'settings'
+        'settings',
+        'business-config'
       ]
     });
   } catch (err) {
@@ -100,6 +106,7 @@ export {
   registerLogsHandlers,
   registerLoggerHandlers,
   registerSettingsHandlers,
+  registerBusinessConfigHandlers,
   setMainWindow
 };
 

@@ -28,13 +28,13 @@ export async function handleResetInProgress(
   }
 }
 
-export async function handleLoadDraftData(
+export async function handleLoadDraftData<T>(
   loadDraftIpcFn: () => Promise<{
     success: boolean;
-    entries?: unknown[];
+    entries?: T[];
     error?: string;
   }>,
-  setTimesheetDraftData: (data: unknown[]) => void,
+  setTimesheetDraftData: (data: T[]) => void,
   logInfoFn: (message: string, meta?: Record<string, unknown>) => void,
   logWarnFn: (message: string, meta?: Record<string, unknown>) => void
 ): Promise<void> {
@@ -43,8 +43,8 @@ export async function handleLoadDraftData(
     const draftData = response.entries || [];
     const rowsWithBlank =
       draftData.length > 0 && Object.keys(draftData[0] || {}).length > 0
-        ? [...draftData, {}]
-        : [{}];
+        ? [...draftData, {} as T]
+        : [{} as T];
     setTimesheetDraftData(rowsWithBlank);
     logInfoFn("Table refreshed successfully", { count: draftData.length });
   } else {

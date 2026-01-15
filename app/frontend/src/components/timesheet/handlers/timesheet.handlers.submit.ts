@@ -60,11 +60,14 @@ export function createHandleSubmitTimesheet(
     let refreshError: Error | null = null;
 
     try {
-      const res = await submitTimesheetFn(token, async () => {
+      // token is validated as non-null by validateSubmissionPreconditions
+      const res = await submitTimesheetFn(token!, async () => {
         refreshError = await handleRefreshAfterSubmission(
           refreshTimesheetDraft,
           refreshArchiveData
         );
+        // Convert to void for onSuccess callback
+        return;
       });
 
       const result = handleSubmissionResult(res);
