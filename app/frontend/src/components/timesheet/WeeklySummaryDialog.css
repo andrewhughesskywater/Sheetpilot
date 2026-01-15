@@ -1,0 +1,97 @@
+/* Weekly Summary Dialog Styles */
+
+.weekly-summary-table {
+  width: 100%;
+}
+
+/* Project column header */
+.weekly-summary-project-header {
+  background-color: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-on-surface);
+  font-weight: var(--md-sys-typescale-title-medium-weight);
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  border-right: 1px solid var(--md-sys-color-outline-variant);
+  min-width: 150px;
+}
+
+/* Day column headers */
+.weekly-summary-day-header {
+  background-color: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-on-surface);
+  font-weight: var(--md-sys-typescale-title-medium-weight);
+  min-width: 80px;
+  border-right: 1px solid var(--md-sys-color-outline-variant);
+}
+
+/* Total column header */
+.weekly-summary-total-header {
+  background-color: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-on-surface);
+  font-weight: var(--md-sys-typescale-title-medium-weight);
+  border-right: 1px solid var(--md-sys-color-outline-variant);
+  min-width: 80px;
+}
+
+/* Project cell */
+.weekly-summary-project-cell {
+  background-color: var(--md-sys-color-surface-container-low);
+  color: var(--md-sys-color-on-surface);
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  border-right: 1px solid var(--md-sys-color-outline-variant);
+  font-weight: var(--md-sys-typescale-body-medium-weight);
+}
+
+/* Hours cells */
+.weekly-summary-hours-cell {
+  color: var(--md-sys-color-on-surface);
+  border-right: 1px solid var(--md-sys-color-outline-variant);
+  font-family: var(--md-sys-typescale-body-medium-font);
+  font-size: var(--md-sys-typescale-body-medium-size);
+}
+
+/* Project total cell */
+.weekly-summary-project-total {
+  background-color: var(--md-sys-color-surface-container-low);
+  color: var(--md-sys-color-on-surface);
+  border-right: 1px solid var(--md-sys-color-outline-variant);
+  border-top: 2px solid var(--md-sys-color-outline);
+}
+
+/* Total row */
+.weekly-summary-total-row {
+  background-color: var(--md-sys-color-surface-container);
+}
+
+.weekly-summary-total-row .weekly-summary-project-cell {
+  background-color: var(--md-sys-color-surface-container);
+  border-top: 2px solid var(--md-sys-color-outline);
+}
+
+/* Day total cells */
+.weekly-summary-day-total {
+  background-color: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-on-surface);
+  border-right: 1px solid var(--md-sys-color-outline-variant);
+  border-top: 2px solid var(--md-sys-color-outline);
+}
+
+/* Grand total cell (bottom-right) */
+.weekly-summary-grand-total {
+  background-color: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  border-top: 2px solid var(--md-sys-color-outline);
+  font-weight: var(--md-sys-typescale-title-medium-weight);
+}
+
+/* Table row hover effect */
+.weekly-summary-table tbody tr:hover {
+  background-color: var(--md-sys-color-surface-container-high);
+}
+
+.weekly-summary-table tbody tr:hover .weekly-summary-project-cell {
+  background-color: var(--md-sys-color-surface-container-high);
+}

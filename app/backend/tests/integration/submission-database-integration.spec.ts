@@ -64,8 +64,7 @@ describe('Submission-Database Integration Tests', () => {
             // SETUP: Insert test entries
             insertTimesheetEntry({
                 date: '2025-01-15',
-                timeIn: 540,
-                timeOut: 600,
+                hours: 1.0,
                 project: 'CriticalTest',
                 taskDescription: 'Task 1'
             });
@@ -99,8 +98,7 @@ describe('Submission-Database Integration Tests', () => {
             for (let i = 0; i < 3; i++) {
                 insertTimesheetEntry({
                     date: '2025-01-15',
-                    timeIn: 540 + (i * 60),
-                    timeOut: 600 + (i * 60),
+                    hours: 1.0 + (i * 0.25),
                     project: 'DataLossTest',
                     taskDescription: `Task ${i}`
                 });
@@ -143,8 +141,7 @@ describe('Submission-Database Integration Tests', () => {
             // Insert test data
             insertTimesheetEntry({
                 date: '2025-01-15',
-                timeIn: 540,
-                timeOut: 600,
+                hours: 1.0,
                 project: 'RollbackTest',
                 taskDescription: 'Test task'
             });
@@ -173,8 +170,7 @@ describe('Submission-Database Integration Tests', () => {
             // Insert entry
             insertTimesheetEntry({
                 date: '2025-01-15',
-                timeIn: 540,
-                timeOut: 600,
+                hours: 1.0,
                 project: 'RetryTest',
                 taskDescription: 'Test task'
             });
@@ -205,8 +201,7 @@ describe('Submission-Database Integration Tests', () => {
             // Insert entry
             insertTimesheetEntry({
                 date: '2025-01-15',
-                timeIn: 540,
-                timeOut: 600,
+                hours: 1.0,
                 project: 'ConcurrentTest',
                 taskDescription: 'Test task'
             });
@@ -236,16 +231,14 @@ describe('Submission-Database Integration Tests', () => {
             // Insert 2 entries
             insertTimesheetEntry({
                 date: '2025-01-15',
-                timeIn: 540,
-                timeOut: 600,
+                hours: 1.0,
                 project: 'ValidationTest',
                 taskDescription: 'Task 1'
             });
 
             insertTimesheetEntry({
                 date: '2025-01-15',
-                timeIn: 600,
-                timeOut: 660,
+                hours: 1.0,
                 project: 'ValidationTest',
                 taskDescription: 'Task 2'
             });
@@ -273,8 +266,7 @@ describe('Submission-Database Integration Tests', () => {
             for (let i = 0; i < 5; i++) {
                 insertTimesheetEntry({
                     date: '2025-01-15',
-                    timeIn: 540 + (i * 60),
-                    timeOut: 600 + (i * 60),
+                    hours: 1.0 + (i * 0.25),
                     project: 'CountTest',
                     taskDescription: `Task ${i}`
                 });
@@ -297,8 +289,7 @@ describe('Submission-Database Integration Tests', () => {
             // Insert and submit entry
             insertTimesheetEntry({
                 date: '2025-01-15',
-                timeIn: 540,
-                timeOut: 600,
+                hours: 1.0,
                 project: 'StatusTest',
                 taskDescription: 'Test task'
             });
@@ -321,8 +312,7 @@ describe('Submission-Database Integration Tests', () => {
             // Insert and submit
             insertTimesheetEntry({
                 date: '2025-01-15',
-                timeIn: 540,
-                timeOut: 600,
+                hours: 1.0,
                 project: 'DurabilityTest',
                 taskDescription: 'Test task'
             });
@@ -350,8 +340,7 @@ describe('Submission-Database Integration Tests', () => {
             // Insert entry
             insertTimesheetEntry({
                 date: '2025-01-15',
-                timeIn: 540,
-                timeOut: 600,
+                hours: 1.0,
                 project: 'CorruptionTest',
                 taskDescription: 'Test task'
             });
@@ -385,8 +374,7 @@ describe('Submission-Database Integration Tests', () => {
             for (let i = 0; i < 500; i++) {
                 insertTimesheetEntry({
                     date: '2025-01-15',
-                    timeIn: 540,
-                    timeOut: 600,
+                    hours: 1.0,
                     project: `Project ${i % 10}`, // 10 different projects
                     taskDescription: `Task ${i}`
                 });
@@ -418,8 +406,7 @@ describe('Submission-Database Integration Tests', () => {
             for (let i = 0; i < 50; i++) {
                 insertTimesheetEntry({
                     date: '2025-01-15',
-                    timeIn: 540 + (i * 15),
-                    timeOut: 600 + (i * 15),
+                    hours: 1.0 + (i * 0.25),
                     project: 'PerformanceTest',
                     taskDescription: `Task ${i}`
                 });

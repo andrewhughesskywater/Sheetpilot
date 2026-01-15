@@ -124,8 +124,7 @@ describe('Plugin Contract Validation', () => {
       
       const mockEntry = {
         date: '01/15/2025',
-        timeIn: '09:00',
-        timeOut: '17:00',
+        hours: 8.0,
         project: 'FL-Carver Techs',
         tool: '#1 Rinse and 2D marker',
         chargeCode: 'EPR1',
@@ -334,8 +333,7 @@ describe('Plugin Contract Validation', () => {
       
       const mockEntry = {
         date: '01/15/2025',
-        timeIn: '09:00',
-        timeOut: '17:00',
+        hours: 8.0,
         project: 'FL-Carver Techs',
         tool: '#1 Rinse and 2D marker',
         chargeCode: 'EPR1',
@@ -557,8 +555,7 @@ describe('Plugin Contract Validation', () => {
       
       const result = await service.saveDraft({
         date: '01/15/2025',
-        timeIn: '09:00',
-        timeOut: '17:00',
+        hours: 8.0,
         project: 'FL-Carver Techs',
         taskDescription: 'Test'
       });

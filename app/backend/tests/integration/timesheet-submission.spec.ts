@@ -65,16 +65,14 @@ describe('Timesheet Submission Integration', () => {
         // Insert test entries
         insertTimesheetEntry({
             date: '2025-01-15',
-            timeIn: 540,  // 9:00 AM
-            timeOut: 600, // 10:00 AM
+            hours: 1.0,  // 1 hour
             project: 'TestProject',
             taskDescription: 'Test task'
         });
         
         insertTimesheetEntry({
             date: '2025-01-15',
-            timeIn: 600,  // 10:00 AM
-            timeOut: 660, // 11:00 AM
+            hours: 1.0,  // 1 hour
             project: 'TestProject',
             taskDescription: 'Another test task'
         });
@@ -89,8 +87,7 @@ describe('Timesheet Submission Integration', () => {
         // Insert test entry
         const result = insertTimesheetEntry({
             date: '2025-01-15',
-            timeIn: 540,
-            timeOut: 600,
+            hours: 1.0,
             project: 'TestProject',
             taskDescription: 'Test task'
         });
@@ -113,8 +110,7 @@ describe('Timesheet Submission Integration', () => {
         // Insert test entry
         insertTimesheetEntry({
             date: '2025-01-15',
-            timeIn: 540,
-            timeOut: 600,
+            hours: 1.0,
             project: 'TestProject',
             taskDescription: 'Test task'
         });
@@ -167,8 +163,7 @@ describe('Timesheet Submission Integration', () => {
         // by inserting a row and checking the conversion
         insertTimesheetEntry({
             date: '2025-01-15',
-            timeIn: 540,  // 9:00 AM
-            timeOut: 600, // 10:00 AM (1 hour)
+            hours: 1.0,  // 1 hour
             project: 'TestProject',
             tool: 'VS Code',
             detailChargeCode: 'DEV001',
@@ -180,8 +175,7 @@ describe('Timesheet Submission Integration', () => {
         
         const entry = pendingEntries[0];
         expect(entry.date).toBe('2025-01-15');
-        expect(entry.time_in).toBe(540);
-        expect(entry.time_out).toBe(600);
+        expect(entry.hours).toBe(1.0);
         expect(entry.project).toBe('TestProject');
         expect(entry.tool).toBe('VS Code');
         expect(entry.detail_charge_code).toBe('DEV001');
@@ -192,8 +186,7 @@ describe('Timesheet Submission Integration', () => {
         // Insert test entry
         insertTimesheetEntry({
             date: '2025-01-15',
-            timeIn: 540,  // 9:00 AM
-            timeOut: 600, // 10:00 AM
+            hours: 1.0,  // 1 hour
             project: 'TestProject',
             taskDescription: 'Test task'
         });
@@ -216,8 +209,7 @@ describe('Timesheet Submission Integration', () => {
         // First attempt
         insertTimesheetEntry({
             date: '2025-01-15',
-            timeIn: 540,
-            timeOut: 600,
+            hours: 1.0,
             project: 'TestProject1',
             taskDescription: 'First task'
         });
@@ -227,8 +219,7 @@ describe('Timesheet Submission Integration', () => {
         // Second attempt - browser should be properly cleaned up and restarted
         insertTimesheetEntry({
             date: '2025-01-16',
-            timeIn: 540,
-            timeOut: 600,
+            hours: 1.0,
             project: 'TestProject2',
             taskDescription: 'Second task'
         });
@@ -246,16 +237,14 @@ describe('Timesheet Submission Integration', () => {
             // Insert test entries
             insertTimesheetEntry({
                 date: '2025-01-15',
-                timeIn: 540,
-                timeOut: 600,
+                hours: 1.0,
                 project: 'TestProject',
                 taskDescription: 'Task 1'
             });
             
             insertTimesheetEntry({
                 date: '2025-01-15',
-                timeIn: 600,
-                timeOut: 660,
+                hours: 1.0,
                 project: 'TestProject',
                 taskDescription: 'Task 2'
             });
@@ -295,8 +284,7 @@ describe('Timesheet Submission Integration', () => {
             // Insert and mark as submitted
             insertTimesheetEntry({
                 date: '2025-01-15',
-                timeIn: 540,
-                timeOut: 600,
+                hours: 1.0,
                 project: 'TestProject',
                 taskDescription: 'Test task'
             });
@@ -326,8 +314,7 @@ describe('Timesheet Submission Integration', () => {
             // Insert test entry
             insertTimesheetEntry({
                 date: '2025-01-15',
-                timeIn: 540,
-                timeOut: 600,
+                hours: 1.0,
                 project: 'PersistenceTest',
                 taskDescription: 'Test persistence'
             });
@@ -355,16 +342,14 @@ describe('Timesheet Submission Integration', () => {
             // Insert three entries
             insertTimesheetEntry({
                 date: '2025-01-15',
-                timeIn: 540,
-                timeOut: 600,
+                hours: 1.0,
                 project: 'TestProject',
                 taskDescription: 'Task 1'
             });
             
             insertTimesheetEntry({
                 date: '2025-01-15',
-                timeIn: 600,
-                timeOut: 660,
+                hours: 1.0,
                 project: 'TestProject',
                 taskDescription: 'Task 2'
             });
@@ -395,8 +380,7 @@ describe('Timesheet Submission Integration', () => {
             // Insert and mark as in_progress
             insertTimesheetEntry({
                 date: '2025-01-15',
-                timeIn: 540,
-                timeOut: 600,
+                hours: 1.0,
                 project: 'TestProject',
                 taskDescription: 'Test task'
             });
@@ -435,16 +419,14 @@ describe('Timesheet Submission Integration', () => {
             // Insert test entries
             insertTimesheetEntry({
                 date: '2025-01-15',
-                timeIn: 540,
-                timeOut: 600,
+                hours: 1.0,
                 project: 'TestProject',
                 taskDescription: 'Task 1'
             });
             
             insertTimesheetEntry({
                 date: '2025-01-15',
-                timeIn: 600,
-                timeOut: 660,
+                hours: 1.0,
                 project: 'TestProject',
                 taskDescription: 'Task 2'
             });
@@ -481,8 +463,7 @@ describe('Timesheet Submission Integration', () => {
             // Insert entry
             const insertResult = insertTimesheetEntry({
                 date: '2025-01-15',
-                timeIn: 540,
-                timeOut: 600,
+                hours: 1.0,
                 project: 'IntegrityTest',
                 taskDescription: 'Test task'
             });

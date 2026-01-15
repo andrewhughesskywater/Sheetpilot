@@ -129,8 +129,7 @@ describe('Renderer-Main Communication Contracts', () => {
       const requestPayload = {
         id: 1,
         date: '01/15/2025',
-        timeIn: '09:00',
-        timeOut: '17:00',
+        hours: 8.0,
         project: 'FL-Carver Techs',
         tool: '#1 Rinse and 2D marker',
         chargeCode: 'EPR1',
@@ -207,8 +206,7 @@ describe('Renderer-Main Communication Contracts', () => {
       successResponse.entries.forEach(entry => {
         expect(entry).toHaveProperty('id');
         expect(entry).toHaveProperty('date');
-        expect(entry).toHaveProperty('timeIn');
-        expect(entry).toHaveProperty('timeOut');
+        expect(entry).toHaveProperty('hours');
         expect(entry).toHaveProperty('project');
         expect(entry).toHaveProperty('taskDescription');
       });
@@ -533,8 +531,7 @@ describe('Renderer-Main Communication Contracts', () => {
     it('should maintain consistent data types across IPC calls', async () => {
       const savePayload = {
         date: '01/15/2025',
-        timeIn: '09:00',
-        timeOut: '17:00',
+        hours: 8.0,
         project: 'FL-Carver Techs',
         tool: '#1 Rinse and 2D marker',
         chargeCode: 'EPR1',
@@ -544,8 +541,7 @@ describe('Renderer-Main Communication Contracts', () => {
       const loadResponse = [{
         id: 1,
         date: '01/15/2025',
-        timeIn: '09:00',
-        timeOut: '17:00',
+        hours: 8.0,
         project: 'FL-Carver Techs',
         tool: '#1 Rinse and 2D marker',
         chargeCode: 'EPR1',
@@ -560,8 +556,7 @@ describe('Renderer-Main Communication Contracts', () => {
       expect(typeof savePayload.taskDescription).toBe('string');
       
       expect(typeof loadResponse[0].date).toBe('string');
-      expect(typeof loadResponse[0].timeIn).toBe('string');
-      expect(typeof loadResponse[0].timeOut).toBe('string');
+      expect(typeof loadResponse[0].hours).toBe('number');
       expect(typeof loadResponse[0].project).toBe('string');
       expect(typeof loadResponse[0].taskDescription).toBe('string');
     });
@@ -569,8 +564,7 @@ describe('Renderer-Main Communication Contracts', () => {
     it('should handle null values consistently', async () => {
       const payloadWithNulls = {
         date: '01/15/2025',
-        timeIn: '09:00',
-        timeOut: '17:00',
+        hours: 8.0,
         project: 'PTO/RTO',
         tool: null,
         chargeCode: null,

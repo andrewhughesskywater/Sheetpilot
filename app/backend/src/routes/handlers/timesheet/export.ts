@@ -1,20 +1,21 @@
-import { ipcMain } from 'electron';
-import { ipcLogger } from '@sheetpilot/shared/logger';
-import { getSubmittedTimesheetEntriesForExport } from '@/models';
-import { isTrustedIpcSender } from './main-window';
+import { ipcMain } from "electron";
+import { ipcLogger } from "@sheetpilot/shared/logger";
+import { getSubmittedTimesheetEntriesForExport } from "@/models";
+import { isTrustedIpcSender } from "./main-window";
 
 export function registerTimesheetExportHandlers(): void {
-  ipcMain.handle('timesheet:exportToCSV', async (event) => {
+  ipcMain.handle("timesheet:exportToCSV", async (event) => {
     if (!isTrustedIpcSender(event)) {
-      return { success: false, error: 'Could not export CSV: unauthorized request' };
+      return {
+        success: false,
+        error: "Could not export CSV: unauthorized request",
+      };
     }
-    ipcLogger.verbose('Exporting timesheet data to CSV');
+    ipcLogger.verbose("Exporting timesheet data to CSV");
     try {
       const entries = getSubmittedTimesheetEntriesForExport() as Array<{
         date: string;
-        time_in: number;
-        time_out: number;
-        hours: number;
+        hours: number | null;
         project: string;
         tool?: string;
         detail_charge_code?: string;
@@ -26,52 +27,44 @@ export function registerTimesheetExportHandlers(): void {
       if (entries.length === 0) {
         return {
           success: false,
-          error: 'No submitted timesheet entries found to export'
+          error: "No submitted timesheet entries found to export",
         };
       }
 
-      const formatTime = (minutes: number): string => {
-        const hours = Math.floor(minutes / 60);
-        const mins = minutes % 60;
-        return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
-      };
-
       const headers = [
-        'Date',
-        'Start Time',
-        'End Time',
-        'Hours',
-        'Project',
-        'Tool',
-        'Charge Code',
-        'Task Description',
-        'Status',
-        'Submitted At'
+        "Date",
+        "Hours",
+        "Project",
+        "Tool",
+        "Charge Code",
+        "Task Description",
+        "Status",
+        "Submitted At",
       ];
 
-      const csvRows = [headers.join(',')];
+      const csvRows = [headers.join(",")];
 
       for (const entry of entries) {
         const row = [
           entry.date,
-          formatTime(entry.time_in),
-          formatTime(entry.time_out),
-          entry.hours,
+          entry.hours !== null && entry.hours !== undefined
+            ? entry.hours.toFixed(2)
+            : "",
           `"${entry.project.replace(/"/g, '""')}"`,
-          `"${(entry.tool || '').replace(/"/g, '""')}"`,
-          `"${(entry.detail_charge_code || '').replace(/"/g, '""')}"`,
+          `"${(entry.tool || "").replace(/"/g, '""')}"`,
+          `"${(entry.detail_charge_code || "").replace(/"/g, '""')}"`,
           `"${entry.task_description.replace(/"/g, '""')}"`,
           entry.status,
-          entry.submitted_at
+          entry.submitted_at,
         ];
-        csvRows.push(row.join(','));
+        csvRows.push(row.join(","));
       }
 
-      const csvContent = csvRows.join('\n');
+      const csvContent = csvRows.join("\n");
 
-      ipcLogger.info('CSV export completed', {
+      ipcLogger.info("CSV export completed", {
         entryCount: entries.length,
-        csvSize: csvContent.length
+        csvSize: csvContent.length,
       });
 
       return {
@@ -79,16 +72,15 @@ export function registerTimesheetExportHandlers(): void {
         csvData: csvContent,
         csvContent,
         entryCount: entries.length,
-        filename: `timesheet_export_${new Date().toISOString().split('T')[0]}.csv`
+        filename: `timesheet_export_${new Date().toISOString().split("T")[0]}.csv`,
       };
     } catch (err: unknown) {
-      ipcLogger.error('Could not export CSV', err);
-      const errorMessage = err instanceof Error ? err.message : 'Could not export timesheet data';
+      ipcLogger.error("Could not export CSV", err);
+      const errorMessage =
+        err instanceof Error ? err.message : "Could not export timesheet data";
       return { success: false, error: errorMessage };
     }
   });
 
-  ipcLogger.verbose('Timesheet export handlers registered');
+  ipcLogger.verbose("Timesheet export handlers registered");
 }
-
-

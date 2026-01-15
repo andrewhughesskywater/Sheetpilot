@@ -5,7 +5,7 @@
  */
 
 import type { TimesheetRow } from '@/components/timesheet/schema/timesheet.schema';
-import { isValidDate, isValidTime, normalizeDateFormat, formatTimeInput } from '@/components/timesheet/schema/timesheet.schema';
+import { isValidDate, isValidHours, normalizeDateFormat } from '@/components/timesheet/schema/timesheet.schema';
 import { doesProjectNeedTools, doesToolNeedChargeCode } from '@sheetpilot/shared/business-config';
 
 export interface ValidationError {
@@ -26,7 +26,7 @@ export type HandsontableChange = [row: number, prop: unknown, oldValue: unknown,
  * Process a single cell change with validation, formatting, and cascading rules
  * 
  * Handles all cell-level logic including:
- * - Date and time format validation
+ * - Date and hours format validation
  * - Required field validation
  * - Auto-clearing invalid values (reverts to previous value)
  * - Cascading business rules (project → tool → charge code)
@@ -73,12 +73,12 @@ export function processCellChange(
       shouldClear = true;
     }
   }
-  // Validate times
-  else if ((propStr === 'timeIn' || propStr === 'timeOut') && newVal) {
-    isValid = isValidTime(String(newVal));
+  // Validate hours
+  else if (propStr === 'hours' && newVal !== undefined && newVal !== null && newVal !== '') {
+    const hoursValue = typeof newVal === 'number' ? newVal : Number(newVal);
+    isValid = !isNaN(hoursValue) && isValidHours(hoursValue);
     if (!isValid) {
-      const fieldName = propStr === 'timeIn' ? 'start time' : 'end time';
-      errorMessage = `Invalid ${fieldName} "${String(newVal)}" (must be HH:MM in 15-min increments)`;
+      errorMessage = `Invalid hours "${String(newVal)}" (must be between 0.25 and 24.0 in 15-minute increments)`;
       shouldClear = true;
     }
   }
@@ -117,9 +117,10 @@ export function processCellChange(
     if (propStr === 'date' && newVal && newVal !== oldVal) {
       updatedRow = { ...currentRow, date: normalizeDateFormat(String(newVal)) };
     }
-    // Format time inputs
-    else if ((propStr === 'timeIn' || propStr === 'timeOut') && newVal && newVal !== oldVal) {
-      updatedRow = { ...currentRow, [propStr]: formatTimeInput(String(newVal)) };
+    // Handle hours input (convert to number if string)
+    else if (propStr === 'hours' && newVal !== undefined && newVal !== null && newVal !== '') {
+      const hoursValue = typeof newVal === 'number' ? newVal : Number(newVal);
+      updatedRow = { ...currentRow, hours: !isNaN(hoursValue) ? hoursValue : newVal };
     }
     // Cascade project → tool → chargeCode
     else if (propStr === 'project' && newVal !== oldVal) {

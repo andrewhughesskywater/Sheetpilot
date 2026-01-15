@@ -154,21 +154,13 @@ export function ensureSchemaInternal(db: BetterSqlite3.Database) {
             -- Primary key with auto-increment
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             
-            -- Computed column: hours worked (automatically calculated from time difference)
-            -- Returns NULL if either time_in or time_out is NULL
-            hours REAL
-                GENERATED ALWAYS AS (
-                    CASE WHEN time_in IS NOT NULL AND time_out IS NOT NULL 
-                         THEN (time_out - time_in) / 60.0 
-                         ELSE NULL 
-                    END
-                ) 
-                STORED,
+            -- Hours worked as direct field (not computed)
+            -- Decimal values in 15-minute increments (0.25 = 15 min, 0.5 = 30 min, etc.)
+            -- Range: 0.25 to 24.0 hours
+            hours REAL CHECK(hours IS NULL OR (hours >= 0.25 AND hours <= 24.0 AND (hours * 4) % 1 = 0)),
             
             -- Core timesheet data fields (nullable to allow partial/draft saves)
             date TEXT,                             -- Work date in YYYY-MM-DD format
-            time_in INTEGER,                       -- Start time in minutes since midnight
-            time_out INTEGER,                      -- End time in minutes since midnight
             project TEXT,                          -- Project name
             tool TEXT,                             -- Tool used (optional)
             detail_charge_code TEXT,               -- Charge code (optional)
@@ -176,14 +168,7 @@ export function ensureSchemaInternal(db: BetterSqlite3.Database) {
             
             -- Submission tracking fields
             status TEXT DEFAULT NULL,              -- Submission status: NULL (pending), 'in_progress' (submitting), 'Complete' (submitted)
-            submitted_at DATETIME DEFAULT NULL,    -- Timestamp when successfully submitted
-            
-            -- Data validation constraints (only apply when values are present)
-            CHECK(time_in IS NULL OR time_in BETWEEN 0 AND 1439),     -- Valid time range: 00:00 to 23:59
-            CHECK(time_out IS NULL OR time_out BETWEEN 1 AND 1440),   -- Valid time range: 00:01 to 24:00
-            CHECK(time_in IS NULL OR time_out IS NULL OR time_out > time_in),  -- End time must be after start time
-            CHECK(time_in IS NULL OR time_in % 15 = 0),               -- Start time must be 15-minute increment
-            CHECK(time_out IS NULL OR time_out % 15 = 0)              -- End time must be 15-minute increment
+            submitted_at DATETIME DEFAULT NULL     -- Timestamp when successfully submitted
         );
         
         -- Performance indexes for common queries
@@ -193,9 +178,8 @@ export function ensureSchemaInternal(db: BetterSqlite3.Database) {
         
         -- Unique constraint only applies to complete rows (all key fields non-null)
         CREATE UNIQUE INDEX IF NOT EXISTS uq_timesheet_nk
-            ON timesheet(date, time_in, project, task_description)
+            ON timesheet(date, project, task_description)
             WHERE date IS NOT NULL 
-              AND time_in IS NOT NULL 
               AND project IS NOT NULL 
               AND task_description IS NOT NULL;
         

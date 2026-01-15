@@ -203,13 +203,13 @@ export function detectWeekdayPattern(rows: TimesheetRow[]): boolean {
  * Get smart placeholder date based on context
  * @param previousRow The row immediately before the current one
  * @param _allRows All timesheet rows for pattern detection
- * @param skipWeekends Whether to skip weekends when incrementing
+ * @param _skipWeekends Whether to skip weekends when incrementing
  * @returns Suggested date string in MM/DD/YYYY format
  */
 export function getSmartPlaceholder(
   previousRow: TimesheetRow | undefined,
   _allRows: TimesheetRow[],
-  skipWeekends: boolean
+  _skipWeekends: boolean
 ): string {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -235,19 +235,7 @@ export function getSmartPlaceholder(
   }
   
   // Previous row is recent (≤1 day)
-  // Check if timeOut > 19:00 (7 PM)
-  if (previousRow.timeOut) {
-    const timeParts = previousRow.timeOut.split(':');
-    if (timeParts.length === 2) {
-      const hours = parseInt(timeParts[0] || '', 10);
-      if (!isNaN(hours) && hours >= 19) {
-        // Suggest next day
-        return incrementDate(previousRow.date, 1, skipWeekends);
-      }
-    }
-  }
-  
-  // Otherwise suggest same date as previous row
+  // Suggest same date as previous row
   return previousRow.date;
 }
 

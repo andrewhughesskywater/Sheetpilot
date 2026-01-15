@@ -18,7 +18,7 @@ import { ensureSchemaInternal } from './connection-manager';
 /**
  * Current schema version - increment when adding new migrations
  */
-export const CURRENT_SCHEMA_VERSION = 1;
+export const CURRENT_SCHEMA_VERSION = 2;
 
 /**
  * Migration definition interface
@@ -46,15 +46,77 @@ const migrations: Migration[] = [
             // Uses ensureSchemaInternal which creates tables if they don't exist
             ensureSchemaInternal(db);
         }
+    },
+    {
+        version: 2,
+        description: 'Migrate from time_in/time_out to hours-only system',
+        up: (db: BetterSqlite3.Database) => {
+            // Check if migration needed (check for time_in column)
+            const tableInfo = db.prepare("PRAGMA table_info(timesheet)").all() as Array<{name: string}>;
+            const hasTimeIn = tableInfo.some(col => col.name === 'time_in');
+            
+            if (!hasTimeIn) {
+                dbLogger.verbose('Migration 2: Schema already migrated, skipping');
+                return; // Already migrated
+            }
+            
+            dbLogger.info('Migration 2: Starting timesheet schema migration');
+            
+            // Create temporary table with new schema
+            db.exec(`
+                CREATE TABLE timesheet_new (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    hours REAL CHECK(hours IS NULL OR (hours >= 0.25 AND hours <= 24.0 AND (hours * 4) % 1 = 0)),
+                    date TEXT,
+                    project TEXT,
+                    tool TEXT,
+                    detail_charge_code TEXT,
+                    task_description TEXT,
+                    status TEXT DEFAULT NULL,
+                    submitted_at DATETIME DEFAULT NULL
+                )
+            `);
+            
+            // Migrate data: calculate hours from time_in/time_out
+            db.exec(`
+                INSERT INTO timesheet_new 
+                (id, hours, date, project, tool, detail_charge_code, task_description, status, submitted_at)
+                SELECT 
+                    id,
+                    CASE 
+                        WHEN time_in IS NOT NULL AND time_out IS NOT NULL 
+                        THEN (time_out - time_in) / 60.0
+                        ELSE NULL
+                    END as hours,
+                    date,
+                    project,
+                    tool,
+                    detail_charge_code,
+                    task_description,
+                    status,
+                    submitted_at
+                FROM timesheet
+            `);
+            
+            // Drop old table and rename new one
+            db.exec(`DROP TABLE timesheet`);
+            db.exec(`ALTER TABLE timesheet_new RENAME TO timesheet`);
+            
+            // Recreate indexes
+            db.exec(`
+                CREATE INDEX IF NOT EXISTS idx_timesheet_date ON timesheet(date);
+                CREATE INDEX IF NOT EXISTS idx_timesheet_project ON timesheet(project);
+                CREATE INDEX IF NOT EXISTS idx_timesheet_status ON timesheet(status);
+                CREATE UNIQUE INDEX IF NOT EXISTS uq_timesheet_nk
+                    ON timesheet(date, project, task_description)
+                    WHERE date IS NOT NULL 
+                      AND project IS NOT NULL 
+                      AND task_description IS NOT NULL
+            `);
+            
+            dbLogger.info('Migration 2: Timesheet schema migration completed');
+        }
     }
-    // Future migrations added here:
-    // {
-    //     version: 2,
-    //     description: 'Add new_column to timesheet table',
-    //     up: (db) => {
-    //         db.exec('ALTER TABLE timesheet ADD COLUMN new_column TEXT');
-    //     }
-    // }
 ];
 
 /**
@@ -134,10 +196,7 @@ export function createBackup(dbPath: string): string | null {
         const basename = path.basename(dbPath, '.sqlite');
         const backupPath = path.join(dir, `${basename}.backup-${timestamp}.sqlite`);
         
-        dbLogger.info('Creating database backup before migration', { 
-            source: dbPath, 
-            backup: backupPath 
-        });
+        dbLogger.info('Creating database backup before migration', { source: dbPath, backup: backupPath });
         
         // Copy the database file
         fs.copyFileSync(dbPath, backupPath);
@@ -255,17 +314,11 @@ export function runMigrations(db: BetterSqlite3.Database, dbPath: string): {
             };
         }
         
-        dbLogger.info('Running database migrations', { 
-            count: pendingMigrations.length,
-            versions: pendingMigrations.map(m => m.version)
-        });
+        dbLogger.info('Running database migrations', { count: pendingMigrations.length, versions: pendingMigrations.map(m => m.version) });
         
         // Run each migration in its own transaction for atomic rollback
         for (const migration of pendingMigrations) {
-            dbLogger.info('Running migration', { 
-                version: migration.version,
-                description: migration.description
-            });
+        dbLogger.info('Running migration', { version: migration.version, description: migration.description });
             
             const migrationTransaction = db.transaction(() => {
                 migration.up(db);

@@ -74,8 +74,7 @@ describe('Timesheet Repository', () => {
     it('should insert timesheet entry successfully', () => {
       const entry = {
         date: '2025-01-15',
-        timeIn: 540,  // 09:00
-        timeOut: 1020, // 17:00
+        hours: 8.0,
         project: 'Test Project',
         tool: 'Test Tool',
         detailChargeCode: 'EPR1',
@@ -92,8 +91,7 @@ describe('Timesheet Repository', () => {
     it('should detect duplicate entries', () => {
       const entry = {
         date: '2025-01-15',
-        timeIn: 540,
-        timeOut: 1020,
+        hours: 8.0,
         project: 'Duplicate Test',
         taskDescription: 'Test task'
       };
@@ -109,18 +107,17 @@ describe('Timesheet Repository', () => {
       expect(result2.changes).toBe(0);
     });
 
-    it('should allow entries with different time_in as non-duplicates', () => {
+    it('should allow entries with different hours as non-duplicates', () => {
       const entry1 = {
         date: '2025-01-15',
-        timeIn: 540,
-        timeOut: 1020,
+        hours: 8.0,
         project: 'Test',
         taskDescription: 'Task'
       };
       
       const entry2 = {
         ...entry1,
-        timeIn: 600 // Different time_in
+        hours: 2.0 // Different hours
       };
       
       expect(insertTimesheetEntry(entry1).success).toBe(true);
@@ -130,8 +127,7 @@ describe('Timesheet Repository', () => {
     it('should update entry status', () => {
       const entry = {
         date: '2025-01-15',
-        timeIn: 540,
-        timeOut: 1020,
+        hours: 8.0,
         project: 'Test',
         taskDescription: 'Task'
       };
@@ -150,15 +146,14 @@ describe('Timesheet Repository', () => {
       // Verify status updated
       const db2 = openDb();
       const updated = db2.prepare('SELECT status FROM timesheet WHERE id = ?').get(entryId);
-      expect((updated as DbRow)['status'] as string).toBe('submitted');
+      expect((updated as DbRow)['status'] as string).toBe('Complete');
       db2.close();
     });
 
     it('should delete entry successfully', () => {
       const entry = {
         date: '2025-01-15',
-        timeIn: 540,
-        timeOut: 1020,
+        hours: 8.0,
         project: 'Delete Test',
         taskDescription: 'Test'
       };
@@ -174,7 +169,7 @@ describe('Timesheet Repository', () => {
       
       // Verify entry was deleted
       const deleted = db.prepare('SELECT id FROM timesheet WHERE id = ?').get(entryId);
-      expect(deleted).toBeUndefined();
+      expect(deleted).toBeNull();
       db.close();
     });
   });
@@ -184,22 +179,19 @@ describe('Timesheet Repository', () => {
       const entries = [
         {
           date: '2025-01-15',
-          timeIn: 540,
-          timeOut: 600,
+          hours: 1.0,
           project: 'Batch Test 1',
           taskDescription: 'Task 1'
         },
         {
           date: '2025-01-16',
-          timeIn: 540,
-          timeOut: 600,
+          hours: 1.0,
           project: 'Batch Test 2',
           taskDescription: 'Task 2'
         },
         {
           date: '2025-01-17',
-          timeIn: 540,
-          timeOut: 600,
+          hours: 1.0,
           project: 'Batch Test 3',
           taskDescription: 'Task 3'
         }
@@ -219,15 +211,13 @@ describe('Timesheet Repository', () => {
       const entries1 = [
         {
           date: '2025-01-15',
-          timeIn: 540,
-          timeOut: 600,
+          hours: 1.0,
           project: 'Test 1',
           taskDescription: 'Task 1'
         },
         {
           date: '2025-01-16',
-          timeIn: 540,
-          timeOut: 600,
+          hours: 1.0,
           project: 'Test 2',
           taskDescription: 'Task 2'
         }
@@ -240,8 +230,7 @@ describe('Timesheet Repository', () => {
         entries1[0], // Duplicate
         {
           date: '2025-01-17',
-          timeIn: 540,
-          timeOut: 600,
+          hours: 1.0,
           project: 'Test 3',
           taskDescription: 'Task 3'
         }
@@ -267,12 +256,11 @@ describe('Timesheet Repository', () => {
       const entries = [];
       
       for (let i = 0; i < 500; i++) {
-        const timeIn = 540 + ((i % 50) * 15); // Ensure divisible by 15 and cycle to stay within bounds
-        const timeOut = Math.min(600 + ((i % 50) * 15), 1020); // Ensure divisible by 15 and within bounds
+        // Use varying hours values
+        const hours = 0.25 + ((i % 96) * 0.25); // Cycle through 0.25 to 24.0 in 0.25 increments
         entries.push({
           date: '2025-01-15',
-          timeIn,
-          timeOut,
+          hours,
           project: `Project ${i}`,
           taskDescription: `Task ${i}`
         });
@@ -294,15 +282,13 @@ describe('Timesheet Repository', () => {
       const entries = [
         {
           date: '2025-01-15',
-          timeIn: 540,
-          timeOut: 1020,
+          hours: 8.0,
           project: 'Project A',
           taskDescription: 'Task A'
         },
         {
           date: '2025-01-16',
-          timeIn: 540,
-          timeOut: 1020,
+          hours: 8.0,
           project: 'Project B',
           taskDescription: 'Task B'
         }
@@ -359,8 +345,7 @@ describe('Timesheet Repository', () => {
     it('should maintain referential integrity', () => {
       const entry = {
         date: '2025-01-15',
-        timeIn: 540,
-        timeOut: 1020,
+        hours: 8.0,
         project: 'Integrity Test',
         taskDescription: 'Test'
       };
@@ -374,17 +359,15 @@ describe('Timesheet Repository', () => {
       
       expect(row).toBeDefined();
       expect((row as DbRow)['date'] as string).toBe('2025-01-15');
-      expect((row as DbRow)['time_in'] as number).toBe(540);
-      expect((row as DbRow)['time_out'] as number).toBe(1020);
+      expect((row as DbRow)['hours'] as number).toBe(8.0);
       expect((row as DbRow)['project'] as string).toBe('Integrity Test');
       expect((row as DbRow)['task_description'] as string).toBe('Test');
     });
 
-    it('should calculate hours correctly', () => {
+    it('should store hours correctly', () => {
       const entry = {
         date: '2025-01-15',
-        timeIn: 540,  // 09:00
-        timeOut: 1020, // 17:00 (480 minutes = 8 hours)
+        hours: 8.0,
         project: 'Hours Test',
         taskDescription: 'Test'
       };
@@ -401,8 +384,7 @@ describe('Timesheet Repository', () => {
     it('should handle NULL values in optional fields', () => {
       const entry = {
         date: '2025-01-15',
-        timeIn: 540,
-        timeOut: 1020,
+        hours: 8.0,
         project: 'Null Test',
         tool: null,
         detailChargeCode: null,
@@ -424,13 +406,10 @@ describe('Timesheet Repository', () => {
     it('should query pending entries efficiently', () => {
       // Insert many entries
       for (let i = 0; i < 100; i++) {
-        const baseTime = 540 + ((i % 30) * 15); // Ensure divisible by 15 and cycle to stay within bounds
-        const timeIn = baseTime;
-        const timeOut = Math.min(baseTime + 60, 1020); // Ensure timeOut > timeIn, divisible by 15, and within bounds
+        const hours = 0.25 + ((i % 96) * 0.25); // Cycle through 0.25 to 24.0 in 0.25 increments
         insertTimesheetEntry({
           date: '2025-01-15',
-          timeIn,
-          timeOut,
+          hours,
           project: `Project ${i}`,
           taskDescription: `Task ${i}`
         });
@@ -450,8 +429,7 @@ describe('Timesheet Repository', () => {
       for (let i = 0; i < 1000; i++) {
         entries.push({
           date: '2025-01-15',
-          timeIn: 540,
-          timeOut: 600,
+          hours: 1.0,
           project: `Large Project ${i}`,
           taskDescription: `Task ${i}`
         });

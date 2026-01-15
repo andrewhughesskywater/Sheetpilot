@@ -439,15 +439,10 @@ describe('Plugin Registry', () => {
       expect(registry.hasPlugin('data', '')).toBe(true);
     });
 
-    it('should handle null plugin implementation', () => {
+    it('should handle null and undefined plugin implementations', () => {
       expect(() => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         registry.registerPlugin('data', 'null-plugin', null as any);
-      }).not.toThrow();
-    });
-
-    it('should handle undefined plugin implementation', () => {
-      expect(() => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         registry.registerPlugin('data', 'undefined-plugin', undefined as any);
       }).not.toThrow();
@@ -473,27 +468,17 @@ describe('Plugin Registry', () => {
         });
       }
       
-      const startTime = Date.now();
+      let startTime = Date.now();
       const plugins = registry.listPlugins('data');
-      const duration = Date.now() - startTime;
-      
+      let duration = Date.now() - startTime;
       expect(plugins).toHaveLength(100);
       expect(duration).toBeLessThan(100);
-    });
-
-    it('should lookup plugins efficiently', () => {
-      for (let i = 0; i < 100; i++) {
-        registry.registerPlugin('data', `plugin${i}`, { 
-          metadata: { name: `plugin${i}`, version: '1.0.0', author: 'test' } 
-        });
-      }
       
-      const startTime = Date.now();
+      startTime = Date.now();
       for (let i = 0; i < 100; i++) {
         registry.getPlugin('data', `plugin${i}`);
       }
-      const duration = Date.now() - startTime;
-      
+      duration = Date.now() - startTime;
       expect(duration).toBeLessThan(100);
     });
   });

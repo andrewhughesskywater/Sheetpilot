@@ -10,14 +10,11 @@ import type {
   ValidationError,
 } from "@/components/timesheet/cell-processing/timesheet.cell-processing";
 import {
-  validateTimeOverlaps,
-  validateTimeOutAfterTimeIn,
   scheduleRowSaves,
 } from "./timesheet.handlers.after-change.helpers";
 import {
   processCellChanges,
   updateValidationErrors,
-  addClearedRowsToCellsToClear,
 } from "./timesheet.handlers.after-change.process-changes";
 import {
   updateUnsavedRows,
@@ -72,12 +69,7 @@ export function createHandleAfterChange(
     toolNeedsChargeCode: (t?: string) => boolean
   ) => TimesheetRow,
   projectNeedsToolsWrapper: (p?: string) => boolean,
-  toolNeedsChargeCodeWrapper: (t?: string) => boolean,
-  hasTimeOverlapWithPreviousEntriesFn: (
-    rowIndex: number,
-    rows: TimesheetRow[]
-  ) => boolean,
-  isTimeOutAfterTimeInFn: (timeIn?: string, timeOut?: string) => boolean
+  toolNeedsChargeCodeWrapper: (t?: string) => boolean
 ): (changes: HandsontableChange[] | null, source: string) => void {
   return (changes: HandsontableChange[] | null, source: string) => {
     if (
@@ -102,26 +94,6 @@ export function createHandleAfterChange(
         projectNeedsToolsWrapper,
         toolNeedsChargeCodeWrapper
       )
-    );
-    const { overlapErrors, overlapClearedRows } = validateTimeOverlaps(
-      normalized,
-      hotInstance,
-      hasTimeOverlapWithPreviousEntriesFn
-    );
-    newErrors.push(...overlapErrors);
-
-    const { timeOutErrors, timeOutClearedRows } = validateTimeOutAfterTimeIn(
-      normalized,
-      hotInstance,
-      isTimeOutAfterTimeInFn
-    );
-    newErrors.push(...timeOutErrors);
-
-    addClearedRowsToCellsToClear(
-      cellsToClearErrors,
-      hotInstance,
-      overlapClearedRows,
-      timeOutClearedRows
     );
 
     if (needsUpdate) {

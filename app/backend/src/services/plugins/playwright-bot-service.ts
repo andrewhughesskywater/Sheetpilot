@@ -21,7 +21,6 @@ import { runTimesheet } from '@sheetpilot/bot';
 import { botLogger } from '@sheetpilot/shared/logger';
 import { checkAborted, createCancelledResult, processEntriesByQuarter } from '@sheetpilot/bot';
 import {
-  parseTimeToMinutes,
   convertDateToUSFormat
 } from '@sheetpilot/shared';
 
@@ -43,15 +42,10 @@ export class PlaywrightBotService implements ISubmissionService {
     // Convert date from YYYY-MM-DD to mm/dd/yyyy format for bot
     const formattedDate = convertDateToUSFormat(entry.date);
     
-    // Calculate hours from time_in and time_out
-    const timeInMinutes = parseTimeToMinutes(entry.timeIn);
-    const timeOutMinutes = parseTimeToMinutes(entry.timeOut);
-    const hours = (timeOutMinutes - timeInMinutes) / 60.0;
-    
     return {
       Project: entry.project,
       Date: formattedDate,
-      Hours: hours,
+      Hours: entry.hours,
       Tool: entry.tool ?? '',
       'Task Description': entry.taskDescription,
       'Detail Charge Code': entry.chargeCode ?? '',
@@ -113,33 +107,21 @@ export class PlaywrightBotService implements ISubmissionService {
       errors.push('Date must be in YYYY-MM-DD format');
     }
     
-    // Validate time
-    if (!entry.timeIn) {
-      errors.push('Start time is required');
-    } else if (!/^\d{1,2}:\d{2}$/.test(entry.timeIn)) {
-      errors.push('Start time must be in HH:MM format');
-    }
-    
-    if (!entry.timeOut) {
-      errors.push('End time is required');
-    } else if (!/^\d{1,2}:\d{2}$/.test(entry.timeOut)) {
-      errors.push('End time must be in HH:MM format');
-    }
-    
-    // Validate times are 15-minute increments
-    if (entry.timeIn && entry.timeOut) {
-      const timeInParts = entry.timeIn.split(':');
-      const timeOutParts = entry.timeOut.split(':');
-      
-      const timeInMinutes = parseInt(timeInParts[0] || '0', 10) * 60 + parseInt(timeInParts[1] || '0', 10);
-      const timeOutMinutes = parseInt(timeOutParts[0] || '0', 10) * 60 + parseInt(timeOutParts[1] || '0', 10);
-      
-      if (timeInMinutes % 15 !== 0 || timeOutMinutes % 15 !== 0) {
-        errors.push('Times must be in 15-minute increments');
+    // Validate hours
+    if (entry.hours === undefined || entry.hours === null) {
+      errors.push('Hours is required');
+    } else if (typeof entry.hours !== 'number' || isNaN(entry.hours)) {
+      errors.push('Hours must be a number');
+    } else {
+      // Check if it's a multiple of 0.25 (15-minute increments)
+      const remainder = (entry.hours * 4) % 1;
+      if (Math.abs(remainder) > 0.0001 && Math.abs(remainder - 1) > 0.0001) {
+        errors.push('Hours must be in 15-minute increments (0.25, 0.5, 0.75, etc.)');
       }
       
-      if (timeOutMinutes <= timeInMinutes) {
-        errors.push('End time must be after start time');
+      // Check range
+      if (entry.hours < 0.25 || entry.hours > 24.0) {
+        errors.push('Hours must be between 0.25 and 24.0');
       }
     }
     

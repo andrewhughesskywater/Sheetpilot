@@ -33,8 +33,8 @@ describe('ValidationErrors', () => {
       { row: 0, col: 0, field: 'date', message: 'Date is required' },
       { row: 1, col: 1, field: 'project', message: 'Project is required' },
       { row: 2, col: 2, field: 'taskDescription', message: 'Task description is required' },
-      { row: 3, col: 0, field: 'timeIn', message: 'Time In is required' },
-      { row: 4, col: 1, field: 'timeOut', message: 'Time Out is required' }
+      { row: 3, col: 0, field: 'hours', message: 'Hours is required' },
+      { row: 4, col: 1, field: 'project', message: 'Project is required' }
     ];
     const onShowAllErrors = vi.fn();
 
@@ -53,7 +53,7 @@ describe('ValidationErrors', () => {
       { row: 0, col: 0, field: 'date', message: 'Date is required' },
       { row: 1, col: 1, field: 'project', message: 'Project is required' },
       { row: 2, col: 2, field: 'taskDescription', message: 'Task description is required' },
-      { row: 3, col: 0, field: 'timeIn', message: 'Time In is required' }
+      { row: 3, col: 0, field: 'hours', message: 'Hours is required' }
     ];
     const onShowAllErrors = vi.fn();
 

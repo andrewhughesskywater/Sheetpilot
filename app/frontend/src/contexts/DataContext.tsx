@@ -36,10 +36,8 @@ interface TimesheetRow {
   id?: number;
   /** Date in MM/DD/YYYY format */
   date?: string;
-  /** Start time in HH:MM format (24-hour) */
-  timeIn?: string;
-  /** End time in HH:MM format (24-hour) */
-  timeOut?: string;
+  /** Hours worked as decimal (15-minute increments: 0.25, 0.5, 0.75, 1.0, etc.) */
+  hours?: number;
   /** Project name from business config */
   project?: string;
   /** Tool name (null if project doesn't require tools) */
@@ -54,19 +52,14 @@ interface TimesheetRow {
  * Submitted timesheet entry from archive
  * 
  * Represents a completed and submitted time entry.
- * Uses numeric time format (minutes since midnight) for database storage.
  */
 interface TimesheetEntry {
   /** Database ID */
   id: number;
   /** Date in YYYY-MM-DD format */
   date: string;
-  /** Start time as minutes since midnight (e.g., 540 = 9:00 AM) */
-  time_in: number;
-  /** End time as minutes since midnight */
-  time_out: number;
-  /** Calculated hours (decimal) */
-  hours: number;
+  /** Hours worked as decimal (15-minute increments) */
+  hours: number | null;
   /** Project name */
   project: string;
   /** Tool name (if applicable) */

@@ -27,7 +27,7 @@ export function insertDateAndMoveFocus(
   // Insert the date (column 1)
   hotInstance.setDataAtCell(row, 1, dateToInsert);
 
-  // Move focus to next column (timeIn at column 2)
+  // Move focus to next column (hours at column 2)
   setTimeout(() => {
     hotInstance.selectCell(row, 2);
   }, 10);

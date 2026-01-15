@@ -55,7 +55,7 @@ describe('bootstrap-plugins', () => {
     };
 
     vi.mocked(PluginRegistry.getInstance).mockReturnValue(mockRegistry as unknown as PluginRegistry);
-    vi.mocked(loadPluginConfig).mockReturnValue({} as ReturnType<typeof loadPluginConfig>);
+    vi.mocked(loadPluginConfig).mockResolvedValue({} as Awaited<ReturnType<typeof loadPluginConfig>>);
   });
 
   describe('registerDefaultPlugins', () => {

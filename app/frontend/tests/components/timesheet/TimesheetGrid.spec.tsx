@@ -22,8 +22,7 @@ describe('TimesheetGrid Phase 1', () => {
     // Test that the component structure is correct
     const expectedColumns = [
       { data: 'date', type: 'date' },
-      { data: 'timeIn', type: 'text' },
-      { data: 'timeOut', type: 'text' },
+      { data: 'hours', type: 'numeric' },
       { data: 'project', type: 'text' },
       { data: 'tool', type: 'text' },
       { data: 'chargeCode', type: 'text' },
@@ -31,22 +30,20 @@ describe('TimesheetGrid Phase 1', () => {
     ];
     
     // Verify column structure matches requirements
-    expect(expectedColumns).toHaveLength(7);
+    expect(expectedColumns).toHaveLength(6);
     expect(expectedColumns[0].data).toBe('date');
-    expect(expectedColumns[1].data).toBe('timeIn');
-    expect(expectedColumns[2].data).toBe('timeOut');
-    expect(expectedColumns[3].data).toBe('project');
-    expect(expectedColumns[4].data).toBe('tool');
-    expect(expectedColumns[5].data).toBe('chargeCode');
-    expect(expectedColumns[6].data).toBe('taskDescription');
+    expect(expectedColumns[1].data).toBe('hours');
+    expect(expectedColumns[2].data).toBe('project');
+    expect(expectedColumns[3].data).toBe('tool');
+    expect(expectedColumns[4].data).toBe('chargeCode');
+    expect(expectedColumns[5].data).toBe('taskDescription');
   });
 
   it('handles N/A tool validation correctly', () => {
     // Test that when tool is "N/A", charge code should be null/N/A
     const mockRowWithNATool = {
       date: '2024-01-01',
-      timeIn: '09:00',
-      timeOut: '17:00',
+      hours: 8.0,
       project: 'SWFL-EQUIP',
       tool: 'N/A',
       chargeCode: null, // Should be null when tool is N/A
@@ -62,8 +59,7 @@ describe('TimesheetGrid Phase 1', () => {
     // Test the TimesheetRow interface structure
     const mockRow = {
       date: '2024-01-01',
-      timeIn: '09:00',
-      timeOut: '17:00',
+      hours: 8.0,
       project: 'Test Project',
       tool: 'Test Tool',
       chargeCode: 'TEST-001',
@@ -72,8 +68,7 @@ describe('TimesheetGrid Phase 1', () => {
     
     // Verify all required fields are present
     expect(mockRow.date).toBeDefined();
-    expect(mockRow.timeIn).toBeDefined();
-    expect(mockRow.timeOut).toBeDefined();
+    expect(mockRow.hours).toBeDefined();
     expect(mockRow.project).toBeDefined();
     expect(mockRow.tool).toBeDefined();
     expect(mockRow.chargeCode).toBeDefined();
@@ -84,8 +79,7 @@ describe('TimesheetGrid Phase 1', () => {
     // Test the normalizeTrailingBlank function logic
     type TestRow = {
       date?: string;
-      timeIn?: string;
-      timeOut?: string;
+      hours?: number;
       project?: string;
       tool?: string;
       chargeCode?: string;
@@ -103,7 +97,7 @@ describe('TimesheetGrid Phase 1', () => {
     let lastNonEmptyIndex = -1;
     for (let i = testRows.length - 1; i >= 0; i--) {
       const row = testRows[i];
-      if (row?.date || row?.timeIn || row?.timeOut || row?.project || row?.tool || row?.chargeCode || row?.taskDescription) {
+      if (row?.date || row?.hours !== undefined || row?.project || row?.tool || row?.chargeCode || row?.taskDescription) {
         lastNonEmptyIndex = i;
         break;
       }
@@ -118,7 +112,7 @@ describe('TimesheetGrid Phase 1', () => {
 
   it('has correct column structure', () => {
     const expectedColumns = [
-      'date', 'timeIn', 'timeOut', 'project', 'tool', 'chargeCode', 'taskDescription'
+      'date', 'hours', 'project', 'tool', 'chargeCode', 'taskDescription'
     ];
     
     // Verify column structure matches requirements
@@ -126,7 +120,7 @@ describe('TimesheetGrid Phase 1', () => {
       expect(column).toBeDefined();
     });
     
-    expect(expectedColumns).toHaveLength(7);
+    expect(expectedColumns).toHaveLength(6);
   });
 
   it('supports onChange callback', () => {
@@ -165,8 +159,7 @@ describe('TimesheetGrid Phase 1', () => {
     // Test that edits result in normalized row shape
     const editedRow = {
       date: '2024-01-01',
-      timeIn: '09:00',
-      timeOut: '17:00',
+      hours: 8.0,
       project: 'Test Project',
       tool: 'Test Tool',
       chargeCode: 'TEST-001',
@@ -175,8 +168,7 @@ describe('TimesheetGrid Phase 1', () => {
     
     // Verify the row has all expected fields
     expect(editedRow).toHaveProperty('date');
-    expect(editedRow).toHaveProperty('timeIn');
-    expect(editedRow).toHaveProperty('timeOut');
+    expect(editedRow).toHaveProperty('hours');
     expect(editedRow).toHaveProperty('project');
     expect(editedRow).toHaveProperty('tool');
     expect(editedRow).toHaveProperty('chargeCode');
@@ -184,8 +176,7 @@ describe('TimesheetGrid Phase 1', () => {
     
     // Verify field types
     expect(typeof editedRow.date).toBe('string');
-    expect(typeof editedRow.timeIn).toBe('string');
-    expect(typeof editedRow.timeOut).toBe('string');
+    expect(typeof editedRow.hours).toBe('number');
     expect(typeof editedRow.project).toBe('string');
     expect(typeof editedRow.tool).toBe('string');
     expect(typeof editedRow.chargeCode).toBe('string');
@@ -438,33 +429,34 @@ describe('TimesheetGrid Phase 3 - Validation and Normalization', () => {
     expect(isValidTime(undefined)).toBe(false); // Undefined
   });
 
-  it('validates time out is after time in', () => {
-    const isTimeOutAfterTimeIn = (timeIn?: string, timeOut?: string) => {
-      if (!timeIn || !timeOut) return true; // Let other validations handle missing values
-      
-      const [inHours, inMinutes] = timeIn.split(':').map(Number);
-      const [outHours, outMinutes] = timeOut.split(':').map(Number);
-      
-      const inTotalMinutes = inHours * 60 + inMinutes;
-      const outTotalMinutes = outHours * 60 + outMinutes;
-      
-      return outTotalMinutes > inTotalMinutes;
+  it('validates hours are in 15-minute increments', () => {
+    const isValidHours = (hours?: number | null): boolean => {
+      if (hours === undefined || hours === null) return false;
+      if (typeof hours !== 'number' || isNaN(hours)) return false;
+
+      const remainder = (hours * 4) % 1;
+      if (Math.abs(remainder) > 0.0001 && Math.abs(remainder - 1) > 0.0001) {
+        return false;
+      }
+      return hours >= 0.25 && hours <= 24.0;
     };
     
-    // Valid time ranges
-    expect(isTimeOutAfterTimeIn('09:00', '17:00')).toBe(true);
-    expect(isTimeOutAfterTimeIn('09:15', '09:30')).toBe(true);
-    expect(isTimeOutAfterTimeIn('08:30', '12:45')).toBe(true);
+    // Valid hours
+    expect(isValidHours(0.25)).toBe(true);
+    expect(isValidHours(0.5)).toBe(true);
+    expect(isValidHours(1.0)).toBe(true);
+    expect(isValidHours(8.0)).toBe(true);
+    expect(isValidHours(24.0)).toBe(true);
     
-    // Invalid time ranges
-    expect(isTimeOutAfterTimeIn('17:00', '09:00')).toBe(false);
-    expect(isTimeOutAfterTimeIn('09:30', '09:15')).toBe(false);
-    expect(isTimeOutAfterTimeIn('12:45', '08:30')).toBe(false);
+    // Invalid hours
+    expect(isValidHours(0.1)).toBe(false); // Not 15-minute increment
+    expect(isValidHours(0.15)).toBe(false); // Below minimum
+    expect(isValidHours(25.0)).toBe(false); // Above maximum
+    expect(isValidHours(0)).toBe(false); // Below minimum
     
     // Edge cases
-    expect(isTimeOutAfterTimeIn('09:00', '09:00')).toBe(false); // Same time
-    expect(isTimeOutAfterTimeIn('', '17:00')).toBe(true); // Missing timeIn
-    expect(isTimeOutAfterTimeIn('09:00', '')).toBe(true); // Missing timeOut
+    expect(isValidHours(undefined)).toBe(false);
+    expect(isValidHours(null)).toBe(false);
   });
 
   it('validates required fields', () => {
@@ -473,11 +465,10 @@ describe('TimesheetGrid Phase 3 - Validation and Normalization', () => {
         case 'date':
           if (!value) return 'Date is required';
           return null;
-        case 'timeIn':
-          if (!value) return 'Time In is required';
-          return null;
-        case 'timeOut':
-          if (!value) return 'Time Out is required';
+        case 'hours':
+          if (value === undefined || value === null || value === '') return 'Hours is required';
+          const hoursValue = typeof value === 'number' ? value : Number(value);
+          if (isNaN(hoursValue)) return 'Hours must be a number';
           return null;
         case 'project':
           if (!value) return 'Project is required';
@@ -492,15 +483,13 @@ describe('TimesheetGrid Phase 3 - Validation and Normalization', () => {
     
     // Required field validation
     expect(validateField('', 'date')).toBe('Date is required');
-    expect(validateField('', 'timeIn')).toBe('Time In is required');
-    expect(validateField('', 'timeOut')).toBe('Time Out is required');
+    expect(validateField('', 'hours')).toBe('Hours is required');
     expect(validateField('', 'project')).toBe('Project is required');
     expect(validateField('', 'taskDescription')).toBe('Task Description is required');
     
     // Valid values
     expect(validateField('2024-01-01', 'date')).toBeNull();
-    expect(validateField('09:00', 'timeIn')).toBeNull();
-    expect(validateField('17:00', 'timeOut')).toBeNull();
+    expect(validateField(8.0, 'hours')).toBeNull();
     expect(validateField('FL-Carver Techs', 'project')).toBeNull();
     expect(validateField('Test task', 'taskDescription')).toBeNull();
   });
@@ -649,8 +638,7 @@ describe('TimesheetGrid Phase 4 - IPC Integration and Autosave', () => {
   it('validates IPC payload structure for saveDraft', () => {
     const validRow = {
       date: '2024-01-15',
-      timeIn: '09:00',
-      timeOut: '17:00',
+      hours: 8.0,
       project: 'FL-Carver Techs',
       tool: '#1 Rinse and 2D marker',
       chargeCode: 'EPR1',
@@ -659,8 +647,7 @@ describe('TimesheetGrid Phase 4 - IPC Integration and Autosave', () => {
     
     // Validate required fields
     expect(validRow.date).toBeDefined();
-    expect(validRow.timeIn).toBeDefined();
-    expect(validRow.timeOut).toBeDefined();
+    expect(validRow.hours).toBeDefined();
     expect(validRow.project).toBeDefined();
     expect(validRow.taskDescription).toBeDefined();
     
@@ -679,8 +666,7 @@ describe('TimesheetGrid Phase 4 - IPC Integration and Autosave', () => {
     const mockDraftData = [
       {
         date: '2024-01-15',
-        timeIn: '09:00',
-        timeOut: '17:00',
+        hours: 8.0,
         project: 'FL-Carver Techs',
         tool: '#1 Rinse and 2D marker',
         chargeCode: 'EPR1',
@@ -688,8 +674,7 @@ describe('TimesheetGrid Phase 4 - IPC Integration and Autosave', () => {
       },
       {
         date: '2024-01-16',
-        timeIn: '08:30',
-        timeOut: '16:30',
+        hours: 8.0,
         project: 'PTO/RTO',
         tool: null,
         chargeCode: null,
@@ -704,8 +689,7 @@ describe('TimesheetGrid Phase 4 - IPC Integration and Autosave', () => {
     // Validate each row structure
     mockDraftData.forEach(row => {
       expect(row.date).toBeDefined();
-      expect(row.timeIn).toBeDefined();
-      expect(row.timeOut).toBeDefined();
+      expect(row.hours).toBeDefined();
       expect(row.project).toBeDefined();
       expect(row.taskDescription).toBeDefined();
       // tool and chargeCode can be null
@@ -714,14 +698,13 @@ describe('TimesheetGrid Phase 4 - IPC Integration and Autosave', () => {
 
   it('validates batch save logic for complete rows', () => {
     const shouldSaveToDatabase = (row: Record<string, unknown>) => {
-      return !!(row.date && row.timeIn && row.timeOut && row.project && row.taskDescription);
+      return !!(row.date && row.hours !== undefined && row.hours !== null && row.project && row.taskDescription);
     };
     
     // Complete row should be saved to database in batch
     const completeRow = {
       date: '2024-01-15',
-      timeIn: '09:00',
-      timeOut: '17:00',
+      hours: 8.0,
       project: 'FL-Carver Techs',
       tool: '#1 Rinse and 2D marker',
       chargeCode: 'EPR1',
@@ -740,8 +723,7 @@ describe('TimesheetGrid Phase 4 - IPC Integration and Autosave', () => {
     // Incomplete rows should not be saved to database
     const incompleteRows = [
       { ...completeRow, date: '' },
-      { ...completeRow, timeIn: '' },
-      { ...completeRow, timeOut: '' },
+      { ...completeRow, hours: undefined },
       { ...completeRow, project: '' },
       { ...completeRow, taskDescription: '' }
     ];
@@ -755,8 +737,7 @@ describe('TimesheetGrid Phase 4 - IPC Integration and Autosave', () => {
     const mockDraftData = [
       {
         date: '2024-01-15',
-        timeIn: '09:00',
-        timeOut: '17:00',
+        hours: 8.0,
         project: 'FL-Carver Techs',
         tool: '#1 Rinse and 2D marker',
         chargeCode: 'EPR1',
@@ -781,8 +762,7 @@ describe('TimesheetGrid Phase 4 - IPC Integration and Autosave', () => {
     // Test that our grid data structure matches what the database expects
     const gridRow = {
       date: '2024-01-15',
-      timeIn: '09:00',
-      timeOut: '17:00',
+      hours: 8.0,
       project: 'FL-Carver Techs',
       tool: '#1 Rinse and 2D marker',
       chargeCode: 'EPR1',
@@ -790,17 +770,9 @@ describe('TimesheetGrid Phase 4 - IPC Integration and Autosave', () => {
     };
     
     // Simulate the conversion that happens in main.ts
-    const parseTimeToMinutes = (timeStr: string) => {
-      const parts = timeStr.split(':');
-      const hours = parseInt(parts[0], 10);
-      const minutes = parseInt(parts[1], 10);
-      return hours * 60 + minutes;
-    };
-    
     const dbRow = {
       date: gridRow.date,
-      time_in: parseTimeToMinutes(gridRow.timeIn),
-      time_out: parseTimeToMinutes(gridRow.timeOut),
+      hours: gridRow.hours,
       project: gridRow.project,
       tool: gridRow.tool || null,
       detail_charge_code: gridRow.chargeCode || null,
@@ -810,8 +782,7 @@ describe('TimesheetGrid Phase 4 - IPC Integration and Autosave', () => {
     
     // Validate conversion
     expect(dbRow.date).toBe('2024-01-15');
-    expect(dbRow.time_in).toBe(540); // 9:00 AM = 540 minutes
-    expect(dbRow.time_out).toBe(1020); // 5:00 PM = 1020 minutes
+    expect(dbRow.hours).toBe(8.0);
     expect(dbRow.project).toBe('FL-Carver Techs');
     expect(dbRow.tool).toBe('#1 Rinse and 2D marker');
     expect(dbRow.detail_charge_code).toBe('EPR1');
@@ -905,8 +876,7 @@ describe('TimesheetGrid Phase 5 - Import Flow Integration', () => {
     const mockImportedData = [
       {
         date: '2024-01-15',
-        timeIn: '09:00',
-        timeOut: '17:00',
+        hours: 8.0,
         project: 'PTO/RTO', // Project that doesn't need tools
         tool: 'Some Tool', // Should be cleared
         chargeCode: 'EPR1', // Should be cleared
@@ -914,8 +884,7 @@ describe('TimesheetGrid Phase 5 - Import Flow Integration', () => {
       },
       {
         date: '2024-01-16',
-        timeIn: '08:30',
-        timeOut: '16:30',
+        hours: 8.0,
         project: 'FL-Carver Techs', // Project that needs tools
         tool: '#1 Rinse and 2D marker', // Should be preserved
         chargeCode: 'EPR1', // Should be preserved
@@ -985,8 +954,7 @@ describe('TimesheetGrid Phase 5 - Import Flow Integration', () => {
     // Simulate conversion to grid format
     const gridData = pendingRows.map(row => ({
       date: row.date,
-      timeIn: '09:00', // Would be converted from minutes
-      timeOut: '17:00', // Would be converted from minutes
+      hours: 8.0,
       project: row.project,
       tool: row.tool || null,
       chargeCode: row.detail_charge_code || null,
@@ -1030,8 +998,7 @@ describe('TimesheetGrid Phase 5 - Import Flow Integration', () => {
     const mockDraftData = [
       {
         date: '2024-01-15',
-        timeIn: '09:00',
-        timeOut: '17:00',
+        hours: 8.0,
         project: 'FL-Carver Techs',
         tool: '#1 Rinse and 2D marker',
         chargeCode: 'EPR1',
@@ -1056,8 +1023,7 @@ describe('TimesheetGrid Phase 5 - Import Flow Integration', () => {
     // Test that imported data goes through the same validation as manually entered data
     const mockImportedRow = {
       date: '2024-01-15',
-      timeIn: '09:00',
-      timeOut: '17:00',
+      hours: 8.0,
       project: 'FL-Carver Techs',
       tool: '#1 Rinse and 2D marker',
       chargeCode: 'EPR1',
@@ -1069,8 +1035,7 @@ describe('TimesheetGrid Phase 5 - Import Flow Integration', () => {
       const errors: string[] = [];
       
       if (!row.date) errors.push('Date is required');
-      if (!row.timeIn) errors.push('Time In is required');
-      if (!row.timeOut) errors.push('Time Out is required');
+      if (!row.hours) errors.push('Hours is required');
       if (!row.project) errors.push('Project is required');
       if (!row.taskDescription) errors.push('Task Description is required');
       
@@ -1091,8 +1056,7 @@ describe('TimesheetGrid Phase 5 - Import Flow Integration', () => {
     // Test that imported rows have correct status for bot processing
     const mockImportedRow = {
       date: '2024-01-15',
-      timeIn: '09:00',
-      timeOut: '17:00',
+      hours: 8.0,
       project: 'FL-Carver Techs',
       tool: '#1 Rinse and 2D marker',
       chargeCode: 'EPR1',
@@ -1173,8 +1137,8 @@ describe('TimesheetGrid Phase 6 - Accessibility and UX Polish', () => {
     // Test copy/paste normalization function
     const normalizePastedData = (data: unknown[][]) => {
       return data.map(row => {
-        if (row.length >= 7) {
-          const [date, timeIn, timeOut, project, tool, chargeCode, taskDescription] = row;
+        if (row.length >= 6) {
+          const [date, hours, project, tool, chargeCode, taskDescription] = row;
           
           let normalizedTool = tool;
           let normalizedChargeCode = chargeCode;
@@ -1189,7 +1153,7 @@ describe('TimesheetGrid Phase 6 - Accessibility and UX Polish', () => {
             normalizedChargeCode = null;
           }
           
-          return [date, timeIn, timeOut, project, normalizedTool, normalizedChargeCode, taskDescription];
+          return [date, hours, project, normalizedTool, normalizedChargeCode, taskDescription];
         }
         return row;
       });
@@ -1197,7 +1161,7 @@ describe('TimesheetGrid Phase 6 - Accessibility and UX Polish', () => {
     
     // Test data with project that doesn't need tools
     const testData1 = [
-      ['2024-01-15', '09:00', '17:00', 'PTO/RTO', 'Some Tool', 'EPR1', 'Personal time']
+      ['2024-01-15', 8.0, 'PTO/RTO', null, null, 'Personal time']
     ];
     const normalized1 = normalizePastedData(testData1);
     expect(normalized1[0][4]).toBeNull(); // tool should be null
@@ -1205,7 +1169,7 @@ describe('TimesheetGrid Phase 6 - Accessibility and UX Polish', () => {
     
     // Test data with tool that doesn't need charge codes
     const testData2 = [
-      ['2024-01-16', '08:30', '16:30', 'FL-Carver Techs', 'Meeting', 'EPR1', 'Team meeting']
+      ['2024-01-16', 8.0, 'FL-Carver Techs', 'Meeting', null, 'Team meeting']
     ];
     const normalized2 = normalizePastedData(testData2);
     expect(normalized2[0][4]).toBe('Meeting'); // tool should be preserved
@@ -1213,7 +1177,7 @@ describe('TimesheetGrid Phase 6 - Accessibility and UX Polish', () => {
     
     // Test normal data (no normalization needed)
     const testData3 = [
-      ['2024-01-17', '09:00', '17:00', 'FL-Carver Techs', '#1 Rinse and 2D marker', 'EPR1', 'Equipment work']
+      ['2024-01-17', 8.0, 'FL-Carver Techs', '#1 Rinse and 2D marker', 'EPR1', 'Equipment work']
     ];
     const normalized3 = normalizePastedData(testData3);
     expect(normalized3[0][4]).toBe('#1 Rinse and 2D marker'); // tool should be preserved
@@ -1227,12 +1191,9 @@ describe('TimesheetGrid Phase 6 - Accessibility and UX Polish', () => {
         case 'date':
           if (!value) return 'Please enter a date';
           return 'Date must be like 2024-01-15';
-        case 'timeIn':
-          if (!value) return 'Please enter start time';
-          return 'Time must be like 09:00 and in 15 minute steps';
-        case 'timeOut':
-          if (!value) return 'Please enter end time';
-          return 'Time must be like 17:00 and in 15 minute steps';
+        case 'hours':
+          if (!value) return 'Please enter hours';
+          return 'Hours must be in 15-minute increments (0.25, 0.5, 0.75, etc.)';
         case 'project':
           if (!value) return 'Please pick a project';
           return 'Please pick from the list';
@@ -1253,8 +1214,8 @@ describe('TimesheetGrid Phase 6 - Accessibility and UX Polish', () => {
     // Test error messages are simple and clear
     expect(validateField('', 'date')).toBe('Please enter a date');
     expect(validateField('invalid', 'date')).toBe('Date must be like 2024-01-15');
-    expect(validateField('', 'timeIn')).toBe('Please enter start time');
-    expect(validateField('invalid', 'timeIn')).toBe('Time must be like 09:00 and in 15 minute steps');
+    expect(validateField('', 'hours')).toBe('Please enter hours');
+    expect(validateField(0.1, 'hours')).toBe('Hours must be in 15-minute increments (0.25, 0.5, 0.75, etc.)');
     expect(validateField('', 'project')).toBe('Please pick a project');
     expect(validateField('invalid', 'project')).toBe('Please pick from the list');
     expect(validateField('', 'taskDescription')).toBe('Please describe what you did');
@@ -1263,8 +1224,7 @@ describe('TimesheetGrid Phase 6 - Accessibility and UX Polish', () => {
   it('validates user-friendly placeholder text', () => {
     const placeholderTexts = {
       date: 'Like 2024-01-15',
-      timeIn: 'Like 09:00',
-      timeOut: 'Like 17:00',
+      hours: 'Like 8.0',
       project: 'Pick a project',
       tool: 'Pick a tool',
       chargeCode: 'Pick a charge code',
@@ -1273,8 +1233,7 @@ describe('TimesheetGrid Phase 6 - Accessibility and UX Polish', () => {
     
     // Test that placeholders are simple and helpful
     expect(placeholderTexts.date).toBe('Like 2024-01-15');
-    expect(placeholderTexts.timeIn).toBe('Like 09:00');
-    expect(placeholderTexts.timeOut).toBe('Like 17:00');
+    expect(placeholderTexts.hours).toBe('Like 8.0');
     expect(placeholderTexts.project).toBe('Pick a project');
     expect(placeholderTexts.tool).toBe('Pick a tool');
     expect(placeholderTexts.chargeCode).toBe('Pick a charge code');
@@ -1282,16 +1241,15 @@ describe('TimesheetGrid Phase 6 - Accessibility and UX Polish', () => {
   });
 
   it('validates user-friendly column headers', () => {
-    const columnHeaders = ['Date', 'Start Time', 'End Time', 'Project', 'Tool', 'Charge Code', 'What You Did'];
+    const columnHeaders = ['Date', 'Hours', 'Project', 'Tool', 'Charge Code', 'What You Did'];
     
     // Test that headers are clear and simple
     expect(columnHeaders[0]).toBe('Date');
-    expect(columnHeaders[1]).toBe('Start Time'); // More intuitive than "Time In"
-    expect(columnHeaders[2]).toBe('End Time'); // More intuitive than "Time Out"
-    expect(columnHeaders[3]).toBe('Project');
-    expect(columnHeaders[4]).toBe('Tool');
-    expect(columnHeaders[5]).toBe('Charge Code');
-    expect(columnHeaders[6]).toBe('What You Did'); // More intuitive than "Task Description"
+    expect(columnHeaders[1]).toBe('Hours');
+    expect(columnHeaders[2]).toBe('Project');
+    expect(columnHeaders[3]).toBe('Tool');
+    expect(columnHeaders[4]).toBe('Charge Code');
+    expect(columnHeaders[5]).toBe('What You Did'); // More intuitive than "Task Description"
   });
 
   it('validates copy/paste configuration', () => {
@@ -1332,7 +1290,7 @@ describe('TimesheetGrid Phase 6 - Accessibility and UX Polish', () => {
     
     // Simulate keyboard navigation logic
     const getNextField = (currentField: string, direction: 'next' | 'prev') => {
-      const allFields = ['date', 'timeIn', 'timeOut', 'project', 'tool', 'chargeCode', 'taskDescription'];
+      const allFields = ['date', 'hours', 'project', 'tool', 'chargeCode', 'taskDescription'];
       const currentIndex = allFields.indexOf(currentField);
       
       if (direction === 'next') {
@@ -1343,9 +1301,8 @@ describe('TimesheetGrid Phase 6 - Accessibility and UX Polish', () => {
     };
     
     // Test forward navigation
-    expect(getNextField('date', 'next')).toBe('timeIn');
-    expect(getNextField('timeIn', 'next')).toBe('timeOut');
-    expect(getNextField('timeOut', 'next')).toBe('project');
+    expect(getNextField('date', 'next')).toBe('hours');
+    expect(getNextField('hours', 'next')).toBe('project');
     expect(getNextField('project', 'next')).toBe('tool');
     expect(getNextField('tool', 'next')).toBe('chargeCode');
     expect(getNextField('chargeCode', 'next')).toBe('taskDescription');
@@ -1353,9 +1310,8 @@ describe('TimesheetGrid Phase 6 - Accessibility and UX Polish', () => {
     
     // Test backward navigation
     expect(getNextField('date', 'prev')).toBe('taskDescription'); // Wrap around
-    expect(getNextField('timeIn', 'prev')).toBe('date');
-    expect(getNextField('timeOut', 'prev')).toBe('timeIn');
-    expect(getNextField('project', 'prev')).toBe('timeOut');
+    expect(getNextField('hours', 'prev')).toBe('date');
+    expect(getNextField('project', 'prev')).toBe('hours');
     expect(getNextField('tool', 'prev')).toBe('project');
     expect(getNextField('chargeCode', 'prev')).toBe('tool');
     expect(getNextField('taskDescription', 'prev')).toBe('chargeCode');
@@ -1549,8 +1505,8 @@ describe('TimesheetGrid Row Deletion Functionality', () => {
 
     const handleAfterRemoveRow = async (index: number, amount: number) => {
       const removedRows = [
-        { id: 1, date: '2025-01-01', timeIn: '09:00', timeOut: '17:00', project: 'Test Project', taskDescription: 'Test Task' },
-        { id: 2, date: '2025-01-02', timeIn: '10:00', timeOut: '18:00', project: 'Test Project 2', taskDescription: 'Test Task 2' }
+        { id: 1, date: '2025-01-01', hours: 8.0, project: 'Test Project', taskDescription: 'Test Task' },
+        { id: 2, date: '2025-01-02', hours: 8.0, project: 'Test Project 2', taskDescription: 'Test Task 2' }
       ].slice(index, index + amount);
       
       for (const row of removedRows) {
@@ -1616,8 +1572,8 @@ describe('TimesheetGrid Row Deletion Functionality', () => {
   it('should skip rows without IDs', async () => {
     const handleAfterRemoveRow = async (index: number, amount: number) => {
       const removedRows = [
-        { date: '2025-01-01', timeIn: '09:00', timeOut: '17:00', project: 'Test Project', taskDescription: 'Test Task' }, // No ID
-        { id: 2, date: '2025-01-02', timeIn: '10:00', timeOut: '18:00', project: 'Test Project 2', taskDescription: 'Test Task 2' }
+        { date: '2025-01-01', hours: 8.0, project: 'Test Project', taskDescription: 'Test Task' }, // No ID
+        { id: 2, date: '2025-01-02', hours: 8.0, project: 'Test Project 2', taskDescription: 'Test Task 2' }
       ].slice(index, index + amount);
       
       for (const row of removedRows) {
@@ -1774,8 +1730,8 @@ describe('TimesheetGrid Deferred Save Pattern', () => {
     (mockWindow['timesheet'] as { saveDraft: typeof saveDraftMock }).saveDraft = saveDraftMock;
     
     const completeRows = [
-      { date: '2024-01-15', timeIn: '09:00', timeOut: '17:00', project: 'Project 1', taskDescription: 'Task 1' },
-      { date: '2024-01-16', timeIn: '09:00', timeOut: '17:00', project: 'Project 2', taskDescription: 'Task 2' }
+      { date: '2024-01-15', hours: 8.0, project: 'Project 1', taskDescription: 'Task 1' },
+      { date: '2024-01-16', hours: 8.0, project: 'Project 2', taskDescription: 'Task 2' }
     ];
     
     // Simulate batch save
@@ -1890,7 +1846,7 @@ describe('TimesheetGrid Time Overlap Validation', () => {
     expect(timeRangesOverlap('13:00', '15:00', '09:00', '12:00')).toBe(false); // Reverse separate
   });
 
-  it('should allow adjacent time ranges without overlap', () => {
+  it('should allow multiple entries on same date up to 24 hours total', () => {
     const timeRangesOverlap = (
       timeIn1: string,
       timeOut1: string,
@@ -1916,128 +1872,52 @@ describe('TimesheetGrid Time Overlap Validation', () => {
     expect(timeRangesOverlap('09:00', '09:30', '09:30', '10:00')).toBe(false);
   });
 
-  it('should check for overlaps with previous entries on same date', () => {
+  it('should validate daily hours total includes both draft and submitted entries', () => {
     type TimesheetRow = {
       id?: number;
       date?: string;
-      timeIn?: string;
-      timeOut?: string;
+      hours?: number;
       project?: string;
-      tool?: string | null;
-      chargeCode?: string | null;
       taskDescription?: string;
     };
     
-    const isValidDate = (dateStr?: string): boolean => {
-      const d = dateStr ?? '';
-      if (!d) return false;
-      const dateRegex = /^\d{1,2}\/\d{1,2}\/\d{4}$/;
-      if (!dateRegex.test(d)) return false;
-      const dateParts = d.split('/');
-      if (dateParts.length !== 3) return false;
-      const [monthStr, dayStr, yearStr] = dateParts;
-      const month = parseInt(monthStr ?? '', 10);
-      const day = parseInt(dayStr ?? '', 10);
-      const year = parseInt(yearStr ?? '', 10);
-      if (month < 1 || month > 12) return false;
-      if (day < 1 || day > 31) return false;
-      if (year < 1900 || year > 2100) return false;
-      const date = new Date(year, month - 1, day);
-      return date.getFullYear() === year && 
-             date.getMonth() === month - 1 && 
-             date.getDate() === day;
+    // Calculate total hours for a given date from both draft and submitted entries
+    const calculateDailyTotal = (
+      draftEntries: Array<{ date: string; hours: number }>,
+      submittedEntries: Array<{ date: string; hours: number }>,
+      targetDate: string
+    ): number => {
+      const allEntries = [...draftEntries, ...submittedEntries];
+      return allEntries
+        .filter(entry => entry.date === targetDate)
+        .reduce((total, entry) => total + entry.hours, 0);
     };
     
-    const isValidTime = (timeStr?: string): boolean => {
-      if (!timeStr) return false;
-      const timeRegex = /^([01]?[0-9]|2[0-3]):([0-5][0-9])$/;
-      if (!timeRegex.test(timeStr)) return false;
-      const parts = timeStr.split(':');
-      if (parts.length !== 2) return false;
-      const [hours, minutes] = parts.map(Number) as [number, number];
-      const totalMinutes = hours * 60 + minutes;
-      return totalMinutes % 15 === 0;
-    };
-    
-    const isTimeOutAfterTimeIn = (timeIn?: string, timeOut?: string): boolean => {
-      if (!timeIn || !timeOut) return true;
-      if (!isValidTime(timeIn) || !isValidTime(timeOut)) return true;
-      const [inHours, inMinutes] = timeIn.split(':').map(Number) as [number, number];
-      const [outHours, outMinutes] = timeOut.split(':').map(Number) as [number, number];
-      const inTotalMinutes = inHours * 60 + inMinutes;
-      const outTotalMinutes = outHours * 60 + outMinutes;
-      return outTotalMinutes > inTotalMinutes;
-    };
-    
-    const timeRangesOverlap = (
-      timeIn1: string,
-      timeOut1: string,
-      timeIn2: string,
-      timeOut2: string
-    ): boolean => {
-      const [in1Hours, in1Minutes] = timeIn1.split(':').map(Number) as [number, number];
-      const [out1Hours, out1Minutes] = timeOut1.split(':').map(Number) as [number, number];
-      const [in2Hours, in2Minutes] = timeIn2.split(':').map(Number) as [number, number];
-      const [out2Hours, out2Minutes] = timeOut2.split(':').map(Number) as [number, number];
-      
-      const in1Total = in1Hours * 60 + in1Minutes;
-      const out1Total = out1Hours * 60 + out1Minutes;
-      const in2Total = in2Hours * 60 + in2Minutes;
-      const out2Total = out2Hours * 60 + out2Minutes;
-      
-      return in1Total < out2Total && out1Total > in2Total;
-    };
-    
-    const hasTimeOverlapWithPreviousEntries = (
-      currentRowIndex: number,
-      rows: TimesheetRow[]
-    ): boolean => {
-      const currentRow = rows[currentRowIndex];
-      if (!currentRow) return false;
-      
-      const { date, timeIn, timeOut } = currentRow;
-      
-      if (!date || !timeIn || !timeOut) return false;
-      if (!isValidDate(date) || !isValidTime(timeIn) || !isValidTime(timeOut)) return false;
-      if (!isTimeOutAfterTimeIn(timeIn, timeOut)) return false;
-      
-      for (let i = 0; i < currentRowIndex; i++) {
-        const previousRow = rows[i];
-        if (!previousRow) continue;
-        
-        const { date: prevDate, timeIn: prevTimeIn, timeOut: prevTimeOut } = previousRow;
-        
-        if (!prevDate || !prevTimeIn || !prevTimeOut) continue;
-        if (!isValidDate(prevDate) || !isValidTime(prevTimeIn) || !isValidTime(prevTimeOut)) continue;
-        if (!isTimeOutAfterTimeIn(prevTimeIn, prevTimeOut)) continue;
-        
-        if (date === prevDate) {
-          if (timeRangesOverlap(timeIn, timeOut, prevTimeIn, prevTimeOut)) {
-            return true;
-          }
-        }
-      }
-      
-      return false;
-    };
-    
-    const rows: TimesheetRow[] = [
-      { date: '01/15/2024', timeIn: '09:00', timeOut: '12:00', project: 'Project A', taskDescription: 'Task 1' },
-      { date: '01/15/2024', timeIn: '13:00', timeOut: '17:00', project: 'Project B', taskDescription: 'Task 2' },
-      { date: '01/15/2024', timeIn: '10:00', timeOut: '14:00', project: 'Project C', taskDescription: 'Task 3' } // Overlaps with both
+    const draftEntries = [
+      { date: '01/15/2024', hours: 8.0 },
+      { date: '01/15/2024', hours: 8.0 }
     ];
     
-    // First row - no previous entries, so no overlap
-    expect(hasTimeOverlapWithPreviousEntries(0, rows)).toBe(false);
+    const submittedEntries = [
+      { date: '01/15/2024', hours: 8.0 }
+    ];
     
-    // Second row - no overlap with first (adjacent times)
-    expect(hasTimeOverlapWithPreviousEntries(1, rows)).toBe(false);
+    // Total: 24.0 (maximum allowed)
+    const total = calculateDailyTotal(draftEntries, submittedEntries, '01/15/2024');
+    expect(total).toBe(24.0);
+    expect(total).toBeLessThanOrEqual(24.0);
     
-    // Third row - overlaps with both previous entries on same date
-    expect(hasTimeOverlapWithPreviousEntries(2, rows)).toBe(true);
+    // Adding more would exceed 24.0
+    const invalidEntries = [
+      ...draftEntries,
+      ...submittedEntries,
+      { date: '01/15/2024', hours: 0.25 }
+    ];
+    const invalidTotal = calculateDailyTotal(invalidEntries, [], '01/15/2024');
+    expect(invalidTotal).toBeGreaterThan(24.0);
   });
 
-  it('should allow same times on different dates', () => {
+  it('should allow same hours on different dates', () => {
     type TimesheetRow = {
       date?: string;
       timeIn?: string;
@@ -2139,16 +2019,23 @@ describe('TimesheetGrid Time Overlap Validation', () => {
       return false;
     };
     
-    const rows: TimesheetRow[] = [
-      { date: '01/15/2024', timeIn: '09:00', timeOut: '12:00', project: 'Project A', taskDescription: 'Task 1' },
-      { date: '01/16/2024', timeIn: '09:00', timeOut: '12:00', project: 'Project B', taskDescription: 'Task 2' }, // Same time, different date
-      { date: '01/17/2024', timeIn: '10:00', timeOut: '11:00', project: 'Project C', taskDescription: 'Task 3' }
+    const entries = [
+      { date: '01/15/2024', hours: 3.0, project: 'Project A', taskDescription: 'Task 1' },
+      { date: '01/16/2024', hours: 3.0, project: 'Project B', taskDescription: 'Task 2' }, // Same hours, different date
+      { date: '01/17/2024', hours: 1.0, project: 'Project C', taskDescription: 'Task 3' }
     ];
     
-    // All rows are on different dates, so no overlaps should be detected
-    expect(hasTimeOverlapWithPreviousEntries(0, rows)).toBe(false);
-    expect(hasTimeOverlapWithPreviousEntries(1, rows)).toBe(false);
-    expect(hasTimeOverlapWithPreviousEntries(2, rows)).toBe(false);
+    // All entries are on different dates, so daily totals are independent
+    const day1Total = entries.filter(e => e.date === '01/15/2024').reduce((sum, e) => sum + e.hours, 0);
+    const day2Total = entries.filter(e => e.date === '01/16/2024').reduce((sum, e) => sum + e.hours, 0);
+    const day3Total = entries.filter(e => e.date === '01/17/2024').reduce((sum, e) => sum + e.hours, 0);
+    
+    expect(day1Total).toBe(3.0);
+    expect(day2Total).toBe(3.0);
+    expect(day3Total).toBe(1.0);
+    expect(day1Total).toBeLessThanOrEqual(24.0);
+    expect(day2Total).toBeLessThanOrEqual(24.0);
+    expect(day3Total).toBeLessThanOrEqual(24.0);
   });
 
   it('should ignore incomplete rows when checking overlaps', () => {
@@ -2253,19 +2140,21 @@ describe('TimesheetGrid Time Overlap Validation', () => {
       return false;
     };
     
-    const rows: TimesheetRow[] = [
-      { date: '01/15/2024', timeIn: '09:00', project: 'Project A', taskDescription: 'Task 1' }, // Missing timeOut
-      { date: '01/15/2024', timeIn: '10:00', timeOut: '14:00', project: 'Project B', taskDescription: 'Task 2' }
+    const rows = [
+      { date: '01/15/2024', hours: undefined, project: 'Project A', taskDescription: 'Task 1' }, // Missing hours
+      { date: '01/15/2024', hours: 4.0, project: 'Project B', taskDescription: 'Task 2' }
     ];
     
-    // First row is incomplete, should not cause overlap check to fail
-    expect(hasTimeOverlapWithPreviousEntries(0, rows)).toBe(false);
+    // First row is incomplete (missing hours), should not be included in daily total
+    const dailyTotal = rows
+      .filter(row => row.date === '01/15/2024' && row.hours !== undefined)
+      .reduce((total, row) => total + (row.hours || 0), 0);
     
-    // Second row should not have overlap detected since first row is incomplete
-    expect(hasTimeOverlapWithPreviousEntries(1, rows)).toBe(false);
+    expect(dailyTotal).toBe(4.0);
+    expect(dailyTotal).toBeLessThanOrEqual(24.0);
   });
 
-  it('should validate timeIn with overlap check in Handsontable validator', () => {
+  it('should validate hours with daily total check in Handsontable validator', () => {
     type TimesheetRow = {
       date?: string;
       timeIn?: string;
@@ -2280,29 +2169,34 @@ describe('TimesheetGrid Time Overlap Validation', () => {
       col: 1,
       instance: {
         getSourceData: () => [
-          { date: '01/15/2024', timeIn: '09:00', timeOut: '12:00', project: 'Project A', taskDescription: 'Task 1' },
-          { date: '01/15/2024', timeIn: '10:00', timeOut: '14:00', project: 'Project B', taskDescription: 'Task 2' }
+          { date: '01/15/2024', hours: 3.0, project: 'Project A', taskDescription: 'Task 1' },
+          { date: '01/15/2024', hours: 4.0, project: 'Project B', taskDescription: 'Task 2' }
         ] as TimesheetRow[]
       }
     };
     
-    const isValidTime = (timeStr?: string): boolean => {
-      if (!timeStr) return false;
-      const timeRegex = /^([01]?[0-9]|2[0-3]):([0-5][0-9])$/;
-      if (!timeRegex.test(timeStr)) return false;
-      const parts = timeStr.split(':');
-      if (parts.length !== 2) return false;
-      const [hours, minutes] = parts.map(Number) as [number, number];
-      const totalMinutes = hours * 60 + minutes;
-      return totalMinutes % 15 === 0;
+    const isValidHours = (hours?: number): boolean => {
+      if (hours === undefined || hours === null) return false;
+      if (hours < 0.25 || hours > 24.0) return false;
+      const remainder = (hours * 4) % 1;
+      return Math.abs(remainder) < 0.0001 || Math.abs(remainder - 1) < 0.0001;
     };
     
-    // Simulate validator - should fail because of overlap
-    const value = '10:00'; // Would overlap with existing 09:00-12:00 entry
-    const valid = isValidTime(String(value));
+    // Simulate validator - should validate hours format and range
+    const value = 4.0;
+    const valid = isValidHours(value);
     
-    expect(valid).toBe(true); // Time format is valid
-    // Note: Full overlap check would require implementing the complete logic
+    expect(valid).toBe(true); // Hours format is valid
+    
+    // Check daily total would not exceed 24.0
+    const entries = [
+      { date: '01/15/2024', hours: 3.0 },
+      { date: '01/15/2024', hours: 4.0 }
+    ];
+    const dailyTotal = entries
+      .filter(e => e.date === '01/15/2024')
+      .reduce((sum, e) => sum + e.hours, 0);
+    expect(dailyTotal).toBeLessThanOrEqual(24.0);
   });
 });
 

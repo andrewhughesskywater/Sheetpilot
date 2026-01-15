@@ -53,8 +53,7 @@ export function checkRowFieldsMatch(
 ): boolean {
   return (
     currentRow.date === savedEntry.date &&
-    currentRow.timeIn === savedEntry.timeIn &&
-    currentRow.timeOut === savedEntry.timeOut &&
+    currentRow.hours === savedEntry.hours &&
     currentRow.project === savedEntry.project &&
     (currentRow.tool ?? null) === (savedEntry.tool ?? null) &&
     (currentRow.chargeCode ?? null) === (savedEntry.chargeCode ?? null) &&
@@ -72,7 +71,6 @@ export function rowNeedsUpdate(
   return (
     !currentRow.id || 
     currentRow.id !== savedEntry.id ||
-    currentRow.timeIn !== savedEntry.timeIn ||
-    currentRow.timeOut !== savedEntry.timeOut
+    currentRow.hours !== savedEntry.hours
   );
 }

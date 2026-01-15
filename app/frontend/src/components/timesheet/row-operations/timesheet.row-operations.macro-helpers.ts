@@ -20,7 +20,7 @@ export function findMacroTargetRow(
   }
   
   const emptyRowIndex = sourceData.findIndex(row => 
-    !row.date && !row.timeIn && !row.timeOut && !row.project && !row.taskDescription
+    !row.date && row.hours === undefined && !row.project && !row.taskDescription
   );
   if (emptyRowIndex >= 0) {
     return emptyRowIndex;
@@ -37,8 +37,7 @@ export function applyMacroToRow(
   macro: MacroRow
 ): TimesheetRow {
   const updatedRow: TimesheetRow = { ...row };
-  if (macro.timeIn) updatedRow.timeIn = macro.timeIn;
-  if (macro.timeOut) updatedRow.timeOut = macro.timeOut;
+  if (macro.hours !== undefined && macro.hours !== null) updatedRow.hours = macro.hours;
   if (macro.project) updatedRow.project = macro.project;
   if (macro.tool !== undefined) updatedRow.tool = macro.tool;
   if (macro.chargeCode !== undefined) updatedRow.chargeCode = macro.chargeCode;

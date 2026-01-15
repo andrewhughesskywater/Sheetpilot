@@ -407,8 +407,7 @@ describe('IPC Schemas Validation', () => {
       it('should accept valid draft data', () => {
         const valid = {
           date: '2025-01-15',
-          timeIn: '09:00',
-          timeOut: '17:00',
+          hours: 8.0,
           project: 'FL-Carver Techs',
           tool: '#1 Rinse and 2D marker',
           chargeCode: 'EPR1',
@@ -421,8 +420,7 @@ describe('IPC Schemas Validation', () => {
       it('should accept draft with US format date', () => {
         const valid = {
           date: '01/15/2025',
-          timeIn: '09:00',
-          timeOut: '17:00',
+          hours: 8.0,
           project: 'FL-Carver Techs',
           tool: '#1 Rinse and 2D marker',
           chargeCode: 'EPR1',
@@ -436,8 +434,7 @@ describe('IPC Schemas Validation', () => {
         const valid = {
           id: 123,
           date: '2025-01-15',
-          timeIn: '09:00',
-          timeOut: '17:00',
+          hours: 8.0,
           project: 'Test',
           taskDescription: 'Test'
         };
@@ -448,8 +445,7 @@ describe('IPC Schemas Validation', () => {
       it('should accept null tool and charge code', () => {
         const valid = {
           date: '2025-01-15',
-          timeIn: '09:00',
-          timeOut: '17:00',
+          hours: 8.0,
           project: 'Test',
           tool: null,
           chargeCode: null,
@@ -459,11 +455,10 @@ describe('IPC Schemas Validation', () => {
         expect(() => saveDraftSchema.parse(valid)).not.toThrow();
       });
 
-      it('should reject timeOut before or equal to timeIn', () => {
+      it('should reject hours below minimum', () => {
         const invalid = {
           date: '2025-01-15',
-          timeIn: '17:00',
-          timeOut: '09:00', // Before timeIn
+          hours: 0.15, // Below 0.25 minimum
           project: 'Test',
           taskDescription: 'Test'
         };
@@ -471,11 +466,21 @@ describe('IPC Schemas Validation', () => {
         expect(() => saveDraftSchema.parse(invalid)).toThrow();
       });
 
-      it('should reject equal times', () => {
+      it('should reject hours above maximum', () => {
         const invalid = {
           date: '2025-01-15',
-          timeIn: '09:00',
-          timeOut: '09:00', // Same as timeIn
+          hours: 25.0, // Above 24.0 maximum
+          project: 'Test',
+          taskDescription: 'Test'
+        };
+        
+        expect(() => saveDraftSchema.parse(invalid)).toThrow();
+      });
+
+      it('should reject hours not in 15-minute increments', () => {
+        const invalid = {
+          date: '2025-01-15',
+          hours: 0.1, // Not a 15-minute increment
           project: 'Test',
           taskDescription: 'Test'
         };
@@ -485,11 +490,10 @@ describe('IPC Schemas Validation', () => {
 
       it('should reject missing required fields', () => {
         const missingFields = [
-          { date: '2025-01-15', timeIn: '09:00', timeOut: '17:00', project: 'Test' }, // Missing taskDescription
-          { date: '2025-01-15', timeIn: '09:00', timeOut: '17:00', taskDescription: 'Test' }, // Missing project
-          { date: '2025-01-15', timeIn: '09:00', project: 'Test', taskDescription: 'Test' }, // Missing timeOut
-          { date: '2025-01-15', timeOut: '17:00', project: 'Test', taskDescription: 'Test' }, // Missing timeIn
-          { timeIn: '09:00', timeOut: '17:00', project: 'Test', taskDescription: 'Test' } // Missing date
+          { date: '2025-01-15', hours: 8.0, project: 'Test' }, // Missing taskDescription
+          { date: '2025-01-15', hours: 8.0, taskDescription: 'Test' }, // Missing project
+          { date: '2025-01-15', project: 'Test', taskDescription: 'Test' }, // Missing hours
+          { hours: 8.0, project: 'Test', taskDescription: 'Test' } // Missing date
         ];
         
         missingFields.forEach(data => {
@@ -500,8 +504,7 @@ describe('IPC Schemas Validation', () => {
       it('should reject invalid date formats', () => {
         const invalid = {
           date: 'not-a-date',
-          timeIn: '09:00',
-          timeOut: '17:00',
+          hours: 8.0,
           project: 'Test',
           taskDescription: 'Test'
         };
@@ -509,11 +512,10 @@ describe('IPC Schemas Validation', () => {
         expect(() => saveDraftSchema.parse(invalid)).toThrow();
       });
 
-      it('should reject invalid time formats', () => {
+      it('should reject invalid hours values', () => {
         const invalid = {
           date: '2025-01-15',
-          timeIn: 'not-a-time',
-          timeOut: '17:00',
+          hours: 0.1, // Invalid: not 15-minute increment
           project: 'Test',
           taskDescription: 'Test'
         };
@@ -525,8 +527,7 @@ describe('IPC Schemas Validation', () => {
         const invalid = {
           id: -1,
           date: '2025-01-15',
-          timeIn: '09:00',
-          timeOut: '17:00',
+          hours: 8.0,
           project: 'Test',
           taskDescription: 'Test'
         };
@@ -538,8 +539,7 @@ describe('IPC Schemas Validation', () => {
         const invalid = {
           id: 0,
           date: '2025-01-15',
-          timeIn: '09:00',
-          timeOut: '17:00',
+          hours: 8.0,
           project: 'Test',
           taskDescription: 'Test'
         };
@@ -687,8 +687,7 @@ describe('IPC Schemas Validation', () => {
       // saveDraftSchema has optional id, tool, and chargeCode
       const minimal = {
         date: '2025-01-15',
-        timeIn: '09:00',
-        timeOut: '17:00',
+        hours: 8.0,
         project: 'Test',
         taskDescription: 'Test'
       };

@@ -10,8 +10,7 @@ const LOCAL_BACKUP_KEY = 'sheetpilot_timesheet_backup';
 function isRowNonEmpty(row: TimesheetRow): boolean {
   return !!(
     row.date ||
-    row.timeIn ||
-    row.timeOut ||
+    row.hours !== undefined ||
     row.project ||
     row.taskDescription ||
     row.tool ||
@@ -51,8 +50,7 @@ export async function saveRowToDatabase(
     // Backend will handle validation and return appropriate errors
     logDebug('Saving row (partial data allowed)', { 
       hasDate: !!row.date,
-      hasTimeIn: !!row.timeIn,
-      hasTimeOut: !!row.timeOut,
+      hasHours: row.hours !== undefined && row.hours !== null,
       hasProject: !!row.project,
       hasTaskDescription: !!row.taskDescription
     });
@@ -89,7 +87,7 @@ export async function batchSaveToDatabase(
     
     // Save complete rows from Handsontable to database
     const completeRows = timesheetDraftData.filter(row => 
-      row.date && row.timeIn && row.timeOut && row.project && row.taskDescription
+      row.date && row.hours !== undefined && row.hours !== null && row.project && row.taskDescription
     );
     
     logInfo('Batch saving rows to database', { count: completeRows.length });

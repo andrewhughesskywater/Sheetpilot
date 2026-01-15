@@ -20,10 +20,7 @@ import type {
   PluginMetadata
 } from '@sheetpilot/shared';
 import { getDb } from '@/models';
-import {
-  parseTimeToMinutes,
-  formatMinutesToTime
-} from '@sheetpilot/shared';
+import { getTotalHoursForDate } from '@/models/timesheet-repository';
 
 /**
  * SQLite implementation of the data service
@@ -53,17 +50,55 @@ export class SQLiteDataService implements IDataService {
         return { success: false, error: 'Task description is required' };
       }
       
-      // Convert time strings to minutes
-      const timeInMinutes = parseTimeToMinutes(entry.timeIn);
-      const timeOutMinutes = parseTimeToMinutes(entry.timeOut);
-      
-      // Validate times
-      if (timeInMinutes % 15 !== 0 || timeOutMinutes % 15 !== 0) {
-        return { success: false, error: 'Times must be in 15-minute increments' };
+      // Validate hours
+      if (entry.hours === undefined || entry.hours === null) {
+        return { success: false, error: 'Hours is required' };
       }
       
-      if (timeOutMinutes <= timeInMinutes) {
-        return { success: false, error: 'Time Out must be after Time In' };
+      // Validate hours format (15-minute increments, 0.25 to 24.0)
+      if (typeof entry.hours !== 'number' || isNaN(entry.hours)) {
+        return { success: false, error: 'Hours must be a number' };
+      }
+      
+      // Check if it's a multiple of 0.25 (15-minute increments)
+      const remainder = (entry.hours * 4) % 1;
+      if (Math.abs(remainder) > 0.0001 && Math.abs(remainder - 1) > 0.0001) {
+        return { success: false, error: 'Hours must be in 15-minute increments (0.25, 0.5, 0.75, etc.)' };
+      }
+      
+      // Check range
+      if (entry.hours < 0.25 || entry.hours > 24.0) {
+        return { success: false, error: 'Hours must be between 0.25 and 24.0' };
+      }
+      
+      // Validate total hours per date (including submitted entries)
+      const totalHoursForDate = getTotalHoursForDate(entry.date);
+      const currentEntryHours = entry.id !== undefined && entry.id !== null
+        ? (() => {
+            // For updates, get the current hours from the database to calculate the difference
+            const db = getDb();
+            const getCurrent = db.prepare('SELECT hours FROM timesheet WHERE id = ?').get(entry.id) as { hours: number | null } | undefined;
+            return getCurrent?.hours ?? 0;
+          })()
+        : 0;
+      
+      const hoursAfterThisEntry = totalHoursForDate - currentEntryHours + entry.hours;
+      if (hoursAfterThisEntry > 24.0) {
+        const submittedHours = (() => {
+          const db = getDb();
+          const getSubmitted = db.prepare(`
+            SELECT COALESCE(SUM(hours), 0) as total
+            FROM timesheet
+            WHERE date = ? AND status = 'Complete' AND hours IS NOT NULL
+          `);
+          const result = getSubmitted.get(entry.date) as { total: number } | undefined;
+          return result?.total ?? 0;
+        })();
+        const draftHours = totalHoursForDate - submittedHours;
+        return { 
+          success: false, 
+          error: `Total hours for ${entry.date} exceeds 24 hours. Current total: ${hoursAfterThisEntry.toFixed(2)} hours (${submittedHours.toFixed(2)} submitted + ${(draftHours - currentEntryHours + entry.hours).toFixed(2)} draft). Maximum allowed: 24.00 hours.` 
+        };
       }
       
       const db = getDb();
@@ -73,8 +108,7 @@ export class SQLiteDataService implements IDataService {
       const updateStmt = db.prepare(`
         UPDATE timesheet
         SET date = ?,
-            time_in = ?,
-            time_out = ?,
+            hours = ?,
             project = ?,
             tool = ?,
             detail_charge_code = ?,
@@ -102,8 +136,7 @@ export class SQLiteDataService implements IDataService {
           
           result = updateStmt.run(
             entry.date,
-            timeInMinutes,
-            timeOutMinutes,
+            entry.hours,
             entry.project,
             toolValue,
             chargeCodeValue,
@@ -119,10 +152,10 @@ export class SQLiteDataService implements IDataService {
           // Note: SQLite ON CONFLICT UPDATE will set columns to NULL if excluded value is NULL
           const insertStmt = db.prepare(`
             INSERT INTO timesheet
-            (date, time_in, time_out, project, tool, detail_charge_code, task_description, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, NULL)
-            ON CONFLICT(date, time_in, project, task_description) DO UPDATE SET
-              time_out = excluded.time_out,
+            (date, hours, project, tool, detail_charge_code, task_description, status)
+            VALUES (?, ?, ?, ?, ?, ?, NULL)
+            ON CONFLICT(date, project, task_description) DO UPDATE SET
+              hours = excluded.hours,
               tool = excluded.tool,
               detail_charge_code = excluded.detail_charge_code,
               status = NULL
@@ -134,8 +167,7 @@ export class SQLiteDataService implements IDataService {
           
           result = insertStmt.run(
             entry.date,
-            timeInMinutes,
-            timeOutMinutes,
+            entry.hours,
             entry.project,
             toolValue,
             chargeCodeValue,
@@ -177,14 +209,13 @@ export class SQLiteDataService implements IDataService {
       const getPending = db.prepare(`
         SELECT * FROM timesheet 
         WHERE status IS NULL
-        ORDER BY date ASC, time_in ASC
+        ORDER BY date ASC, hours ASC
       `);
       
       const entries = getPending.all() as Array<{
         id: number;
         date: string;
-        time_in: number;
-        time_out: number;
+        hours: number | null;
         project: string;
         tool?: string;
         detail_charge_code?: string;
@@ -203,8 +234,7 @@ export class SQLiteDataService implements IDataService {
         return {
           id: entry.id,
           date: entry.date,
-          timeIn: formatMinutesToTime(entry.time_in),
-          timeOut: formatMinutesToTime(entry.time_out),
+          hours: entry.hours ?? 0, // Default to 0 if NULL
           project: entry.project,
           // Handle SQLite NULL values: undefined, null, or empty string should all become null
           // SQLite returns undefined for NULL columns, so we explicitly convert to null
@@ -275,11 +305,11 @@ export class SQLiteDataService implements IDataService {
     try {
       const db = getDb();
       
-      // Get completed timesheet entries (compute hours from time_in and time_out)
+      // Get completed timesheet entries
       const getTimesheet = db.prepare(`
-        SELECT *, (time_out - time_in) / 60.0 as hours FROM timesheet 
+        SELECT * FROM timesheet 
         WHERE status = 'Complete'
-        ORDER BY date ASC, time_in ASC
+        ORDER BY date ASC, hours ASC
       `);
       const timesheetEntries = getTimesheet.all() as DbTimesheetEntry[];
       
@@ -321,9 +351,8 @@ export class SQLiteDataService implements IDataService {
       const db = getDb();
       
       const getAll = db.prepare(`
-        SELECT *, (time_out - time_in) / 60.0 as hours FROM timesheet 
-        WHERE status = 'Complete'
-        ORDER BY date DESC, time_in DESC
+        SELECT * FROM timesheet 
+        ORDER BY date DESC, hours DESC
       `);
       const entries = getAll.all() as DbTimesheetEntry[];
       

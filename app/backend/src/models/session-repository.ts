@@ -73,6 +73,14 @@ export function validateSession(token: string): { valid: boolean; email?: string
         // Check if session has expired
         if (session.expires_at) {
             const expiresAt = new Date(session.expires_at);
+            // Check if date is valid (invalid dates have isNaN(getTime()))
+            if (isNaN(expiresAt.getTime())) {
+                dbLogger.verbose('Session has invalid expiration date', { email: session.email, expires_at: session.expires_at });
+                clearSession(token);
+                timer.done({ valid: false, reason: 'invalid-expiration-date' });
+                return { valid: false };
+            }
+            
             const now = new Date();
             
             if (now > expiresAt) {

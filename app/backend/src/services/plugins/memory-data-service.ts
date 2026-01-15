@@ -135,7 +135,7 @@ export class MemoryDataService implements IDataService {
       const entry = this.draftEntries[index];
       
       // Validate required fields exist before archiving
-      if (!entry || !entry.id || !entry.date || !entry.timeIn || !entry.timeOut || 
+      if (!entry || !entry.id || !entry.date || entry.hours === undefined || 
           !entry.project || !entry.taskDescription) {
         return { success: false, error: 'Entry missing required fields' };
       }
@@ -144,14 +144,12 @@ export class MemoryDataService implements IDataService {
       const dbEntry: DbTimesheetEntry = {
         id: entry.id,
         date: entry.date,
-        time_in: this.parseTimeToMinutes(entry.timeIn),
-        time_out: this.parseTimeToMinutes(entry.timeOut),
-        hours: this.calculateHours(entry.timeIn, entry.timeOut),
+        hours: entry.hours,
         project: entry.project,
         tool: entry.tool || null,
         detail_charge_code: entry.chargeCode || null,
         task_description: entry.taskDescription,
-        status: 'submitted',
+        status: 'Complete',
         submitted_at: new Date().toISOString()
       };
       
@@ -181,24 +179,6 @@ export class MemoryDataService implements IDataService {
     }
   }
 
-  /**
-   * Parse time string to minutes
-   */
-  private parseTimeToMinutes(time: string): number {
-    const parts = time.split(':').map(Number);
-    const hours = parts[0] ?? 0;
-    const minutes = parts[1] ?? 0;
-    return hours * 60 + minutes;
-  }
-
-  /**
-   * Calculate hours between two times
-   */
-  private calculateHours(timeIn: string, timeOut: string): number {
-    const inMinutes = this.parseTimeToMinutes(timeIn);
-    const outMinutes = this.parseTimeToMinutes(timeOut);
-    return (outMinutes - inMinutes) / 60;
-  }
 
   /**
    * Get archive data (completed entries and credentials)

@@ -1545,8 +1545,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
       const mockEntries = [
         {
           date: '2025-01-15',
-          time_in: 540,
-          time_out: 1020,
+          hours: 8.0,
           hours: 8.0,
           project: 'Test Project',
           tool: 'VS Code',
@@ -1591,8 +1590,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
       // Use current quarter date (Q4 2025)
       const validRow = {
         date: '2025-10-15',
-        timeIn: '09:00',
-        timeOut: '17:00',
+        hours: 8.0,
         project: 'Test Project',
         taskDescription: 'Test task'
       };
@@ -1611,8 +1609,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
         get: vi.fn(() => ({
           id: 1,
           date: '2025-10-15',
-          time_in: 540, // 09:00 in minutes
-          time_out: 1020, // 17:00 in minutes
+          hours: 8.0,
           project: 'Test Project',
           tool: null,
           detail_charge_code: null,
@@ -1631,8 +1628,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
     it('should validate required fields', async () => {
       const invalidRow = {
         date: '',
-        timeIn: '09:00',
-        timeOut: '17:00',
+        hours: 8.0,
         project: 'Test Project',
         taskDescription: 'Test task'
       };
@@ -1646,8 +1642,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
     it('should validate time format', async () => {
       const invalidRow = {
         date: '2025-10-15',
-        timeIn: 'invalid-time',
-        timeOut: '17:00',
+        hours: 0.1, // Invalid: not 15-minute increment
         project: 'Test Project',
         taskDescription: 'Test task'
       };
@@ -1655,7 +1650,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
       const result = await handlers['timesheet:saveDraft'](invalidRow) as { success: boolean; changes?: number; error?: string };
       
       expect(result.success).toBe(false);
-      expect(result.error).toContain('Invalid time format');
+      expect(result.error).toContain('Hours must be in 15-minute increments');
     });
 
     it('should allow dates from any quarter (validation happens at submission)', async () => {
@@ -1663,8 +1658,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
       // It now happens during submission routing to allow historical data entry
       const historicalRow = {
         date: '2024-01-15', // Different quarter (Q1 2024)
-        timeIn: '09:00',
-        timeOut: '17:00',
+        hours: 8.0,
         project: 'Test Project',
         taskDescription: 'Test task'
       };
@@ -1683,8 +1677,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
         get: vi.fn(() => ({
           id: 2,
           date: '2024-01-15',
-          time_in: 540,
-          time_out: 1020,
+          hours: 8.0,
           project: 'Test Project',
           tool: null,
           detail_charge_code: null,
@@ -1703,8 +1696,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
     it('should handle duplicate entries', async () => {
       const duplicateRow = {
         date: '2025-10-15',
-        timeIn: '09:00',
-        timeOut: '17:00',
+        hours: 8.0,
         project: 'Test Project',
         taskDescription: 'Test task'
       };
@@ -1721,8 +1713,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
         get: vi.fn(() => ({
           id: 3,
           date: '2025-10-15',
-          time_in: 540,
-          time_out: 1020,
+          hours: 8.0,
           project: 'Test Project',
           tool: null,
           detail_charge_code: null,
@@ -1746,8 +1737,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
         get: vi.fn(() => ({
           id: 3,
           date: '2025-10-15',
-          time_in: 540,
-          time_out: 1020,
+          hours: 8.0,
           project: 'Test Project',
           tool: null,
           detail_charge_code: null,
@@ -1767,8 +1757,7 @@ describe('IPC Handlers Comprehensive Tests', () => {
         {
           id: 1,
           date: '2025-10-15',
-          time_in: 540,
-          time_out: 1020,
+          hours: 8.0,
           project: 'Test Project',
           tool: 'VS Code',
           detail_charge_code: 'DEV001',
@@ -1802,13 +1791,12 @@ describe('IPC Handlers Comprehensive Tests', () => {
         }
       });
 
-      const result = await handlers['timesheet:loadDraft']() as { success: boolean; entries: Array<{ date: string; timeIn: string; timeOut: string; [key: string]: unknown }>; error?: string };
+      const result = await handlers['timesheet:loadDraft']() as { success: boolean; entries: Array<{ date: string; hours: number; [key: string]: unknown }>; error?: string };
       
       expect(result.success).toBe(true);
       expect(result.entries).toHaveLength(1);
       expect(result.entries[0].date).toBe('2025-10-15');
-      expect(result.entries[0].timeIn).toBe('09:00');
-      expect(result.entries[0].timeOut).toBe('17:00');
+      expect(result.entries[0].hours).toBe(8.0);
     });
 
     it('should handle empty draft data', async () => {

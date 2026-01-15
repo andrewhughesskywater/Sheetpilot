@@ -140,8 +140,6 @@ class InMemoryDatabase {
         { name: 'id', type: 'INTEGER', nullable: false },
         { name: 'hours', type: 'REAL', nullable: true },
         { name: 'date', type: 'TEXT', nullable: true },
-        { name: 'time_in', type: 'INTEGER', nullable: true },
-        { name: 'time_out', type: 'INTEGER', nullable: true },
         { name: 'project', type: 'TEXT', nullable: true },
         { name: 'tool', type: 'TEXT', nullable: true },
         { name: 'detail_charge_code', type: 'TEXT', nullable: true },
@@ -309,35 +307,17 @@ class InMemoryDatabase {
 
     // Validate constraints for timesheet table
     if (tableName === 'timesheet') {
-      const timeIn = row['time_in'] !== undefined ? Number(row['time_in']) : undefined;
-      const timeOut = row['time_out'] !== undefined ? Number(row['time_out']) : undefined;
+      const hours = row['hours'] !== undefined ? Number(row['hours']) : undefined;
       
-      if (timeIn !== undefined) {
-        // CHECK(time_in between 0 and 1439)
-        if (timeIn < 0 || timeIn > 1439) {
-          throw new Error('CHECK constraint failed: time_in must be between 0 and 1439');
+      if (hours !== undefined) {
+        // CHECK(hours between 0.25 and 24.0)
+        if (hours < 0.25 || hours > 24.0) {
+          throw new Error('CHECK constraint failed: hours must be between 0.25 and 24.0');
         }
-        // CHECK(time_in % 15 = 0)
-        if (timeIn % 15 !== 0) {
-          throw new Error('CHECK constraint failed: time_in must be divisible by 15');
-        }
-      }
-      
-      if (timeOut !== undefined) {
-        // CHECK(time_out between 1 and 1400)
-        if (timeOut < 1 || timeOut > 1400) {
-          throw new Error('CHECK constraint failed: time_out must be between 1 and 1400');
-        }
-        // CHECK(time_out % 15 = 0)
-        if (timeOut % 15 !== 0) {
-          throw new Error('CHECK constraint failed: time_out must be divisible by 15');
-        }
-      }
-      
-      if (timeIn !== undefined && timeOut !== undefined) {
-        // CHECK(time_out > time_in)
-        if (timeOut <= timeIn) {
-          throw new Error('CHECK constraint failed: time_out must be greater than time_in');
+        // CHECK(hours in 15-minute increments)
+        const remainder = (hours * 4) % 1;
+        if (Math.abs(remainder) > 0.0001 && Math.abs(remainder - 1) > 0.0001) {
+          throw new Error('CHECK constraint failed: hours must be in 15-minute increments');
         }
       }
     }
@@ -347,13 +327,6 @@ class InMemoryDatabase {
       const nextId = this.nextRowId.get(tableName) || 1;
       row['id'] = nextId;
       this.nextRowId.set(tableName, nextId + 1);
-    }
-
-    // Calculate hours if time_in and time_out exist
-    if (row['time_in'] !== undefined && row['time_out'] !== undefined) {
-      const timeIn = Number(row['time_in']) || 0;
-      const timeOut = Number(row['time_out']) || 0;
-      row['hours'] = (timeOut - timeIn) / 60.0;
     }
 
     // Set default status
@@ -479,15 +452,8 @@ class InMemoryDatabase {
         if (tableName === 'timesheet') {
           tableSql = `CREATE TABLE IF NOT EXISTS timesheet(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            hours REAL GENERATED ALWAYS AS (
-              CASE WHEN time_in IS NOT NULL AND time_out IS NOT NULL 
-                   THEN (time_out - time_in) / 60.0 
-                   ELSE NULL 
-              END
-            ) STORED,
             date TEXT,
-            time_in INTEGER,
-            time_out INTEGER,
+            hours REAL,
             project TEXT,
             tool TEXT,
             detail_charge_code TEXT,
@@ -513,7 +479,7 @@ class InMemoryDatabase {
           // Generate proper SQL for unique index
           let indexSql = `CREATE INDEX ${indexName} ON ${tableName}(...)`;
           if (indexName === 'uq_timesheet_nk') {
-            indexSql = `CREATE UNIQUE INDEX IF NOT EXISTS uq_timesheet_nk ON timesheet(date, time_in, project, task_description) WHERE date IS NOT NULL AND time_in IS NOT NULL AND project IS NOT NULL AND task_description IS NOT NULL`;
+            indexSql = `CREATE UNIQUE INDEX IF NOT EXISTS uq_timesheet_nk ON timesheet(date, project, task_description) WHERE date IS NOT NULL AND project IS NOT NULL AND task_description IS NOT NULL`;
           } else if (indexName.startsWith('idx_')) {
             const colName = indexName.replace('idx_timesheet_', '').replace('idx_', '');
             indexSql = `CREATE INDEX IF NOT EXISTS ${indexName} ON ${tableName}(${colName})`;

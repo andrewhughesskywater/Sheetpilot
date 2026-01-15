@@ -17,8 +17,7 @@ import { projectNeedsTools, toolNeedsChargeCode } from './dropdown-logic';
 export interface TimesheetRow {
   id?: number;
   date?: string;
-  timeIn?: string;
-  timeOut?: string;
+  hours?: number;
   project?: string;
   tool?: string | null;
   chargeCode?: string | null;
@@ -51,7 +50,7 @@ export function normalizeTrailingBlank(rows: TimesheetRow[]): TimesheetRow[] {
   let lastNonEmptyIndex = -1;
   for (let i = rows.length - 1; i >= 0; i--) {
     const row = rows[i];
-    if (row?.date || row?.timeIn || row?.timeOut || row?.project || row?.tool || row?.chargeCode || row?.taskDescription) {
+    if (row?.date || row?.hours !== undefined || row?.project || row?.tool || row?.chargeCode || row?.taskDescription) {
       lastNonEmptyIndex = i;
       break;
     }

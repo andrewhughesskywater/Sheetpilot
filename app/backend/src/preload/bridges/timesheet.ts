@@ -14,13 +14,12 @@ export const timesheetBridge = {
     ipcRenderer.invoke('timesheet:devSimulateSuccess'),
   saveDraft: (row: {
     id?: number;
-    date: string;
-    timeIn: string;
-    timeOut: string;
-    project: string;
+    date?: string;
+    hours?: number;
+    project?: string;
     tool?: string | null;
     chargeCode?: string | null;
-    taskDescription: string;
+    taskDescription?: string;
   }): Promise<{
     success: boolean;
     changes?: number;
@@ -28,8 +27,7 @@ export const timesheetBridge = {
     entry?: {
       id: number;
       date: string;
-      timeIn: string;
-      timeOut: string;
+      hours: number;
       project: string;
       tool?: string | null;
       chargeCode?: string | null;
@@ -41,13 +39,12 @@ export const timesheetBridge = {
     success: boolean;
     entries?: Array<{
       id?: number;
-      date: string;
-      timeIn: string;
-      timeOut: string;
-      project: string;
+      date?: string;
+      hours?: number;
+      project?: string;
       tool?: string | null;
       chargeCode?: string | null;
-      taskDescription: string;
+      taskDescription?: string;
     }>;
     error?: string;
   }> => ipcRenderer.invoke('timesheet:loadDraft'),
@@ -58,8 +55,7 @@ export const timesheetBridge = {
     entry?: {
       id: number;
       date: string;
-      timeIn: string;
-      timeOut: string;
+      hours: number;
       project: string;
       tool?: string | null;
       chargeCode?: string | null;

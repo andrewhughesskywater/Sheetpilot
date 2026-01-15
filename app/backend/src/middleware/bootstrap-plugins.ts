@@ -27,7 +27,7 @@ export async function registerDefaultPlugins(logger: LoggerLike): Promise<void> 
   
   // Load configuration
   const configPath = path.join(process.cwd(), 'plugin-config.json');
-  const config = loadPluginConfig(configPath);
+  const config = await loadPluginConfig(configPath);
   registry.loadConfig(config);
   
   // Register data services

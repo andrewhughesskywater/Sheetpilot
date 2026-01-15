@@ -135,8 +135,7 @@ describe('Database Module', () => {
             
             expect(columnNames).toContain('id');
             expect(columnNames).toContain('date');
-            expect(columnNames).toContain('time_in');
-            expect(columnNames).toContain('time_out');
+            expect(columnNames).toContain('hours');
             expect(columnNames).toContain('project');
             expect(columnNames).toContain('tool');
             expect(columnNames).toContain('detail_charge_code');
@@ -174,7 +173,7 @@ describe('Database Module', () => {
             
             expect(uniqueIndex).toBeDefined();
             expect((uniqueIndex as { sql: string }).sql).toContain('UNIQUE');
-            expect((uniqueIndex as { sql: string }).sql).toContain('date, time_in, project, task_description');
+            expect((uniqueIndex as { sql: string }).sql).toContain('date, project, task_description');
             
             db.close();
         });
@@ -183,8 +182,7 @@ describe('Database Module', () => {
     describe('Timesheet Entry Insertion', () => {
         const sampleEntry = {
             date: '2025-01-15',
-            timeIn: 540,  // 9:00 AM
-            timeOut: 600, // 10:00 AM
+            hours: 1.0,  // 1 hour
             project: 'Test Project',
             tool: 'VS Code',
             detailChargeCode: 'DEV-001',
@@ -199,14 +197,14 @@ describe('Database Module', () => {
             expect(result.changes).toBe(1);
         });
 
-        it('should calculate hours automatically', () => {
+        it('should store hours correctly', () => {
             insertTimesheetEntry(sampleEntry);
             
             const db = openDb();
             const entry = db.prepare('SELECT hours FROM timesheet WHERE project = ?').get(sampleEntry.project);
             db.close();
             
-            expect((entry as { hours: number }).hours).toBe(1.0); // 60 minutes = 1 hour
+            expect((entry as { hours: number }).hours).toBe(1.0);
         });
 
         it('should handle optional fields correctly', () => {
@@ -227,25 +225,25 @@ describe('Database Module', () => {
             expect((entry as { tool: string | null; detail_charge_code: string | null }).detail_charge_code).toBeNull();
         });
 
-        it('should validate time constraints', () => {
+        it('should validate hours constraints', () => {
             const db = openDb();
             
-            // Test invalid time_in (not 15-minute increment)
+            // Test invalid hours (not 15-minute increment)
             expect(() => {
-                db.prepare('INSERT INTO timesheet (date, time_in, time_out, project, task_description) VALUES (?, ?, ?, ?, ?)')
-                  .run('2025-01-15', 541, 600, 'Test', 'Task'); // 541 is not divisible by 15
+                db.prepare('INSERT INTO timesheet (date, hours, project, task_description) VALUES (?, ?, ?, ?)')
+                  .run('2025-01-15', 0.1, 'Test', 'Task'); // 0.1 is not a 15-minute increment
             }).toThrow();
             
-            // Test invalid time_out (not 15-minute increment)
+            // Test hours below minimum
             expect(() => {
-                db.prepare('INSERT INTO timesheet (date, time_in, time_out, project, task_description) VALUES (?, ?, ?, ?, ?)')
-                  .run('2025-01-15', 540, 601, 'Test', 'Task'); // 601 is not divisible by 15
+                db.prepare('INSERT INTO timesheet (date, hours, project, task_description) VALUES (?, ?, ?, ?)')
+                  .run('2025-01-15', 0.15, 'Test', 'Task'); // Below 0.25 minimum
             }).toThrow();
             
-            // Test time_out <= time_in
+            // Test hours above maximum
             expect(() => {
-                db.prepare('INSERT INTO timesheet (date, time_in, time_out, project, task_description) VALUES (?, ?, ?, ?, ?)')
-                  .run('2025-01-15', 600, 540, 'Test', 'Task'); // time_out before time_in
+                db.prepare('INSERT INTO timesheet (date, hours, project, task_description) VALUES (?, ?, ?, ?)')
+                  .run('2025-01-15', 25.0, 'Test', 'Task'); // Above 24.0 maximum
             }).toThrow();
             
             db.close();
@@ -255,8 +253,7 @@ describe('Database Module', () => {
     describe('Deduplication Functionality', () => {
         const duplicateEntry = {
             date: '2025-01-15',
-            timeIn: 540,
-            timeOut: 600,
+            hours: 1.0,
             project: 'Duplicate Project',
             taskDescription: 'Duplicate task'
         };
@@ -274,16 +271,15 @@ describe('Database Module', () => {
             expect(result2.changes).toBe(0);
         });
 
-        it('should allow entries with different time_in', () => {
+        it('should allow entries with different hours', () => {
             insertTimesheetEntry(duplicateEntry);
             
-            const differentTimeEntry = {
+            const differentHoursEntry = {
                 ...duplicateEntry,
-                timeIn: 600, // Different start time
-                timeOut: 660
+                hours: 2.0 // Different hours value
             };
             
-            const result = insertTimesheetEntry(differentTimeEntry);
+            const result = insertTimesheetEntry(differentHoursEntry);
             expect(result.success).toBe(true);
             expect(result.isDuplicate).toBe(false);
         });
@@ -345,7 +341,7 @@ describe('Database Module', () => {
     describe('Duplicate Checking Utilities', () => {
         const testEntry = {
             date: '2025-01-20',
-            timeIn: 720, // 12:00 PM
+            hours: 1.0,
             project: 'Check Project',
             taskDescription: 'Check task'
         };
@@ -357,10 +353,7 @@ describe('Database Module', () => {
 
         it('should correctly identify duplicate entries', () => {
             // Insert entry first
-            insertTimesheetEntry({
-                ...testEntry,
-                timeOut: 780 // 1:00 PM
-            });
+            insertTimesheetEntry(testEntry);
             
             const isDuplicate = checkDuplicateEntry(testEntry);
             expect(isDuplicate).toBe(true);
@@ -368,9 +361,9 @@ describe('Database Module', () => {
 
         it('should find duplicate entries in database', () => {
             // Insert some duplicate entries
-            const entry1 = { date: '2025-01-20', timeIn: 540, timeOut: 600, project: 'Dup Project', taskDescription: 'Dup Task' };
-            const entry2 = { date: '2025-01-20', timeIn: 540, timeOut: 600, project: 'Dup Project', taskDescription: 'Dup Task' };
-            const entry3 = { date: '2025-01-21', timeIn: 540, timeOut: 600, project: 'Dup Project', taskDescription: 'Dup Task' };
+            const entry1 = { date: '2025-01-20', hours: 1.0, project: 'Dup Project', taskDescription: 'Dup Task' };
+            const entry2 = { date: '2025-01-20', hours: 1.0, project: 'Dup Project', taskDescription: 'Dup Task' };
+            const entry3 = { date: '2025-01-21', hours: 1.0, project: 'Dup Project', taskDescription: 'Dup Task' };
             
             // Insert entries (second one will be ignored due to duplicate)
             insertTimesheetEntry(entry1);
@@ -391,22 +384,19 @@ describe('Database Module', () => {
         const sampleEntries = [
             {
                 date: '2025-01-15',
-                timeIn: 540,
-                timeOut: 600,
+                hours: 1.0,
                 project: 'Batch Project 1',
                 taskDescription: 'Batch Task 1'
             },
             {
                 date: '2025-01-15',
-                timeIn: 600,
-                timeOut: 660,
+                hours: 1.0,
                 project: 'Batch Project 2',
                 taskDescription: 'Batch Task 2'
             },
             {
                 date: '2025-01-16',
-                timeIn: 540,
-                timeOut: 600,
+                hours: 1.0,
                 project: 'Batch Project 3',
                 taskDescription: 'Batch Task 3'
             }
@@ -431,8 +421,7 @@ describe('Database Module', () => {
                 ...sampleEntries, // These will be duplicates
                 {
                     date: '2025-01-17',
-                    timeIn: 540,
-                    timeOut: 600,
+                    hours: 1.0,
                     project: 'New Project',
                     taskDescription: 'New Task'
                 }
@@ -462,15 +451,13 @@ describe('Database Module', () => {
             const invalidEntries = [
                 {
                     date: '2025-01-15',
-                    timeIn: 540,
-                    timeOut: 600,
+                    hours: 1.0,
                     project: 'Valid Project',
                     taskDescription: 'Valid Task'
                 },
                 {
                     date: '2025-01-15',
-                    timeIn: 541, // Invalid: not divisible by 15
-                    timeOut: 600,
+                    hours: 0.1, // Invalid: not 15-minute increment
                     project: 'Invalid Project',
                     taskDescription: 'Invalid Task'
                 }
@@ -503,8 +490,7 @@ describe('Database Module', () => {
         it('should handle malformed entry data', () => {
             const invalidEntry = {
                 date: 'invalid-date',
-                timeIn: -1,
-                timeOut: 25 * 60, // 25 hours
+                hours: -1, // Invalid: negative hours
                 project: '',
                 taskDescription: ''
             };
@@ -513,9 +499,9 @@ describe('Database Module', () => {
             const db = openDb();
             expect(() => {
                 db.prepare(`
-                    INSERT INTO timesheet (date, time_in, time_out, project, task_description)
-                    VALUES (?, ?, ?, ?, ?)
-                `).run(invalidEntry.date, invalidEntry.timeIn, invalidEntry.timeOut, 
+                    INSERT INTO timesheet (date, hours, project, task_description)
+                    VALUES (?, ?, ?, ?)
+                `).run(invalidEntry.date, invalidEntry.hours, 
                        invalidEntry.project, invalidEntry.taskDescription);
             }).toThrow();
             db.close();
@@ -524,8 +510,7 @@ describe('Database Module', () => {
         it('should handle null and undefined values in optional fields', () => {
             const entryWithNulls = {
                 date: '2025-01-15',
-                timeIn: 540,
-                timeOut: 600,
+                hours: 1.0,
                 project: 'Test Project',
                 tool: null,
                 detailChargeCode: null,
@@ -542,8 +527,7 @@ describe('Database Module', () => {
             // Insert test data
             const testEntry = {
                 date: '2025-01-15',
-                timeIn: 540,
-                timeOut: 600,
+                hours: 1.0,
                 project: 'Concurrent Test',
                 taskDescription: 'Test task'
             };
@@ -572,8 +556,7 @@ describe('Database Module', () => {
             for (let i = 0; i < 5; i++) {
                 entries.push({
                     date: '2025-01-15',
-                    timeIn: 540 + (i * 60),
-                    timeOut: 600 + (i * 60),
+                    hours: 1.0 + (i * 0.25),
                     project: `Concurrent Project ${i}`,
                     taskDescription: `Task ${i}`
                 });
@@ -598,8 +581,7 @@ describe('Database Module', () => {
         it('should maintain data consistency under concurrent operations', () => {
             const entry = {
                 date: '2025-01-15',
-                timeIn: 540,
-                timeOut: 600,
+                hours: 1.0,
                 project: 'Consistency Test',
                 taskDescription: 'Test'
             };
@@ -619,22 +601,19 @@ describe('Database Module', () => {
             const entries = [
                 {
                     date: '2025-01-15',
-                    timeIn: 540,
-                    timeOut: 600,
+                    hours: 1.0,
                     project: 'Valid Project 1',
                     taskDescription: 'Valid Task 1'
                 },
                 {
                     date: '2025-01-15',
-                    timeIn: 600,
-                    timeOut: 540, // Invalid: time_out must be > time_in
+                    hours: 0.1, // Invalid: not 15-minute increment
                     project: 'Invalid Project',
                     taskDescription: 'Invalid Task'
                 },
                 {
                     date: '2025-01-15',
-                    timeIn: 660,
-                    timeOut: 720,
+                    hours: 1.0,
                     project: 'Valid Project 2',
                     taskDescription: 'Valid Task 2'
                 }
@@ -661,15 +640,13 @@ describe('Database Module', () => {
             const validEntries = [
                 {
                     date: '2025-01-15',
-                    timeIn: 540,
-                    timeOut: 600,
+                    hours: 1.0,
                     project: 'Batch Test 1',
                     taskDescription: 'Task 1'
                 },
                 {
                     date: '2025-01-15',
-                    timeIn: 600,
-                    timeOut: 660,
+                    hours: 1.0,
                     project: 'Batch Test 2',
                     taskDescription: 'Task 2'
                 }
@@ -736,8 +713,7 @@ describe('Database Module', () => {
             // Try to violate UNIQUE constraint
             const validEntry = {
                 date: '2025-01-15',
-                timeIn: 540,
-                timeOut: 600,
+                hours: 1.0,
                 project: 'Constraint Test',
                 taskDescription: 'Test'
             };
@@ -777,8 +753,7 @@ describe('Database Module', () => {
             // Insert test data
             const testEntry = {
                 date: '2025-01-15',
-                timeIn: 540,
-                timeOut: 600,
+                hours: 1.0,
                 project: 'Migration Test',
                 taskDescription: 'Test'
             };
@@ -798,15 +773,13 @@ describe('Database Module', () => {
             const entries = [
                 {
                     date: '2025-01-15',
-                    timeIn: 540,
-                    timeOut: 600,
+                    hours: 1.0,
                     project: 'Test 1',
                     taskDescription: 'Task 1'
                 },
                 {
                     date: '2025-01-16',
-                    timeIn: 540,
-                    timeOut: 600,
+                    hours: 1.0,
                     project: 'Test 2',
                     taskDescription: 'Task 2'
                 }

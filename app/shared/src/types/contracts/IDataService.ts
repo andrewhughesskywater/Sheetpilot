@@ -13,12 +13,14 @@ import type { IPlugin } from "@sheetpilot/shared/plugin-types";
 
 /**
  * Timesheet entry data structure
+ * 
+ * Hours format: Decimal values in 15-minute increments (0.25 = 15 min, 0.5 = 30 min, etc.)
+ * Range: 0.25 to 24.0 hours
  */
 export interface TimesheetEntry {
   id?: number;
   date: string;
-  timeIn: string;
-  timeOut: string;
+  hours: number;
   project: string;
   tool?: string | null;
   chargeCode?: string | null;
@@ -27,13 +29,15 @@ export interface TimesheetEntry {
 
 /**
  * Database timesheet entry (as stored in database)
+ * 
+ * Hours is stored as a direct REAL field (not computed)
+ * Hours format: Decimal values in 15-minute increments (0.25 = 15 min, 0.5 = 30 min, etc.)
+ * Range: 0.25 to 24.0 hours
  */
 export interface DbTimesheetEntry {
   id: number;
   date: string;
-  time_in: number;
-  time_out: number;
-  hours: number;
+  hours: number | null;
   project: string;
   tool?: string | null;
   detail_charge_code?: string | null;

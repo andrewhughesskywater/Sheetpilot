@@ -199,7 +199,7 @@ describe('SmartDate Utility', () => {
       expect(result).toBe(dateStr);
     });
 
-    it('should increment date when timeOut is after 7 PM', () => {
+    it('should handle date increment logic (deprecated - hours field)', () => {
       const today = new Date();
       const yesterday = new Date(today);
       yesterday.setDate(today.getDate() - 1);
@@ -207,7 +207,7 @@ describe('SmartDate Utility', () => {
       
       const previousRow: TimesheetRow = {
         date: dateStr,
-        timeOut: '19:00'
+        hours: 8.0
       };
       const result = getSmartPlaceholder(previousRow, [], false);
       expect(result).toBeTruthy();

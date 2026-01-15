@@ -48,8 +48,7 @@ describe('MockSubmissionService', () => {
     const createEntry = (id: number): TimesheetEntry => ({
       id,
       date: '2025-01-15',
-      timeIn: '08:00',
-      timeOut: '17:00',
+      hours: 8.0,
       project: 'Test Project',
       taskDescription: 'Test Task'
     });
@@ -137,8 +136,7 @@ describe('MockSubmissionService', () => {
     it('should validate complete entry', () => {
       const entry: TimesheetEntry = {
         date: '2025-01-15',
-        timeIn: '08:00',
-        timeOut: '17:00',
+        hours: 8.0,
         project: 'Test Project',
         taskDescription: 'Test Task'
       };
@@ -155,38 +153,35 @@ describe('MockSubmissionService', () => {
       expect(result.valid).toBe(false);
       expect(result.errors.length).toBeGreaterThan(0);
       expect(result.errors).toContain('Date is required');
-      expect(result.errors).toContain('Start time is required');
-      expect(result.errors).toContain('End time is required');
+      expect(result.errors).toContain('Hours is required');
       expect(result.errors).toContain('Project is required');
       expect(result.errors).toContain('Task description is required');
     });
 
     it('should detect missing date', () => {
-      const entry: TimesheetEntry = {
+      const entry: Partial<TimesheetEntry> = {
         date: '',
-        timeIn: '08:00',
-        timeOut: '17:00',
+        hours: 8.0,
         project: 'Test Project',
         taskDescription: 'Test Task'
       };
 
-      const result = service.validateEntry(entry);
+      const result = service.validateEntry(entry as TimesheetEntry);
       expect(result.valid).toBe(false);
       expect(result.errors).toContain('Date is required');
     });
 
-    it('should detect missing timeIn', () => {
-      const entry: TimesheetEntry = {
+    it('should detect missing hours', () => {
+      const entry: Partial<TimesheetEntry> = {
         date: '2025-01-15',
-        timeIn: '',
-        timeOut: '17:00',
+        hours: undefined,
         project: 'Test Project',
         taskDescription: 'Test Task'
       };
 
-      const result = service.validateEntry(entry);
+      const result = service.validateEntry(entry as TimesheetEntry);
       expect(result.valid).toBe(false);
-      expect(result.errors).toContain('Start time is required');
+      expect(result.errors).toContain('Hours is required');
     });
   });
 

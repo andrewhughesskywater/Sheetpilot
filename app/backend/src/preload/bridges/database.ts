@@ -1,4 +1,4 @@
-import { ipcRenderer } from 'electron';
+import { ipcRenderer } from "electron";
 
 export const databaseBridge = {
   getAllTimesheetEntries: (
@@ -8,9 +8,7 @@ export const databaseBridge = {
     entries?: Array<{
       id: number;
       date: string;
-      time_in: number;
-      time_out: number;
-      hours: number;
+      hours: number | null;
       project: string;
       tool?: string;
       detail_charge_code?: string;
@@ -19,7 +17,7 @@ export const databaseBridge = {
       submitted_at?: string;
     }>;
     error?: string;
-  }> => ipcRenderer.invoke('database:getAllTimesheetEntries', token),
+  }> => ipcRenderer.invoke("database:getAllTimesheetEntries", token),
   getAllArchiveData: (
     token: string
   ): Promise<{
@@ -27,9 +25,7 @@ export const databaseBridge = {
     timesheet?: Array<{
       id: number;
       date: string;
-      time_in: number;
-      time_out: number;
-      hours: number;
+      hours: number | null;
       project: string;
       tool?: string;
       detail_charge_code?: string;
@@ -37,9 +33,13 @@ export const databaseBridge = {
       status?: string;
       submitted_at?: string;
     }>;
-    credentials?: Array<{ id: number; service: string; email: string; created_at: string; updated_at: string }>;
+    credentials?: Array<{
+      id: number;
+      service: string;
+      email: string;
+      created_at: string;
+      updated_at: string;
+    }>;
     error?: string;
-  }> => ipcRenderer.invoke('database:getAllArchiveData', token)
+  }> => ipcRenderer.invoke("database:getAllArchiveData", token),
 };
-
-

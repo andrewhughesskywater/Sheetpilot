@@ -113,12 +113,8 @@ export class MockSubmissionService implements ISubmissionService {
       errors.push('Date is required');
     }
     
-    if (!entry.timeIn) {
-      errors.push('Start time is required');
-    }
-    
-    if (!entry.timeOut) {
-      errors.push('End time is required');
+    if (entry.hours === undefined || entry.hours === null) {
+      errors.push('Hours is required');
     }
     
     if (!entry.project) {

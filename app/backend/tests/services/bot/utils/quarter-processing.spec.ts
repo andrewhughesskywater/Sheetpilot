@@ -52,8 +52,7 @@ describe('quarter-processing', () => {
     const createEntry = (id: number, date: string): TimesheetEntry => ({
       id,
       date,
-      timeIn: '08:00',
-      timeOut: '17:00',
+      hours: 8.0,
       project: 'Test Project',
       taskDescription: 'Test Task'
     });

@@ -229,8 +229,7 @@ export function createApplyMacro(
     if (!sourceData[targetRow]) {
       sourceData[targetRow] = {
         date: "",
-        timeIn: "",
-        timeOut: "",
+        hours: undefined,
         project: "",
         tool: null,
         chargeCode: null,

@@ -39,8 +39,7 @@ describe('Data Flow Integration', () => {
     it('should save and load data successfully', async () => {
       const testData = {
         date: '01/15/2025',
-        timeIn: '09:00',
-        timeOut: '17:00',
+        hours: 8.0,
         project: 'Test Project',
         taskDescription: 'Test task'
       };
@@ -69,13 +68,12 @@ describe('Data Flow Integration', () => {
     it('should validate before saving', () => {
       const data = {
         date: '',
-        timeIn: '09:00',
-        timeOut: '17:00',
+        hours: 8.0,
         project: 'Test',
         taskDescription: 'Task'
       };
 
-      const isValid = !!(data.date && data.timeIn && data.timeOut && data.project && data.taskDescription);
+      const isValid = !!(data.date && data.hours && data.project && data.taskDescription);
 
       expect(isValid).toBe(false); // Missing date
     });

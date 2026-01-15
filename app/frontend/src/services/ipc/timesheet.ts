@@ -44,8 +44,7 @@ export async function saveDraft(row: TimesheetRow): Promise<{ success: boolean; 
   const payload: {
     id?: number;
     date?: string;
-    timeIn?: string;
-    timeOut?: string;
+    hours?: number;
     project?: string;
     tool?: string | null;
     chargeCode?: string | null;
@@ -54,8 +53,7 @@ export async function saveDraft(row: TimesheetRow): Promise<{ success: boolean; 
 
   if (row.id !== undefined) payload.id = row.id;
   if (row.date) payload.date = row.date;
-  if (row.timeIn) payload.timeIn = row.timeIn;
-  if (row.timeOut) payload.timeOut = row.timeOut;
+  if (row.hours !== undefined && row.hours !== null) payload.hours = row.hours;
   if (row.project) payload.project = row.project;
   if (row.tool !== undefined) payload.tool = row.tool ?? null;
   if (row.chargeCode !== undefined) payload.chargeCode = row.chargeCode ?? null;

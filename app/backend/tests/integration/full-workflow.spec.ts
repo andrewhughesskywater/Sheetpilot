@@ -79,8 +79,7 @@ describe('Full Workflow Integration', () => {
       // Step 4: Enter timesheet data
       const entry = {
         date: '2025-01-15',
-        timeIn: 540,
-        timeOut: 1020,
+        hours: 8.0,
         project: 'Test Project',
         tool: 'Test Tool',
         detailChargeCode: 'EPR1',
@@ -107,8 +106,7 @@ describe('Full Workflow Integration', () => {
       const token1 = createSession('user@test.com', false);
       insertTimesheetEntry({
         date: '2025-01-15',
-        timeIn: 540,
-        timeOut: 1020,
+        hours: 8.0,
         project: 'Session Test',
         taskDescription: 'Task'
       });
@@ -196,8 +194,7 @@ describe('Full Workflow Integration', () => {
     it('should not leak data between operations', () => {
       insertTimesheetEntry({
         date: '2025-01-15',
-        timeIn: 540,
-        timeOut: 600,
+        hours: 1.0,
         project: 'Private Data',
         taskDescription: 'Sensitive task'
       });

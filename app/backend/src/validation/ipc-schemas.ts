@@ -144,23 +144,20 @@ export const getCurrentSessionSchema = z.object({
  */
 export const saveDraftSchema = z.object({
   id: z.number().int().positive().nullable().optional(),
-  date: dateSchema,
-  timeIn: timeSchema,
-  timeOut: timeSchema,
-  project: projectNameSchema,
+  date: dateSchema.optional(),
+  hours: z.number()
+    .min(0.25, 'Hours must be at least 0.25')
+    .max(24.0, 'Hours must not exceed 24.0')
+    .refine((val) => {
+      // Validate 15-minute increments (multiples of 0.25)
+      const remainder = (val * 4) % 1;
+      return Math.abs(remainder) < 0.0001 || Math.abs(remainder - 1) < 0.0001;
+    }, 'Hours must be in 15-minute increments (0.25, 0.5, 0.75, etc.)')
+    .optional(),
+  project: projectNameSchema.optional(),
   tool: z.string().max(500).nullable().optional(),
   chargeCode: z.string().max(100).nullable().optional(),
-  taskDescription: taskDescriptionSchema
-}).refine((data) => {
-  // Validate timeOut > timeIn
-  const parseTime = (time: string) => {
-    const [hours, minutes] = time.split(':').map(Number);
-    return (hours || 0) * 60 + (minutes || 0);
-  };
-  return parseTime(data.timeOut) > parseTime(data.timeIn);
-}, {
-  message: 'Time Out must be after Time In',
-  path: ['timeOut']
+  taskDescription: taskDescriptionSchema.optional()
 });
 
 /**

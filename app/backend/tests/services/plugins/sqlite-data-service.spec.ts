@@ -81,8 +81,7 @@ describe('SQLiteDataService', () => {
     it('should save new draft entry', async () => {
       const entry: TimesheetEntry = {
         date: '2025-01-15',
-        timeIn: '08:00',
-        timeOut: '17:00',
+        hours: 8.0,
         project: 'Test Project',
         taskDescription: 'Test Task'
       };
@@ -96,8 +95,7 @@ describe('SQLiteDataService', () => {
     it('should update existing draft entry', async () => {
       const entry: TimesheetEntry = {
         date: '2025-01-15',
-        timeIn: '08:00',
-        timeOut: '17:00',
+        hours: 8.0,
         project: 'Test Project',
         taskDescription: 'Test Task'
       };
@@ -122,8 +120,7 @@ describe('SQLiteDataService', () => {
 
     it('should return error when date is missing', async () => {
       const entry: Partial<TimesheetEntry> = {
-        timeIn: '08:00',
-        timeOut: '17:00',
+        hours: 8.0,
         project: 'Test Project',
         taskDescription: 'Test Task'
       };
@@ -136,8 +133,7 @@ describe('SQLiteDataService', () => {
     it('should return error when project is missing', async () => {
       const entry: Partial<TimesheetEntry> = {
         date: '2025-01-15',
-        timeIn: '08:00',
-        timeOut: '17:00',
+        hours: 8.0,
         taskDescription: 'Test Task'
       };
 
@@ -149,8 +145,7 @@ describe('SQLiteDataService', () => {
     it('should return error when task description is missing', async () => {
       const entry: Partial<TimesheetEntry> = {
         date: '2025-01-15',
-        timeIn: '08:00',
-        timeOut: '17:00',
+        hours: 8.0,
         project: 'Test Project'
       };
 
@@ -159,67 +154,49 @@ describe('SQLiteDataService', () => {
       expect(result.error).toBe('Task description is required');
     });
 
-    it('should return error when times are not in 15-minute increments', async () => {
+    it('should return error when hours are not in 15-minute increments', async () => {
       const entry: TimesheetEntry = {
         date: '2025-01-15',
-        timeIn: '08:07',
-        timeOut: '17:00',
+        hours: 0.1,
         project: 'Test Project',
         taskDescription: 'Test Task'
       };
 
       const result = await service.saveDraft(entry);
       expect(result.success).toBe(false);
-      expect(result.error).toBe('Times must be in 15-minute increments');
+      expect(result.error).toContain('15-minute increments');
     });
 
-    it('should return error when timeOut is not in 15-minute increments', async () => {
+    it('should return error when hours are below minimum', async () => {
       const entry: TimesheetEntry = {
         date: '2025-01-15',
-        timeIn: '08:00',
-        timeOut: '17:07',
+        hours: 0.15,
         project: 'Test Project',
         taskDescription: 'Test Task'
       };
 
       const result = await service.saveDraft(entry);
       expect(result.success).toBe(false);
-      expect(result.error).toBe('Times must be in 15-minute increments');
+      expect(result.error).toContain('between 0.25 and 24.0');
     });
 
-    it('should return error when time out is not after time in', async () => {
+    it('should return error when hours exceed maximum', async () => {
       const entry: TimesheetEntry = {
         date: '2025-01-15',
-        timeIn: '17:00',
-        timeOut: '08:00',
+        hours: 25.0,
         project: 'Test Project',
         taskDescription: 'Test Task'
       };
 
       const result = await service.saveDraft(entry);
       expect(result.success).toBe(false);
-      expect(result.error).toBe('Time Out must be after Time In');
-    });
-
-    it('should return error when time out equals time in', async () => {
-      const entry: TimesheetEntry = {
-        date: '2025-01-15',
-        timeIn: '08:00',
-        timeOut: '08:00',
-        project: 'Test Project',
-        taskDescription: 'Test Task'
-      };
-
-      const result = await service.saveDraft(entry);
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('Time Out must be after Time In');
+      expect(result.error).toContain('between 0.25 and 24.0');
     });
 
     it('should handle database errors gracefully', async () => {
       const entry: TimesheetEntry = {
         date: '2025-01-15',
-        timeIn: '08:00',
-        timeOut: '17:00',
+        hours: 8.0,
         project: 'Test Project',
         taskDescription: 'Test Task'
       };
@@ -236,8 +213,7 @@ describe('SQLiteDataService', () => {
       const entry: TimesheetEntry = {
         id: null as unknown as number,
         date: '2025-01-15',
-        timeIn: '08:00',
-        timeOut: '17:00',
+        hours: 8.0,
         project: 'Test Project',
         taskDescription: 'Test Task'
       };
@@ -250,8 +226,7 @@ describe('SQLiteDataService', () => {
     it('should save entry with optional fields (tool and chargeCode)', async () => {
       const entry: TimesheetEntry = {
         date: '2025-01-15',
-        timeIn: '08:00',
-        timeOut: '17:00',
+        hours: 8.0,
         project: 'Test Project',
         taskDescription: 'Test Task',
         tool: 'Test Tool',
@@ -266,8 +241,7 @@ describe('SQLiteDataService', () => {
     it('should handle ON CONFLICT clause for duplicate entries', async () => {
       const entry: TimesheetEntry = {
         date: '2025-01-15',
-        timeIn: '08:00',
-        timeOut: '17:00',
+        hours: 8.0,
         project: 'Test Project',
         taskDescription: 'Test Task'
       };
@@ -275,11 +249,10 @@ describe('SQLiteDataService', () => {
       // Save first entry
       await service.saveDraft(entry);
 
-      // Save duplicate entry (same date, timeIn, project, taskDescription)
+      // Save duplicate entry (same date, project, taskDescription)
       const duplicateEntry: TimesheetEntry = {
         date: '2025-01-15',
-        timeIn: '08:00',
-        timeOut: '18:00', // Different timeOut
+        hours: 10.0, // Different hours
         project: 'Test Project',
         taskDescription: 'Test Task'
       };
@@ -290,11 +263,10 @@ describe('SQLiteDataService', () => {
       expect(result.changes).toBe(1);
     });
 
-    it('should handle error when timeIn is null', async () => {
+    it('should handle error when hours is null', async () => {
       const entry: Partial<TimesheetEntry> = {
         date: '2025-01-15',
-        timeIn: null as unknown as string,
-        timeOut: '17:00',
+        hours: null as unknown as number,
         project: 'Test Project',
         taskDescription: 'Test Task'
       };
@@ -304,37 +276,9 @@ describe('SQLiteDataService', () => {
       expect(result.error).toBeDefined();
     });
 
-    it('should handle error when timeOut is null', async () => {
+    it('should handle error when hours is undefined', async () => {
       const entry: Partial<TimesheetEntry> = {
         date: '2025-01-15',
-        timeIn: '08:00',
-        timeOut: null as unknown as string,
-        project: 'Test Project',
-        taskDescription: 'Test Task'
-      };
-
-      const result = await service.saveDraft(entry as TimesheetEntry);
-      expect(result.success).toBe(false);
-      expect(result.error).toBeDefined();
-    });
-
-    it('should handle error when timeIn is undefined', async () => {
-      const entry: Partial<TimesheetEntry> = {
-        date: '2025-01-15',
-        timeOut: '17:00',
-        project: 'Test Project',
-        taskDescription: 'Test Task'
-      };
-
-      const result = await service.saveDraft(entry as TimesheetEntry);
-      expect(result.success).toBe(false);
-      expect(result.error).toBeDefined();
-    });
-
-    it('should handle error when timeOut is undefined', async () => {
-      const entry: Partial<TimesheetEntry> = {
-        date: '2025-01-15',
-        timeIn: '08:00',
         project: 'Test Project',
         taskDescription: 'Test Task'
       };
@@ -347,8 +291,7 @@ describe('SQLiteDataService', () => {
     it('should update entry with optional fields', async () => {
       const entry: TimesheetEntry = {
         date: '2025-01-15',
-        timeIn: '08:00',
-        timeOut: '17:00',
+        hours: 8.0,
         project: 'Test Project',
         taskDescription: 'Test Task'
       };
@@ -385,8 +328,7 @@ describe('SQLiteDataService', () => {
     it('should return saved entries', async () => {
       const entry: TimesheetEntry = {
         date: '2025-01-15',
-        timeIn: '08:00',
-        timeOut: '17:00',
+        hours: 8.0,
         project: 'Test Project',
         taskDescription: 'Test Task'
       };
@@ -412,8 +354,7 @@ describe('SQLiteDataService', () => {
     it('should return entries with optional fields (tool and chargeCode)', async () => {
       const entry: TimesheetEntry = {
         date: '2025-01-15',
-        timeIn: '08:00',
-        timeOut: '17:00',
+        hours: 8.0,
         project: 'Test Project',
         taskDescription: 'Test Task',
         tool: 'Test Tool',
@@ -434,8 +375,7 @@ describe('SQLiteDataService', () => {
     it('should return entries with null optional fields when not set', async () => {
       const entry: TimesheetEntry = {
         date: '2025-01-15',
-        timeIn: '08:00',
-        timeOut: '17:00',
+        hours: 8.0,
         project: 'Test Project',
         taskDescription: 'Test Task'
       };
@@ -458,8 +398,7 @@ describe('SQLiteDataService', () => {
     it('should delete existing draft entry', async () => {
       const entry: TimesheetEntry = {
         date: '2025-01-15',
-        timeIn: '08:00',
-        timeOut: '17:00',
+        hours: 8.0,
         project: 'Test Project',
         taskDescription: 'Test Task'
       };
@@ -528,8 +467,7 @@ describe('SQLiteDataService', () => {
     it('should return completed timesheet entries', async () => {
       const entry: TimesheetEntry = {
         date: '2025-01-15',
-        timeIn: '08:00',
-        timeOut: '17:00',
+        hours: 8.0,
         project: 'Test Project',
         taskDescription: 'Test Task'
       };
@@ -586,8 +524,7 @@ describe('SQLiteDataService', () => {
       // Create and complete a timesheet entry
       const entry: TimesheetEntry = {
         date: '2025-01-15',
-        timeIn: '08:00',
-        timeOut: '17:00',
+        hours: 8.0,
         project: 'Test Project',
         taskDescription: 'Test Task'
       };
@@ -614,8 +551,7 @@ describe('SQLiteDataService', () => {
     it('should return completed timesheet entries', async () => {
       const entry: TimesheetEntry = {
         date: '2025-01-15',
-        timeIn: '08:00',
-        timeOut: '17:00',
+        hours: 8.0,
         project: 'Test Project',
         taskDescription: 'Test Task'
       };

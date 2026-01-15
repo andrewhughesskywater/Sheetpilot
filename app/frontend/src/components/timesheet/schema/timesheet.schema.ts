@@ -6,7 +6,8 @@
  * 
  * Data format notes:
  * - date: MM/DD/YYYY format (validates both MM/DD/YYYY and YYYY-MM-DD, normalizes to MM/DD/YYYY)
- * - timeIn/timeOut: HH:MM 24-hour format (validates 15-minute increments)
+ * - hours: Decimal values in 15-minute increments (0.25 = 15 min, 0.5 = 30 min, 1.0 = 1 hour, etc.)
+ *   Range: 0.25 to 24.0 hours
  * - tool/chargeCode: null when not applicable based on business rules
  */
 export interface TimesheetRow {
@@ -14,10 +15,8 @@ export interface TimesheetRow {
   id?: number;
   /** Date in MM/DD/YYYY format */
   date?: string;
-  /** Start time in HH:MM format (24-hour, 15-min increments) */
-  timeIn?: string;
-  /** End time in HH:MM format (24-hour, 15-min increments) */
-  timeOut?: string;
+  /** Hours worked as decimal (15-minute increments: 0.25, 0.5, 0.75, 1.0, etc.) */
+  hours?: number;
   /** Project name from PROJECTS config */
   project?: string;
   /** Tool name (null if project doesn't require tools) */
@@ -28,45 +27,6 @@ export interface TimesheetRow {
   taskDescription?: string;
 }
 
-/**
- * Format various time input formats to HH:MM
- * 
- * Accepts flexible time entry formats for better UX:
- * - "8" or "08" → "08:00"
- * - "800" → "08:00"
- * - "1430" → "14:30"
- * - "08:30" → "08:30" (already formatted)
- * 
- * @param timeStr - Time string in various formats
- * @returns Formatted time string in HH:MM format
- */
-export function formatTimeInput(timeStr: unknown): string {
-  if (typeof timeStr !== 'string') return String(timeStr || '');
-  // Remove any non-numeric characters
-  const numericOnly = timeStr.replace(/\D/g, '');
-  
-  // Handle different input formats
-  if (numericOnly.length === 3) {
-    // 800 -> 08:00
-    const hours = numericOnly.substring(0, 1);
-    const minutes = numericOnly.substring(1, 3);
-    return `${hours.padStart(2, '0')}:${minutes}`;
-  } else if (numericOnly.length === 4) {
-    // 1430 -> 14:30
-    const hours = numericOnly.substring(0, 2);
-    const minutes = numericOnly.substring(2, 4);
-    return `${hours}:${minutes}`;
-  } else if (numericOnly.length === 2) {
-    // 08 -> 08:00
-    return `${numericOnly}:00`;
-  } else if (numericOnly.length === 1) {
-    // 8 -> 08:00
-    return `${numericOnly.padStart(2, '0')}:00`;
-  }
-  
-  // Return original if it doesn't match expected patterns
-  return timeStr;
-}
 
 /**
  * Normalize date to MM/DD/YYYY format
@@ -142,95 +102,30 @@ export function isValidDate(dateStr?: string): boolean {
          date.getDate() === day;
 }
 
-export function isValidTime(timeStr?: string): boolean {
-  if (!timeStr) return false;
-  // First try to format the input
-  const formattedTime = formatTimeInput(timeStr);
-  // Check if it matches HH:MM format
-  const timeRegex = /^([01]?[0-9]|2[0-3]):([0-5][0-9])$/;
-  if (!timeRegex.test(formattedTime)) return false;
-  const parts = formattedTime.split(':');
-  if (parts.length !== 2) return false;
-  const [hours, minutes] = parts.map(Number) as [number, number];
-  const totalMinutes = hours * 60 + minutes;
-  // Check if it's a multiple of 15 minutes
-  return totalMinutes % 15 === 0;
-}
-
-export function isTimeOutAfterTimeIn(timeIn?: string, timeOut?: string): boolean {
-  if (!timeIn || !timeOut) return true; // Let other validations handle missing values
-  if (!isValidTime(timeIn) || !isValidTime(timeOut)) return true;
-  const [inHours, inMinutes] = timeIn.split(':').map(Number) as [number, number];
-  const [outHours, outMinutes] = timeOut.split(':').map(Number) as [number, number];
-  const inTotalMinutes = inHours * 60 + inMinutes;
-  const outTotalMinutes = outHours * 60 + outMinutes;
-  return outTotalMinutes > inTotalMinutes;
-}
-
 /**
- * Check if two time ranges overlap (excluding adjacent boundaries)
- * Returns true if the ranges overlap, false otherwise
+ * Check if hours value is valid
+ * 
+ * Validates that hours is:
+ * - A number
+ * - In 15-minute increments (multiple of 0.25)
+ * - Within range: 0.25 to 24.0 hours
+ * 
+ * @param hours - Hours value to validate
+ * @returns true if valid, false otherwise
  */
-export function timeRangesOverlap(
-  timeIn1: string,
-  timeOut1: string,
-  timeIn2: string,
-  timeOut2: string
-): boolean {
-  const [in1Hours, in1Minutes] = timeIn1.split(':').map(Number) as [number, number];
-  const [out1Hours, out1Minutes] = timeOut1.split(':').map(Number) as [number, number];
-  const [in2Hours, in2Minutes] = timeIn2.split(':').map(Number) as [number, number];
-  const [out2Hours, out2Minutes] = timeOut2.split(':').map(Number) as [number, number];
+export function isValidHours(hours?: number | null): boolean {
+  if (hours === undefined || hours === null) return false;
+  if (typeof hours !== 'number' || isNaN(hours)) return false;
   
-  const in1Total = in1Hours * 60 + in1Minutes;
-  const out1Total = out1Hours * 60 + out1Minutes;
-  const in2Total = in2Hours * 60 + in2Minutes;
-  const out2Total = out2Hours * 60 + out2Minutes;
-  
-  // Ranges overlap if: start1 < end2 AND end1 > start2
-  // Using strict inequalities to allow adjacent times (e.g., 12:00-15:00 and 15:00-17:00)
-  return in1Total < out2Total && out1Total > in2Total;
-}
-
-/**
- * Check if a row's time range overlaps with any previous rows on the same date
- * Returns true if there's an overlap, false otherwise
- */
-export function hasTimeOverlapWithPreviousEntries(
-  currentRowIndex: number,
-  rows: TimesheetRow[]
-): boolean {
-  const currentRow = rows[currentRowIndex];
-  if (!currentRow) return false;
-  
-  const { date, timeIn, timeOut } = currentRow;
-  
-  // Skip validation if any required field is missing or invalid
-  if (!date || !timeIn || !timeOut) return false;
-  if (!isValidDate(date) || !isValidTime(timeIn) || !isValidTime(timeOut)) return false;
-  if (!isTimeOutAfterTimeIn(timeIn, timeOut)) return false;
-  
-  // Check all previous rows (first-in rule: earlier rows take precedence)
-  for (let i = 0; i < currentRowIndex; i++) {
-    const previousRow = rows[i];
-    if (!previousRow) continue;
-    
-    const { date: prevDate, timeIn: prevTimeIn, timeOut: prevTimeOut } = previousRow;
-    
-    // Skip if previous row doesn't have complete valid data
-    if (!prevDate || !prevTimeIn || !prevTimeOut) continue;
-    if (!isValidDate(prevDate) || !isValidTime(prevTimeIn) || !isValidTime(prevTimeOut)) continue;
-    if (!isTimeOutAfterTimeIn(prevTimeIn, prevTimeOut)) continue;
-    
-    // Only check for overlaps on the same date
-    if (date === prevDate) {
-      if (timeRangesOverlap(timeIn, timeOut, prevTimeIn, prevTimeOut)) {
-        return true;
-      }
-    }
+  // Check if it's a multiple of 0.25 (15-minute increments)
+  // Use modulo with tolerance for floating point precision
+  const remainder = (hours * 4) % 1;
+  if (Math.abs(remainder) > 0.0001 && Math.abs(remainder - 1) > 0.0001) {
+    return false;
   }
   
-  return false;
+  // Check range: 0.25 to 24.0
+  return hours >= 0.25 && hours <= 24.0;
 }
 
 export function normalizeRowData(row: TimesheetRow, projectNeedsTools: (p?: string) => boolean, toolNeedsChargeCode: (t?: string) => boolean): TimesheetRow {

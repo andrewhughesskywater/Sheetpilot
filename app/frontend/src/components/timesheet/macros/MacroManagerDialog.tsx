@@ -17,7 +17,6 @@ import '@/components/timesheet/TimesheetGrid.css'; // Reuse TimesheetGrid styles
 import type { MacroRow } from '@/utils/macroStorage';
 import { saveMacros, loadMacros } from '@/utils/macroStorage';
 import { PROJECTS, CHARGE_CODES, getToolsForProject, doesToolNeedChargeCode, doesProjectNeedTools } from '@sheetpilot/shared/business-config';
-import { formatTimeInput } from '@/components/timesheet/schema/timesheet.schema';
 import { SpellcheckEditor } from '@/components/timesheet/editors/SpellcheckEditor';
 
 // Register Handsontable modules
@@ -47,8 +46,7 @@ const MacroManagerDialog = ({ open, onClose, onSave }: MacroManagerDialogProps) 
       // Ensure we always have 5 rows
       const filledMacros = Array(5).fill(null).map((_, idx) => loaded[idx] || {
         name: '',
-        timeIn: '',
-        timeOut: '',
+        hours: undefined,
         project: '',
         tool: null,
         chargeCode: null,
@@ -102,10 +100,10 @@ const MacroManagerDialog = ({ open, onClose, onSave }: MacroManagerDialogProps) 
     }
 
     // Column indices based on columnDefinitions below:
-    // 0: Name, 1: Start, 2: End, 3: Project, 4: Tool, 5: Charge Code, 6: Task Desc
+    // 0: Name, 1: Hours, 2: Project, 3: Tool, 4: Charge Code, 5: Task Desc
     
-    // Tool column (4) - dynamic dropdown based on selected project
-    if (col === 4) {
+    // Tool column (3) - dynamic dropdown based on selected project
+    if (col === 3) {
       const project = rowData.project;
       if (!project || !doesProjectNeedTools(project)) {
         return { 
@@ -123,8 +121,8 @@ const MacroManagerDialog = ({ open, onClose, onSave }: MacroManagerDialogProps) 
       };
     }
     
-    // Charge code column (5) - conditional based on selected tool
-    if (col === 5) {
+    // Charge code column (4) - conditional based on selected tool
+    if (col === 4) {
       const tool = rowData.tool;
       if (!tool || !doesToolNeedChargeCode(tool)) {
         return { 
@@ -198,18 +196,11 @@ const MacroManagerDialog = ({ open, onClose, onSave }: MacroManagerDialogProps) 
         }
         hasChanges = true;
       }
-      else if ((field === 'timeIn' || field === 'timeOut') && newVal) {
-        // Format time
-        const formatted = formatTimeInput(String(newVal));
-        if (formatted !== newVal) {
-          next[rowIndex] = { ...next[rowIndex], [field]: formatted };
-          // We need to update the cell directly if we want to show formatted value immediately
-          // But since we update state, the render cycle should handle it via updateData
-          hasChanges = true;
-        } else {
-           next[rowIndex] = { ...next[rowIndex], [field]: newVal };
-           hasChanges = true;
-        }
+      else if (field === 'hours' && newVal !== undefined && newVal !== null && newVal !== '') {
+        // Convert to number if string
+        const hoursValue = typeof newVal === 'number' ? newVal : Number(newVal);
+        next[rowIndex] = { ...next[rowIndex], hours: !isNaN(hoursValue) ? hoursValue : newVal };
+        hasChanges = true;
       }
       else {
         // Standard update
@@ -233,8 +224,7 @@ const MacroManagerDialog = ({ open, onClose, onSave }: MacroManagerDialogProps) 
   // Column definitions
   const columnDefinitions = useMemo(() => [
     { data: 'name', title: 'Macro Name', type: 'text', placeholder: 'Name your macro', className: 'htLeft' },
-    { data: 'timeIn', title: 'Start', type: 'text', placeholder: '0800', className: 'htCenter', width: 60 },
-    { data: 'timeOut', title: 'End', type: 'text', placeholder: '1700', className: 'htCenter', width: 60 },
+    { data: 'hours', title: 'Hours', type: 'numeric', placeholder: '1.25, 1.5, 2.0', className: 'htCenter', width: 80 },
     { data: 'project', 
       title: 'Project', 
       type: 'dropdown', 
@@ -275,8 +265,7 @@ const MacroManagerDialog = ({ open, onClose, onSave }: MacroManagerDialogProps) 
             ref={hotTableRef}
             data={macroData.length > 0 ? macroData : Array(5).fill(null).map(() => ({
               name: '',
-              timeIn: '',
-              timeOut: '',
+              hours: undefined,
               project: '',
               tool: null,
               chargeCode: null,

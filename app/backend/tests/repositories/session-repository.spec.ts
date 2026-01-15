@@ -185,17 +185,24 @@ describe('Session Repository', () => {
     it('should handle malformed session data', () => {
       const db = openDb();
       
-      // Insert malformed session
+      // Insert malformed session with invalid date format
+      // SQLite may accept this, but validation should reject it
       try {
+        // Try to insert with invalid date - SQLite might accept it as text
         db.prepare('INSERT INTO sessions (session_token, email, expires_at, is_admin) VALUES (?, ?, ?, ?)')
-          .run('malformed-token', 'user@test.com', 'invalid-date', 'not-a-number');
+          .run('malformed-token', 'user@test.com', 'invalid-date-string', 0);
       } catch {
-        // Acceptable if constraints prevent this
+        // If insert fails due to constraints, that's fine - session won't exist
       }
       
       db.close();
       
+      // Try to validate - should return false for malformed data
       const validation = validateSession('malformed-token');
+      
+      // If the insert was rejected, session won't exist (valid: false)
+      // If the insert succeeded but data is malformed, validation should still return false
+      // Either way, validation should be false
       expect(validation.valid).toBe(false);
     });
   });

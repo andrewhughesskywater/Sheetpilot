@@ -7,24 +7,66 @@
  */
 
 import type { TimesheetRow } from '@/components/timesheet/schema/timesheet.schema';
-import { isValidDate, isValidTime, isTimeOutAfterTimeIn, hasTimeOverlapWithPreviousEntries } from '@/components/timesheet/schema/timesheet.schema';
+import { isValidDate, isValidHours } from '@/components/timesheet/schema/timesheet.schema';
 import { doesProjectNeedTools, doesToolNeedChargeCode } from '@sheetpilot/shared/business-config';
 import { isDateInAllowedRange } from '@/utils/smartDate';
+
+/**
+ * Calculate total hours for a date from draft rows
+ */
+function calculateDraftHoursForDate(date: string, rows: TimesheetRow[], excludeRowIndex?: number): number {
+  let total = 0;
+  rows.forEach((row, idx) => {
+    if (idx === excludeRowIndex) return; // Exclude the row being edited
+    if (row.date === date && row.hours !== undefined && row.hours !== null) {
+      total += row.hours;
+    }
+  });
+  return total;
+}
+
+/**
+ * Convert date from MM/DD/YYYY to YYYY-MM-DD format for comparison
+ */
+function convertDateToISO(dateStr: string): string {
+  const parts = dateStr.split('/');
+  if (parts.length !== 3) return dateStr;
+  const [month, day, year] = parts;
+  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+}
+
+/**
+ * Calculate total hours for a date from submitted entries
+ */
+function calculateSubmittedHoursForDate(date: string, submittedEntries: Array<{ date: string; hours: number | null }>): number {
+  // Convert date from MM/DD/YYYY to YYYY-MM-DD for comparison
+  const isoDate = convertDateToISO(date);
+  
+  let total = 0;
+  submittedEntries.forEach((entry) => {
+    if (entry.date === isoDate && entry.hours !== undefined && entry.hours !== null) {
+      total += entry.hours;
+    }
+  });
+  return total;
+}
 
 /**
  * Validate a single field value with context-aware rules
  * 
  * @param value - Field value to validate
- * @param row - Row index for context (overlap detection)
+ * @param row - Row index for context
  * @param prop - Field name being validated
- * @param rows - All rows for overlap detection
+ * @param rows - All rows for context
+ * @param submittedEntries - Submitted entries from archive (for per-date total validation)
  * @returns Error message if invalid, null if valid
  */
 export function validateField(
   value: unknown, 
   row: number, 
   prop: string | number, 
-  rows: TimesheetRow[]
+  rows: TimesheetRow[],
+  submittedEntries?: Array<{ date: string; hours: number | null }>
 ): string | null {
   const rowData = rows[row];
   
@@ -36,30 +78,39 @@ export function validateField(
       return null;
     }
       
-    case 'timeIn': {
-      if (!value) return 'Please enter start time';
-      if (!isValidTime(String(value))) return 'Time must be like 09:00, 800, or 1430 and in 15 minute steps';
-      // Check for overlaps after updating the value
-      const updatedRow = { ...rowData, timeIn: String(value) };
-      const updatedRows = [...rows];
-      updatedRows[row] = updatedRow;
-      if (hasTimeOverlapWithPreviousEntries(row, updatedRows)) {
-        return 'The time range you entered overlaps with a previous entry, please adjust your entry accordingly';
+    case 'hours': {
+      if (value === undefined || value === null || value === '') {
+        return 'Hours is required - please enter hours worked';
       }
-      return null;
-    }
       
-    case 'timeOut': {
-      if (!value) return 'Please enter end time';
-      if (!isValidTime(String(value))) return 'Time must be like 17:00, 1700, or 530 and in 15 minute steps';
-      if (!isTimeOutAfterTimeIn(rowData?.timeIn, String(value))) return 'End time must be after start time';
-      // Check for overlaps after updating the value
-      const updatedRow = { ...rowData, timeOut: String(value) };
-      const updatedRows = [...rows];
-      updatedRows[row] = updatedRow;
-      if (hasTimeOverlapWithPreviousEntries(row, updatedRows)) {
-        return 'The time range you entered overlaps with a previous entry, please adjust your entry accordingly';
+      const hoursValue = typeof value === 'number' ? value : Number(value);
+      
+      if (isNaN(hoursValue)) {
+        return 'Hours must be a number (e.g., 1.25, 1.5, 2.0)';
       }
+      
+      if (!isValidHours(hoursValue)) {
+        return 'Hours must be between 0.25 and 24.0 in 15-minute increments (0.25, 0.5, 0.75, etc.)';
+      }
+      
+      // Validate total hours per date (if date and submitted entries are available)
+      if (rowData?.date && submittedEntries) {
+        const date = rowData.date;
+        const currentRowHours = hoursValue;
+        
+        // Calculate draft hours excluding the current row (it's being updated)
+        const draftHoursExcludingCurrent = calculateDraftHoursForDate(date, rows, row);
+        const submittedHours = calculateSubmittedHoursForDate(date, submittedEntries);
+        
+        // Total = draft (excluding current) + submitted + new hours for current row
+        const totalHours = draftHoursExcludingCurrent + submittedHours + currentRowHours;
+        
+        if (totalHours > 24.0) {
+          const draftTotal = draftHoursExcludingCurrent + currentRowHours;
+          return `Total hours for ${date} exceeds 24 hours. Current total: ${totalHours.toFixed(2)} hours (${submittedHours.toFixed(2)} submitted + ${draftTotal.toFixed(2)} draft). Maximum allowed: 24.00 hours.`;
+        }
+      }
+      
       return null;
     }
       
@@ -119,7 +170,7 @@ export function validateTimesheetRows(rows: TimesheetRow[]): { hasErrors: boolea
 
   // Check if there's any real data (non-empty rows)
   const realRows = rows.filter((row) => {
-    return row.date || row.timeIn || row.timeOut || row.project || row.taskDescription;
+    return row.date || row.hours !== undefined || row.project || row.taskDescription;
   });
 
   if (realRows.length === 0) {
@@ -141,19 +192,11 @@ export function validateTimesheetRows(rows: TimesheetRow[]): { hasErrors: boolea
       hasErrors = true;
     }
     
-    if (!row.timeIn) {
-      errorDetails.push(`Row ${rowNum}: Missing start time`);
+    if (row.hours === undefined || row.hours === null) {
+      errorDetails.push(`Row ${rowNum}: Missing hours`);
       hasErrors = true;
-    } else if (!isValidTime(row.timeIn)) {
-      errorDetails.push(`Row ${rowNum}: Invalid start time "${row.timeIn}" (must be HH:MM in 15-min increments)`);
-      hasErrors = true;
-    }
-    
-    if (!row.timeOut) {
-      errorDetails.push(`Row ${rowNum}: Missing end time`);
-      hasErrors = true;
-    } else if (!isValidTime(row.timeOut)) {
-      errorDetails.push(`Row ${rowNum}: Invalid end time "${row.timeOut}" (must be HH:MM in 15-min increments)`);
+    } else if (!isValidHours(row.hours)) {
+      errorDetails.push(`Row ${rowNum}: Invalid hours "${row.hours}" (must be between 0.25 and 24.0 in 15-minute increments)`);
       hasErrors = true;
     }
     
@@ -180,12 +223,9 @@ export function validateTimesheetRows(rows: TimesheetRow[]): { hasErrors: boolea
     }
   });
 
-  // Check for time overlaps
-  rows.forEach((row, idx) => {
-    if (!hasTimeOverlapWithPreviousEntries(idx, rows)) return;
-    errorDetails.push(`Row ${idx + 1}: Time overlap detected on ${row.date}`);
-    hasErrors = true;
-  });
+  // Check for per-date total hours exceeding 24 (if submitted entries provided)
+  // This is handled in validateField for individual field validation
+  // For submission validation, we'd need submitted entries passed in
 
   return { hasErrors, errorDetails };
 }

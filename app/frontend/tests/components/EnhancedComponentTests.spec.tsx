@@ -156,8 +156,7 @@ describe('Enhanced Component Tests', () => {
       const validateRequiredFields = (row: Record<string, unknown>) => {
         const errors: string[] = [];
         if (!row.date) errors.push('Date is required');
-        if (!row.timeIn) errors.push('Start Time is required');
-        if (!row.timeOut) errors.push('End Time is required');
+        if (!row.hours) errors.push('Hours is required');
         if (!row.project) errors.push('Project is required');
         if (!row.taskDescription) errors.push('What You Did is required');
         return errors;
@@ -176,8 +175,7 @@ describe('Enhanced Component Tests', () => {
       // Invalid row with missing fields
       const invalidRow = {
         date: '',
-        timeIn: '09:00',
-        timeOut: '',
+        hours: undefined,
         project: 'Test Project',
         taskDescription: ''
       };

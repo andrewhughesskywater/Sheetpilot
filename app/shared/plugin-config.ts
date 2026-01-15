@@ -36,19 +36,38 @@ const DEFAULT_CONFIG: PluginRegistryConfig = {
  * @param configPath Optional path to config file (for Node.js/Electron main process)
  * @returns Plugin registry configuration
  */
-export function loadPluginConfig(_configPath?: string): PluginRegistryConfig {
+export async function loadPluginConfig(configPath?: string): Promise<PluginRegistryConfig> {
   // In browser/renderer, we can't load files directly
   // Configuration should be passed via IPC or bundled
   if (typeof window !== 'undefined') {
-    return loadConfigFromEnvironment() || DEFAULT_CONFIG;
+    return Promise.resolve(loadConfigFromEnvironment() || DEFAULT_CONFIG);
   }
 
   // In Node.js/Electron main process, try to load from file
-  // Note: File loading is handled separately in Node.js context
-  // This function only uses environment variables and defaults in shared context
+  if (configPath) {
+    try {
+      // Use dynamic ESM imports to support both Node.js and test environments
+      // In test environments, the mocked fs module should be available
+      const fs = await import('fs');
+      const pathModule = await import('path');
+      
+      const resolvedPath = pathModule.resolve(configPath);
+      
+      if (fs.existsSync(resolvedPath)) {
+        const fileContent = fs.readFileSync(resolvedPath, 'utf-8');
+        const parsedConfig = JSON.parse(fileContent) as Partial<PluginRegistryConfig>;
+        console.log('Loaded plugin configuration from file', { path: resolvedPath });
+        return mergeWithDefaults(parsedConfig);
+      }
+    } catch (error) {
+      // If imports fail (e.g., in browser) or file operations fail, fall through to defaults
+      console.error('Error loading plugin config from file', error);
+      // Fall through to environment/defaults
+    }
+  }
 
   // Fall back to environment variables or defaults
-  return loadConfigFromEnvironment() || DEFAULT_CONFIG;
+  return Promise.resolve(loadConfigFromEnvironment() || DEFAULT_CONFIG);
 }
 
 /**

@@ -16,10 +16,9 @@ import { IpcMainInvokeEvent } from 'electron';
 import { ensureSchema } from '../../src/models';
 import { 
   isValidDate, 
-  isValidTime, 
-  isTimeOutAfterTimeIn, 
+  isValidHours, 
   validateField,
-  formatTimeInput 
+  type TimesheetRow
 } from '../../src/logic/timesheet-validation';
 import { 
   projectNeedsTools, 
@@ -284,8 +283,7 @@ describe('Critical Path Smoke Tests', () => {
     it('should validate required fields', () => {
       const mockRows = [{
         date: '01/15/2025',
-        timeIn: '09:00',
-        timeOut: '17:00',
+        hours: 8.0,
         project: 'FL-Carver Techs',
         tool: '#1 Rinse and 2D marker',
         chargeCode: 'EPR1',
@@ -315,8 +313,7 @@ describe('Critical Path Smoke Tests', () => {
         
         const testPayload = {
           date: '01/15/2025',
-          timeIn: '09:00',
-          timeOut: '17:00',
+          hours: 8.0,
           project: 'FL-Carver Techs',
           tool: '#1 Rinse and 2D marker',
           chargeCode: 'EPR1',
@@ -401,7 +398,7 @@ describe('Critical Path Smoke Tests', () => {
       // Test multiple validations (reduced iterations to prevent hanging)
       for (let i = 0; i < 10; i++) {
         isValidDate('01/15/2025');
-        isValidTime('09:00');
+        isValidHours(8.0);
         projectNeedsTools('FL-Carver Techs');
         toolNeedsChargeCode('#1 Rinse and 2D marker');
         getToolOptions('FL-Carver Techs');
@@ -418,10 +415,9 @@ describe('Critical Path Smoke Tests', () => {
   describe('Integration Points', () => {
     it('should have consistent data flow', () => {
       // Test that data flows correctly through the system
-      const testData = {
+      const testData: TimesheetRow = {
         date: '01/15/2025',
-        timeIn: '09:00',
-        timeOut: '17:00',
+        hours: 8.0,
         project: 'FL-Carver Techs',
         tool: '#1 Rinse and 2D marker',
         chargeCode: 'EPR1',
@@ -430,21 +426,9 @@ describe('Critical Path Smoke Tests', () => {
       
       // Validate the data
       expect(isValidDate(testData.date)).toBe(true);
-      expect(isValidTime(testData.timeIn)).toBe(true);
-      expect(isValidTime(testData.timeOut)).toBe(true);
-      expect(isTimeOutAfterTimeIn(testData.timeIn, testData.timeOut)).toBe(true);
+      expect(isValidHours(testData.hours)).toBe(true);
       expect(projectNeedsTools(testData.project)).toBe(true);
       expect(toolNeedsChargeCode(testData.tool)).toBe(true);
-    });
-
-    it('should maintain data integrity', () => {
-      // Test that data transformations maintain integrity
-      const timeFormats = ['900', '1730', '09:00', '17:30'];
-      
-      timeFormats.forEach(time => {
-        const formatted = formatTimeInput(time);
-        expect(formatted).toMatch(/^\d{2}:\d{2}$/);
-      });
     });
   });
 });

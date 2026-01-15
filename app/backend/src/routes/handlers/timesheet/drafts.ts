@@ -3,7 +3,6 @@ import { ipcLogger } from '@sheetpilot/shared/logger';
 import { getDb, resetInProgressTimesheetEntries } from '@/models';
 import { validateInput } from '@/validation/validate-ipc-input';
 import { deleteDraftSchema, saveDraftSchema } from '@/validation/ipc-schemas';
-import { formatMinutesToTime, parseTimeToMinutes } from '@sheetpilot/shared';
 import { isTrustedIpcSender } from './main-window';
 
 export function registerTimesheetDraftHandlers(): void {
@@ -14,8 +13,7 @@ export function registerTimesheetDraftHandlers(): void {
       row: {
         id?: number;
         date?: string;
-        timeIn?: string;
-        timeOut?: string;
+        hours?: number;
         project?: string;
         tool?: string | null;
         chargeCode?: string | null;
@@ -41,31 +39,9 @@ export function registerTimesheetDraftHandlers(): void {
         ipcLogger.verbose('Saving draft timesheet entry (partial data allowed)', {
           id: validatedRow.id,
           date: validatedRow.date,
+          hours: validatedRow.hours,
           project: validatedRow.project
         });
-
-        let timeInMinutes: number | null = null;
-        let timeOutMinutes: number | null = null;
-
-        if (validatedRow.timeIn) {
-          const parsed = parseTimeToMinutes(validatedRow.timeIn);
-          timeInMinutes = parsed;
-          if (parsed % 15 !== 0) {
-            throw new Error('Time In must be in 15-minute increments');
-          }
-        }
-
-        if (validatedRow.timeOut) {
-          const parsed = parseTimeToMinutes(validatedRow.timeOut);
-          timeOutMinutes = parsed;
-          if (parsed % 15 !== 0) {
-            throw new Error('Time Out must be in 15-minute increments');
-          }
-        }
-
-        if (timeInMinutes !== null && timeOutMinutes !== null && timeOutMinutes <= timeInMinutes) {
-          throw new Error('Time Out must be after Time In');
-        }
 
         const db = getDb();
         let result: { changes: number; lastInsertRowid: number | bigint } | undefined;
@@ -74,8 +50,7 @@ export function registerTimesheetDraftHandlers(): void {
           | {
               id: number;
               date: string;
-              time_in: number;
-              time_out: number;
+              hours: number | null;
               project: string;
               tool?: string | null;
               detail_charge_code?: string | null;
@@ -94,13 +69,9 @@ export function registerTimesheetDraftHandlers(): void {
               updateFields.push('date = ?');
               updateValues.push(validatedRow.date);
             }
-            if (timeInMinutes !== null) {
-              updateFields.push('time_in = ?');
-              updateValues.push(timeInMinutes);
-            }
-            if (timeOutMinutes !== null) {
-              updateFields.push('time_out = ?');
-              updateValues.push(timeOutMinutes);
+            if (validatedRow.hours !== undefined && validatedRow.hours !== null) {
+              updateFields.push('hours = ?');
+              updateValues.push(validatedRow.hours);
             }
             if (validatedRow.project !== undefined) {
               updateFields.push('project = ?');
@@ -131,14 +102,13 @@ export function registerTimesheetDraftHandlers(): void {
             ipcLogger.debug('Inserting new timesheet entry (partial data allowed)');
             const insert = db.prepare(`
               INSERT INTO timesheet
-              (date, time_in, time_out, project, tool, detail_charge_code, task_description, status)
-              VALUES (?, ?, ?, ?, ?, ?, ?, NULL)
+              (date, hours, project, tool, detail_charge_code, task_description, status)
+              VALUES (?, ?, ?, ?, ?, ?, NULL)
             `);
 
             result = insert.run(
               validatedRow.date || null,
-              timeInMinutes,
-              timeOutMinutes,
+              validatedRow.hours || null,
               validatedRow.project || null,
               validatedRow.tool || null,
               validatedRow.chargeCode || null,
@@ -153,8 +123,7 @@ export function registerTimesheetDraftHandlers(): void {
             | {
                 id: number;
                 date: string;
-                time_in: number;
-                time_out: number;
+                hours: number | null;
                 project: string;
                 tool?: string | null;
                 detail_charge_code?: string | null;
@@ -186,8 +155,7 @@ export function registerTimesheetDraftHandlers(): void {
             entry: {
               id: savedEntry.id,
               date: savedEntry.date,
-              timeIn: formatMinutesToTime(savedEntry.time_in),
-              timeOut: formatMinutesToTime(savedEntry.time_out),
+              hours: savedEntry.hours ?? 0,
               project: savedEntry.project,
               tool: savedEntry.tool || null,
               chargeCode: savedEntry.detail_charge_code || null,
@@ -278,14 +246,13 @@ export function registerTimesheetDraftHandlers(): void {
       const getPending = db.prepare(`
         SELECT * FROM timesheet 
         WHERE status IS NULL
-        ORDER BY date ASC, time_in ASC
+        ORDER BY date ASC, hours ASC
       `);
 
       const entries = getPending.all() as Array<{
         id: number;
         date: string;
-        time_in: number;
-        time_out: number;
+        hours: number | null;
         project: string;
         tool?: string;
         detail_charge_code?: string;
@@ -295,8 +262,7 @@ export function registerTimesheetDraftHandlers(): void {
       const gridData = entries.map((entry) => ({
         id: entry.id,
         date: entry.date,
-        timeIn: formatMinutesToTime(entry.time_in),
-        timeOut: formatMinutesToTime(entry.time_out),
+        hours: entry.hours ?? undefined,
         project: entry.project,
         tool: entry.tool || null,
         chargeCode: entry.detail_charge_code || null,
@@ -340,8 +306,7 @@ export function registerTimesheetDraftHandlers(): void {
         | {
             id: number;
             date: string;
-            time_in: number;
-            time_out: number;
+            hours: number | null;
             project: string;
             tool?: string | null;
             detail_charge_code?: string | null;
@@ -358,8 +323,7 @@ export function registerTimesheetDraftHandlers(): void {
       const gridEntry = {
         id: entry.id,
         date: entry.date,
-        timeIn: formatMinutesToTime(entry.time_in),
-        timeOut: formatMinutesToTime(entry.time_out),
+        hours: entry.hours ?? undefined,
         project: entry.project,
         tool: entry.tool || null,
         chargeCode: entry.detail_charge_code || null,

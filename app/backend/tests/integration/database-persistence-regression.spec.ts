@@ -73,11 +73,11 @@ describe('Database Persistence Regression Tests', () => {
         it('should reproduce the original bug scenario and verify fix', () => {
             // SETUP: User creates a full week of timesheet entries
             const weekEntries = [
-                { date: '2025-01-13', timeIn: 540, timeOut: 1020, project: 'Project A', taskDescription: 'Monday work' },
-                { date: '2025-01-14', timeIn: 540, timeOut: 1020, project: 'Project A', taskDescription: 'Tuesday work' },
-                { date: '2025-01-15', timeIn: 540, timeOut: 1020, project: 'Project B', taskDescription: 'Wednesday work' },
-                { date: '2025-01-16', timeIn: 540, timeOut: 1020, project: 'Project A', taskDescription: 'Thursday work' },
-                { date: '2025-01-17', timeIn: 540, timeOut: 1020, project: 'Project C', taskDescription: 'Friday work' }
+                { date: '2025-01-13', hours: 8.0, project: 'Project A', taskDescription: 'Monday work' },
+                { date: '2025-01-14', hours: 8.0, project: 'Project A', taskDescription: 'Tuesday work' },
+                { date: '2025-01-15', hours: 8.0, project: 'Project B', taskDescription: 'Wednesday work' },
+                { date: '2025-01-16', hours: 8.0, project: 'Project A', taskDescription: 'Thursday work' },
+                { date: '2025-01-17', hours: 8.0, project: 'Project C', taskDescription: 'Friday work' }
             ];
 
             weekEntries.forEach(entry => {
@@ -141,16 +141,14 @@ describe('Database Persistence Regression Tests', () => {
             // Insert 3 entries
             insertTimesheetEntry({
                 date: '2025-01-15',
-                timeIn: 540,
-                timeOut: 600,
+                hours: 1.0,
                 project: 'TestProject',
                 taskDescription: 'Task 1'
             });
 
             insertTimesheetEntry({
                 date: '2025-01-15',
-                timeIn: 600,
-                timeOut: 660,
+                hours: 1.0,
                 project: 'TestProject',
                 taskDescription: 'Task 2'
             });
@@ -182,8 +180,7 @@ describe('Database Persistence Regression Tests', () => {
             // Insert test entry
             insertTimesheetEntry({
                 date: '2025-01-15',
-                timeIn: 540,
-                timeOut: 600,
+                hours: 1.0,
                 project: 'WALTest',
                 taskDescription: 'Test WAL checkpoint'
             });
@@ -209,8 +206,7 @@ describe('Database Persistence Regression Tests', () => {
             // Insert entry
             insertTimesheetEntry({
                 date: '2025-01-15',
-                timeIn: 540,
-                timeOut: 600,
+                hours: 1.0,
                 project: 'PersistenceTest',
                 taskDescription: 'Test persistence'
             });
@@ -241,8 +237,7 @@ describe('Database Persistence Regression Tests', () => {
             // Insert and submit
             insertTimesheetEntry({
                 date: '2025-01-15',
-                timeIn: 540,
-                timeOut: 600,
+                hours: 1.0,
                 project: 'TestProject',
                 taskDescription: 'Test task'
             });
@@ -291,8 +286,7 @@ describe('Database Persistence Regression Tests', () => {
             // Insert entries
             insertTimesheetEntry({
                 date: '2025-01-15',
-                timeIn: 540,
-                timeOut: 600,
+                hours: 1.0,
                 project: 'ConcurrentTest',
                 taskDescription: 'Test 1'
             });
@@ -320,8 +314,7 @@ describe('Database Persistence Regression Tests', () => {
             for (let i = 0; i < 5; i++) {
                 insertTimesheetEntry({
                     date: '2025-01-15',
-                    timeIn: 540 + (i * 60),
-                    timeOut: 600 + (i * 60),
+                    hours: 1.0 + (i * 0.25),
                     project: 'AtomicTest',
                     taskDescription: `Task ${i}`
                 });
@@ -356,8 +349,7 @@ describe('Database Persistence Regression Tests', () => {
             // Insert entry
             insertTimesheetEntry({
                 date: '2025-01-15',
-                timeIn: 540,
-                timeOut: 600,
+                hours: 1.0,
                 project: 'NoDeleteTest',
                 taskDescription: 'Test task'
             });
@@ -395,8 +387,7 @@ describe('Database Persistence Regression Tests', () => {
             // Insert detailed entry
             const originalEntry = {
                 date: '2025-01-15',
-                timeIn: 540,
-                timeOut: 660,
+                hours: 2.0,
                 project: 'DataIntegrityTest',
                 tool: 'VS Code',
                 detailChargeCode: 'DEV-001',
@@ -416,8 +407,7 @@ describe('Database Persistence Regression Tests', () => {
             const submittedEntry = db.prepare('SELECT * FROM timesheet WHERE id = ?').get(entryId);
 
             expect((submittedEntry as { date?: string }).date).toBe(originalEntry.date);
-            expect((submittedEntry as { time_in?: number }).time_in).toBe(originalEntry.timeIn);
-            expect((submittedEntry as { time_out?: number }).time_out).toBe(originalEntry.timeOut);
+            expect((submittedEntry as { hours?: number | null }).hours).toBe(originalEntry.hours);
             expect((submittedEntry as { project?: string }).project).toBe(originalEntry.project);
             expect((submittedEntry as { tool?: string | null }).tool).toBe(originalEntry.tool);
             expect((submittedEntry as { detail_charge_code?: string | null }).detail_charge_code).toBe(originalEntry.detailChargeCode);
@@ -447,8 +437,7 @@ describe('Database Persistence Regression Tests', () => {
             for (let i = 0; i < 100; i++) {
                 insertTimesheetEntry({
                     date: '2025-01-15',
-                    timeIn: 540,
-                    timeOut: 600,
+                    hours: 1.0,
                     project: `Project ${i}`,
                     taskDescription: `Task ${i}`
                 });
@@ -473,8 +462,7 @@ describe('Database Persistence Regression Tests', () => {
             // Insert and mark
             insertTimesheetEntry({
                 date: '2025-01-15',
-                timeIn: 540,
-                timeOut: 600,
+                hours: 1.0,
                 project: 'ReopenTest',
                 taskDescription: 'Test'
             });

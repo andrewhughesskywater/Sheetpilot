@@ -27,8 +27,7 @@ const MACRO_COUNT = 5;
  */
 export interface MacroRow {
   name?: string;
-  timeIn?: string;
-  timeOut?: string;
+  hours?: number;
   project?: string;
   tool?: string | null;
   chargeCode?: string | null;
@@ -41,8 +40,7 @@ export interface MacroRow {
 function createEmptyMacro(): MacroRow {
   return {
     name: '',
-    timeIn: '',
-    timeOut: '',
+    hours: undefined,
     project: '',
     tool: null,
     chargeCode: null,
@@ -113,8 +111,7 @@ export function saveMacros(macros: MacroRow[]): void {
  * Check if a macro row has any data
  */
 export function isMacroEmpty(macro: MacroRow): boolean {
-  return !macro.timeIn && 
-         !macro.timeOut && 
+  return macro.hours === undefined && 
          !macro.project && 
          !macro.tool && 
          !macro.chargeCode && 

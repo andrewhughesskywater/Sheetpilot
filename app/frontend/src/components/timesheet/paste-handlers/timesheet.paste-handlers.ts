@@ -22,16 +22,16 @@ export function applyPastedToolAndChargeCode(
   
   data.forEach((row, i) => {
     const targetRow = startRow + i;
-    if (targetRow < 0 || row.length < 7) return;
+    if (targetRow < 0 || row.length < 6) return;
     
-    const [_date, _timeIn, _timeOut, _project, tool, chargeCode, _taskDescription] = row;
+    const [_date, _hours, _project, tool, chargeCode, _taskDescription] = row;
     
     /**
      * WHY: Temporarily relax validation to allow pasting Tool values that aren't
      * in current project's dropdown. Without this, strict validation blocks the paste.
      * Validation gets re-enabled after 10ms to restore normal behavior.
      */
-    if (startCol <= 4 && tool !== undefined && tool !== null && tool !== '') {
+    if (startCol <= 3 && tool !== undefined && tool !== null && tool !== '') {
       if (typeof toolCol === 'number' && toolCol >= 0) {
         hotInstance.setCellMeta(targetRow, toolCol, 'allowInvalid', true);
         hotInstance.setCellMeta(targetRow, toolCol, 'strict', false);
@@ -43,7 +43,7 @@ export function applyPastedToolAndChargeCode(
       }
     }
     
-    if (startCol <= 5 && chargeCode !== undefined && chargeCode !== null && chargeCode !== '') {
+    if (startCol <= 4 && chargeCode !== undefined && chargeCode !== null && chargeCode !== '') {
       if (typeof chargeCodeCol === 'number' && chargeCodeCol >= 0) {
         hotInstance.setCellMeta(targetRow, chargeCodeCol, 'allowInvalid', true);
         hotInstance.setCellMeta(targetRow, chargeCodeCol, 'strict', false);
@@ -114,8 +114,7 @@ export function savePastedRows(
     if (!normalizedRow) return;
     
     // Check if row is complete (has all required fields)
-    // Note: We save even if there's overlap - validation will show errors but data is persisted
-    if (normalizedRow.date && normalizedRow.timeIn && normalizedRow.timeOut && 
+    if (normalizedRow.date && normalizedRow.hours !== undefined && normalizedRow.hours !== null && 
         normalizedRow.project && normalizedRow.taskDescription) {
       // Clear any existing debounce timer for this row
       const existingTimer = saveTimersRef.current.get(rowIdx);

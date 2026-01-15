@@ -18,8 +18,7 @@ import { validateQuarterAvailability } from '@sheetpilot/bot';
 export interface TimesheetRow {
   id?: number;
   date?: string;
-  timeIn?: string;
-  timeOut?: string;
+  hours?: number;
   project?: string;
   tool?: string | null;
   chargeCode?: string | null;
@@ -65,122 +64,29 @@ export function isValidDate(dateStr?: string): boolean {
 }
 
 /**
- * Format numeric time input (e.g., 800 -> 08:00, 1430 -> 14:30)
+ * Check if hours value is valid
+ * 
+ * Validates that hours is:
+ * - A number
+ * - In 15-minute increments (multiple of 0.25)
+ * - Within range: 0.25 to 24.0 hours
+ * 
+ * @param hours - Hours value to validate
+ * @returns true if valid, false otherwise
  */
-export function formatTimeInput(timeStr: unknown): string {
-  // Convert numbers to strings first
-  if (typeof timeStr === 'number') {
-    timeStr = String(timeStr);
+export function isValidHours(hours?: number | null): boolean {
+  if (hours === undefined || hours === null) return false;
+  if (typeof hours !== 'number' || isNaN(hours)) return false;
+  
+  // Check if it's a multiple of 0.25 (15-minute increments)
+  // Use modulo with tolerance for floating point precision
+  const remainder = (hours * 4) % 1;
+  if (Math.abs(remainder) > 0.0001 && Math.abs(remainder - 1) > 0.0001) {
+    return false;
   }
   
-  if (typeof timeStr !== 'string') return String(timeStr || '');
-  
-  // Handle special edge cases - return original for invalid inputs
-  if (timeStr.includes('-') || // Negative values
-      timeStr.includes('.') || // Decimal notation
-      timeStr.includes('e') || timeStr.includes('E') || // Scientific notation
-      timeStr.length > 5) { // Too long (likely invalid)
-    return timeStr;
-  }
-  
-  // If already in HH:MM format, normalize it to ensure proper padding
-  if (timeStr.includes(':')) {
-    const parts = timeStr.split(':');
-    if (parts.length === 2) {
-      const [hours, minutes] = parts;
-      if (hours && minutes !== undefined) {
-        // Validate that hours and minutes are numeric and within valid range
-        const hoursNum = parseInt(hours, 10);
-        const minutesNum = parseInt(minutes, 10);
-        if (isNaN(hoursNum) || isNaN(minutesNum) || hoursNum >= 24 || minutesNum >= 60) {
-          return timeStr;
-        }
-        const normalizedHours = hours.padStart(2, '0');
-        const normalizedMinutes = minutes.padStart(2, '0');
-        return `${normalizedHours}:${normalizedMinutes}`;
-      }
-    }
-    // For invalid formats like HH:MM:SS, return original input
-    return timeStr;
-  }
-  
-  // Remove any non-numeric characters for pure numeric input
-  const numericOnly = timeStr.replace(/\D/g, '');
-  
-  // If no numeric content, return original
-  if (!numericOnly) return timeStr;
-  
-  // Handle different numeric input formats
-  if (numericOnly.length === 3) {
-    // 800 -> 08:00
-    const hours = numericOnly.substring(0, 1);
-    const minutes = numericOnly.substring(1, 3);
-    return `${hours.padStart(2, '0')}:${minutes}`;
-  } else if (numericOnly.length === 4) {
-    // 1430 -> 14:30
-    const hours = numericOnly.substring(0, 2);
-    const minutes = numericOnly.substring(2, 4);
-    // Validate hours and minutes are within range
-    const hoursNum = parseInt(hours, 10);
-    const minutesNum = parseInt(minutes, 10);
-    if (hoursNum >= 24 || minutesNum >= 60) {
-      return timeStr; // Invalid time, return original
-    }
-    return `${hours}:${minutes}`;
-  } else if (numericOnly.length === 2) {
-    // Two-digit input: treat as hours (08 -> 08:00, 12 -> 12:00)
-    const hoursNum = parseInt(numericOnly, 10);
-    if (hoursNum >= 24) {
-      return timeStr; // Invalid hour, return original
-    }
-    return `${numericOnly}:00`;
-  } else if (numericOnly.length === 1) {
-    // 8 -> 08:00
-    return `${numericOnly.padStart(2, '0')}:00`;
-  }
-  
-  // Return original if it doesn't match expected patterns
-  return timeStr;
-}
-
-/**
- * Check if a time string is valid (HH:MM format, 15-minute increments)
- */
-export function isValidTime(timeStr?: string): boolean {
-  if (!timeStr) return false;
-  
-  // First try to format the input
-  const formattedTime = formatTimeInput(timeStr);
-  
-  // Check if it matches HH:MM format
-  const timeRegex = /^([01]?[0-9]|2[0-3]):([0-5][0-9])$/;
-  if (!timeRegex.test(formattedTime)) return false;
-  
-  const [hours, minutes] = formattedTime.split(':').map(Number);
-  if (hours === undefined || minutes === undefined) return false;
-  const totalMinutes = hours * 60 + minutes;
-  
-  // Check if it's a multiple of 15 minutes
-  return totalMinutes % 15 === 0;
-}
-
-/**
- * Check if time out is after time in
- */
-export function isTimeOutAfterTimeIn(timeIn?: string, timeOut?: string): boolean {
-  if (!timeIn || !timeOut) return true; // Let other validations handle missing values
-  
-  const [inHours, inMinutes] = timeIn.split(':').map(Number);
-  const [outHours, outMinutes] = timeOut.split(':').map(Number);
-  
-  if (inHours === undefined || inMinutes === undefined || outHours === undefined || outMinutes === undefined) {
-    return true; // Let other validations handle invalid time formats
-  }
-  
-  const inTotalMinutes = inHours * 60 + inMinutes;
-  const outTotalMinutes = outHours * 60 + outMinutes;
-  
-  return outTotalMinutes > inTotalMinutes;
+  // Check range: 0.25 to 24.0
+  return hours >= 0.25 && hours <= 24.0;
 }
 
 /**
@@ -214,16 +120,21 @@ export function validateField(
       return null;
     }
       
-    case 'timeIn': {
-      if (!value) return 'Start time is required - please enter start time';
-      if (!isValidTime(String(value))) return 'Time must be like 09:00, 800, or 1430 and in 15 minute steps';
-      return null;
-    }
+    case 'hours': {
+      if (value === undefined || value === null || value === '') {
+        return 'Hours is required - please enter hours worked';
+      }
       
-    case 'timeOut': {
-      if (!value) return 'End time is required - please enter end time';
-      if (!isValidTime(String(value))) return 'Time must be like 17:00, 1700, or 530 and in 15 minute steps';
-      if (!isTimeOutAfterTimeIn(rowData?.timeIn, String(value))) return 'End time must be after start time';
+      const hoursValue = typeof value === 'number' ? value : Number(value);
+      
+      if (isNaN(hoursValue)) {
+        return 'Hours must be a number (e.g., 1.25, 1.5, 2.0)';
+      }
+      
+      if (!isValidHours(hoursValue)) {
+        return 'Hours must be between 0.25 and 24.0 in 15-minute increments (0.25, 0.5, 0.75, etc.)';
+      }
+      
       return null;
     }
       
