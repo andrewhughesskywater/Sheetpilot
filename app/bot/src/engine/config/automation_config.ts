@@ -58,17 +58,6 @@ export interface LoginStep {
 // ============================================================================
 
 /**
- * DEPRECATED: Do not use BASE_URL constant directly.
- *
- * The system now uses dynamic quarter-based form routing.
- * Use createFormConfig() to create a proper form configuration.
- *
- * @deprecated Use createFormConfig() or quarter_config instead
- */
-export const BASE_URL: string =
-  process.env["TS_BASE_URL"] ?? "DEPRECATED_USE_DYNAMIC_CONFIG";
-
-/**
  * Creates a configuration object with dynamic form URL and ID
  *
  * This is the proper way to configure form URLs. The system uses quarter-based
@@ -108,11 +97,6 @@ export function getBrowserHeadless(): boolean {
   botLogger.debug("getBrowserHeadless called", { envValue, result });
   return result;
 }
-/**
- * Whether to run browser in headless mode
- * @deprecated Use getBrowserHeadless() function instead for dynamic runtime updates
- */
-export const BROWSER_HEADLESS: boolean = getBrowserHeadless();
 /** Specific browser channel to use (e.g., 'chrome' for Chrome instead of Chromium) */
 export const BROWSER_CHANNEL: string =
   process.env["BROWSER_CHANNEL"] ?? "chromium";
@@ -259,38 +243,6 @@ export const SUBMIT_SUCCESS_MIN_STATUS: number = Number(
 export const SUBMIT_SUCCESS_MAX_STATUS: number = Number(
   process.env["SUBMIT_MAX_STATUS"] ?? "299"
 );
-/**
- * DEPRECATED: Do not use SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS constant directly.
- *
- * The system now uses dynamic quarter-based form routing.
- * URL patterns come from createFormConfig() or quarter_config.
- *
- * @deprecated Use createFormConfig() or quarter_config instead
- */
-export const SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[] = [
-  "**forms.smartsheet.com/api/submit/DEPRECATED",
-  "**forms.smartsheet.com/**",
-  "**app.smartsheet.com/**",
-];
-
-/**
- * DEPRECATED: Do not use FORM_ID constant directly.
- *
- * The system now uses dynamic quarter-based form routing.
- * Form IDs come from createFormConfig() or quarter_config.
- *
- * @deprecated Use createFormConfig() or quarter_config instead
- */
-export const FORM_ID = "DEPRECATED_USE_DYNAMIC_CONFIG";
-/**
- * DEPRECATED: Do not use SUBMISSION_ENDPOINT constant directly.
- *
- * The system now uses dynamic quarter-based form routing.
- * Endpoints come from createFormConfig() or quarter_config.
- *
- * @deprecated Use createFormConfig() or quarter_config instead
- */
-export const SUBMISSION_ENDPOINT = `https://forms.smartsheet.com/api/submit/${FORM_ID}`;
 
 /** Whether to validate response content for submission success */
 export const ENABLE_RESPONSE_CONTENT_VALIDATION: boolean =
@@ -303,14 +255,6 @@ export const SUBMIT_SUCCESS_INDICATORS: string[] = [
   "form submitted successfully",
   "thank you for your submission",
 ];
-
-/**
- * @deprecated No longer used. The retry flow is now fixed at 3 attempts:
- * Initial → Level 1 retry (quick re-click) → Level 2 retry (form re-fill)
- */
-export const SUBMIT_RETRY_ATTEMPTS: number = Number(
-  process.env["SUBMIT_RETRY_ATTEMPTS"] ?? "3"
-);
 
 /** Delay for Level 1 retry (quick re-click) in seconds */
 export const SUBMIT_CLICK_RETRY_DELAY_S: number = Number(
@@ -625,6 +569,7 @@ export const PROJECT_TO_TOOL_LABEL: Record<string, string> = {
   "FL-Carver Techs": "Carver Tool",
   "FL-Carver Tools": "Carver Tool",
   "SWFL-EQUIP": "SWFL Tool",
+  "269 Daytona : DECA" : "Destin COL"
 };
 
 // ============================================================================
