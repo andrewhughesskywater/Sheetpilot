@@ -36,30 +36,38 @@ type DateParts = {
 const US_DATE_REGEX = /^\d{1,2}\/\d{1,2}\/\d{4}$/;
 const ISO_DATE_REGEX = /^\d{4}-\d{1,2}-\d{1,2}$/;
 
+const buildDateParts = (
+  monthStr: string,
+  dayStr: string,
+  yearStr: string
+): DateParts => ({
+  month: parseInt(monthStr ?? '', 10),
+  day: parseInt(dayStr ?? '', 10),
+  year: parseInt(yearStr ?? '', 10)
+});
+
+const parseUsDateParts = (dateStr: string): DateParts | null => {
+  if (!US_DATE_REGEX.test(dateStr)) {
+    return null;
+  }
+  const dateParts = dateStr.split('/');
+  if (dateParts.length !== 3) return null;
+  const [monthStr, dayStr, yearStr] = dateParts;
+  return buildDateParts(monthStr ?? '', dayStr ?? '', yearStr ?? '');
+};
+
+const parseIsoDateParts = (dateStr: string): DateParts | null => {
+  if (!ISO_DATE_REGEX.test(dateStr)) {
+    return null;
+  }
+  const dateParts = dateStr.split('-');
+  if (dateParts.length !== 3) return null;
+  const [yearStr, monthStr, dayStr] = dateParts;
+  return buildDateParts(monthStr ?? '', dayStr ?? '', yearStr ?? '');
+};
+
 function parseDateParts(dateStr: string): DateParts | null {
-  if (US_DATE_REGEX.test(dateStr)) {
-    const dateParts = dateStr.split('/');
-    if (dateParts.length !== 3) return null;
-    const [monthStr, dayStr, yearStr] = dateParts;
-    return {
-      month: parseInt(monthStr ?? '', 10),
-      day: parseInt(dayStr ?? '', 10),
-      year: parseInt(yearStr ?? '', 10)
-    };
-  }
-
-  if (ISO_DATE_REGEX.test(dateStr)) {
-    const dateParts = dateStr.split('-');
-    if (dateParts.length !== 3) return null;
-    const [yearStr, monthStr, dayStr] = dateParts;
-    return {
-      month: parseInt(monthStr ?? '', 10),
-      day: parseInt(dayStr ?? '', 10),
-      year: parseInt(yearStr ?? '', 10)
-    };
-  }
-
-  return null;
+  return parseUsDateParts(dateStr) ?? parseIsoDateParts(dateStr);
 }
 
 function isValidDateParts({ month, day, year }: DateParts): boolean {
