@@ -39,6 +39,131 @@ if (!ADMIN_PASSWORD) {
   });
 }
 
+type LoginPayload = {
+  email: string;
+  password: string;
+  stayLoggedIn: boolean;
+};
+
+type LoginResponse = {
+  success: boolean;
+  error?: string;
+  token?: string;
+  isAdmin?: boolean;
+};
+
+const buildLoginError = (error: string): LoginResponse => ({
+  success: false,
+  error,
+});
+
+const getValidatedLoginPayload = (
+  email: string,
+  password: string,
+  stayLoggedIn: boolean
+): { success: true; data: LoginPayload } | { success: false; error: string } => {
+  const validation = validateInput(
+    loginSchema,
+    { email, password, stayLoggedIn },
+    'auth:login'
+  );
+  if (!validation.success) {
+    return { success: false, error: validation.error };
+  }
+  return { success: true, data: validation.data! };
+};
+
+const isAdminLogin = (payload: LoginPayload): boolean => {
+  if (!ADMIN_PASSWORD) {
+    return false;
+  }
+  const isAdmin =
+    payload.email === ADMIN_USERNAME && payload.password === ADMIN_PASSWORD;
+  if (isAdmin) {
+    ipcLogger.info('Admin login successful', { email: payload.email });
+  }
+  return isAdmin;
+};
+
+const getCredentialMismatchError = (
+  storedEmail: string,
+  providedEmail: string
+): string | null => {
+  if (storedEmail === providedEmail) {
+    return null;
+  }
+  ipcLogger.warn('Login email mismatch', {
+    providedEmail,
+    storedEmail,
+  });
+  return `Credentials are stored for ${storedEmail}. Use that email or clear credentials in Settings.`;
+};
+
+const getPasswordMismatchError = (
+  storedPassword: string,
+  providedPassword: string,
+  email: string
+): string | null => {
+  if (storedPassword === providedPassword) {
+    return null;
+  }
+  ipcLogger.warn('Login password mismatch', { email });
+  return 'Incorrect password. Please try again.';
+};
+
+const validateReturningUser = (
+  storedEmail: string,
+  storedPassword: string,
+  payload: LoginPayload
+): string | null => {
+  const emailError = getCredentialMismatchError(
+    storedEmail,
+    payload.email
+  );
+  if (emailError) {
+    return emailError;
+  }
+  const passwordError = getPasswordMismatchError(
+    storedPassword,
+    payload.password,
+    payload.email
+  );
+  if (passwordError) {
+    return passwordError;
+  }
+  ipcLogger.verbose('Password verified for returning user', {
+    email: payload.email,
+  });
+  return null;
+};
+
+const storeNewUserCredentials = (payload: LoginPayload): string | null => {
+  ipcLogger.verbose('Storing credentials for new user', {
+    email: payload.email,
+  });
+  const storeResult = storeCredentials(
+    'smartsheet',
+    payload.email,
+    payload.password
+  );
+  if (!storeResult.success) {
+    return storeResult.message;
+  }
+  return null;
+};
+
+const ensureUserCredentials = (payload: LoginPayload): string | null => {
+  const existingCredentials = getCredentials('smartsheet');
+  if (existingCredentials) {
+    return validateReturningUser(
+      existingCredentials.email,
+      existingCredentials.password,
+      payload
+    );
+  }
+  return storeNewUserCredentials(payload);
+};
+
 /**
  * Register all authentication-related IPC handlers
  */
@@ -56,76 +181,64 @@ export function registerAuthHandlers(): void {
   ipcLogger.verbose('Registered handler: ping');
   
   // Handler for user login
-  ipcMain.handle('auth:login', async (event, email: string, password: string, stayLoggedIn: boolean) => {
-    if (!isTrustedIpcSender(event)) {
-      return { success: false, error: 'Could not login: unauthorized request' };
-    }
-    ipcLogger.debug('Login handler called', { email });
+  ipcMain.handle(
+    'auth:login',
+    async (
+      event,
+      email: string,
+      password: string,
+      stayLoggedIn: boolean
+    ): Promise<LoginResponse> => {
+      if (!isTrustedIpcSender(event)) {
+        return buildLoginError('Could not login: unauthorized request');
+      }
+      ipcLogger.debug('Login handler called', { email });
 
-    // Validate input using Zod schema
-    const validation = validateInput(loginSchema, { email, password, stayLoggedIn }, 'auth:login');
-    if (!validation.success) {
-      return { success: false, error: validation.error };
-    }
-    
-    const validatedData = validation.data!;
-    ipcLogger.audit('login-attempt', 'User attempting login', { email: validatedData.email });
-    
-    try {
-      let isAdmin = false;
-      
-      // Check if this is an admin login
-      if (ADMIN_PASSWORD && validatedData.email === ADMIN_USERNAME && validatedData.password === ADMIN_PASSWORD) {
-        isAdmin = true;
-        ipcLogger.info('Admin login successful', { email: validatedData.email });
-      } else {
-        // For regular users, check if credentials already exist
-        const existingCredentials = getCredentials('smartsheet');
-        
-        if (existingCredentials) {
-          // Returning user - verify password matches stored credentials
-          if (existingCredentials.email !== validatedData.email) {
-            ipcLogger.warn('Login email mismatch', { 
-              providedEmail: validatedData.email,
-              storedEmail: existingCredentials.email 
-            });
-            return { 
-              success: false, 
-              error: `Credentials are stored for ${existingCredentials.email}. Use that email or clear credentials in Settings.` 
-            };
-          }
-          
-          if (existingCredentials.password !== validatedData.password) {
-            ipcLogger.warn('Login password mismatch', { email: validatedData.email });
-            return { success: false, error: 'Incorrect password. Please try again.' };
-          }
-          
-          ipcLogger.verbose('Password verified for returning user', { email: validatedData.email });
-        } else {
-          // New user - store credentials
-          ipcLogger.verbose('Storing credentials for new user', { email: validatedData.email });
-          const storeResult = storeCredentials('smartsheet', validatedData.email, validatedData.password);
-          if (!storeResult.success) {
-            return { success: false, error: storeResult.message };
-          }
-        }
+      const validation = getValidatedLoginPayload(
+        email,
+        password,
+        stayLoggedIn
+      );
+      if (!validation.success) {
+        return buildLoginError(validation.error);
       }
 
-      // Create session
-      const sessionToken = createSession(validatedData.email, validatedData.stayLoggedIn, isAdmin);
-      
-      ipcLogger.info('Login successful', { email: validatedData.email, isAdmin });
-      return {
-        success: true,
-        token: sessionToken,
-        isAdmin
-      };
-    } catch (err: unknown) {
-      ipcLogger.error('Could not login', err);
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      return { success: false, error: errorMessage };
+      const validatedData = validation.data;
+      ipcLogger.audit('login-attempt', 'User attempting login', {
+        email: validatedData.email,
+      });
+
+      try {
+        const isAdmin = isAdminLogin(validatedData);
+        if (!isAdmin) {
+          const credentialError = ensureUserCredentials(validatedData);
+          if (credentialError) {
+            return buildLoginError(credentialError);
+          }
+        }
+
+        const sessionToken = createSession(
+          validatedData.email,
+          validatedData.stayLoggedIn,
+          isAdmin
+        );
+
+        ipcLogger.info('Login successful', {
+          email: validatedData.email,
+          isAdmin,
+        });
+        return {
+          success: true,
+          token: sessionToken,
+          isAdmin,
+        };
+      } catch (err: unknown) {
+        ipcLogger.error('Could not login', err);
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        return buildLoginError(errorMessage);
+      }
     }
-  });
+  );
   ipcLogger.verbose('Registered handler: auth:login');
 
   // Handler for session validation
