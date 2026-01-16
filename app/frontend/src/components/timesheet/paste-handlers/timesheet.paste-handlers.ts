@@ -8,6 +8,113 @@
 import type { TimesheetRow } from '@/components/timesheet/schema/timesheet.schema';
 import type { MutableRefObject } from 'react';
 
+type PasteHotInstance = {
+  propToCol: (prop: string) => number | unknown;
+  setCellMeta: (row: number, col: number, key: string, value: unknown) => void;
+  setDataAtCell: (
+    row: number,
+    col: number,
+    value: unknown,
+    source?: string
+  ) => void;
+};
+
+type NormalizeHotInstance = {
+  propToCol: (prop: string) => number | unknown;
+  setDataAtCell: (
+    row: number,
+    col: number,
+    value: unknown,
+    source?: string
+  ) => void;
+  render: () => void;
+};
+
+type NormalizeRowDataFn = (
+  row: TimesheetRow,
+  projectNeedsTools: (p?: string) => boolean,
+  toolNeedsChargeCode: (t?: string) => boolean
+) => TimesheetRow;
+
+function isNonEmptyValue(value: unknown): boolean {
+  return value !== undefined && value !== null && value !== '';
+}
+
+function isValidColumnIndex(
+  columnIndex: number | unknown
+): columnIndex is number {
+  return typeof columnIndex === 'number' && columnIndex >= 0;
+}
+
+function shouldApplyPastedValue(
+  startCol: number,
+  minCol: number,
+  value: unknown
+): boolean {
+  return startCol <= minCol && isNonEmptyValue(value);
+}
+
+function applyPastedValue(
+  hotInstance: PasteHotInstance,
+  targetRow: number,
+  columnIndex: number | unknown,
+  startCol: number,
+  minCol: number,
+  value: unknown
+): void {
+  if (!shouldApplyPastedValue(startCol, minCol, value)) {
+    return;
+  }
+  if (!isValidColumnIndex(columnIndex)) {
+    return;
+  }
+
+  hotInstance.setCellMeta(targetRow, columnIndex, 'allowInvalid', true);
+  hotInstance.setCellMeta(targetRow, columnIndex, 'strict', false);
+  hotInstance.setDataAtCell(targetRow, columnIndex, value, 'paste');
+  setTimeout(() => {
+    hotInstance.setCellMeta(targetRow, columnIndex, 'allowInvalid', false);
+    hotInstance.setCellMeta(targetRow, columnIndex, 'strict', true);
+  }, 10);
+}
+
+function normalizeRowAndUpdateHotTable(
+  row: TimesheetRow,
+  rowIdx: number,
+  hotInstance: NormalizeHotInstance,
+  normalizeRowDataFn: NormalizeRowDataFn,
+  projectNeedsToolsWrapper: (p?: string) => boolean,
+  toolNeedsChargeCodeWrapper: (t?: string) => boolean
+): { normalizedRow: TimesheetRow; hasRowChanges: boolean } {
+  const normalizedRow = normalizeRowDataFn(
+    row,
+    projectNeedsToolsWrapper,
+    toolNeedsChargeCodeWrapper
+  );
+  const toolChanged = normalizedRow.tool !== row.tool;
+  const chargeCodeChanged = normalizedRow.chargeCode !== row.chargeCode;
+
+  if (toolChanged) {
+    const toolCol = hotInstance.propToCol('tool');
+    if (isValidColumnIndex(toolCol)) {
+      hotInstance.setDataAtCell(rowIdx, toolCol, normalizedRow.tool, 'paste');
+    }
+  }
+  if (chargeCodeChanged) {
+    const chargeCodeCol = hotInstance.propToCol('chargeCode');
+    if (isValidColumnIndex(chargeCodeCol)) {
+      hotInstance.setDataAtCell(
+        rowIdx,
+        chargeCodeCol,
+        normalizedRow.chargeCode,
+        'paste'
+      );
+    }
+  }
+
+  return { normalizedRow, hasRowChanges: toolChanged || chargeCodeChanged };
+}
+
 /**
  * Apply pasted tool and charge code values to Handsontable
  */
@@ -15,7 +122,7 @@ export function applyPastedToolAndChargeCode(
   data: unknown[][],
   startRow: number,
   startCol: number,
-  hotInstance: { propToCol: (prop: string) => number | unknown; setCellMeta: (row: number, col: number, key: string, value: unknown) => void; setDataAtCell: (row: number, col: number, value: unknown, source?: string) => void }
+  hotInstance: PasteHotInstance
 ): void {
   const toolCol = hotInstance.propToCol('tool');
   const chargeCodeCol = hotInstance.propToCol('chargeCode');
@@ -31,29 +138,15 @@ export function applyPastedToolAndChargeCode(
      * in current project's dropdown. Without this, strict validation blocks the paste.
      * Validation gets re-enabled after 10ms to restore normal behavior.
      */
-    if (startCol <= 3 && tool !== undefined && tool !== null && tool !== '') {
-      if (typeof toolCol === 'number' && toolCol >= 0) {
-        hotInstance.setCellMeta(targetRow, toolCol, 'allowInvalid', true);
-        hotInstance.setCellMeta(targetRow, toolCol, 'strict', false);
-        hotInstance.setDataAtCell(targetRow, toolCol, tool, 'paste');
-        setTimeout(() => {
-          hotInstance.setCellMeta(targetRow, toolCol, 'allowInvalid', false);
-          hotInstance.setCellMeta(targetRow, toolCol, 'strict', true);
-        }, 10);
-      }
-    }
-    
-    if (startCol <= 4 && chargeCode !== undefined && chargeCode !== null && chargeCode !== '') {
-      if (typeof chargeCodeCol === 'number' && chargeCodeCol >= 0) {
-        hotInstance.setCellMeta(targetRow, chargeCodeCol, 'allowInvalid', true);
-        hotInstance.setCellMeta(targetRow, chargeCodeCol, 'strict', false);
-        hotInstance.setDataAtCell(targetRow, chargeCodeCol, chargeCode, 'paste');
-        setTimeout(() => {
-          hotInstance.setCellMeta(targetRow, chargeCodeCol, 'allowInvalid', false);
-          hotInstance.setCellMeta(targetRow, chargeCodeCol, 'strict', true);
-        }, 10);
-      }
-    }
+    applyPastedValue(hotInstance, targetRow, toolCol, startCol, 3, tool);
+    applyPastedValue(
+      hotInstance,
+      targetRow,
+      chargeCodeCol,
+      startCol,
+      4,
+      chargeCode
+    );
   });
 }
 
@@ -63,39 +156,33 @@ export function applyPastedToolAndChargeCode(
 export function normalizePastedRows(
   pastedRowIndices: number[],
   currentData: TimesheetRow[],
-  hotInstance: { propToCol: (prop: string) => number | unknown; setDataAtCell: (row: number, col: number, value: unknown, source?: string) => void; render: () => void },
-  normalizeRowDataFn: (row: TimesheetRow, projectNeedsTools: (p?: string) => boolean, toolNeedsChargeCode: (t?: string) => boolean) => TimesheetRow,
+  hotInstance: NormalizeHotInstance,
+  normalizeRowDataFn: NormalizeRowDataFn,
   projectNeedsToolsWrapper: (p?: string) => boolean,
   toolNeedsChargeCodeWrapper: (t?: string) => boolean
 ): { updatedData: TimesheetRow[]; hasChanges: boolean } {
-  const updatedData = [...currentData];
-  let hasChanges = false;
-  
-  pastedRowIndices.forEach(rowIdx => {
-    const row = updatedData[rowIdx];
-    if (!row) return;
-    
-    const normalizedRow = normalizeRowDataFn(row, projectNeedsToolsWrapper, toolNeedsChargeCodeWrapper);
-    
-    if (normalizedRow.tool !== row.tool || normalizedRow.chargeCode !== row.chargeCode) {
-      hasChanges = true;
-      updatedData[rowIdx] = normalizedRow;
-      
-      if (normalizedRow.tool !== row.tool) {
-        const toolCol = hotInstance.propToCol('tool');
-        if (typeof toolCol === 'number' && toolCol >= 0) {
-          hotInstance.setDataAtCell(rowIdx, toolCol, normalizedRow.tool, 'paste');
-        }
-      }
-      if (normalizedRow.chargeCode !== row.chargeCode) {
-        const chargeCodeCol = hotInstance.propToCol('chargeCode');
-        if (typeof chargeCodeCol === 'number' && chargeCodeCol >= 0) {
-          hotInstance.setDataAtCell(rowIdx, chargeCodeCol, normalizedRow.chargeCode, 'paste');
-        }
-      }
+  const pastedRowSet = new Set(pastedRowIndices);
+  const updatedData = currentData.map((row, rowIdx) => {
+    if (!pastedRowSet.has(rowIdx) || !row) {
+      return row;
     }
+
+    const { normalizedRow, hasRowChanges } = normalizeRowAndUpdateHotTable(
+      row,
+      rowIdx,
+      hotInstance,
+      normalizeRowDataFn,
+      projectNeedsToolsWrapper,
+      toolNeedsChargeCodeWrapper
+    );
+
+    return hasRowChanges ? normalizedRow : row;
   });
-  
+
+  const hasChanges = updatedData.some(
+    (row, rowIdx) => row !== currentData[rowIdx]
+  );
+
   return { updatedData, hasChanges };
 }
 
