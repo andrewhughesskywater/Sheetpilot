@@ -281,19 +281,38 @@ export function DataProvider({ children }: DataProviderProps) {
    *
    * @throws Sets error state if token missing or fetch fails
    */
+  const handleMissingArchiveToken = (): boolean => {
+    if (token) {
+      return false;
+    }
+    logWarn("[DataContext] Cannot load archive data: no session token");
+    setArchiveDataError(
+      "Session token is required. Please log in to view archive data."
+    );
+    setArchiveData({ timesheet: [], credentials: [] });
+    setIsArchiveDataLoading(false);
+    return true;
+  };
+
+  const maybeYieldForLargeArchive = async (
+    timesheetCount: number
+  ): Promise<void> => {
+    if (timesheetCount <= 100) {
+      return;
+    }
+    logInfo("[DataContext] Processing large dataset", {
+      count: timesheetCount,
+    });
+    await yieldToMain();
+  };
+
   const loadArchiveData = useCallback(async () => {
     try {
       setIsArchiveDataLoading(true);
       setArchiveDataError(null);
 
       // Require token for authenticated archive access
-      if (!token) {
-        logWarn("[DataContext] Cannot load archive data: no session token");
-        setArchiveDataError(
-          "Session token is required. Please log in to view archive data."
-        );
-        setArchiveData({ timesheet: [], credentials: [] });
-        setIsArchiveDataLoading(false);
+      if (handleMissingArchiveToken()) {
         return;
       }
 
@@ -318,12 +337,7 @@ export function DataProvider({ children }: DataProviderProps) {
         : [];
 
       // Yield control for large datasets to prevent blocking
-      if (timesheetData.length > 100) {
-        logInfo("[DataContext] Processing large dataset", {
-          count: timesheetData.length,
-        });
-        await yieldToMain(); // Yield control to prevent blocking
-      }
+      await maybeYieldForLargeArchive(timesheetData.length);
 
       logInfo("[DataContext] Loaded archive data", {
         timesheetCount: timesheetData.length,
