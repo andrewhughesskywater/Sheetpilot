@@ -25,17 +25,41 @@ type DraftPayload = {
 };
 
 const buildDraftPayload = (row: TimesheetRow): DraftPayload => {
-  const payload: DraftPayload = {};
+  const entries: Array<{
+    key: keyof DraftPayload;
+    value: DraftPayload[keyof DraftPayload];
+    include: boolean;
+  }> = [
+    { key: 'id', value: row.id, include: row.id !== undefined },
+    { key: 'date', value: row.date, include: Boolean(row.date) },
+    {
+      key: 'hours',
+      value: row.hours,
+      include: row.hours !== undefined && row.hours !== null
+    },
+    { key: 'project', value: row.project, include: Boolean(row.project) },
+    {
+      key: 'tool',
+      value: row.tool ?? null,
+      include: row.tool !== undefined
+    },
+    {
+      key: 'chargeCode',
+      value: row.chargeCode ?? null,
+      include: row.chargeCode !== undefined
+    },
+    {
+      key: 'taskDescription',
+      value: row.taskDescription,
+      include: Boolean(row.taskDescription)
+    }
+  ];
 
-  if (row.id !== undefined) payload.id = row.id;
-  if (row.date) payload.date = row.date;
-  if (row.hours !== undefined && row.hours !== null) payload.hours = row.hours;
-  if (row.project) payload.project = row.project;
-  if (row.tool !== undefined) payload.tool = row.tool ?? null;
-  if (row.chargeCode !== undefined) payload.chargeCode = row.chargeCode ?? null;
-  if (row.taskDescription) payload.taskDescription = row.taskDescription;
-
-  return payload;
+  return Object.fromEntries(
+    entries
+      .filter((entry) => entry.include)
+      .map((entry) => [entry.key, entry.value])
+  ) as DraftPayload;
 };
 
 export async function submitTimesheet(token: string, useMockWebsite?: boolean): Promise<SubmitResponse> {
