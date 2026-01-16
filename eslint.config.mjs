@@ -103,7 +103,13 @@ export default [
       // Human-focused metric: measures how difficult code is to understand for humans
       // Industry standard: 15 is recommended (SonarSource), more lenient than cyclomatic complexity
       // cognitive-complexity rule from eslint-plugin-sonarjs
-      'sonarjs/cognitive-complexity': ['warn', 15]
+      'sonarjs/cognitive-complexity': ['warn', 15],
+      
+      // Cohesion metrics: Measures how closely related methods/properties are in a class/module
+      // Helps identify code structure issues and opportunities for refactoring
+      'sonarjs/no-collapsible-if': 'warn', // Collapses nested if statements for clarity
+      'sonarjs/no-identical-expressions': 'warn', // Detects identical expressions that indicate duplication
+      'sonarjs/no-identical-functions': 'warn' // Detects duplicate methods that should be refactored into shared code
     }
   },
 
