@@ -100,18 +100,23 @@ type DateParts = {
   year: number;
 };
 
-const parseDateSegments = (dateStr: string): DateParts | null => {
-  if (!dateStr) return null;
-  const parts = dateStr.split('/');
-  if (parts.length !== 3) return null;
-
-  const month = parseInt(parts[0] || '', 10);
-  const day = parseInt(parts[1] || '', 10);
-  const year = parseInt(parts[2] || '', 10);
+const parseDateParts = (parts: string[]): DateParts | null => {
+  if (parts.length !== 3) {
+    return null;
+  }
+  const [monthPart, dayPart, yearPart] = parts;
+  const month = parseInt(monthPart || '', 10);
+  const day = parseInt(dayPart || '', 10);
+  const year = parseInt(yearPart || '', 10);
 
   if (isNaN(month) || isNaN(day) || isNaN(year)) return null;
 
   return { month, day, year };
+};
+
+const parseDateSegments = (dateStr: string): DateParts | null => {
+  if (!dateStr) return null;
+  return parseDateParts(dateStr.split('/'));
 };
 
 const isValidDateParts = ({ month, day, year }: DateParts): boolean => {
