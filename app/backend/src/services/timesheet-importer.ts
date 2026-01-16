@@ -17,6 +17,7 @@ import {
   removeFailedTimesheetEntries,
   getTimesheetEntriesByIds,
   resetInProgressTimesheetEntries,
+  resetTimesheetEntriesStatus,
 } from "@/models";
 import { botLogger } from "@sheetpilot/shared/logger";
 import { getSubmissionService } from "@/middleware/bootstrap-plugins";
@@ -242,7 +243,6 @@ export async function submitTimesheets(
         // Even though bot submission succeeded, database update failed
         // Reset these entries back to pending so user can retry
         try {
-          const { resetTimesheetEntriesStatus } = require("./database");
           resetTimesheetEntriesStatus(result.submittedIds);
           botLogger.info(
             "Reset entries to pending after database update failure",

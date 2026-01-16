@@ -26,7 +26,6 @@ import {
   businessConfigChargeCodeCreateSchema,
   linkToolToProjectSchema,
   unlinkToolFromProjectSchema,
-  adminTokenSchema,
 } from "@/validation/ipc-schemas";
 import { validateSession } from "@/models";
 import {
@@ -64,7 +63,9 @@ import {
  * Removes undefined properties from an object to satisfy exactOptionalPropertyTypes
  * This ensures optional properties are either present with a value or absent entirely
  */
-function removeUndefined<T extends Record<string, unknown>>(obj: T): Partial<T> {
+function removeUndefined<T extends Record<string, unknown>>(
+  obj: T
+): Partial<T> {
   const result: Partial<T> = {};
   for (const [key, value] of Object.entries(obj)) {
     if (value !== undefined) {
@@ -84,7 +85,10 @@ export function registerBusinessConfigHandlers(): void {
 
   ipcMain.handle("business-config:getAllProjects", async (event) => {
     if (!isTrustedIpcSender(event)) {
-      return { success: false, error: "Could not get projects: unauthorized request" };
+      return {
+        success: false,
+        error: "Could not get projects: unauthorized request",
+      };
     }
 
     try {
@@ -119,34 +123,44 @@ export function registerBusinessConfigHandlers(): void {
     }
   });
 
-  ipcMain.handle("business-config:getToolsForProject", async (event, project: string) => {
-    if (!isTrustedIpcSender(event)) {
-      return {
-        success: false,
-        error: "Could not get tools for project: unauthorized request",
-      };
-    }
+  ipcMain.handle(
+    "business-config:getToolsForProject",
+    async (event, project: string) => {
+      if (!isTrustedIpcSender(event)) {
+        return {
+          success: false,
+          error: "Could not get tools for project: unauthorized request",
+        };
+      }
 
-    const validation = validateInput(getToolsForProjectSchema, { project }, "business-config:getToolsForProject");
-    if (!validation.success) {
-      return { success: false, error: validation.error };
-    }
+      const validation = validateInput(
+        getToolsForProjectSchema,
+        { project },
+        "business-config:getToolsForProject"
+      );
+      if (!validation.success) {
+        return { success: false, error: validation.error };
+      }
 
-    try {
-      const tools = await getToolsForProject(validation.data!.project);
-      return { success: true, tools };
-    } catch (err: unknown) {
-      ipcLogger.error("Could not get tools for project", err);
-      return {
-        success: false,
-        error: err instanceof Error ? err.message : String(err),
-      };
+      try {
+        const tools = await getToolsForProject(validation.data!.project);
+        return { success: true, tools };
+      } catch (err: unknown) {
+        ipcLogger.error("Could not get tools for project", err);
+        return {
+          success: false,
+          error: err instanceof Error ? err.message : String(err),
+        };
+      }
     }
-  });
+  );
 
   ipcMain.handle("business-config:getAllTools", async (event) => {
     if (!isTrustedIpcSender(event)) {
-      return { success: false, error: "Could not get tools: unauthorized request" };
+      return {
+        success: false,
+        error: "Could not get tools: unauthorized request",
+      };
     }
 
     try {
@@ -161,25 +175,29 @@ export function registerBusinessConfigHandlers(): void {
     }
   });
 
-  ipcMain.handle("business-config:getToolsWithoutChargeCodes", async (event) => {
-    if (!isTrustedIpcSender(event)) {
-      return {
-        success: false,
-        error: "Could not get tools without charge codes: unauthorized request",
-      };
-    }
+  ipcMain.handle(
+    "business-config:getToolsWithoutChargeCodes",
+    async (event) => {
+      if (!isTrustedIpcSender(event)) {
+        return {
+          success: false,
+          error:
+            "Could not get tools without charge codes: unauthorized request",
+        };
+      }
 
-    try {
-      const tools = await getToolsWithoutChargeCodes();
-      return { success: true, tools };
-    } catch (err: unknown) {
-      ipcLogger.error("Could not get tools without charge codes", err);
-      return {
-        success: false,
-        error: err instanceof Error ? err.message : String(err),
-      };
+      try {
+        const tools = await getToolsWithoutChargeCodes();
+        return { success: true, tools };
+      } catch (err: unknown) {
+        ipcLogger.error("Could not get tools without charge codes", err);
+        return {
+          success: false,
+          error: err instanceof Error ? err.message : String(err),
+        };
+      }
     }
-  });
+  );
 
   ipcMain.handle("business-config:getAllChargeCodes", async (event) => {
     if (!isTrustedIpcSender(event)) {
@@ -201,30 +219,37 @@ export function registerBusinessConfigHandlers(): void {
     }
   });
 
-  ipcMain.handle("business-config:validateProject", async (event, project: string) => {
-    if (!isTrustedIpcSender(event)) {
-      return {
-        success: false,
-        error: "Could not validate project: unauthorized request",
-      };
-    }
+  ipcMain.handle(
+    "business-config:validateProject",
+    async (event, project: string) => {
+      if (!isTrustedIpcSender(event)) {
+        return {
+          success: false,
+          error: "Could not validate project: unauthorized request",
+        };
+      }
 
-    const validation = validateInput(validateProjectSchema, { project }, "business-config:validateProject");
-    if (!validation.success) {
-      return { success: false, error: validation.error };
-    }
+      const validation = validateInput(
+        validateProjectSchema,
+        { project },
+        "business-config:validateProject"
+      );
+      if (!validation.success) {
+        return { success: false, error: validation.error };
+      }
 
-    try {
-      const isValid = await isValidProject(validation.data!.project);
-      return { success: true, isValid };
-    } catch (err: unknown) {
-      ipcLogger.error("Could not validate project", err);
-      return {
-        success: false,
-        error: err instanceof Error ? err.message : String(err),
-      };
+      try {
+        const isValid = await isValidProject(validation.data!.project);
+        return { success: true, isValid };
+      } catch (err: unknown) {
+        ipcLogger.error("Could not validate project", err);
+        return {
+          success: false,
+          error: err instanceof Error ? err.message : String(err),
+        };
+      }
     }
-  });
+  );
 
   ipcMain.handle(
     "business-config:validateToolForProject",
@@ -246,7 +271,10 @@ export function registerBusinessConfigHandlers(): void {
       }
 
       try {
-        const isValid = await isValidToolForProject(validation.data!.tool, validation.data!.project);
+        const isValid = await isValidToolForProject(
+          validation.data!.tool,
+          validation.data!.project
+        );
         return { success: true, isValid };
       } catch (err: unknown) {
         ipcLogger.error("Could not validate tool for project", err);
@@ -258,34 +286,37 @@ export function registerBusinessConfigHandlers(): void {
     }
   );
 
-  ipcMain.handle("business-config:validateChargeCode", async (event, chargeCode: string) => {
-    if (!isTrustedIpcSender(event)) {
-      return {
-        success: false,
-        error: "Could not validate charge code: unauthorized request",
-      };
-    }
+  ipcMain.handle(
+    "business-config:validateChargeCode",
+    async (event, chargeCode: string) => {
+      if (!isTrustedIpcSender(event)) {
+        return {
+          success: false,
+          error: "Could not validate charge code: unauthorized request",
+        };
+      }
 
-    const validation = validateInput(
-      validateChargeCodeSchema,
-      { chargeCode },
-      "business-config:validateChargeCode"
-    );
-    if (!validation.success) {
-      return { success: false, error: validation.error };
-    }
+      const validation = validateInput(
+        validateChargeCodeSchema,
+        { chargeCode },
+        "business-config:validateChargeCode"
+      );
+      if (!validation.success) {
+        return { success: false, error: validation.error };
+      }
 
-    try {
-      const isValid = await isValidChargeCode(validation.data!.chargeCode);
-      return { success: true, isValid };
-    } catch (err: unknown) {
-      ipcLogger.error("Could not validate charge code", err);
-      return {
-        success: false,
-        error: err instanceof Error ? err.message : String(err),
-      };
+      try {
+        const isValid = await isValidChargeCode(validation.data!.chargeCode);
+        return { success: true, isValid };
+      } catch (err: unknown) {
+        ipcLogger.error("Could not validate charge code", err);
+        return {
+          success: false,
+          error: err instanceof Error ? err.message : String(err),
+        };
+      }
     }
-  });
+  );
 
   // ============================================================================
   // ADMIN WRITE OPERATIONS (Require admin token)
@@ -293,7 +324,12 @@ export function registerBusinessConfigHandlers(): void {
 
   ipcMain.handle(
     "business-config:updateProject",
-    async (event, token: string, id: number, updates: Record<string, unknown>) => {
+    async (
+      event,
+      token: string,
+      id: number,
+      updates: Record<string, unknown>
+    ) => {
       if (!isTrustedIpcSender(event)) {
         return {
           success: false,
@@ -314,9 +350,13 @@ export function registerBusinessConfigHandlers(): void {
       const session = validateSession(validatedData.token);
 
       if (!session.valid || !session.isAdmin) {
-        ipcLogger.security("admin-action-denied", "Unauthorized admin action attempted", {
-          token: validatedData.token.substring(0, 8) + "...",
-        });
+        ipcLogger.security(
+          "admin-action-denied",
+          "Unauthorized admin action attempted",
+          {
+            token: validatedData.token.substring(0, 8) + "...",
+          }
+        );
         return { success: false, error: "Unauthorized: Admin access required" };
       }
 
@@ -326,7 +366,10 @@ export function registerBusinessConfigHandlers(): void {
       });
 
       try {
-        updateProject(validatedData.id, removeUndefined(validatedData.updates) as ProjectUpdate);
+        updateProject(
+          validatedData.id,
+          removeUndefined(validatedData.updates) as ProjectUpdate
+        );
         invalidateCache();
         ipcLogger.info("Project updated by admin", {
           email: session.email,
@@ -345,7 +388,12 @@ export function registerBusinessConfigHandlers(): void {
 
   ipcMain.handle(
     "business-config:updateTool",
-    async (event, token: string, id: number, updates: Record<string, unknown>) => {
+    async (
+      event,
+      token: string,
+      id: number,
+      updates: Record<string, unknown>
+    ) => {
       if (!isTrustedIpcSender(event)) {
         return {
           success: false,
@@ -366,9 +414,13 @@ export function registerBusinessConfigHandlers(): void {
       const session = validateSession(validatedData.token);
 
       if (!session.valid || !session.isAdmin) {
-        ipcLogger.security("admin-action-denied", "Unauthorized admin action attempted", {
-          token: validatedData.token.substring(0, 8) + "...",
-        });
+        ipcLogger.security(
+          "admin-action-denied",
+          "Unauthorized admin action attempted",
+          {
+            token: validatedData.token.substring(0, 8) + "...",
+          }
+        );
         return { success: false, error: "Unauthorized: Admin access required" };
       }
 
@@ -378,7 +430,10 @@ export function registerBusinessConfigHandlers(): void {
       });
 
       try {
-        updateTool(validatedData.id, removeUndefined(validatedData.updates) as ToolUpdate);
+        updateTool(
+          validatedData.id,
+          removeUndefined(validatedData.updates) as ToolUpdate
+        );
         invalidateCache();
         ipcLogger.info("Tool updated by admin", {
           email: session.email,
@@ -397,7 +452,12 @@ export function registerBusinessConfigHandlers(): void {
 
   ipcMain.handle(
     "business-config:updateChargeCode",
-    async (event, token: string, id: number, updates: Record<string, unknown>) => {
+    async (
+      event,
+      token: string,
+      id: number,
+      updates: Record<string, unknown>
+    ) => {
       if (!isTrustedIpcSender(event)) {
         return {
           success: false,
@@ -418,19 +478,30 @@ export function registerBusinessConfigHandlers(): void {
       const session = validateSession(validatedData.token);
 
       if (!session.valid || !session.isAdmin) {
-        ipcLogger.security("admin-action-denied", "Unauthorized admin action attempted", {
-          token: validatedData.token.substring(0, 8) + "...",
-        });
+        ipcLogger.security(
+          "admin-action-denied",
+          "Unauthorized admin action attempted",
+          {
+            token: validatedData.token.substring(0, 8) + "...",
+          }
+        );
         return { success: false, error: "Unauthorized: Admin access required" };
       }
 
-      ipcLogger.audit("admin-update-charge-code", "Admin updating charge code", {
-        email: session.email,
-        id: validatedData.id,
-      });
+      ipcLogger.audit(
+        "admin-update-charge-code",
+        "Admin updating charge code",
+        {
+          email: session.email,
+          id: validatedData.id,
+        }
+      );
 
       try {
-        updateChargeCode(validatedData.id, removeUndefined(validatedData.updates) as ChargeCodeUpdate);
+        updateChargeCode(
+          validatedData.id,
+          removeUndefined(validatedData.updates) as ChargeCodeUpdate
+        );
         invalidateCache();
         ipcLogger.info("Charge code updated by admin", {
           email: session.email,
@@ -470,9 +541,13 @@ export function registerBusinessConfigHandlers(): void {
       const session = validateSession(validatedData.token);
 
       if (!session.valid || !session.isAdmin) {
-        ipcLogger.security("admin-action-denied", "Unauthorized admin action attempted", {
-          token: validatedData.token.substring(0, 8) + "...",
-        });
+        ipcLogger.security(
+          "admin-action-denied",
+          "Unauthorized admin action attempted",
+          {
+            token: validatedData.token.substring(0, 8) + "...",
+          }
+        );
         return { success: false, error: "Unauthorized: Admin access required" };
       }
 
@@ -482,7 +557,9 @@ export function registerBusinessConfigHandlers(): void {
       });
 
       try {
-        const id = addProject(removeUndefined(validatedData.project) as ProjectCreate);
+        const id = addProject(
+          removeUndefined(validatedData.project) as ProjectCreate
+        );
         invalidateCache();
         ipcLogger.info("Project added by admin", {
           email: session.email,
@@ -500,55 +577,62 @@ export function registerBusinessConfigHandlers(): void {
     }
   );
 
-  ipcMain.handle("business-config:addTool", async (event, token: string, tool: Record<string, unknown>) => {
-    if (!isTrustedIpcSender(event)) {
-      return {
-        success: false,
-        error: "Could not add tool: unauthorized request",
-      };
-    }
+  ipcMain.handle(
+    "business-config:addTool",
+    async (event, token: string, tool: Record<string, unknown>) => {
+      if (!isTrustedIpcSender(event)) {
+        return {
+          success: false,
+          error: "Could not add tool: unauthorized request",
+        };
+      }
 
-    const validation = validateInput(
-      businessConfigToolCreateSchema,
-      { token, tool },
-      "business-config:addTool"
-    );
-    if (!validation.success) {
-      return { success: false, error: validation.error };
-    }
+      const validation = validateInput(
+        businessConfigToolCreateSchema,
+        { token, tool },
+        "business-config:addTool"
+      );
+      if (!validation.success) {
+        return { success: false, error: validation.error };
+      }
 
-    const validatedData = validation.data!;
-    const session = validateSession(validatedData.token);
+      const validatedData = validation.data!;
+      const session = validateSession(validatedData.token);
 
-    if (!session.valid || !session.isAdmin) {
-      ipcLogger.security("admin-action-denied", "Unauthorized admin action attempted", {
-        token: validatedData.token.substring(0, 8) + "...",
-      });
-      return { success: false, error: "Unauthorized: Admin access required" };
-    }
+      if (!session.valid || !session.isAdmin) {
+        ipcLogger.security(
+          "admin-action-denied",
+          "Unauthorized admin action attempted",
+          {
+            token: validatedData.token.substring(0, 8) + "...",
+          }
+        );
+        return { success: false, error: "Unauthorized: Admin access required" };
+      }
 
-    ipcLogger.audit("admin-add-tool", "Admin adding tool", {
-      email: session.email,
-      name: validatedData.tool.name,
-    });
-
-    try {
-      const id = addTool(removeUndefined(validatedData.tool) as ToolCreate);
-      invalidateCache();
-      ipcLogger.info("Tool added by admin", {
+      ipcLogger.audit("admin-add-tool", "Admin adding tool", {
         email: session.email,
-        id,
         name: validatedData.tool.name,
       });
-      return { success: true, id };
-    } catch (err: unknown) {
-      ipcLogger.error("Could not add tool", err);
-      return {
-        success: false,
-        error: err instanceof Error ? err.message : String(err),
-      };
+
+      try {
+        const id = addTool(removeUndefined(validatedData.tool) as ToolCreate);
+        invalidateCache();
+        ipcLogger.info("Tool added by admin", {
+          email: session.email,
+          id,
+          name: validatedData.tool.name,
+        });
+        return { success: true, id };
+      } catch (err: unknown) {
+        ipcLogger.error("Could not add tool", err);
+        return {
+          success: false,
+          error: err instanceof Error ? err.message : String(err),
+        };
+      }
     }
-  });
+  );
 
   ipcMain.handle(
     "business-config:addChargeCode",
@@ -573,9 +657,13 @@ export function registerBusinessConfigHandlers(): void {
       const session = validateSession(validatedData.token);
 
       if (!session.valid || !session.isAdmin) {
-        ipcLogger.security("admin-action-denied", "Unauthorized admin action attempted", {
-          token: validatedData.token.substring(0, 8) + "...",
-        });
+        ipcLogger.security(
+          "admin-action-denied",
+          "Unauthorized admin action attempted",
+          {
+            token: validatedData.token.substring(0, 8) + "...",
+          }
+        );
         return { success: false, error: "Unauthorized: Admin access required" };
       }
 
@@ -585,7 +673,9 @@ export function registerBusinessConfigHandlers(): void {
       });
 
       try {
-        const id = addChargeCode(removeUndefined(validatedData.chargeCode) as ChargeCodeCreate);
+        const id = addChargeCode(
+          removeUndefined(validatedData.chargeCode) as ChargeCodeCreate
+        );
         invalidateCache();
         ipcLogger.info("Charge code added by admin", {
           email: session.email,
@@ -605,7 +695,13 @@ export function registerBusinessConfigHandlers(): void {
 
   ipcMain.handle(
     "business-config:linkToolToProject",
-    async (event, token: string, projectId: number, toolId: number, displayOrder?: number) => {
+    async (
+      event,
+      token: string,
+      projectId: number,
+      toolId: number,
+      displayOrder?: number
+    ) => {
       if (!isTrustedIpcSender(event)) {
         return {
           success: false,
@@ -626,20 +722,32 @@ export function registerBusinessConfigHandlers(): void {
       const session = validateSession(validatedData.token);
 
       if (!session.valid || !session.isAdmin) {
-        ipcLogger.security("admin-action-denied", "Unauthorized admin action attempted", {
-          token: validatedData.token.substring(0, 8) + "...",
-        });
+        ipcLogger.security(
+          "admin-action-denied",
+          "Unauthorized admin action attempted",
+          {
+            token: validatedData.token.substring(0, 8) + "...",
+          }
+        );
         return { success: false, error: "Unauthorized: Admin access required" };
       }
 
-      ipcLogger.audit("admin-link-tool-project", "Admin linking tool to project", {
-        email: session.email,
-        projectId: validatedData.projectId,
-        toolId: validatedData.toolId,
-      });
+      ipcLogger.audit(
+        "admin-link-tool-project",
+        "Admin linking tool to project",
+        {
+          email: session.email,
+          projectId: validatedData.projectId,
+          toolId: validatedData.toolId,
+        }
+      );
 
       try {
-        linkToolToProject(validatedData.projectId, validatedData.toolId, validatedData.displayOrder);
+        linkToolToProject(
+          validatedData.projectId,
+          validatedData.toolId,
+          validatedData.displayOrder
+        );
         invalidateCache();
         ipcLogger.info("Tool linked to project by admin", {
           email: session.email,
@@ -680,17 +788,25 @@ export function registerBusinessConfigHandlers(): void {
       const session = validateSession(validatedData.token);
 
       if (!session.valid || !session.isAdmin) {
-        ipcLogger.security("admin-action-denied", "Unauthorized admin action attempted", {
-          token: validatedData.token.substring(0, 8) + "...",
-        });
+        ipcLogger.security(
+          "admin-action-denied",
+          "Unauthorized admin action attempted",
+          {
+            token: validatedData.token.substring(0, 8) + "...",
+          }
+        );
         return { success: false, error: "Unauthorized: Admin access required" };
       }
 
-      ipcLogger.audit("admin-unlink-tool-project", "Admin unlinking tool from project", {
-        email: session.email,
-        projectId: validatedData.projectId,
-        toolId: validatedData.toolId,
-      });
+      ipcLogger.audit(
+        "admin-unlink-tool-project",
+        "Admin unlinking tool from project",
+        {
+          email: session.email,
+          projectId: validatedData.projectId,
+          toolId: validatedData.toolId,
+        }
+      );
 
       try {
         unlinkToolFromProject(validatedData.projectId, validatedData.toolId);

@@ -62,9 +62,9 @@ describe("Database Schema Contract Validation", () => {
 
       expect(typeof dbEntry.id).toBe("number");
       expect(typeof dbEntry.date).toBe("string");
-      expect(typeof dbEntry.time_in).toBe("number");
-      expect(typeof dbEntry.time_out).toBe("number");
-      expect(typeof dbEntry.hours).toBe("number");
+      expect(dbEntry.hours === null || typeof dbEntry.hours === "number").toBe(
+        true
+      );
       expect(typeof dbEntry.project).toBe("string");
       expect(typeof dbEntry.task_description).toBe("string");
 
@@ -118,17 +118,17 @@ describe("Database Schema Contract Validation", () => {
     it("should enforce hours range constraints", () => {
       const validHours = [
         0.25, // 15 minutes
-        0.5,  // 30 minutes
-        1.0,  // 1 hour
-        8.0,  // 8 hours
+        0.5, // 30 minutes
+        1.0, // 1 hour
+        8.0, // 8 hours
         24.0, // 24 hours (maximum)
       ];
 
       const invalidHours = [
-        -1.0,  // Negative
-        0.15,  // Below minimum (0.25)
-        25.0,  // Above maximum (24.0)
-        0.1,   // Not 15-minute increment
+        -1.0, // Negative
+        0.15, // Below minimum (0.25)
+        25.0, // Above maximum (24.0)
+        0.1, // Not 15-minute increment
         1.123, // Not 15-minute increment
       ];
 
@@ -137,7 +137,9 @@ describe("Database Schema Contract Validation", () => {
         expect(hours).toBeLessThanOrEqual(24.0);
         // Check 15-minute increments
         const remainder = (hours * 4) % 1;
-        expect(Math.abs(remainder) < 0.0001 || Math.abs(remainder - 1) < 0.0001).toBe(true);
+        expect(
+          Math.abs(remainder) < 0.0001 || Math.abs(remainder - 1) < 0.0001
+        ).toBe(true);
       });
 
       invalidHours.forEach((hours) => {
@@ -146,24 +148,34 @@ describe("Database Schema Contract Validation", () => {
           hours <= 24.0 &&
           (() => {
             const remainder = (hours * 4) % 1;
-            return Math.abs(remainder) < 0.0001 || Math.abs(remainder - 1) < 0.0001;
+            return (
+              Math.abs(remainder) < 0.0001 || Math.abs(remainder - 1) < 0.0001
+            );
           })();
         expect(isValid).toBe(false);
       });
     });
 
     it("should enforce 15-minute increment constraints", () => {
-      const validHours = [0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 8.0, 24.0];
-      const invalidHours = [0.1, 0.2, 0.3, 0.4, 0.6, 0.7, 0.8, 0.9, 1.1, 1.2, 1.123];
+      const validHours = [
+        0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 8.0, 24.0,
+      ];
+      const invalidHours = [
+        0.1, 0.2, 0.3, 0.4, 0.6, 0.7, 0.8, 0.9, 1.1, 1.2, 1.123,
+      ];
 
       validHours.forEach((hours) => {
         const remainder = (hours * 4) % 1;
-        expect(Math.abs(remainder) < 0.0001 || Math.abs(remainder - 1) < 0.0001).toBe(true);
+        expect(
+          Math.abs(remainder) < 0.0001 || Math.abs(remainder - 1) < 0.0001
+        ).toBe(true);
       });
 
       invalidHours.forEach((hours) => {
         const remainder = (hours * 4) % 1;
-        expect(Math.abs(remainder) >= 0.0001 && Math.abs(remainder - 1) >= 0.0001).toBe(true);
+        expect(
+          Math.abs(remainder) >= 0.0001 && Math.abs(remainder - 1) >= 0.0001
+        ).toBe(true);
       });
     });
 

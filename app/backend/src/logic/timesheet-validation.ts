@@ -174,3 +174,82 @@ export function validateField(
   }
 }
 
+/**
+ * Validate a time string (HH:MM or numeric format)
+ * Times must be in 15-minute increments
+ * 
+ * @param time - Time string to validate (e.g., "09:00", "900")
+ * @returns true if valid, false otherwise
+ */
+export function isValidTime(time?: string): boolean {
+  if (typeof time !== 'string') return false;
+  if (!time) return false;
+
+  let minutes: number;
+
+  // Try numeric format (e.g., "900" = 9:00 AM = 540 minutes)
+  if (/^\d+$/.test(time)) {
+    minutes = parseInt(time, 10);
+  } else {
+    // Try HH:MM format
+    const match = time.match(/^(\d{1,2}):(\d{2})$/);
+    if (!match) return false;
+
+    const hours = parseInt(match[1]!, 10);
+    const mins = parseInt(match[2]!, 10);
+
+    // Validate ranges
+    if (hours < 0 || hours > 23) return false;
+    if (mins < 0 || mins > 59) return false;
+
+    // Must be in 15-minute increments
+    if (mins % 15 !== 0) return false;
+
+    minutes = hours * 60 + mins;
+  }
+
+  // Validate range: 0 to 1439 (0:00 to 23:45)
+  if (minutes < 0 || minutes > 1439) return false;
+
+  // Must be in 15-minute increments
+  if (minutes % 15 !== 0) return false;
+
+  return true;
+}
+
+/**
+ * Validate that timeOut is after timeIn
+ * Both should be valid time strings
+ * 
+ * @param timeIn - Start time (e.g., "09:00")
+ * @param timeOut - End time (e.g., "17:00")
+ * @returns true if timeOut is after timeIn, false otherwise
+ */
+export function isTimeOutAfterTimeIn(timeIn?: string, timeOut?: string): boolean {
+  if (!isValidTime(timeIn) || !isValidTime(timeOut)) return false;
+
+  let inMinutes: number;
+  let outMinutes: number;
+
+  // Convert timeIn to minutes
+  if (/^\d+$/.test(timeIn || '')) {
+    inMinutes = parseInt(timeIn!, 10);
+  } else {
+    const match = (timeIn || '').match(/^(\d{1,2}):(\d{2})$/);
+    if (!match) return false;
+    inMinutes = parseInt(match[1]!, 10) * 60 + parseInt(match[2]!, 10);
+  }
+
+  // Convert timeOut to minutes
+  if (/^\d+$/.test(timeOut || '')) {
+    outMinutes = parseInt(timeOut!, 10);
+  } else {
+    const match = (timeOut || '').match(/^(\d{1,2}):(\d{2})$/);
+    if (!match) return false;
+    outMinutes = parseInt(match[1]!, 10) * 60 + parseInt(match[2]!, 10);
+  }
+
+  // timeOut must be strictly greater than timeIn
+  return outMinutes > inMinutes;
+}
+

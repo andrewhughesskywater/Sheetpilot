@@ -1,5 +1,4 @@
 import { app, dialog, screen, type BrowserWindow } from "electron";
-import { createRequire } from "module";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
 import { getRuntimeFlags } from "./bootstrap/env";
@@ -47,8 +46,8 @@ const shimDbLogger = createShimLogger("Database");
 writeStartupLog(app, __dirname);
 preflightResolveCriticalModules(app, shimAppLogger);
 
-const backendRequire = createRequire(__filename);
-const logging = loadLoggingModule(backendRequire, {
+// Initialize logging module asynchronously
+const loggingPromise = loadLoggingModule({
   appLogger: shimAppLogger,
   dbLogger: shimDbLogger,
 });
@@ -69,6 +68,9 @@ const windowStateSaver = createDebouncedWindowStateSaver({
 app
   .whenReady()
   .then(async () => {
+    // Load logging module
+    const logging = await loggingPromise;
+
     // Initialize logging
     const { appLogger, dbLogger } = await initializeLogging({
       app,
@@ -76,7 +78,6 @@ app
       backendDirname: __dirname,
       shimAppLogger,
       shimDbLogger,
-      backendRequire,
       logging,
     });
 
@@ -97,7 +98,6 @@ app
     // Initialize routes (IPC handlers)
     initializeRoutes({
       logger: appLogger,
-      backendRequire,
       backendDirname: __dirname,
     });
 
@@ -159,7 +159,9 @@ app
       if (app.isReady()) {
         dialog.showErrorBox(
           "Application Startup Error",
-          `An error occurred during application startup:\n\n${errorMsg}\n\n${errorStack || ""}\n\nThe application will now exit.`
+          `An error occurred during application startup:\n\n${errorMsg}\n\n${
+            errorStack || ""
+          }\n\nThe application will now exit.`
         );
         setTimeout(() => app.exit(1), 2000);
       } else {

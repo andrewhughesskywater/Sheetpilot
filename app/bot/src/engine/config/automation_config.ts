@@ -81,6 +81,38 @@ export function createFormConfig(formUrl: string, formId: string) {
 }
 
 // ============================================================================
+// DEPRECATED CONSTANTS (FOR BACKWARD COMPATIBILITY)
+// ============================================================================
+
+/**
+ * @deprecated Use createFormConfig() instead
+ * This constant is a placeholder to indicate deprecation.
+ * The system now uses quarter-based routing to dynamically select form URLs.
+ */
+export const BASE_URL: string = "DEPRECATED_USE_DYNAMIC_CONFIG";
+
+/**
+ * @deprecated Use createFormConfig() instead
+ * This constant is a placeholder to indicate deprecation.
+ * The system now uses quarter-based routing to dynamically select form IDs.
+ */
+export const FORM_ID: string = "DEPRECATED_USE_DYNAMIC_CONFIG";
+
+/**
+ * @deprecated Use createFormConfig() instead
+ * This constant is a placeholder to indicate deprecation.
+ */
+export const SUBMISSION_ENDPOINT: string = "DEPRECATED_USE_DYNAMIC_CONFIG";
+
+/**
+ * @deprecated Use createFormConfig() instead
+ * This constant is a placeholder to indicate deprecation.
+ */
+export const SUBMIT_SUCCESS_RESPONSE_URL_PATTERNS: string[] = [
+  "DEPRECATED_USE_DYNAMIC_CONFIG",
+];
+
+// ============================================================================
 // BROWSER CONFIGURATION
 // ============================================================================
 
@@ -569,7 +601,7 @@ export const PROJECT_TO_TOOL_LABEL: Record<string, string> = {
   "FL-Carver Techs": "Carver Tool",
   "FL-Carver Tools": "Carver Tool",
   "SWFL-EQUIP": "SWFL Tool",
-  "269 Daytona : DECA" : "Destin COL"
+  "269 Daytona : DECA": "Destin COL",
 };
 
 // ============================================================================

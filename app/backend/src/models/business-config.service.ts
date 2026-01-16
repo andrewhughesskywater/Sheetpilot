@@ -19,7 +19,6 @@ import {
   getAllChargeCodes as repoGetAllChargeCodes,
   getProjectByName,
   getToolByName,
-  getChargeCodeByName,
 } from "./business-config.repository";
 import type { TimesheetRow } from "@sheetpilot/shared/business-config";
 
@@ -74,7 +73,7 @@ export async function getAllProjects(): Promise<readonly string[]> {
   const projects = repoGetAllProjects();
   const projectNames = projects.map((p) => p.name);
   cache.projects = projectNames;
-  
+
   // Populate requires_tools cache
   projects.forEach((p) => {
     cache.projectRequiresTools.set(p.name, p.requires_tools);
@@ -99,7 +98,9 @@ export async function getProjectsWithoutTools(): Promise<readonly string[]> {
 /**
  * Gets tools for a specific project
  */
-export async function getToolsForProject(project: string): Promise<readonly string[]> {
+export async function getToolsForProject(
+  project: string
+): Promise<readonly string[]> {
   if (!project) {
     return [];
   }
@@ -282,7 +283,10 @@ export async function isValidProject(project: string): Promise<boolean> {
 /**
  * Validates if a tool is valid for a given project
  */
-export async function isValidToolForProject(tool: string, project: string): Promise<boolean> {
+export async function isValidToolForProject(
+  tool: string,
+  project: string
+): Promise<boolean> {
   if (!project || !tool) {
     return false;
   }
@@ -313,7 +317,9 @@ export async function isValidChargeCode(chargeCode: string): Promise<boolean> {
  * Normalizes a timesheet row based on business rules
  * Clears invalid dependent fields when parent selections change
  */
-export async function normalizeTimesheetRow(row: TimesheetRow): Promise<TimesheetRow> {
+export async function normalizeTimesheetRow(
+  row: TimesheetRow
+): Promise<TimesheetRow> {
   const normalized = { ...row };
 
   // If project doesn't need tools, clear tool and charge code

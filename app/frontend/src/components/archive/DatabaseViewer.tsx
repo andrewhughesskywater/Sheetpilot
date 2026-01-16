@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, memo } from "react";
+import { useState, useMemo, memo, useCallback } from "react";
 import { HotTable } from "@handsontable/react-wrapper";
 import { registerAllModules } from "handsontable/registry";
 import DownloadIcon from "@mui/icons-material/Download";
@@ -56,26 +56,6 @@ function Archive() {
     refreshArchiveData,
   } = useData();
 
-  // Fetch fresh data when component mounts
-  useEffect(() => {
-    let isMounted = true;
-
-    const loadData = async () => {
-      window.logger?.debug(
-        "[Archive] Component mounted, refreshing archive data"
-      );
-      if (isMounted) {
-        await refreshArchiveData();
-      }
-    };
-
-    void loadData();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [refreshArchiveData]);
-
   window.logger?.debug("[Archive] Component state", {
     isLoading: isArchiveDataLoading,
     error: archiveDataError,
@@ -99,7 +79,10 @@ function Archive() {
   const formatTimesheetData = (entries: TimesheetEntry[]) => {
     const formatted = entries.map((entry) => ({
       date: formatDate(entry.date),
-      hours: entry.hours !== null && entry.hours !== undefined ? entry.hours.toFixed(2) : '',
+      hours:
+        entry.hours !== null && entry.hours !== undefined
+          ? entry.hours.toFixed(2)
+          : "",
       project: entry.project,
       tool: entry.tool || "",
       chargeCode: entry.detail_charge_code || "",
@@ -110,38 +93,46 @@ function Archive() {
     });
     return formatted;
   };
-  const formatCredentialsData = (credentials: Credential[]) => {
-    return credentials.map((cred) => ({
-      service: cred.service,
-      email: cred.email,
-      createdAt: cred.created_at,
-      updatedAt: cred.updated_at,
-    }));
-  };
+  const formatCredentialsData = useMemo(
+    () => (credentials: Credential[]) =>
+      credentials.map((cred) => ({
+        service: cred.service,
+        email: cred.email,
+        createdAt: cred.created_at,
+        updatedAt: cred.updated_at,
+      })),
+    []
+  );
 
-  const timesheetColumns = [
-    {
-      data: "date",
-      title: "Date",
-      type: "date",
-      dateFormat: "MM/DD/YYYY",
-      width: 100,
-    },
-    { data: "hours", title: "Hours", width: 80 },
-    { data: "project", title: "Project", width: 120 },
-    { data: "tool", title: "Tool", width: 100 },
-    { data: "chargeCode", title: "Detail Charge Code", width: 120 },
-    { data: "taskDescription", title: "Task Description", width: 200 },
-  ];
+  const timesheetColumns = useMemo(
+    () => [
+      {
+        data: "date",
+        title: "Date",
+        type: "date",
+        dateFormat: "MM/DD/YYYY",
+        width: 100,
+      },
+      { data: "hours", title: "Hours", width: 80 },
+      { data: "project", title: "Project", width: 120 },
+      { data: "tool", title: "Tool", width: 100 },
+      { data: "chargeCode", title: "Detail Charge Code", width: 120 },
+      { data: "taskDescription", title: "Task Description", width: 200 },
+    ],
+    []
+  );
 
-  const credentialsColumns = [
-    { data: "service", title: "Service", width: 120 },
-    { data: "email", title: "Email", width: 200 },
-    { data: "createdAt", title: "Created", width: 150 },
-    { data: "updatedAt", title: "Updated", width: 150 },
-  ];
+  const credentialsColumns = useMemo(
+    () => [
+      { data: "service", title: "Service", width: 120 },
+      { data: "email", title: "Email", width: 200 },
+      { data: "createdAt", title: "Created", width: 150 },
+      { data: "updatedAt", title: "Updated", width: 150 },
+    ],
+    []
+  );
 
-  const handleManualRefresh = async () => {
+  const handleManualRefresh = useCallback(async () => {
     // Prevent multiple simultaneous refreshes
     if (isManualRefreshing || isArchiveDataLoading) return;
 
@@ -158,9 +149,9 @@ function Archive() {
     } finally {
       setIsManualRefreshing(false);
     }
-  };
+  }, [isManualRefreshing, isArchiveDataLoading, refreshArchiveData]);
 
-  const exportToCSV = async () => {
+  const exportToCSV = useCallback(async () => {
     // Prevent multiple simultaneous exports
     if (isExporting) return;
 
@@ -177,7 +168,7 @@ function Archive() {
     } finally {
       setIsExporting(false);
     }
-  };
+  }, [isExporting]);
 
   // Validate archive data for button status - MUST be before early returns
   const buttonStatus: ButtonStatus = useMemo(() => {

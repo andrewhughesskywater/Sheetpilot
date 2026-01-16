@@ -1,9 +1,9 @@
 /**
  * @fileoverview Dropdown Cascading Logic
- * 
+ *
  * Business logic for cascading dropdowns (project -> tool -> charge code).
  * Now uses shared business configuration for consistency across frontend/backend.
- * 
+ *
  * @author Andrew Hughes
  * @version 2.0.0
  * @since 2025-10-01
@@ -17,8 +17,8 @@ import {
   CHARGE_CODES,
   getToolsForProject as getToolsForProjectShared,
   doesProjectNeedTools,
-  doesToolNeedChargeCode
-} from '@sheetpilot/shared/business-config';
+  doesToolNeedChargeCode,
+} from "@sheetpilot/shared/business-config";
 
 /**
  * @deprecated Use PROJECTS_WITHOUT_TOOLS from business-config
@@ -58,7 +58,7 @@ export const chargeCodes = [...CHARGE_CODES];
 export function getToolOptions(project?: string): string[] {
   if (!project) return [];
   // Handle whitespace-only strings
-  if (typeof project === 'string' && project.trim() === '') return [];
+  if (typeof project === "string" && project.trim() === "") return [];
   return [...getToolsForProjectShared(project)];
 }
 
@@ -67,10 +67,10 @@ export function getToolOptions(project?: string): string[] {
  * @deprecated Use doesToolNeedChargeCode from business-config
  * Re-exported for backward compatibility
  */
-export function toolNeedsChargeCode(tool?: string): boolean {
+export function toolNeedsChargeCode(tool?: string | null): boolean {
   if (!tool) return false;
   // Handle whitespace-only strings
-  if (typeof tool === 'string' && tool.trim() === '') return false;
+  if (typeof tool === "string" && tool.trim() === "") return false;
   return doesToolNeedChargeCode(tool);
 }
 
@@ -82,7 +82,6 @@ export function toolNeedsChargeCode(tool?: string): boolean {
 export function projectNeedsTools(project?: string): boolean {
   if (!project) return false;
   // Handle whitespace-only strings
-  if (typeof project === 'string' && project.trim() === '') return false;
+  if (typeof project === "string" && project.trim() === "") return false;
   return doesProjectNeedTools(project);
 }
-

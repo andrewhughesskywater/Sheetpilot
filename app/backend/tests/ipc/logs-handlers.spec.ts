@@ -2293,8 +2293,7 @@ describe('IPC Workflow Integration', () => {
         // Simulate user adding entries through the UI
         insertTimesheetEntry({
             date: '2025-01-15',
-            timeIn: 540,
-            timeOut: 600,
+            hours: 1.0,
             project: 'TestProject',
             taskDescription: 'Test task'
         });
@@ -2337,8 +2336,7 @@ describe('IPC Workflow Integration', () => {
         // Insert test entry
         insertTimesheetEntry({
             date: '2025-01-15',
-            timeIn: 540,
-            timeOut: 600,
+            hours: 1.0,
             project: 'TestProject',
             taskDescription: 'Test task'
         });
@@ -2361,9 +2359,9 @@ describe('IPC Workflow Integration', () => {
     it('should handle multiple pending entries with different projects', async () => {
         // Add entries for different projects
         const entries = [
-            { date: '2025-01-15', timeIn: 540, timeOut: 600, project: 'Project-A', taskDescription: 'Task A' },
-            { date: '2025-01-15', timeIn: 600, timeOut: 660, project: 'Project-B', taskDescription: 'Task B' },
-            { date: '2025-01-16', timeIn: 540, timeOut: 600, project: 'Project-C', taskDescription: 'Task C' }
+            { date: '2025-01-15', hours: 1.0, project: 'Project-A', taskDescription: 'Task A' },
+            { date: '2025-01-15', hours: 1.0, project: 'Project-B', taskDescription: 'Task B' },
+            { date: '2025-01-16', hours: 1.0, project: 'Project-C', taskDescription: 'Task C' }
         ];
 
         entries.forEach(entry => insertTimesheetEntry(entry));
@@ -2381,8 +2379,7 @@ describe('IPC Workflow Integration', () => {
     it('should maintain data integrity across automation attempts', async () => {
         insertTimesheetEntry({
             date: '2025-01-15',
-            timeIn: 540,
-            timeOut: 600,
+            hours: 1.0,
             project: 'TestProject',
             tool: 'TestTool',
             detailChargeCode: 'CODE123',
@@ -2414,8 +2411,7 @@ describe('IPC Workflow Integration', () => {
         it('should handle concurrent read operations', async () => {
             insertTimesheetEntry({
                 date: '2025-01-15',
-                timeIn: 540,
-                timeOut: 600,
+                hours: 1.0,
                 project: 'Test',
                 taskDescription: 'Task'
             });
@@ -2433,8 +2429,7 @@ describe('IPC Workflow Integration', () => {
         it('should handle concurrent write operations', async () => {
             const entries = Array(5).fill(null).map((_, i) => ({
                 date: '2025-01-15',
-                timeIn: 540 + (i * 60),
-                timeOut: 600 + (i * 60),
+                hours: 1.0,
                 project: `Project ${i}`,
                 taskDescription: `Task ${i}`
             }));
@@ -2461,8 +2456,7 @@ describe('IPC Workflow Integration', () => {
                     // Time must be in 15-minute increments: 540, 555, 570, 585, etc.
                     operations.push(Promise.resolve(insertTimesheetEntry({
                         date: '2025-01-15',
-                        timeIn: 540 + (i * 15),
-                        timeOut: 600 + (i * 15),
+                        hours: 1.0,
                         project: `Project ${i}`,
                         taskDescription: `Task ${i}`
                     })));
@@ -2490,8 +2484,7 @@ describe('IPC Workflow Integration', () => {
                 order.push('op2');
                 insertTimesheetEntry({
                     date: '2025-01-15',
-                    timeIn: 540,
-                    timeOut: 600,
+                    hours: 1.0,
                     project: 'Test',
                     taskDescription: 'Task'
                 });

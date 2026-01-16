@@ -190,12 +190,13 @@ describe("IPC Contract Validation", () => {
       expect(validHoursPayload["hours"]).toBe(8.0);
 
       // Check 15-minute increment (multiples of 0.25)
-      const remainder = (validHoursPayload["hours"]! * 4) % 1;
+      const remainder = ((validHoursPayload["hours"] as number) * 4) % 1;
       expect(remainder).toBe(0);
 
       // Invalid hours should not be in 15-minute increments
       expect(typeof invalidHoursPayload["hours"]).toBe("number");
-      const invalidRemainder = (invalidHoursPayload["hours"]! * 4) % 1;
+      const invalidRemainder =
+        ((invalidHoursPayload["hours"] as number) * 4) % 1;
       expect(invalidRemainder).not.toBe(0);
 
       // Check range (0.25 to 24.0)
@@ -455,9 +456,11 @@ describe("IPC Contract Validation", () => {
         const [month, day, year] = parts.map(Number) as [
           number,
           number,
-          number,
+          number
         ];
-        const isoDate = `${year}-${month.toString().padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
+        const isoDate = `${year}-${month.toString().padStart(2, "0")}-${day
+          .toString()
+          .padStart(2, "0")}`;
         expect(isoDate).toBe(expected);
       });
     });
@@ -476,9 +479,11 @@ describe("IPC Contract Validation", () => {
         const [month, day, year] = parts.map(Number) as [
           number,
           number,
-          number,
+          number
         ];
-        const isoDate = `${year}-${month.toString().padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
+        const isoDate = `${year}-${month.toString().padStart(2, "0")}-${day
+          .toString()
+          .padStart(2, "0")}`;
         expect(isoDate).toBe(expected);
       });
     });

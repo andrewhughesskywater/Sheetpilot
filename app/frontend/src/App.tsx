@@ -234,6 +234,7 @@ function AppContent() {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const hasRequestedInitialTimesheetRef = useRef(false);
   const hasRefreshedEmptyOnceRef = useRef(false);
+  const hasRequestedArchiveRef = useRef(false);
   const timesheetGridRef = useRef<TimesheetGridHandle>(null);
 
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
@@ -249,52 +250,60 @@ function AppContent() {
     isTimesheetDraftLoading,
     timesheetDraftData,
   } = useData();
-  useEffect(() => {
-    if (!isLoggedIn) return;
 
-    if (activeTab === 0) {
-      if (!hasRequestedInitialTimesheetRef.current) {
-        window.logger?.debug(
-          "[App] Refreshing timesheet draft on initial tab activate"
+  // Separate effect for timesheet tab initialization and empty check
+  useEffect(() => {
+    if (!isLoggedIn || activeTab !== 0) return;
+
+    if (!hasRequestedInitialTimesheetRef.current) {
+      window.logger?.debug(
+        "[App] Refreshing timesheet draft on initial tab activate"
+      );
+      hasRequestedInitialTimesheetRef.current = true;
+      void refreshTimesheetDraft();
+      return;
+    }
+
+    // Only check for empty rows if we're done loading
+    if (isTimesheetDraftLoading) return;
+
+    const hasRealRows =
+      Array.isArray(timesheetDraftData) &&
+      timesheetDraftData.some((r) => {
+        const row = r as Record<string, unknown>;
+        return Boolean(
+          row["date"] ||
+            row["hours"] !== undefined ||
+            row["project"] ||
+            row["taskDescription"]
         );
-        hasRequestedInitialTimesheetRef.current = true;
-        void refreshTimesheetDraft();
-        return;
-      }
-      const hasRealRows =
-        Array.isArray(timesheetDraftData) &&
-        timesheetDraftData.some((r) => {
-          const row = r as Record<string, unknown>;
-          return Boolean(
-            row["date"] ||
-              row["hours"] !== undefined ||
-              row["project"] ||
-              row["taskDescription"]
-          );
-        });
-      if (
-        !isTimesheetDraftLoading &&
-        !hasRealRows &&
-        !hasRefreshedEmptyOnceRef.current
-      ) {
-        window.logger?.debug(
-          "[App] Timesheet appears empty post-init; refreshing once"
-        );
-        hasRefreshedEmptyOnceRef.current = true;
-        void refreshTimesheetDraft();
-      }
-    } else if (activeTab === 1) {
-      window.logger?.debug("[App] Refreshing archive data on tab activate");
-      void refreshArchiveData();
+      });
+
+    if (!hasRealRows && !hasRefreshedEmptyOnceRef.current) {
+      window.logger?.debug(
+        "[App] Timesheet appears empty post-init; refreshing once"
+      );
+      hasRefreshedEmptyOnceRef.current = true;
+      void refreshTimesheetDraft();
     }
   }, [
     activeTab,
     isLoggedIn,
-    refreshTimesheetDraft,
-    refreshArchiveData,
     isTimesheetDraftLoading,
+    refreshTimesheetDraft,
     timesheetDraftData,
   ]);
+
+  // Separate effect for archive tab initialization
+  useEffect(() => {
+    if (!isLoggedIn || activeTab !== 1) return;
+
+    if (!hasRequestedArchiveRef.current) {
+      window.logger?.debug("[App] Loading archive data on tab activate");
+      hasRequestedArchiveRef.current = true;
+      void refreshArchiveData();
+    }
+  }, [activeTab, isLoggedIn, refreshArchiveData]);
 
   useEffect(() => {
     initializeTheme();
@@ -398,7 +407,9 @@ function AppContent() {
             <LoginDialog open={!isLoggedIn} onLoginSuccess={sessionLogin} />
           ) : (
             <div
-              className={`page-transition-container ${isTransitioning ? "page-exit-active" : "page-enter-active"}`}
+              className={`page-transition-container ${
+                isTransitioning ? "page-exit-active" : "page-enter-active"
+              }`}
             >
               {displayedTab === 0 && (
                 <Suspense fallback={<TimesheetSkeleton />}>

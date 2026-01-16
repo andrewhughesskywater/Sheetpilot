@@ -2,7 +2,7 @@
  * Custom hooks for TimesheetGrid component
  */
 
-import { useEffect, useRef, useCallback } from "react";
+import React, { useEffect, useRef, useCallback } from "react";
 import type { HotTableRef } from "@handsontable/react-wrapper";
 import type { TimesheetRow } from "./schema/timesheet.schema";
 import { loadMacros } from "@/utils/macroStorage";
@@ -104,38 +104,29 @@ export function useFlushPendingSavesOnUnmount(
 
 /**
  * Hook to sync timesheet data with Handsontable instance
+ *
+ * Relies on HotTable's built-in prop handling for data updates,
+ * not imperative updateData() calls which can trigger infinite loops.
  */
 export function useSyncTimesheetData(
   timesheetDraftData: TimesheetRow[],
   hotTableRef: React.RefObject<HotTableRef | null>,
-  updateTableData: (newData: TimesheetRow[]) => void,
   onChange?: (rows: TimesheetRow[]) => void
 ): void {
   const isInitialLoadRef = useRef(true);
-  const isProcessingChangeRef = useRef(false);
-  const previousDataRef = useRef<TimesheetRow[]>(timesheetDraftData);
+  const onChangeRef = useRef(onChange);
+
+  // Keep onChange ref in sync without triggering effects
+  React.useLayoutEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
 
   useEffect(() => {
-    if (isProcessingChangeRef.current) {
-      return;
-    }
-
     if (isInitialLoadRef.current) {
       isInitialLoadRef.current = false;
-      previousDataRef.current = timesheetDraftData;
-      onChange?.(timesheetDraftData);
-    } else if (timesheetDraftData && hotTableRef.current?.hotInstance) {
-      const dataChanged =
-        previousDataRef.current.length !== timesheetDraftData.length ||
-        JSON.stringify(previousDataRef.current.slice(0, 3)) !==
-          JSON.stringify(timesheetDraftData.slice(0, 3));
-
-      if (dataChanged) {
-        previousDataRef.current = timesheetDraftData;
-        updateTableData(timesheetDraftData);
-      }
+      onChangeRef.current?.(timesheetDraftData);
     }
-  }, [timesheetDraftData, updateTableData, onChange, hotTableRef]);
+  }, [timesheetDraftData]);
 }
 
 /**
@@ -161,14 +152,17 @@ export function useHandleBeforePaste(): () => boolean {
 /**
  * Hook to create handleAfterBeginEditing callback
  */
-export function useHandleAfterBeginEditing<T extends { row: number; col: number }>(
+export function useHandleAfterBeginEditing<
+  T extends { row: number; col: number }
+>(
   hotTableRef: React.RefObject<HotTableRef | null>,
   setValidationErrors: React.Dispatch<React.SetStateAction<T[]>>
 ): (row: number, column: number) => void {
   return useCallback(
     (row: number, column: number) => {
-      setValidationErrors((prev) =>
-        prev.filter((err) => !(err.row === row && err.col === column)) as T[]
+      setValidationErrors(
+        (prev) =>
+          prev.filter((err) => !(err.row === row && err.col === column)) as T[]
       );
 
       /**
@@ -184,7 +178,6 @@ export function useHandleAfterBeginEditing<T extends { row: number; col: number 
           if (dateEditor.$datePicker && dateEditor.$datePicker._o) {
             const originalOnSelect = dateEditor.$datePicker._o.onSelect;
             // WHY: 'this' context must be preserved for picker's internal state management
-             
             dateEditor.$datePicker._o.onSelect = function (
               this: DatePickerOptions,
               date: Date

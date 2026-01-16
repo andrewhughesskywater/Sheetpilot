@@ -1,4 +1,4 @@
-import type { LoggerLike } from './logger-contract';
+import type { LoggerLike } from "./logger-contract";
 
 export interface LoggingModule {
   initializeLogging: () => void;
@@ -6,9 +6,12 @@ export interface LoggingModule {
   dbLogger: LoggerLike;
 }
 
-export function loadLoggingModule(backendRequire: NodeRequire, shim: { appLogger: LoggerLike; dbLogger: LoggerLike }): LoggingModule {
+export async function loadLoggingModule(shim: {
+  appLogger: LoggerLike;
+  dbLogger: LoggerLike;
+}): Promise<LoggingModule> {
   // In test mode, use placeholder loggers that will be mocked
-  if (process.env['VITEST'] === 'true') {
+  if (process.env["VITEST"] === "true") {
     const mockLogger = (): LoggerLike => ({
       info: () => {},
       warn: () => {},
@@ -18,36 +21,41 @@ export function loadLoggingModule(backendRequire: NodeRequire, shim: { appLogger
       silly: () => {},
       audit: () => {},
       security: () => {},
-      startTimer: () => ({ done: () => {} })
+      startTimer: () => ({ done: () => {} }),
     });
     return {
       initializeLogging: () => {},
       appLogger: mockLogger(),
-      dbLogger: mockLogger()
+      dbLogger: mockLogger(),
     };
   }
 
   try {
-    const loaded = backendRequire('../../shared/logger') as unknown;
-    const mod = loaded as {
+    const mod = (await import("@sheetpilot/shared/logger")) as {
       initializeLogging?: unknown;
       appLogger?: unknown;
       dbLogger?: unknown;
     };
 
-    if (typeof mod.initializeLogging !== 'function') {
-      return { initializeLogging: () => {}, appLogger: shim.appLogger, dbLogger: shim.dbLogger };
+    if (typeof mod.initializeLogging !== "function") {
+      return {
+        initializeLogging: () => {},
+        appLogger: shim.appLogger,
+        dbLogger: shim.dbLogger,
+      };
     }
 
     return {
       initializeLogging: mod.initializeLogging as () => void,
       appLogger: (mod.appLogger as LoggerLike) ?? shim.appLogger,
-      dbLogger: (mod.dbLogger as LoggerLike) ?? shim.dbLogger
+      dbLogger: (mod.dbLogger as LoggerLike) ?? shim.dbLogger,
     };
   } catch {
     // Keep shim loggers if shared logger cannot load for any reason
-    return { initializeLogging: () => {}, appLogger: shim.appLogger, dbLogger: shim.dbLogger };
+    return {
+      initializeLogging: () => {},
+      appLogger: shim.appLogger,
+      dbLogger: shim.dbLogger,
+    };
   }
 }
-
-

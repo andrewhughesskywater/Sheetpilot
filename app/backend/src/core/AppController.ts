@@ -29,8 +29,7 @@ export interface AppControllerParams {
   backendDirname: string;
   shimAppLogger: LoggerLike;
   shimDbLogger: LoggerLike;
-  backendRequire: NodeRequire;
-  logging: ReturnType<typeof loadLoggingModule>;
+  logging: Awaited<ReturnType<typeof loadLoggingModule>>;
 }
 
 export interface AppControllerResult {
@@ -84,7 +83,9 @@ export function initializeDatabase(app: App, dbLogger: LoggerLike): void {
 
     dialog.showErrorBox(
       "Application Startup Error",
-      `Could not initialize database:\n\n${err instanceof Error ? err.message : String(err)}\n\nThe application will now exit.`
+      `Could not initialize database:\n\n${
+        err instanceof Error ? err.message : String(err)
+      }\n\nThe application will now exit.`
     );
     app.exit(1);
     throw err;
@@ -96,7 +97,6 @@ export function initializeDatabase(app: App, dbLogger: LoggerLike): void {
  */
 export function initializeRoutes(params: {
   logger: LoggerLike;
-  backendRequire: NodeRequire;
   backendDirname: string;
 }): void {
   try {
@@ -109,7 +109,9 @@ export function initializeRoutes(params: {
 
     dialog.showErrorBox(
       "Application Startup Error",
-      `Could not register IPC handlers:\n\n${err instanceof Error ? err.message : String(err)}\n\nThe application will now exit.`
+      `Could not register IPC handlers:\n\n${
+        err instanceof Error ? err.message : String(err)
+      }\n\nThe application will now exit.`
     );
     throw err;
   }

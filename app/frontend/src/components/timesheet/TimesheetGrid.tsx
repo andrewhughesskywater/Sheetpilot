@@ -202,28 +202,8 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(
       archiveData,
     } = useData();
 
-    const updateTableData = useCallback(
-      (newData: TimesheetRow[]) => {
-        if (hotTableRef.current?.hotInstance) {
-          requestAnimationFrame(() => {
-            window.logger?.debug(
-              "[TimesheetGrid] Updating table data while preserving state"
-            );
-            hotTableRef.current?.hotInstance?.updateData(newData);
-          });
-        }
-        onChange?.(newData);
-      },
-      [onChange]
-    );
-
     const isProcessingChangeRef = useRef(false);
-    useSyncTimesheetData(
-      timesheetDraftData,
-      hotTableRef,
-      updateTableData,
-      onChange
-    );
+    useSyncTimesheetData(timesheetDraftData, hotTableRef, onChange);
     useLoadMacros((macros) => setMacros(macros as MacroRow[]));
     useWeekdayPattern(timesheetDraftData, weekdayPatternRef);
     useDialogScrollbarFix(showMacroDialog, hotTableRef);
@@ -276,7 +256,7 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(
 
       // Load config after a short delay to allow grid to initialize
       const timer = setTimeout(() => {
-        loadBusinessConfig();
+        void loadBusinessConfig();
       }, 100);
 
       return () => {

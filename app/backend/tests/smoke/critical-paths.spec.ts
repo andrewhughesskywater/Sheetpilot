@@ -17,6 +17,8 @@ import { ensureSchema } from '../../src/models';
 import { 
   isValidDate, 
   isValidHours, 
+  isValidTime,
+  isTimeOutAfterTimeIn,
   validateField,
   type TimesheetRow
 } from '../../src/logic/timesheet-validation';

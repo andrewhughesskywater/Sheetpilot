@@ -13,14 +13,14 @@ import { ipcMain } from "electron";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
-import { registerBusinessConfigHandlers } from "../../src/routes/business-config-handlers";
+import { registerBusinessConfigHandlers } from "@/routes/business-config-handlers";
 import {
   setDbPath,
   ensureSchema,
   shutdownDatabase,
   runMigrations,
   createSession,
-} from "../../src/models";
+} from "@/models";
 
 // Mock Electron
 vi.mock("electron", () => ({
@@ -79,8 +79,8 @@ describe("Business Config IPC Handlers", () => {
     runMigrations(db, testDbPath);
 
     // Create admin session
-    const session = createSession("admin@test.com", true);
-    adminToken = session.token;
+    const adminSession = createSession("admin@test.com", true);
+    adminToken = adminSession;
 
     registerBusinessConfigHandlers();
   });

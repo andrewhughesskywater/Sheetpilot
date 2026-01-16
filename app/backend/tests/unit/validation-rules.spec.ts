@@ -13,6 +13,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   isValidDate,
   isValidHours,
+  isValidTime,
   validateField,
   type TimesheetRow,
 } from "../../src/logic/timesheet-validation";
