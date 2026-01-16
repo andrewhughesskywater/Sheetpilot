@@ -431,6 +431,8 @@ export function DataProvider({ children }: DataProviderProps) {
     [
       timesheetDraftData,
       archiveData,
+      refreshTimesheetDraft,
+      refreshArchiveData,
       isTimesheetDraftLoading,
       isArchiveDataLoading,
       timesheetDraftError,
