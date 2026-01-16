@@ -4,8 +4,8 @@ import {
   handleDeleteDraft,
   handleLoadDraft,
   handleLoadDraftById,
-  handleSaveDraft,
-} from '@/routes/handlers/timesheet/drafts.handlers';
+} from './drafts.handlers';
+import { handleSaveDraft } from './drafts.save';
 
 export function registerTimesheetDraftHandlers(): void {
   ipcMain.handle('timesheet:saveDraft', handleSaveDraft);
