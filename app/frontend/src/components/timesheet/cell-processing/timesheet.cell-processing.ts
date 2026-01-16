@@ -22,6 +22,96 @@ export interface ValidationError {
  */
 export type HandsontableChange = [row: number, prop: unknown, oldValue: unknown, newValue: unknown];
 
+type ValidationResult = {
+  isValid: boolean;
+  shouldClear: boolean;
+  errorMessage: string;
+};
+
+const validateChange = (
+  propStr: string,
+  newVal: unknown
+): ValidationResult => {
+  if (propStr === 'date' && newVal) {
+    const dateStr = String(newVal);
+    const isValid = isValidDate(dateStr);
+    return {
+      isValid,
+      shouldClear: !isValid,
+      errorMessage: isValid
+        ? ''
+        : `Invalid date format "${String(newVal)}" (must be MM/DD/YYYY or YYYY-MM-DD)`,
+    };
+  }
+
+  if (
+    propStr === 'hours' &&
+    newVal !== undefined &&
+    newVal !== null &&
+    newVal !== ''
+  ) {
+    const hoursValue = typeof newVal === 'number' ? newVal : Number(newVal);
+    const isValid = !isNaN(hoursValue) && isValidHours(hoursValue);
+    return {
+      isValid,
+      shouldClear: !isValid,
+      errorMessage: isValid
+        ? ''
+        : `Invalid hours "${String(newVal)}" (must be between 0.25 and 24.0 in 15-minute increments)`,
+    };
+  }
+
+  if ((propStr === 'project' || propStr === 'taskDescription') && !newVal) {
+    const fieldName = propStr === 'project' ? 'Project' : 'Task Description';
+    return {
+      isValid: false,
+      shouldClear: true,
+      errorMessage: `${fieldName} is required`,
+    };
+  }
+
+  return { isValid: true, shouldClear: false, errorMessage: '' };
+};
+
+const buildUpdatedRow = (
+  currentRow: TimesheetRow,
+  propStr: string,
+  newVal: unknown,
+  oldVal: unknown
+): TimesheetRow => {
+  if (propStr === 'date' && newVal && newVal !== oldVal) {
+    return { ...currentRow, date: normalizeDateFormat(String(newVal)) };
+  }
+
+  if (propStr === 'hours' && newVal !== undefined && newVal !== null && newVal !== '') {
+    const hoursValue = typeof newVal === 'number' ? newVal : Number(newVal);
+    return {
+      ...currentRow,
+      hours: !isNaN(hoursValue)
+        ? hoursValue
+        : typeof newVal === 'number'
+          ? newVal
+          : 0,
+    };
+  }
+
+  if (propStr === 'project' && newVal !== oldVal) {
+    const project = String(newVal ?? '');
+    return !doesProjectNeedTools(project)
+      ? { ...currentRow, project, tool: null, chargeCode: null }
+      : { ...currentRow, project };
+  }
+
+  if (propStr === 'tool' && newVal !== oldVal) {
+    const tool = String(newVal ?? '');
+    return !doesToolNeedChargeCode(tool)
+      ? { ...currentRow, tool, chargeCode: null }
+      : { ...currentRow, tool };
+  }
+
+  return { ...currentRow, [propStr]: newVal ?? '' };
+};
+
 /**
  * Process a single cell change with validation, formatting, and cascading rules
  * 
@@ -60,38 +150,10 @@ export function processCellChange(
     return { updatedRow: currentRow, isValid: true, error: null, shouldSkip: true };
   }
   
-  let isValid = true;
-  let errorMessage = '';
-  let shouldClear = false;
-  
-  // Validate and normalize dates
-  if (propStr === 'date' && newVal) {
-    const dateStr = String(newVal);
-    isValid = isValidDate(dateStr);
-    if (!isValid) {
-      errorMessage = `Invalid date format "${String(newVal)}" (must be MM/DD/YYYY or YYYY-MM-DD)`;
-      shouldClear = true;
-    }
-  }
-  // Validate hours
-  else if (propStr === 'hours' && newVal !== undefined && newVal !== null && newVal !== '') {
-    const hoursValue = typeof newVal === 'number' ? newVal : Number(newVal);
-    isValid = !isNaN(hoursValue) && isValidHours(hoursValue);
-    if (!isValid) {
-      errorMessage = `Invalid hours "${String(newVal)}" (must be between 0.25 and 24.0 in 15-minute increments)`;
-      shouldClear = true;
-    }
-  }
-  // Validate required fields
-  else if ((propStr === 'project' || propStr === 'taskDescription') && !newVal) {
-    isValid = false;
-    const fieldName = propStr === 'project' ? 'Project' : 'Task Description';
-    errorMessage = `${fieldName} is required`;
-    shouldClear = true;
-  }
-  
+  const validation = validateChange(propStr, newVal);
+
   // AUTO-CLEAR: If invalid, revert to previous value
-  if (shouldClear && isValid === false) {
+  if (validation.shouldClear && validation.isValid === false) {
     const revertValue = oldVal ?? '';
     hotInstance.setDataAtCell(rowIdx, colIdx, revertValue);
     hotInstance.setCellMeta(rowIdx, colIdx, 'className', 'htInvalid');
@@ -103,43 +165,17 @@ export function processCellChange(
         row: rowIdx,
         col: colIdx,
         field: propStr,
-        message: errorMessage
+        message: validation.errorMessage
       },
       shouldSkip: true
     };
   }
-  
-  // VALID CHANGE: Process normally
-  let updatedRow: TimesheetRow = currentRow;
-  
-  if (isValid) {
-    // Normalize and format date inputs
-    if (propStr === 'date' && newVal && newVal !== oldVal) {
-      updatedRow = { ...currentRow, date: normalizeDateFormat(String(newVal)) };
-    }
-    // Handle hours input (convert to number if string)
-    else if (propStr === 'hours' && newVal !== undefined && newVal !== null && newVal !== '') {
-      const hoursValue = typeof newVal === 'number' ? newVal : Number(newVal);
-      updatedRow = { ...currentRow, hours: !isNaN(hoursValue) ? hoursValue : (typeof newVal === 'number' ? newVal : 0) };
-    }
-    // Cascade project → tool → chargeCode
-    else if (propStr === 'project' && newVal !== oldVal) {
-      const project = String(newVal ?? '');
-      updatedRow = !doesProjectNeedTools(project)
-        ? { ...currentRow, project, tool: null, chargeCode: null }
-        : { ...currentRow, project };
-    } else if (propStr === 'tool' && newVal !== oldVal) {
-      const tool = String(newVal ?? '');
-      updatedRow = !doesToolNeedChargeCode(tool)
-        ? { ...currentRow, tool, chargeCode: null }
-        : { ...currentRow, tool };
-    } else {
-      updatedRow = { ...currentRow, [propStr]: newVal ?? '' };
-    }
-    
-    // Clear invalid styling if previously invalid
+
+  if (validation.isValid) {
+    const updatedRow = buildUpdatedRow(currentRow, propStr, newVal, oldVal);
     hotInstance.setCellMeta(rowIdx, colIdx, 'className', '');
+    return { updatedRow, isValid: true, error: null, shouldSkip: false };
   }
-  
-  return { updatedRow, isValid, error: null, shouldSkip: false };
+
+  return { updatedRow: currentRow, isValid: false, error: null, shouldSkip: false };
 }
