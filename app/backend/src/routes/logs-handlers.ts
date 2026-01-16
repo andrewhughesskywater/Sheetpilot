@@ -17,6 +17,90 @@ import { isTrustedIpcSender } from './handlers/timesheet/main-window';
 import { validateInput } from '@/validation/validate-ipc-input';
 import { exportLogsSchema } from '@/validation/ipc-schemas';
 
+type SessionValidationResult = { error?: string };
+
+const getSessionValidationResult = (
+  token: string,
+  actionLabel: string
+): SessionValidationResult => {
+  if (!token) {
+    return {
+      error: `Session token is required. Please log in to ${actionLabel}.`,
+    };
+  }
+
+  const session = validateSession(token);
+  if (!session.valid) {
+    return {
+      error: 'Session is invalid or expired. Please log in again.',
+    };
+  }
+
+  return {};
+};
+
+const getLatestLogFile = (logFiles: string[]): string | null =>
+  logFiles.reduce<string | null>(
+    (latest, file) => (latest === null || file > latest ? file : latest),
+    null
+  );
+
+const buildExportFilename = (extension: 'json' | 'txt'): string => {
+  const dateStamp = new Date().toISOString().split('T')[0];
+  return `sheetpilot_logs_${dateStamp}.${extension}`;
+};
+
+const exportLogContentAsJson = (logContent: string) => {
+  const lines = logContent.split('\n').filter((line) => line.trim() !== '');
+  const parsedLogs = lines.map((line) => {
+    try {
+      return JSON.parse(line);
+    } catch {
+      return { raw: line };
+    }
+  });
+
+  return {
+    content: JSON.stringify(parsedLogs, null, 2),
+    filename: buildExportFilename('json'),
+    mimeType: 'application/json',
+  };
+};
+
+const exportLogContentAsText = (logContent: string) => ({
+  content: logContent,
+  filename: buildExportFilename('txt'),
+  mimeType: 'text/plain',
+});
+
+const getValidatedLogExport = (
+  logPath: string,
+  exportFormat: 'json' | 'txt'
+): { success: true; data: { logPath: string; exportFormat: 'json' | 'txt' } } | { success: false; error: string } => {
+  const validation = validateInput(
+    exportLogsSchema,
+    { logPath, exportFormat },
+    'logs:exportLogs'
+  );
+  if (!validation.success) {
+    return { success: false, error: validation.error };
+  }
+  return { success: true, data: validation.data! };
+};
+
+const isAllowedLogPath = (
+  resolvedLogPath: string,
+  resolvedUserDataPath: string,
+  logFileName: string
+): boolean => {
+  const isExpectedLogFile =
+    logFileName.startsWith('sheetpilot_') && logFileName.endsWith('.log');
+  const isWithinUserData =
+    resolvedLogPath === resolvedUserDataPath ||
+    resolvedLogPath.startsWith(resolvedUserDataPath + path.sep);
+  return isExpectedLogFile && isWithinUserData;
+};
+
 /**
  * Register all logs-related IPC handlers
  */
@@ -28,26 +112,27 @@ export function registerLogsHandlers(): void {
       return { success: false, error: 'Could not get log path: unauthorized request' };
     }
 
-    if (!token) {
-      return { success: false, error: 'Session token is required. Please log in to access logs.' };
-    }
-
-    const session = validateSession(token);
-    if (!session.valid) {
-      return { success: false, error: 'Session is invalid or expired. Please log in again.' };
+    const sessionValidation = getSessionValidationResult(token, 'access logs');
+    if (sessionValidation.error) {
+      return { success: false, error: sessionValidation.error };
     }
 
     try {
       const userDataPath = app.getPath('userData');
       const allFiles = await fs.promises.readdir(userDataPath);
-      const logFiles = allFiles.filter((file: string) => file.startsWith('sheetpilot_') && file.endsWith('.log'));
+      const logFiles = allFiles.filter(
+        (file: string) => file.startsWith('sheetpilot_') && file.endsWith('.log')
+      );
       
       if (logFiles.length === 0) {
         return { success: false, error: 'No log files found' };
       }
       
       // Get the most recent log file
-      const latestLogFile = logFiles.sort().pop();
+      const latestLogFile = getLatestLogFile(logFiles);
+      if (!latestLogFile) {
+        return { success: false, error: 'No log files found' };
+      }
       const logPath = path.join(userDataPath, latestLogFile!);
       
       return { success: true, logPath, logFiles };
@@ -63,33 +148,29 @@ export function registerLogsHandlers(): void {
       return { success: false, error: 'Could not export logs: unauthorized request' };
     }
 
-    if (!token) {
-      return { success: false, error: 'Session token is required. Please log in to export logs.' };
+    const sessionValidation = getSessionValidationResult(token, 'export logs');
+    if (sessionValidation.error) {
+      return { success: false, error: sessionValidation.error };
     }
 
-    const session = validateSession(token);
-    if (!session.valid) {
-      return { success: false, error: 'Session is invalid or expired. Please log in again.' };
-    }
-
-    // Validate input using Zod schema
-    const validation = validateInput(exportLogsSchema, { logPath, exportFormat }, 'logs:exportLogs');
+    const validation = getValidatedLogExport(logPath, exportFormat);
     if (!validation.success) {
       return { success: false, error: validation.error };
     }
-    
-    const validatedData = validation.data!;
+    const validatedData = validation.data;
     
     try {
       const userDataPath = app.getPath('userData');
       const resolvedUserDataPath = path.resolve(userDataPath);
       const resolvedLogPath = path.resolve(validatedData.logPath);
       const logFileName = path.basename(resolvedLogPath);
-      const isExpectedLogFile = logFileName.startsWith('sheetpilot_') && logFileName.endsWith('.log');
-      const isWithinUserData =
-        resolvedLogPath === resolvedUserDataPath || resolvedLogPath.startsWith(resolvedUserDataPath + path.sep);
-
-      if (!isWithinUserData || !isExpectedLogFile) {
+      if (
+        !isAllowedLogPath(
+          resolvedLogPath,
+          resolvedUserDataPath,
+          logFileName
+        )
+      ) {
         ipcLogger.security('logs-access-denied', 'Unauthorized log path requested', {
           requestedPath: validatedData.logPath,
           resolvedLogPath,
@@ -101,31 +182,12 @@ export function registerLogsHandlers(): void {
       const logContent = await fs.promises.readFile(validatedData.logPath, 'utf8');
       
       if (validatedData.exportFormat === 'json') {
-        // Export as formatted JSON
-        const lines = logContent.split('\n').filter((line: string) => line.trim() !== '');
-        const parsedLogs = lines.map((line: string) => {
-          try {
-            return JSON.parse(line);
-          } catch {
-            return { raw: line };
-          }
-        });
-        
-        return {
-          success: true,
-          content: JSON.stringify(parsedLogs, null, 2),
-          filename: `sheetpilot_logs_${new Date().toISOString().split('T')[0]}.json`,
-          mimeType: 'application/json'
-        };
-      } else {
-        // Export as plain text
-        return {
-          success: true,
-          content: logContent,
-          filename: `sheetpilot_logs_${new Date().toISOString().split('T')[0]}.txt`,
-          mimeType: 'text/plain'
-        };
+        const exportResult = exportLogContentAsJson(logContent);
+        return { success: true, ...exportResult };
       }
+
+      const exportResult = exportLogContentAsText(logContent);
+      return { success: true, ...exportResult };
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : String(err);
       return { success: false, error: errorMessage };
