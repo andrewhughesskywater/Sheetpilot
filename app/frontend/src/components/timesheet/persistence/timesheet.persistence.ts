@@ -18,6 +18,100 @@ function isRowNonEmpty(row: TimesheetRow): boolean {
   );
 }
 
+const normalizeDraftRow = (row: TimesheetRow): TimesheetRow => ({
+  ...row,
+  tool: row.tool ?? null,
+  chargeCode: row.chargeCode ?? null
+});
+
+const saveCompleteRow = async (row: TimesheetRow): Promise<boolean> => {
+  try {
+    const result = await saveDraft(normalizeDraftRow(row));
+    if (result.success) {
+      return true;
+    }
+    logWarn('Could not save row to database', {
+      date: row.date,
+      project: row.project,
+      error: result.error
+    });
+    return false;
+  } catch (error) {
+    logError('Encountered error saving row to database', {
+      date: row.date,
+      project: row.project,
+      error: error instanceof Error ? error.message : String(error)
+    });
+    return false;
+  }
+};
+
+const runSequential = async <T, R>(
+  items: T[],
+  handler: (item: T) => Promise<R>
+): Promise<R[]> =>
+  items.reduce(
+    async (accPromise, item) => {
+      const acc = await accPromise;
+      const result = await handler(item);
+      return [...acc, result];
+    },
+    Promise.resolve([] as R[])
+  );
+
+const getSaveCounts = (results: boolean[]) =>
+  results.reduce(
+    (acc, isSaved) => ({
+      savedCount: acc.savedCount + (isSaved ? 1 : 0),
+      errorCount: acc.errorCount + (isSaved ? 0 : 1)
+    }),
+    { savedCount: 0, errorCount: 0 }
+  );
+
+const buildCurrentIdSet = (rows: TimesheetRow[]) =>
+  new Set(
+    rows
+      .map((row) => row.id)
+      .filter((id): id is number => id !== undefined && id !== null)
+  );
+
+const getOrphanedRows = (
+  entries: TimesheetRow[],
+  currentIds: Set<number>
+): TimesheetRow[] =>
+  entries.filter(
+    (entry) =>
+      entry.id !== undefined &&
+      entry.id !== null &&
+      !currentIds.has(entry.id)
+  );
+
+const deleteOrphanedRow = async (orphan: TimesheetRow): Promise<boolean> => {
+  if (orphan.id === undefined || orphan.id === null) {
+    return false;
+  }
+  try {
+    const deleteResult = await deleteDraft(orphan.id);
+    if (deleteResult.success) {
+      return true;
+    }
+    logWarn('Could not delete orphaned row', {
+      id: orphan.id,
+      error: deleteResult.error
+    });
+    return false;
+  } catch (error) {
+    logError('Encountered error deleting orphaned row', {
+      id: orphan.id,
+      error: error instanceof Error ? error.message : String(error)
+    });
+    return false;
+  }
+};
+
+const countDeletedRows = (results: boolean[]) =>
+  results.reduce((count, deleted) => count + (deleted ? 1 : 0), 0);
+
 /**
  * Save timesheet rows to localStorage as a backup
  * Filters out completely empty rows before saving
@@ -91,80 +185,23 @@ export async function batchSaveToDatabase(
     );
     
     logInfo('Batch saving rows to database', { count: completeRows.length });
-    
-    let savedCount = 0;
-    let errorCount = 0;
-    
-    // Save all complete rows
-    for (const row of completeRows) {
-      try {
-        // Ensure optional fields get sent explicitly as null when not present.
-        // This keeps the backend contract stable and matches tests/serialization expectations.
-        const normalizedRow: TimesheetRow = {
-          ...row,
-          tool: row.tool ?? null,
-          chargeCode: row.chargeCode ?? null
-        };
-
-        const result = await saveDraft(normalizedRow);
-        if (result.success) {
-          savedCount++;
-        } else {
-          errorCount++;
-          logWarn('Could not save row to database', { 
-            date: row.date,
-            project: row.project,
-            error: result.error
-          });
-        }
-      } catch (error) {
-        errorCount++;
-        logError('Encountered error saving row to database', { 
-          date: row.date,
-          project: row.project,
-          error: error instanceof Error ? error.message : String(error) 
-        });
-      }
-    }
+    const saveResults = await runSequential(completeRows, saveCompleteRow);
+    const { savedCount, errorCount } = getSaveCounts(saveResults);
     
     // Delete orphaned rows (rows in database that are not in current data)
     try {
       const loadResult = await loadDraft();
       if (loadResult.success && loadResult.entries) {
-        const currentIds = new Set(
-          completeRows
-            .map(row => row.id)
-            .filter((id): id is number => id !== undefined && id !== null)
-        );
-        
-        const orphanedRows = loadResult.entries.filter(
-          (entry: TimesheetRow) => entry.id !== undefined && entry.id !== null && !currentIds.has(entry.id)
-        );
+        const currentIds = buildCurrentIdSet(completeRows);
+        const orphanedRows = getOrphanedRows(loadResult.entries, currentIds);
         
         if (orphanedRows.length > 0) {
           logInfo('Deleting orphaned rows from database', { count: orphanedRows.length });
-          
-          let deletedCount = 0;
-          for (const orphan of orphanedRows) {
-            if (orphan.id !== undefined && orphan.id !== null) {
-              try {
-                const deleteResult = await deleteDraft(orphan.id);
-                if (deleteResult.success) {
-                  deletedCount++;
-                } else {
-                  logWarn('Could not delete orphaned row', { 
-                    id: orphan.id,
-                    error: deleteResult.error 
-                  });
-                }
-              } catch (error) {
-                logError('Encountered error deleting orphaned row', { 
-                  id: orphan.id,
-                  error: error instanceof Error ? error.message : String(error) 
-                });
-              }
-            }
-          }
+          const deleteResults = await runSequential(
+            orphanedRows,
+            deleteOrphanedRow
+          );
+          const deletedCount = countDeletedRows(deleteResults);
           
           logInfo('Orphan deletion completed', { 
             total: orphanedRows.length,
@@ -194,20 +231,26 @@ export async function batchSaveToDatabase(
  * Delete draft rows from the database
  */
 export async function deleteDraftRows(rowIds: number[]): Promise<number> {
-  let deletedCount = 0;
-  for (const rowId of rowIds) {
+  const deleteResults = await runSequential(rowIds, async (rowId) => {
     try {
       const res = await deleteDraft(rowId);
       if (res?.success) {
-        deletedCount++;
-      } else {
-        logWarn('Could not delete draft row', { id: rowId, error: res?.error });
+        return true;
       }
+      logWarn('Could not delete draft row', {
+        id: rowId,
+        error: res?.error
+      });
+      return false;
     } catch (err) {
-      logError('Encountered error deleting draft row', { id: rowId, error: err instanceof Error ? err.message : String(err) });
+      logError('Encountered error deleting draft row', {
+        id: rowId,
+        error: err instanceof Error ? err.message : String(err)
+      });
+      return false;
     }
-  }
+  });
 
-  return deletedCount;
+  return countDeletedRows(deleteResults);
 }
 
