@@ -1,27 +1,11 @@
-/**
- * @fileoverview Smart Date Utility
- * 
- * Provides intelligent date suggestions and validation for timesheet date entry.
- * Includes quarter range validation, pattern detection, and date manipulation helpers.
- * 
- * @author SheetPilot Team
- * @version 1.0.0
- */
-
 import type { TimesheetRow } from '@/components/timesheet/schema/timesheet.schema';
 import { ALLOWED_PREVIOUS_QUARTERS } from '@sheetpilot/shared';
 
-/**
- * Get the quarter (1-4) for a given date
- */
 function getQuarter(date: Date): number {
   const month = date.getMonth(); // 0-11
   return Math.floor(month / 3) + 1; // 1-4
 }
 
-/**
- * Get the start and end dates for a given quarter and year
- */
 function getQuarterBounds(year: number, quarter: number): { start: Date; end: Date } {
   const startMonth = (quarter - 1) * 3;
   const endMonth = startMonth + 2;
@@ -32,10 +16,6 @@ function getQuarterBounds(year: number, quarter: number): { start: Date; end: Da
   return { start, end };
 }
 
-/**
- * Calculate the allowed date range based on current date and ALLOWED_PREVIOUS_QUARTERS setting
- * @returns Object with minDate and maxDate as Date objects
- */
 export function getQuarterDateRange(): { minDate: Date; maxDate: Date } {
   const today = new Date();
   const currentYear = today.getFullYear();
@@ -71,9 +51,6 @@ export function getQuarterDateRange(): { minDate: Date; maxDate: Date } {
   return { minDate, maxDate };
 }
 
-/**
- * Check if a date string (MM/DD/YYYY) is within the allowed quarter range
- */
 export function isDateInAllowedRange(dateStr: string): boolean {
   if (!dateStr) return false;
   
@@ -90,10 +67,6 @@ export function isDateInAllowedRange(dateStr: string): boolean {
   return date >= minDate && date <= maxDate;
 }
 
-/**
- * Parse a date string in MM/DD/YYYY format to a Date object
- * Returns null if invalid format or invalid date values
- */
 type DateParts = {
   month: number;
   day: number;
@@ -145,9 +118,6 @@ export function parseDateString(dateStr: string): Date | null {
   return new Date(parts.year, parts.month - 1, parts.day);
 }
 
-/**
- * Format a Date object to MM/DD/YYYY string
- */
 export function formatDateForDisplay(date: Date): string {
   const month = date.getMonth() + 1; // 0-indexed to 1-indexed
   const day = date.getDate();
@@ -156,13 +126,6 @@ export function formatDateForDisplay(date: Date): string {
   return `${month}/${day}/${year}`;
 }
 
-/**
- * Add or subtract days from a date string (MM/DD/YYYY)
- * @param dateStr Date string in MM/DD/YYYY format
- * @param days Number of days to add (positive) or subtract (negative)
- * @param skipWeekends If true, skip weekend days when incrementing
- * @returns New date string in MM/DD/YYYY format, or empty string if invalid
- */
 export function incrementDate(dateStr: string, days: number, skipWeekends = false): string {
   const date = parseDateString(dateStr);
   if (!date) return '';
@@ -188,10 +151,6 @@ export function incrementDate(dateStr: string, days: number, skipWeekends = fals
   return formatDateForDisplay(currentDate);
 }
 
-/**
- * Detect if the timesheet rows follow a weekday-only pattern
- * Returns true if all dates with valid format are weekdays (no Saturdays or Sundays)
- */
 export function detectWeekdayPattern(rows: TimesheetRow[]): boolean {
   const validDates: Date[] = [];
   
@@ -221,13 +180,6 @@ export function detectWeekdayPattern(rows: TimesheetRow[]): boolean {
   return true;
 }
 
-/**
- * Get smart placeholder date based on context
- * @param previousRow The row immediately before the current one
- * @param _allRows All timesheet rows for pattern detection
- * @param _skipWeekends Whether to skip weekends when incrementing
- * @returns Suggested date string in MM/DD/YYYY format
- */
 export function getSmartPlaceholder(
   previousRow: TimesheetRow | undefined,
   _allRows: TimesheetRow[],
