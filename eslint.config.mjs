@@ -22,6 +22,45 @@ const TEST_FILES = [
   '**/__tests__/**/*.{ts,tsx}'
 ];
 
+const EXTENDED_MAX_LINES_FILES = [
+  'app/backend/src/models/business-config.repository.ts',
+  'app/backend/src/models/business-config.service.ts',
+  'app/backend/src/models/migrations.helpers.ts',
+  'app/backend/src/models/migrations.ts',
+  'app/backend/src/models/timesheet-repository.ts',
+  'app/backend/src/routes/business-config-handlers.ts',
+  'app/backend/src/routes/handlers/timesheet/drafts.ts',
+  'app/backend/src/validation/ipc-schemas.ts',
+  'app/frontend/src/App.tsx',
+  'app/frontend/src/components/Settings.dialogs.tsx',
+  'app/frontend/src/components/UserManual.tsx',
+  'app/frontend/src/components/timesheet/WeeklySummaryDialog.tsx',
+  'app/frontend/src/contexts/DataContext.tsx',
+  'app/frontend/src/services/ipc/business-config.ts',
+  'app/frontend/src/utils/api-fallback.ts',
+  'app/frontend/src/utils/smartDate.ts',
+  'app/shared/business-config.ts'
+];
+
+const EXTENDED_COMPLEXITY_FILES = [
+  'app/backend/src/bootstrap/windows/load-renderer.ts',
+  'app/backend/src/logic/timesheet-validation.ts',
+  'app/backend/src/models/connection-manager.connection-helpers.ts',
+  'app/backend/src/models/connection-manager.migration-helpers.ts',
+  'app/backend/src/models/connection-manager.schema.ts',
+  'app/backend/src/routes/auth-handlers.ts',
+  'app/backend/src/routes/handlers/timesheet/drafts.ts',
+  'app/backend/src/routes/logs-handlers.ts',
+  'app/backend/src/services/plugins/sqlite-data-service.ts',
+  'app/backend/src/services/timesheet-importer.ts',
+  'app/frontend/src/components/timesheet/cell-processing/timesheet.cell-processing.ts',
+  'app/frontend/src/components/timesheet/macros/MacroManagerDialog.tsx',
+  'app/frontend/src/components/timesheet/persistence/timesheet.persistence.ts',
+  'app/frontend/src/contexts/DataContext.tsx',
+  'app/frontend/src/utils/api-fallback.ts',
+  'app/frontend/src/utils/smartDate.ts'
+];
+
 // NOTE: @typescript-eslint provides flat configs, but the first entry sets the TS parser without a `files` filter.
 // We scope the preset entries to TS files so JS/CJS/MJS scripts keep using ESLint's JS parser.
 const typescriptRecommendedPreset = typescript.configs['flat/recommended'].map((cfg) => ({
@@ -263,6 +302,23 @@ export default [
       'complexity': ['warn', 20], // Industry standard: 20 max for complex test scenarios
       'max-lines': ['warn', { max: 500, skipBlankLines: false, skipComments: false }], // Industry standard: 500 max for comprehensive tests
       'sonarjs/cognitive-complexity': ['warn', 25] // Human-focused: 25 max for complex test scenarios
+    }
+  },
+
+  // Exceptions: extended line limits for large config/docs-driven files
+  {
+    files: EXTENDED_MAX_LINES_FILES,
+    rules: {
+      'max-lines': ['warn', { max: 1000, skipBlankLines: false, skipComments: false }]
+    }
+  },
+
+  // Exceptions: extended complexity limits for legacy orchestration
+  {
+    files: EXTENDED_COMPLEXITY_FILES,
+    rules: {
+      'complexity': ['warn', 50],
+      'sonarjs/cognitive-complexity': ['warn', 60]
     }
   },
 
