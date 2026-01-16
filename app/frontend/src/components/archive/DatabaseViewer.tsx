@@ -37,11 +37,6 @@ interface Credential {
   updated_at: string;
 }
 
-// interface DatabaseData {
-//   timesheet: TimesheetEntry[];
-//   credentials: Credential[];
-// }
-
 function Archive() {
   window.logger?.debug("[Archive] Component rendering");
   const [activeTab] = useState<"timesheet" | "credentials">("timesheet");
@@ -62,6 +57,8 @@ function Archive() {
     timesheetCount: archiveData.timesheet.length,
     credentialsCount: archiveData.credentials.length,
   });
+
+  const isRefreshing = isManualRefreshing || isArchiveDataLoading;
 
   const formatDate = (dateStr: string): string => {
     // Convert from YYYY-MM-DD to MM/DD/YYYY format
@@ -134,7 +131,7 @@ function Archive() {
 
   const handleManualRefresh = useCallback(async () => {
     // Prevent multiple simultaneous refreshes
-    if (isManualRefreshing || isArchiveDataLoading) return;
+    if (isRefreshing) return;
 
     window.logger?.userAction("archive-manual-refresh-clicked");
     setIsManualRefreshing(true);
@@ -149,7 +146,7 @@ function Archive() {
     } finally {
       setIsManualRefreshing(false);
     }
-  }, [isManualRefreshing, isArchiveDataLoading, refreshArchiveData]);
+  }, [isRefreshing, refreshArchiveData]);
 
   const exportToCSV = useCallback(async () => {
     // Prevent multiple simultaneous exports
@@ -204,7 +201,7 @@ function Archive() {
           <span>
             <IconButton
               onClick={handleManualRefresh}
-              disabled={isManualRefreshing || isArchiveDataLoading}
+              disabled={isRefreshing}
               aria-label="refresh archive"
               sx={{
                 color: "var(--md-sys-color-on-surface)",
@@ -217,7 +214,7 @@ function Archive() {
                 },
               }}
             >
-              {isManualRefreshing || isArchiveDataLoading ? (
+              {isRefreshing ? (
                 <CircularProgress
                   size={24}
                   sx={{ color: "var(--md-sys-color-primary)" }}
