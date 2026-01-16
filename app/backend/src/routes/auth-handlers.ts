@@ -11,21 +11,25 @@
 import { ipcMain } from 'electron';
 import { ipcLogger, appLogger } from '@sheetpilot/shared/logger';
 import { isTrustedIpcSender } from './handlers/timesheet/main-window';
-import { 
-  storeCredentials,
-  getCredentials,
-  createSession, 
-  validateSession, 
-  clearSession, 
-  clearUserSessions 
+import {
+  createSession,
+  validateSession,
+  clearSession,
+  clearUserSessions,
 } from '@/models';
 import { validateInput } from '@/validation/validate-ipc-input';
-import { 
-  loginSchema,
+import {
   validateSessionSchema,
   logoutSchema,
-  getCurrentSessionSchema
+  getCurrentSessionSchema,
 } from '@/validation/ipc-schemas';
+import {
+  buildLoginError,
+  ensureUserCredentials,
+  getValidatedLoginPayload,
+  isAdminLogin,
+  type LoginResponse,
+} from '@/routes/auth-helpers';
 
 // Admin credentials from environment variables
 // For production: Set SHEETPILOT_ADMIN_USERNAME and SHEETPILOT_ADMIN_PASSWORD
@@ -39,130 +43,6 @@ if (!ADMIN_PASSWORD) {
   });
 }
 
-type LoginPayload = {
-  email: string;
-  password: string;
-  stayLoggedIn: boolean;
-};
-
-type LoginResponse = {
-  success: boolean;
-  error?: string;
-  token?: string;
-  isAdmin?: boolean;
-};
-
-const buildLoginError = (error: string): LoginResponse => ({
-  success: false,
-  error,
-});
-
-const getValidatedLoginPayload = (
-  email: string,
-  password: string,
-  stayLoggedIn: boolean
-): { success: true; data: LoginPayload } | { success: false; error: string } => {
-  const validation = validateInput(
-    loginSchema,
-    { email, password, stayLoggedIn },
-    'auth:login'
-  );
-  if (!validation.success) {
-    return { success: false, error: validation.error };
-  }
-  return { success: true, data: validation.data! };
-};
-
-const isAdminLogin = (payload: LoginPayload): boolean => {
-  if (!ADMIN_PASSWORD) {
-    return false;
-  }
-  const isAdmin =
-    payload.email === ADMIN_USERNAME && payload.password === ADMIN_PASSWORD;
-  if (isAdmin) {
-    ipcLogger.info('Admin login successful', { email: payload.email });
-  }
-  return isAdmin;
-};
-
-const getCredentialMismatchError = (
-  storedEmail: string,
-  providedEmail: string
-): string | null => {
-  if (storedEmail === providedEmail) {
-    return null;
-  }
-  ipcLogger.warn('Login email mismatch', {
-    providedEmail,
-    storedEmail,
-  });
-  return `Credentials are stored for ${storedEmail}. Use that email or clear credentials in Settings.`;
-};
-
-const getPasswordMismatchError = (
-  storedPassword: string,
-  providedPassword: string,
-  email: string
-): string | null => {
-  if (storedPassword === providedPassword) {
-    return null;
-  }
-  ipcLogger.warn('Login password mismatch', { email });
-  return 'Incorrect password. Please try again.';
-};
-
-const validateReturningUser = (
-  storedEmail: string,
-  storedPassword: string,
-  payload: LoginPayload
-): string | null => {
-  const emailError = getCredentialMismatchError(
-    storedEmail,
-    payload.email
-  );
-  if (emailError) {
-    return emailError;
-  }
-  const passwordError = getPasswordMismatchError(
-    storedPassword,
-    payload.password,
-    payload.email
-  );
-  if (passwordError) {
-    return passwordError;
-  }
-  ipcLogger.verbose('Password verified for returning user', {
-    email: payload.email,
-  });
-  return null;
-};
-
-const storeNewUserCredentials = (payload: LoginPayload): string | null => {
-  ipcLogger.verbose('Storing credentials for new user', {
-    email: payload.email,
-  });
-  const storeResult = storeCredentials(
-    'smartsheet',
-    payload.email,
-    payload.password
-  );
-  if (!storeResult.success) {
-    return storeResult.message;
-  }
-  return null;
-};
-
-const ensureUserCredentials = (payload: LoginPayload): string | null => {
-  const existingCredentials = getCredentials('smartsheet');
-  if (existingCredentials) {
-    return validateReturningUser(
-      existingCredentials.email,
-      existingCredentials.password,
-      payload
-    );
-  }
-  return storeNewUserCredentials(payload);
-};
 
 /**
  * Register all authentication-related IPC handlers
@@ -209,7 +89,11 @@ export function registerAuthHandlers(): void {
       });
 
       try {
-        const isAdmin = isAdminLogin(validatedData);
+        const isAdmin = isAdminLogin(
+          validatedData,
+          ADMIN_USERNAME,
+          ADMIN_PASSWORD
+        );
         if (!isAdmin) {
           const credentialError = ensureUserCredentials(validatedData);
           if (credentialError) {
