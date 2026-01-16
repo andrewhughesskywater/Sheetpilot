@@ -349,48 +349,69 @@ const mockLogsAPI = {
   },
 };
 
+const isDevEnvironment = (): boolean =>
+  (import.meta as { env?: { DEV?: boolean; MODE?: string } }).env?.DEV ===
+    true ||
+  (import.meta as { env?: { DEV?: boolean; MODE?: string } }).env?.MODE ===
+    "development";
+
+const ensureFallback = (
+  win: Record<string, unknown>,
+  key: string,
+  api: unknown,
+  logMessage: string
+): void => {
+  if (win[key]) {
+    return;
+  }
+  win[key] = api;
+  console.log(logMessage);
+};
+
 // Export function to initialize API fallbacks
 export function initializeAPIFallback(): void {
   // Check if we're in development mode and APIs are not available
-  const isDev =
-    (import.meta as { env?: { DEV?: boolean; MODE?: string } }).env?.DEV ===
-      true ||
-    (import.meta as { env?: { DEV?: boolean; MODE?: string } }).env?.MODE ===
-      "development";
-
-  if (isDev) {
-    console.log("[APIFallback] Initializing development API fallbacks");
-
-    // Create fallback APIs if they don't exist
-    const win = window as unknown as Record<string, unknown>;
-
-    if (!win["auth"]) {
-      win["auth"] = mockAuthAPI;
-      console.log("[APIFallback] Mock auth API initialized");
-    }
-
-    if (!win["timesheet"]) {
-      win["timesheet"] = mockTimesheetAPI;
-      console.log("[APIFallback] Mock timesheet API initialized");
-    }
-
-    if (!win["credentials"]) {
-      win["credentials"] = mockCredentialsAPI;
-      console.log("[APIFallback] Mock credentials API initialized");
-    }
-
-    if (!win["database"]) {
-      win["database"] = mockDatabaseAPI;
-      console.log("[APIFallback] Mock database API initialized");
-    }
-
-    if (!win["logs"]) {
-      win["logs"] = mockLogsAPI;
-      console.log("[APIFallback] Mock logs API initialized");
-    }
-
-    console.log("[APIFallback] All development API fallbacks initialized");
+  if (!isDevEnvironment()) {
+    return;
   }
+
+  console.log("[APIFallback] Initializing development API fallbacks");
+
+  // Create fallback APIs if they don't exist
+  const win = window as unknown as Record<string, unknown>;
+  const fallbackEntries = [
+    {
+      key: "auth",
+      api: mockAuthAPI,
+      log: "[APIFallback] Mock auth API initialized",
+    },
+    {
+      key: "timesheet",
+      api: mockTimesheetAPI,
+      log: "[APIFallback] Mock timesheet API initialized",
+    },
+    {
+      key: "credentials",
+      api: mockCredentialsAPI,
+      log: "[APIFallback] Mock credentials API initialized",
+    },
+    {
+      key: "database",
+      api: mockDatabaseAPI,
+      log: "[APIFallback] Mock database API initialized",
+    },
+    {
+      key: "logs",
+      api: mockLogsAPI,
+      log: "[APIFallback] Mock logs API initialized",
+    },
+  ];
+
+  fallbackEntries.forEach((entry) =>
+    ensureFallback(win, entry.key, entry.api, entry.log)
+  );
+
+  console.log("[APIFallback] All development API fallbacks initialized");
 }
 
 // Export the mock APIs for direct use if needed
