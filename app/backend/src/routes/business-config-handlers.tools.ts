@@ -1,6 +1,6 @@
 import { ipcMain } from "electron";
 import { ipcLogger } from "@sheetpilot/shared/logger";
-import { isTrustedIpcSender } from "@/routes/handlers/timesheet/main-window";
+import { isTrustedIpcSender } from "./handlers/timesheet/main-window";
 import { validateInput } from "@/validation/validate-ipc-input";
 import {
   businessConfigToolUpdateSchema,
@@ -19,7 +19,7 @@ import type {
   ToolCreate,
   ToolUpdate,
 } from "@/models/business-config.repository.types";
-import { removeUndefined, requireAdminSession } from "@/routes/business-config-handlers.utils";
+import { removeUndefined, requireAdminSession } from "./business-config-handlers.utils";
 
 export function registerBusinessConfigToolHandlers(): void {
   ipcMain.handle(

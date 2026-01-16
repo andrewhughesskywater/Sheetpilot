@@ -1,6 +1,6 @@
 import { ipcMain } from "electron";
 import { ipcLogger } from "@sheetpilot/shared/logger";
-import { isTrustedIpcSender } from "@/routes/handlers/timesheet/main-window";
+import { isTrustedIpcSender } from "./handlers/timesheet/main-window";
 import { validateInput } from "@/validation/validate-ipc-input";
 import {
   businessConfigChargeCodeUpdateSchema,
@@ -11,7 +11,7 @@ import type {
   ChargeCodeCreate,
   ChargeCodeUpdate,
 } from "@/models/business-config.repository.types";
-import { removeUndefined, requireAdminSession } from "@/routes/business-config-handlers.utils";
+import { removeUndefined, requireAdminSession } from "./business-config-handlers.utils";
 
 export function registerBusinessConfigChargeCodeHandlers(): void {
   ipcMain.handle(

@@ -29,7 +29,7 @@ import {
   getValidatedLoginPayload,
   isAdminLogin,
   type LoginResponse,
-} from '@/routes/auth-helpers';
+} from './auth-helpers';
 
 // Admin credentials from environment variables
 // For production: Set SHEETPILOT_ADMIN_USERNAME and SHEETPILOT_ADMIN_PASSWORD

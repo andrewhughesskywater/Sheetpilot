@@ -1,6 +1,6 @@
 import { ipcMain } from "electron";
 import { ipcLogger } from "@sheetpilot/shared/logger";
-import { isTrustedIpcSender } from "@/routes/handlers/timesheet/main-window";
+import { isTrustedIpcSender } from "./handlers/timesheet/main-window";
 import { validateInput } from "@/validation/validate-ipc-input";
 import {
   getToolsForProjectSchema,
