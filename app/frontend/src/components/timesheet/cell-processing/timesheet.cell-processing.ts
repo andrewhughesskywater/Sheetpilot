@@ -28,49 +28,144 @@ type ValidationResult = {
   errorMessage: string;
 };
 
+const getDateValidation = (
+  propStr: string,
+  newVal: unknown
+): ValidationResult | null => {
+  if (propStr !== 'date' || !newVal) {
+    return null;
+  }
+  const dateStr = String(newVal);
+  const isValid = isValidDate(dateStr);
+  return {
+    isValid,
+    shouldClear: !isValid,
+    errorMessage: isValid
+      ? ''
+      : `Invalid date format "${String(newVal)}" (must be MM/DD/YYYY or YYYY-MM-DD)`,
+  };
+};
+
+const getHoursValidation = (
+  propStr: string,
+  newVal: unknown
+): ValidationResult | null => {
+  if (
+    propStr !== 'hours' ||
+    newVal === undefined ||
+    newVal === null ||
+    newVal === ''
+  ) {
+    return null;
+  }
+  const hoursValue = typeof newVal === 'number' ? newVal : Number(newVal);
+  const isValid = !isNaN(hoursValue) && isValidHours(hoursValue);
+  return {
+    isValid,
+    shouldClear: !isValid,
+    errorMessage: isValid
+      ? ''
+      : `Invalid hours "${String(newVal)}" (must be between 0.25 and 24.0 in 15-minute increments)`,
+  };
+};
+
+const getRequiredFieldValidation = (
+  propStr: string,
+  newVal: unknown
+): ValidationResult | null => {
+  if (propStr !== 'project' && propStr !== 'taskDescription') {
+    return null;
+  }
+  if (newVal) {
+    return null;
+  }
+  const fieldName = propStr === 'project' ? 'Project' : 'Task Description';
+  return {
+    isValid: false,
+    shouldClear: true,
+    errorMessage: `${fieldName} is required`,
+  };
+};
+
 const validateChange = (
   propStr: string,
   newVal: unknown
 ): ValidationResult => {
-  if (propStr === 'date' && newVal) {
-    const dateStr = String(newVal);
-    const isValid = isValidDate(dateStr);
-    return {
-      isValid,
-      shouldClear: !isValid,
-      errorMessage: isValid
-        ? ''
-        : `Invalid date format "${String(newVal)}" (must be MM/DD/YYYY or YYYY-MM-DD)`,
-    };
-  }
+  return (
+    getDateValidation(propStr, newVal) ??
+    getHoursValidation(propStr, newVal) ??
+    getRequiredFieldValidation(propStr, newVal) ?? {
+      isValid: true,
+      shouldClear: false,
+      errorMessage: '',
+    }
+  );
+};
 
+const getDateUpdatedRow = (
+  currentRow: TimesheetRow,
+  propStr: string,
+  newVal: unknown,
+  oldVal: unknown
+): TimesheetRow | null => {
+  if (propStr !== 'date' || !newVal || newVal === oldVal) {
+    return null;
+  }
+  return { ...currentRow, date: normalizeDateFormat(String(newVal)) };
+};
+
+const getHoursUpdatedRow = (
+  currentRow: TimesheetRow,
+  propStr: string,
+  newVal: unknown
+): TimesheetRow | null => {
   if (
-    propStr === 'hours' &&
-    newVal !== undefined &&
-    newVal !== null &&
-    newVal !== ''
+    propStr !== 'hours' ||
+    newVal === undefined ||
+    newVal === null ||
+    newVal === ''
   ) {
-    const hoursValue = typeof newVal === 'number' ? newVal : Number(newVal);
-    const isValid = !isNaN(hoursValue) && isValidHours(hoursValue);
-    return {
-      isValid,
-      shouldClear: !isValid,
-      errorMessage: isValid
-        ? ''
-        : `Invalid hours "${String(newVal)}" (must be between 0.25 and 24.0 in 15-minute increments)`,
-    };
+    return null;
   }
+  const hoursValue = typeof newVal === 'number' ? newVal : Number(newVal);
+  return {
+    ...currentRow,
+    hours: !isNaN(hoursValue)
+      ? hoursValue
+      : typeof newVal === 'number'
+        ? newVal
+        : 0,
+  };
+};
 
-  if ((propStr === 'project' || propStr === 'taskDescription') && !newVal) {
-    const fieldName = propStr === 'project' ? 'Project' : 'Task Description';
-    return {
-      isValid: false,
-      shouldClear: true,
-      errorMessage: `${fieldName} is required`,
-    };
+const getProjectUpdatedRow = (
+  currentRow: TimesheetRow,
+  propStr: string,
+  newVal: unknown,
+  oldVal: unknown
+): TimesheetRow | null => {
+  if (propStr !== 'project' || newVal === oldVal) {
+    return null;
   }
+  const project = String(newVal ?? '');
+  return !doesProjectNeedTools(project)
+    ? { ...currentRow, project, tool: null, chargeCode: null }
+    : { ...currentRow, project };
+};
 
-  return { isValid: true, shouldClear: false, errorMessage: '' };
+const getToolUpdatedRow = (
+  currentRow: TimesheetRow,
+  propStr: string,
+  newVal: unknown,
+  oldVal: unknown
+): TimesheetRow | null => {
+  if (propStr !== 'tool' || newVal === oldVal) {
+    return null;
+  }
+  const tool = String(newVal ?? '');
+  return !doesToolNeedChargeCode(tool)
+    ? { ...currentRow, tool, chargeCode: null }
+    : { ...currentRow, tool };
 };
 
 const buildUpdatedRow = (
@@ -79,37 +174,15 @@ const buildUpdatedRow = (
   newVal: unknown,
   oldVal: unknown
 ): TimesheetRow => {
-  if (propStr === 'date' && newVal && newVal !== oldVal) {
-    return { ...currentRow, date: normalizeDateFormat(String(newVal)) };
-  }
-
-  if (propStr === 'hours' && newVal !== undefined && newVal !== null && newVal !== '') {
-    const hoursValue = typeof newVal === 'number' ? newVal : Number(newVal);
-    return {
+  return (
+    getDateUpdatedRow(currentRow, propStr, newVal, oldVal) ??
+    getHoursUpdatedRow(currentRow, propStr, newVal) ??
+    getProjectUpdatedRow(currentRow, propStr, newVal, oldVal) ??
+    getToolUpdatedRow(currentRow, propStr, newVal, oldVal) ?? {
       ...currentRow,
-      hours: !isNaN(hoursValue)
-        ? hoursValue
-        : typeof newVal === 'number'
-          ? newVal
-          : 0,
-    };
-  }
-
-  if (propStr === 'project' && newVal !== oldVal) {
-    const project = String(newVal ?? '');
-    return !doesProjectNeedTools(project)
-      ? { ...currentRow, project, tool: null, chargeCode: null }
-      : { ...currentRow, project };
-  }
-
-  if (propStr === 'tool' && newVal !== oldVal) {
-    const tool = String(newVal ?? '');
-    return !doesToolNeedChargeCode(tool)
-      ? { ...currentRow, tool, chargeCode: null }
-      : { ...currentRow, tool };
-  }
-
-  return { ...currentRow, [propStr]: newVal ?? '' };
+      [propStr]: newVal ?? '',
+    }
+  );
 };
 
 /**
