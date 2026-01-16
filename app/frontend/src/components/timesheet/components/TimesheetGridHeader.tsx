@@ -29,6 +29,41 @@ interface TimesheetGridHeaderProps {
   archiveEntries: TimesheetEntry[];
 }
 
+type SaveButtonState = TimesheetGridHeaderProps["saveButtonState"];
+
+const SAVE_BUTTON_CONFIG: Record<
+  SaveButtonState,
+  {
+    label: string;
+    backgroundColor: string;
+    textColor: string;
+    disabledBackgroundColor: string;
+    disabledTextColor: string;
+  }
+> = {
+  saved: {
+    label: "Saved",
+    backgroundColor: "#4CAF50",
+    textColor: "#FFFFFF",
+    disabledBackgroundColor: "#4CAF50",
+    disabledTextColor: "#FFFFFF",
+  },
+  saving: {
+    label: "Saving",
+    backgroundColor: "var(--md-sys-color-primary)",
+    textColor: "#FFFFFF",
+    disabledBackgroundColor: "var(--md-sys-color-primary)",
+    disabledTextColor: "#FFFFFF",
+  },
+  save: {
+    label: "Save",
+    backgroundColor: "#2196F3",
+    textColor: "#FFFFFF",
+    disabledBackgroundColor: "#2196F3",
+    disabledTextColor: "#FFFFFF",
+  },
+};
+
 export default function TimesheetGridHeader({
   saveButtonState,
   onSave,
@@ -37,6 +72,8 @@ export default function TimesheetGridHeader({
 }: TimesheetGridHeaderProps) {
   const [showWeeklySummary, setShowWeeklySummary] = useState(false);
   const { refreshArchiveData, archiveData } = useData();
+  const saveButtonConfig = SAVE_BUTTON_CONFIG[saveButtonState];
+  const isSaveDisabled = saveButtonState !== "save";
 
   // Ensure archive data is loaded when dialog opens
   useEffect(() => {
@@ -46,10 +83,9 @@ export default function TimesheetGridHeader({
   }, [showWeeklySummary, refreshArchiveData]);
 
   // Use context data if available, fallback to prop
-  const entriesToUse =
-    archiveData.timesheet && archiveData.timesheet.length > 0
-      ? archiveData.timesheet
-      : archiveEntries || [];
+  const entriesToUse = archiveData.timesheet?.length
+    ? archiveData.timesheet
+    : archiveEntries;
 
   return (
     <>
@@ -59,7 +95,7 @@ export default function TimesheetGridHeader({
           className="save-button"
           variant="contained"
           onClick={onSave}
-          disabled={saveButtonState === "saving" || saveButtonState === "saved"}
+          disabled={isSaveDisabled}
           startIcon={
             saveButtonState === "saving" ? (
               <CircularProgress size={16} sx={{ color: "inherit" }} />
@@ -68,34 +104,17 @@ export default function TimesheetGridHeader({
             )
           }
           sx={{
-            backgroundColor:
-              saveButtonState === "saved"
-                ? "#4CAF50" // Green for "Saved" state
-                : saveButtonState === "saving"
-                  ? "var(--md-sys-color-primary)"
-                  : "#2196F3", // Blue for "Save" state
-            color:
-              saveButtonState === "saved"
-                ? "#FFFFFF" // White text on green
-                : "#FFFFFF", // White text for blue/primary backgrounds
+            backgroundColor: saveButtonConfig.backgroundColor,
+            color: saveButtonConfig.textColor,
             "&:disabled": {
-              backgroundColor:
-                saveButtonState === "saved"
-                  ? "#4CAF50" // Green for "Saved" state
-                  : saveButtonState === "saving"
-                    ? "var(--md-sys-color-primary)"
-                    : "#2196F3",
-              color: "#FFFFFF",
+              backgroundColor: saveButtonConfig.disabledBackgroundColor,
+              color: saveButtonConfig.disabledTextColor,
             },
             textTransform: "none",
             minWidth: 120,
           }}
         >
-          {saveButtonState === "saved"
-            ? "Saved"
-            : saveButtonState === "saving"
-              ? "Saving"
-              : "Save"}
+          {saveButtonConfig.label}
         </Button>
 
         {/* Weekly Summary Button */}

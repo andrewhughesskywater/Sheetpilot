@@ -12,7 +12,7 @@ export const HOTTABLE_CONTEXT_MENU = [
   "---------",
   "copy",
   "cut",
-];
+] as const;
 
 export const HOTTABLE_COLUMN_SORTING = {
   indicator: true,

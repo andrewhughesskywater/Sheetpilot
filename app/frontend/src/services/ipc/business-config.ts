@@ -1,14 +1,4 @@
 /**
- * @fileoverview Business Configuration IPC Service
- *
- * Wrapper functions for business configuration IPC calls.
- *
- * @author Andrew Hughes
- * @version 1.0.0
- * @since 2025
- */
-
-/**
  * Gets all available projects
  */
 export async function getAllProjects(): Promise<{

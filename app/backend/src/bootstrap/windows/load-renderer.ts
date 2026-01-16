@@ -4,6 +4,198 @@ import type { App, BrowserWindow } from "electron";
 import { dialog } from "electron";
 import type { LoggerLike } from "@/bootstrap/logging/logger-contract";
 
+type FileStats = {
+  size?: number;
+  readable?: boolean;
+  error?: string;
+  assetReferences?: string[];
+};
+
+type UnpackedDirInfo = { exists?: boolean; contents?: string[] };
+
+const readHtmlContentStats = (absoluteHtmlPath: string): FileStats => {
+  try {
+    const content = fs.readFileSync(absoluteHtmlPath, {
+      encoding: "utf8",
+      flag: "r",
+    });
+    const assetReferences = content.match(/src="([^"]+)"/g) || [];
+    return {
+      readable: true,
+      assetReferences: assetReferences.slice(0, 5),
+    };
+  } catch (readErr: unknown) {
+    return {
+      readable: false,
+      error: readErr instanceof Error ? readErr.message : String(readErr),
+    };
+  }
+};
+
+const inspectHtmlFile = (
+  absoluteHtmlPath: string
+): { fileExists: boolean; fileStats: FileStats } => {
+  if (!fs.existsSync(absoluteHtmlPath)) {
+    return { fileExists: false, fileStats: {} };
+  }
+
+  try {
+    const stats = fs.statSync(absoluteHtmlPath);
+    const contentStats = readHtmlContentStats(absoluteHtmlPath);
+    return {
+      fileExists: true,
+      fileStats: { size: stats.size, ...contentStats },
+    };
+  } catch (statErr: unknown) {
+    return {
+      fileExists: true,
+      fileStats: {
+        error: statErr instanceof Error ? statErr.message : String(statErr),
+      },
+    };
+  }
+};
+
+const readDirSafe = (dirPath: string): string[] => {
+  try {
+    return fs.readdirSync(dirPath);
+  } catch {
+    return [];
+  }
+};
+
+const getUnpackedDirInfo = (
+  packagedLike: boolean
+): { unpackedDir: string | null; unpackedDirInfo: UnpackedDirInfo } => {
+  if (!packagedLike) {
+    return { unpackedDir: null, unpackedDirInfo: {} };
+  }
+
+  const unpackedDir = path.join(process.resourcesPath, "app.asar.unpacked");
+  if (!fs.existsSync(unpackedDir)) {
+    return { unpackedDir, unpackedDirInfo: {} };
+  }
+
+  return {
+    unpackedDir,
+    unpackedDirInfo: { exists: true, contents: readDirSafe(unpackedDir) },
+  };
+};
+
+const handleMissingHtmlFile = (
+  app: App,
+  logger: LoggerLike,
+  htmlPath: string,
+  absoluteHtmlPath: string,
+  backendDirname: string,
+  unpackedDirInfo: UnpackedDirInfo
+): void => {
+  const errorMsg = `Frontend HTML file not found at: ${absoluteHtmlPath}\nRelative path: ${htmlPath}\nbackendDirname: ${backendDirname}\nresourcesPath: ${process.resourcesPath}\nisPackaged: ${app.isPackaged}\nUnpacked dir exists: ${unpackedDirInfo.exists}\nPlease rebuild the application.`;
+  logger.error("Frontend HTML file not found", {
+    htmlPath,
+    absoluteHtmlPath,
+    backendDirname,
+    resourcesPath: process.resourcesPath,
+    isPackaged: app.isPackaged,
+    unpackedDirInfo,
+  });
+  dialog.showErrorBox("Application Startup Error", errorMsg);
+  app.exit(1);
+};
+
+const handleUnreadableHtmlFile = (
+  app: App,
+  logger: LoggerLike,
+  htmlPath: string,
+  absoluteHtmlPath: string,
+  fileStats: FileStats
+): void => {
+  const errorMsg = `Frontend HTML file exists but cannot be read: ${absoluteHtmlPath}\nError: ${fileStats.error}\nPlease check file permissions.`;
+  logger.error("Frontend HTML file not readable", {
+    htmlPath,
+    absoluteHtmlPath,
+    fileStats,
+  });
+  dialog.showErrorBox("Application Startup Error", errorMsg);
+  app.exit(1);
+};
+
+const handleMissingAssetsDir = (
+  app: App,
+  logger: LoggerLike,
+  assetsDir: string,
+  htmlPath: string
+): void => {
+  logger.error("Assets directory not found", { assetsDir, htmlPath });
+  dialog.showErrorBox(
+    "Application Startup Error",
+    `Frontend assets directory not found at: ${assetsDir}\n\nThe HTML file exists but its assets are missing.\n\nPlease rebuild the application.`
+  );
+  app.exit(1);
+};
+
+const setSplashHash = (window: BrowserWindow, logger: LoggerLike): void => {
+  setTimeout(() => {
+    if (!window.isDestroyed()) {
+      window.webContents
+        .executeJavaScript('window.location.hash = "splash";')
+        .catch((err: unknown) => {
+          logger.debug("Could not set splash hash", {
+            error: err instanceof Error ? err.message : String(err),
+          });
+        });
+    }
+  }, 100);
+};
+
+const handleLoadFileError = (
+  app: App,
+  logger: LoggerLike,
+  htmlPath: string,
+  absoluteHtmlPath: string,
+  assetsDir: string,
+  assetsDirExists: boolean,
+  err: unknown
+): void => {
+  logger.error("loadFile promise rejected", {
+    error: err instanceof Error ? err.message : String(err),
+    stack: err instanceof Error ? err.stack : undefined,
+    htmlPath,
+    absoluteHtmlPath,
+    appPath: app.getAppPath(),
+    assetsDir,
+    assetsDirExists,
+    isPackaged: app.isPackaged,
+    resourcesPath: process.resourcesPath,
+  });
+
+  try {
+    dialog.showErrorBox(
+      "Failed to Load Application",
+      `Could not load the application interface:\n\nError: ${err instanceof Error ? err.message : String(err)}\n\nRelative Path: ${htmlPath}\n\nAbsolute Path: ${absoluteHtmlPath}\n\nApp Path: ${app.getAppPath()}\n\nAssets dir: ${assetsDir} (exists: ${assetsDirExists})\n\nPlease check the log file for more details.`
+    );
+  } catch (dialogErr: unknown) {
+    logger.error("Could not show error dialog", {
+      error: dialogErr instanceof Error ? dialogErr.message : String(dialogErr),
+    });
+  }
+};
+
+const ensureWindowShown = (
+  window: BrowserWindow,
+  logger: LoggerLike
+): void => {
+  setTimeout(() => {
+    if (!window.isDestroyed() && !window.isVisible()) {
+      logger.warn("Window not shown after timeout, forcing show", {
+        isVisible: window.isVisible(),
+        readyToShow: false,
+      });
+      window.show();
+    }
+  }, 5000);
+};
+
 export async function loadRenderer(params: {
   app: App;
   window: BrowserWindow;
@@ -34,49 +226,10 @@ export async function loadRenderer(params: {
   );
 
   const absoluteHtmlPath = path.join(params.app.getAppPath(), htmlPath);
-  const fileExists = fs.existsSync(absoluteHtmlPath);
-  const fileStats: {
-    size?: number;
-    readable?: boolean;
-    error?: string;
-    assetReferences?: string[];
-  } = {};
-
-  if (fileExists) {
-    try {
-      const stats = fs.statSync(absoluteHtmlPath);
-      fileStats.size = stats.size;
-      try {
-        const content = fs.readFileSync(absoluteHtmlPath, {
-          encoding: "utf8",
-          flag: "r",
-        });
-        fileStats.readable = true;
-        const assetReferences = content.match(/src="([^"]+)"/g) || [];
-        fileStats.assetReferences = assetReferences.slice(0, 5);
-      } catch (readErr: unknown) {
-        fileStats.readable = false;
-        fileStats.error =
-          readErr instanceof Error ? readErr.message : String(readErr);
-      }
-    } catch (statErr: unknown) {
-      fileStats.error =
-        statErr instanceof Error ? statErr.message : String(statErr);
-    }
-  }
-
-  const unpackedDir = params.packagedLike
-    ? path.join(process.resourcesPath, "app.asar.unpacked")
-    : null;
-  const unpackedDirInfo: { exists?: boolean; contents?: string[] } = {};
-  if (unpackedDir && fs.existsSync(unpackedDir)) {
-    unpackedDirInfo.exists = true;
-    try {
-      unpackedDirInfo.contents = fs.readdirSync(unpackedDir);
-    } catch {
-      unpackedDirInfo.contents = [];
-    }
-  }
+  const { fileExists, fileStats } = inspectHtmlFile(absoluteHtmlPath);
+  const { unpackedDir, unpackedDirInfo } = getUnpackedDirInfo(
+    params.packagedLike
+  );
 
   params.logger.verbose("Loading production HTML with splash", {
     htmlPath,
@@ -91,29 +244,25 @@ export async function loadRenderer(params: {
   });
 
   if (!fileExists) {
-    const errorMsg = `Frontend HTML file not found at: ${absoluteHtmlPath}\nRelative path: ${htmlPath}\nbackendDirname: ${params.backendDirname}\nresourcesPath: ${process.resourcesPath}\nisPackaged: ${params.app.isPackaged}\nUnpacked dir exists: ${unpackedDirInfo.exists}\nPlease rebuild the application.`;
-    params.logger.error("Frontend HTML file not found", {
+    handleMissingHtmlFile(
+      params.app,
+      params.logger,
       htmlPath,
       absoluteHtmlPath,
-      backendDirname: params.backendDirname,
-      resourcesPath: process.resourcesPath,
-      isPackaged: params.app.isPackaged,
-      unpackedDirInfo,
-    });
-    dialog.showErrorBox("Application Startup Error", errorMsg);
-    params.app.exit(1);
+      params.backendDirname,
+      unpackedDirInfo
+    );
     return;
   }
 
   if (fileStats.readable === false) {
-    const errorMsg = `Frontend HTML file exists but cannot be read: ${absoluteHtmlPath}\nError: ${fileStats.error}\nPlease check file permissions.`;
-    params.logger.error("Frontend HTML file not readable", {
+    handleUnreadableHtmlFile(
+      params.app,
+      params.logger,
       htmlPath,
       absoluteHtmlPath,
-      fileStats,
-    });
-    dialog.showErrorBox("Application Startup Error", errorMsg);
-    params.app.exit(1);
+      fileStats
+    );
     return;
   }
 
@@ -125,12 +274,7 @@ export async function loadRenderer(params: {
   });
 
   if (!assetsDirExists) {
-    params.logger.error("Assets directory not found", { assetsDir, htmlPath });
-    dialog.showErrorBox(
-      "Application Startup Error",
-      `Frontend assets directory not found at: ${assetsDir}\n\nThe HTML file exists but its assets are missing.\n\nPlease rebuild the application.`
-    );
-    params.app.exit(1);
+    handleMissingAssetsDir(params.app, params.logger, assetsDir, htmlPath);
     return;
   }
 
@@ -143,51 +287,19 @@ export async function loadRenderer(params: {
   try {
     await params.window.loadFile(htmlPath);
     params.logger.info("loadFile promise resolved successfully");
-    setTimeout(() => {
-      if (!params.window.isDestroyed()) {
-        params.window.webContents
-          .executeJavaScript('window.location.hash = "splash";')
-          .catch((err: unknown) => {
-            params.logger.debug("Could not set splash hash", {
-              error: err instanceof Error ? err.message : String(err),
-            });
-          });
-      }
-    }, 100);
+    setSplashHash(params.window, params.logger);
   } catch (err: unknown) {
-    params.logger.error("loadFile promise rejected", {
-      error: err instanceof Error ? err.message : String(err),
-      stack: err instanceof Error ? err.stack : undefined,
+    handleLoadFileError(
+      params.app,
+      params.logger,
       htmlPath,
       absoluteHtmlPath,
-      appPath: params.app.getAppPath(),
       assetsDir,
       assetsDirExists,
-      isPackaged: params.app.isPackaged,
-      resourcesPath: process.resourcesPath,
-    });
-
-    try {
-      dialog.showErrorBox(
-        "Failed to Load Application",
-        `Could not load the application interface:\n\nError: ${err instanceof Error ? err.message : String(err)}\n\nRelative Path: ${htmlPath}\n\nAbsolute Path: ${absoluteHtmlPath}\n\nApp Path: ${params.app.getAppPath()}\n\nAssets dir: ${assetsDir} (exists: ${assetsDirExists})\n\nPlease check the log file for more details.`
-      );
-    } catch (dialogErr: unknown) {
-      params.logger.error("Could not show error dialog", {
-        error:
-          dialogErr instanceof Error ? dialogErr.message : String(dialogErr),
-      });
-    }
+      err
+    );
   }
 
   // Add timeout to show window even if ready-to-show doesn't fire
-  setTimeout(() => {
-    if (!params.window.isDestroyed() && !params.window.isVisible()) {
-      params.logger.warn("Window not shown after timeout, forcing show", {
-        isVisible: params.window.isVisible(),
-        readyToShow: false,
-      });
-      params.window.show();
-    }
-  }, 5000);
+  ensureWindowShown(params.window, params.logger);
 }

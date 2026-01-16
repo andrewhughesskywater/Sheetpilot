@@ -27,6 +27,63 @@ export interface TimesheetRow {
   taskDescription?: string;
 }
 
+type DateParts = {
+  month: number;
+  day: number;
+  year: number;
+};
+
+const US_DATE_REGEX = /^\d{1,2}\/\d{1,2}\/\d{4}$/;
+const ISO_DATE_REGEX = /^\d{4}-\d{1,2}-\d{1,2}$/;
+
+const buildDateParts = (
+  monthStr: string,
+  dayStr: string,
+  yearStr: string
+): DateParts => ({
+  month: parseInt(monthStr ?? '', 10),
+  day: parseInt(dayStr ?? '', 10),
+  year: parseInt(yearStr ?? '', 10)
+});
+
+const parseUsDateParts = (dateStr: string): DateParts | null => {
+  if (!US_DATE_REGEX.test(dateStr)) {
+    return null;
+  }
+  const dateParts = dateStr.split('/');
+  if (dateParts.length !== 3) return null;
+  const [monthStr, dayStr, yearStr] = dateParts;
+  return buildDateParts(monthStr ?? '', dayStr ?? '', yearStr ?? '');
+};
+
+const parseIsoDateParts = (dateStr: string): DateParts | null => {
+  if (!ISO_DATE_REGEX.test(dateStr)) {
+    return null;
+  }
+  const dateParts = dateStr.split('-');
+  if (dateParts.length !== 3) return null;
+  const [yearStr, monthStr, dayStr] = dateParts;
+  return buildDateParts(monthStr ?? '', dayStr ?? '', yearStr ?? '');
+};
+
+function parseDateParts(dateStr: string): DateParts | null {
+  return parseUsDateParts(dateStr) ?? parseIsoDateParts(dateStr);
+}
+
+function isValidDateParts({ month, day, year }: DateParts): boolean {
+  // Basic range checks
+  if (month < 1 || month > 12) return false;
+  if (day < 1 || day > 31) return false;
+  if (year < 1900 || year > 2100) return false;
+
+  // Create date object and verify it matches input
+  const date = new Date(year, month - 1, day);
+  return (
+    date.getFullYear() === year &&
+    date.getMonth() === month - 1 &&
+    date.getDate() === day
+  );
+}
 
 /**
  * Normalize date to MM/DD/YYYY format
@@ -37,14 +94,12 @@ export function normalizeDateFormat(dateStr?: string): string {
   if (!d) return '';
   
   // Check if already in MM/DD/YYYY format
-  const usFormatRegex = /^\d{1,2}\/\d{1,2}\/\d{4}$/;
-  if (usFormatRegex.test(d)) {
+  if (US_DATE_REGEX.test(d)) {
     return d; // Already in correct format
   }
   
   // Check for YYYY-MM-DD format (ISO format, dash-separated)
-  const isoFormatRegex = /^\d{4}-\d{1,2}-\d{1,2}$/;
-  if (isoFormatRegex.test(d)) {
+  if (ISO_DATE_REGEX.test(d)) {
     const dateParts = d.split('-');
     if (dateParts.length !== 3) return d;
     const [yearStr, monthStr, dayStr] = dateParts;
@@ -63,43 +118,11 @@ export function normalizeDateFormat(dateStr?: string): string {
 export function isValidDate(dateStr?: string): boolean {
   const d = dateStr ?? '';
   if (!d) return false;
-  
-  let month: number;
-  let day: number;
-  let year: number;
-  
-  // Check for MM/DD/YYYY or M/D/YYYY format (slash-separated)
-  const usFormatRegex = /^\d{1,2}\/\d{1,2}\/\d{4}$/;
-  if (usFormatRegex.test(d)) {
-    const dateParts = d.split('/');
-    if (dateParts.length !== 3) return false;
-    const [monthStr, dayStr, yearStr] = dateParts;
-    month = parseInt(monthStr ?? '', 10);
-    day = parseInt(dayStr ?? '', 10);
-    year = parseInt(yearStr ?? '', 10);
-  }
-  // Check for YYYY-MM-DD format (ISO format, dash-separated)
-  else {
-    const isoFormatRegex = /^\d{4}-\d{1,2}-\d{1,2}$/;
-    if (!isoFormatRegex.test(d)) return false;
-    const dateParts = d.split('-');
-    if (dateParts.length !== 3) return false;
-    const [yearStr, monthStr, dayStr] = dateParts;
-    month = parseInt(monthStr ?? '', 10);
-    day = parseInt(dayStr ?? '', 10);
-    year = parseInt(yearStr ?? '', 10);
-  }
-  
-  // Basic range checks
-  if (month < 1 || month > 12) return false;
-  if (day < 1 || day > 31) return false;
-  if (year < 1900 || year > 2100) return false;
-  
-  // Create date object and verify it matches input
-  const date = new Date(year, month - 1, day);
-  return date.getFullYear() === year && 
-         date.getMonth() === month - 1 && 
-         date.getDate() === day;
+
+  const dateParts = parseDateParts(d);
+  if (!dateParts) return false;
+
+  return isValidDateParts(dateParts);
 }
 
 /**
