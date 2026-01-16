@@ -109,6 +109,52 @@ const downloadLogFile = (
   }
 };
 
+const tryExportLogs = async (
+  token: string,
+  logPath: string,
+  setError: (error: string) => void
+): Promise<string | null> => {
+  try {
+    // logPath is already the full path to the latest log file from the backend
+    const response = await exportLogsIpc(token, logPath, "txt");
+
+    const validatedData = validateExportLogsResponse(
+      response,
+      logPath,
+      setError
+    );
+    if (!validatedData) {
+      return null;
+    }
+
+    return downloadLogFile(
+      validatedData.content,
+      validatedData.filename,
+      validatedData.mimeType,
+      setError
+    );
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : "Unknown error";
+    setError(errorMsg);
+    logError("Export logs error", {
+      error: errorMsg,
+      stack: err instanceof Error ? err.stack : undefined,
+    });
+    return null;
+  }
+};
+
+const cleanupDownloadUrl = (downloadUrl: string): void => {
+  try {
+    URL.revokeObjectURL(downloadUrl);
+  } catch (revokeError) {
+    logWarn("Could not revoke blob URL", {
+      error:
+        revokeError instanceof Error ? revokeError.message : String(revokeError),
+    });
+  }
+};
+
 export const exportLogs = async (
   token: string | null,
   logFiles: string[],
@@ -123,52 +169,10 @@ export const exportLogs = async (
   setIsExporting(true);
   setError("");
 
-  let downloadUrl: string | null = null;
-
-  try {
-    // logPath is already the full path to the latest log file from the backend
-    // token is validated as non-null by validateExportLogsInputs
-    const response = await exportLogsIpc(token!, logPath, "txt");
-
-    const validatedData = validateExportLogsResponse(
-      response,
-      logPath,
-      setError
-    );
-    if (!validatedData) {
-      return;
-    }
-
-    downloadUrl = downloadLogFile(
-      validatedData.content,
-      validatedData.filename,
-      validatedData.mimeType,
-      setError
-    );
-    if (!downloadUrl) {
-      return;
-    }
-  } catch (err) {
-    const errorMsg = err instanceof Error ? err.message : "Unknown error";
-    setError(errorMsg);
-    logError("Export logs error", {
-      error: errorMsg,
-      stack: err instanceof Error ? err.stack : undefined,
-    });
-  } finally {
-    // Clean up blob URL if it was created
-    if (downloadUrl) {
-      try {
-        URL.revokeObjectURL(downloadUrl);
-      } catch (revokeError) {
-        logWarn("Could not revoke blob URL", {
-          error:
-            revokeError instanceof Error
-              ? revokeError.message
-              : String(revokeError),
-        });
-      }
-    }
-    setIsExporting(false);
+  // token is validated as non-null by validateExportLogsInputs
+  const downloadUrl = await tryExportLogs(token!, logPath, setError);
+  if (downloadUrl) {
+    cleanupDownloadUrl(downloadUrl);
   }
+  setIsExporting(false);
 };

@@ -14,6 +14,54 @@ export interface SubmitResponse {
   dbPath?: string;
 }
 
+type DraftPayload = {
+  id?: number;
+  date?: string;
+  hours?: number;
+  project?: string;
+  tool?: string | null;
+  chargeCode?: string | null;
+  taskDescription?: string;
+};
+
+const buildDraftPayload = (row: TimesheetRow): DraftPayload => {
+  const entries: Array<{
+    key: keyof DraftPayload;
+    value: DraftPayload[keyof DraftPayload];
+    include: boolean;
+  }> = [
+    { key: 'id', value: row.id, include: row.id !== undefined },
+    { key: 'date', value: row.date, include: Boolean(row.date) },
+    {
+      key: 'hours',
+      value: row.hours,
+      include: row.hours !== undefined && row.hours !== null
+    },
+    { key: 'project', value: row.project, include: Boolean(row.project) },
+    {
+      key: 'tool',
+      value: row.tool ?? null,
+      include: row.tool !== undefined
+    },
+    {
+      key: 'chargeCode',
+      value: row.chargeCode ?? null,
+      include: row.chargeCode !== undefined
+    },
+    {
+      key: 'taskDescription',
+      value: row.taskDescription,
+      include: Boolean(row.taskDescription)
+    }
+  ];
+
+  return Object.fromEntries(
+    entries
+      .filter((entry) => entry.include)
+      .map((entry) => [entry.key, entry.value])
+  ) as DraftPayload;
+};
+
 export async function submitTimesheet(token: string, useMockWebsite?: boolean): Promise<SubmitResponse> {
   if (!window.timesheet?.submit) {
     window.logger?.warn('Submit not available');
@@ -41,24 +89,7 @@ export async function saveDraft(row: TimesheetRow): Promise<{ success: boolean; 
     return { success: false, error: 'Timesheet API not available' };
   }
   // Build payload with only present fields to support partial draft saves.
-  const payload: {
-    id?: number;
-    date?: string;
-    hours?: number;
-    project?: string;
-    tool?: string | null;
-    chargeCode?: string | null;
-    taskDescription?: string;
-  } = {};
-
-  if (row.id !== undefined) payload.id = row.id;
-  if (row.date) payload.date = row.date;
-  if (row.hours !== undefined && row.hours !== null) payload.hours = row.hours;
-  if (row.project) payload.project = row.project;
-  if (row.tool !== undefined) payload.tool = row.tool ?? null;
-  if (row.chargeCode !== undefined) payload.chargeCode = row.chargeCode ?? null;
-  if (row.taskDescription) payload.taskDescription = row.taskDescription;
-
+  const payload = buildDraftPayload(row);
   const res = await window.timesheet.saveDraft(payload);
   if (res.success && res.entry) {
     return { success: true, entry: res.entry };

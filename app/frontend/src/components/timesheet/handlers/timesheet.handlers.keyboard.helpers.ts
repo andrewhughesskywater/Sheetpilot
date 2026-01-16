@@ -57,6 +57,45 @@ function handleCtrlT(
   return formatDateForDisplay(new Date());
 }
 
+function getDateToInsert(
+  event: globalThis.KeyboardEvent,
+  rowData: TimesheetRow,
+  smartPlaceholder: string,
+  timesheetDraftData: TimesheetRow[],
+  row: number,
+  weekdayPattern: boolean,
+  incrementDate: (
+    date: string,
+    days: number,
+    weekdayPattern: boolean
+  ) => string,
+  formatDateForDisplay: (date: Date) => string
+): string | null {
+  if (event.key === "Tab" && event.ctrlKey) {
+    return handleCtrlTab(
+      timesheetDraftData,
+      row,
+      weekdayPattern,
+      incrementDate
+    );
+  }
+  if (event.key === "Tab" && event.shiftKey) {
+    return handleShiftTab(
+      rowData,
+      smartPlaceholder,
+      weekdayPattern,
+      incrementDate
+    );
+  }
+  if (event.key === "Tab") {
+    return handleTab(rowData, smartPlaceholder);
+  }
+  if (event.ctrlKey && event.key === "t") {
+    return handleCtrlT(formatDateForDisplay);
+  }
+  return null;
+}
+
 export function handleKeyCombination(
   event: globalThis.KeyboardEvent,
   rowData: TimesheetRow,
@@ -74,39 +113,16 @@ export function handleKeyCombination(
   dateToInsert: string | null;
   shouldPreventDefault: boolean;
 } {
-  let dateToInsert: string | null = null;
-  let shouldPreventDefault = false;
+  const dateToInsert = getDateToInsert(
+    event,
+    rowData,
+    smartPlaceholder,
+    timesheetDraftData,
+    row,
+    weekdayPattern,
+    incrementDate,
+    formatDateForDisplay
+  );
 
-  // Handle different key combinations
-  if (event.key === "Tab" && event.ctrlKey) {
-    dateToInsert = handleCtrlTab(
-      timesheetDraftData,
-      row,
-      weekdayPattern,
-      incrementDate
-    );
-    if (dateToInsert) {
-      shouldPreventDefault = true;
-    }
-  } else if (event.key === "Tab" && event.shiftKey) {
-    dateToInsert = handleShiftTab(
-      rowData,
-      smartPlaceholder,
-      weekdayPattern,
-      incrementDate
-    );
-    if (dateToInsert) {
-      shouldPreventDefault = true;
-    }
-  } else if (event.key === "Tab") {
-    dateToInsert = handleTab(rowData, smartPlaceholder);
-    if (dateToInsert) {
-      shouldPreventDefault = true;
-    }
-  } else if (event.ctrlKey && event.key === "t") {
-    dateToInsert = handleCtrlT(formatDateForDisplay);
-    shouldPreventDefault = true;
-  }
-
-  return { dateToInsert, shouldPreventDefault };
+  return { dateToInsert, shouldPreventDefault: Boolean(dateToInsert) };
 }

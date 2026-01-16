@@ -52,6 +52,84 @@ type IsInitializingSetter = (value: boolean) => void;
  */
 type UnlockFunction = () => void;
 
+type SchemaInitTimer = ReturnType<typeof dbLogger.startTimer>;
+
+const closeDatabaseSafe = (
+  db: BetterSqlite3.Database,
+  closeErrorMessage: string
+): void => {
+  try {
+    db.close();
+  } catch (closeError) {
+    dbLogger.warn(closeErrorMessage, {
+      error:
+        closeError instanceof Error ? closeError.message : String(closeError),
+    });
+  }
+};
+
+const createSchemaError = (
+  dbPath: string,
+  error: unknown
+): DatabaseSchemaError =>
+  new DatabaseSchemaError({
+    dbPath: dbPath,
+    error: error instanceof Error ? error.message : String(error),
+    stack: error instanceof Error ? error.stack : undefined,
+  });
+
+const handleSchemaInitializationFailure = (
+  db: BetterSqlite3.Database,
+  dbPath: string,
+  error: unknown,
+  timer: SchemaInitTimer
+): DatabaseSchemaError => {
+  closeDatabaseSafe(db, "Could not close database after schema error");
+  timer.done({ outcome: "error" });
+  const schemaError = createSchemaError(dbPath, error);
+  dbLogger.error("Could not initialize database schema", schemaError);
+  return schemaError;
+};
+
+const withInitializationReset = <T>(
+  action: () => T,
+  setIsInitializing: IsInitializingSetter,
+  unlockFunction: UnlockFunction
+): T => {
+  try {
+    return action();
+  } catch (error) {
+    setIsInitializing(false);
+    unlockFunction();
+    throw error;
+  }
+};
+
+const getExistingConnection = (
+  isConnectionHealthy: ConnectionHealthChecker,
+  getConnectionInstance: ConnectionGetter,
+  setIsInitializing: IsInitializingSetter,
+  unlockFunction: UnlockFunction
+): BetterSqlite3.Database | null => {
+  if (!isConnectionHealthy()) {
+    return null;
+  }
+  setIsInitializing(false);
+  unlockFunction();
+  return getConnectionInstance();
+};
+
+const initializeSchemaWithTracking = (
+  db: BetterSqlite3.Database,
+  dbPath: string,
+  setSchemaInitialized: SchemaInitializedSetter
+): void => {
+  const initialized = initializeSchemaIfNeeded(db, dbPath, false);
+  if (initialized) {
+    setSchemaInitialized(true);
+  }
+};
+
 /**
  * Ensures the database directory exists
  */
@@ -135,25 +213,7 @@ export function initializeSchemaIfNeeded(
       timer.done();
       return true;
     } catch (error) {
-      // Close the database connection if schema initialization fails
-      try {
-        db.close();
-      } catch (closeError) {
-        dbLogger.warn("Could not close database after schema error", {
-          error:
-            closeError instanceof Error
-              ? closeError.message
-              : String(closeError),
-        });
-      }
-      timer.done({ outcome: "error" });
-      const schemaError = new DatabaseSchemaError({
-        dbPath: dbPath,
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-      });
-      dbLogger.error("Could not initialize database schema", schemaError);
-      throw schemaError;
+      throw handleSchemaInitializationFailure(db, dbPath, error, timer);
     }
   }
   return schemaInitialized;
@@ -175,62 +235,37 @@ export function performConnectionInitialization(
 ): BetterSqlite3.Database {
   try {
     // Double-check after acquiring lock - another thread might have initialized
-    if (isConnectionHealthy()) {
-      setIsInitializing(false);
-      unlockFunction();
-      return getConnectionInstance()!;
+    const existingConnection = getExistingConnection(
+      isConnectionHealthy,
+      getConnectionInstance,
+      setIsInitializing,
+      unlockFunction
+    );
+    if (existingConnection) {
+      return existingConnection;
     }
 
     // Ensure the database directory exists
-    try {
-      ensureDatabaseDirectory(dbPath);
-    } catch (error) {
-      setIsInitializing(false);
-      unlockFunction();
-      throw error;
-    }
+    withInitializationReset(
+      () => ensureDatabaseDirectory(dbPath),
+      setIsInitializing,
+      unlockFunction
+    );
 
     // Open database connection
-    let db: BetterSqlite3.Database;
-    try {
-      db = openDatabaseConnection(dbPath);
-    } catch (error) {
-      setIsInitializing(false);
-      unlockFunction();
-      throw error;
-    }
+    const db = withInitializationReset(
+      () => openDatabaseConnection(dbPath),
+      setIsInitializing,
+      unlockFunction
+    );
 
     // Schema initialization (thread-safe - only first call succeeds)
     if (!getSchemaInitialized()) {
-      const timer = dbLogger.startTimer("schema-init");
-      try {
-        ensureSchemaInternal(db);
-        setSchemaInitialized(true);
-        dbLogger.info("Database schema initialized", { dbPath: dbPath });
-      } catch (error) {
-        // Close the database connection if schema initialization fails
-        try {
-          db.close();
-        } catch (closeError) {
-          dbLogger.warn("Could not close database after schema error", {
-            error:
-              closeError instanceof Error
-                ? closeError.message
-                : String(closeError),
-          });
-        }
-        setIsInitializing(false);
-        unlockFunction();
-        const schemaError = new DatabaseSchemaError({
-          dbPath: dbPath,
-          error: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : undefined,
-        });
-        dbLogger.error("Could not initialize database schema", schemaError);
-        throw schemaError;
-      } finally {
-        timer.done();
-      }
+      withInitializationReset(
+        () => initializeSchemaWithTracking(db, dbPath, setSchemaInitialized),
+        setIsInitializing,
+        unlockFunction
+      );
     }
 
     setConnectionInstance(db);

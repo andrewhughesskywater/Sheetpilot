@@ -123,6 +123,28 @@ registerEditor("spellcheckText", SpellcheckEditor);
 // NOTE: Column validators removed - they block editor closing and cause navigation issues
 // Validation now happens in afterChange hook using setCellMeta for visual feedback
 
+type HotInstance = NonNullable<HotTableRef["hotInstance"]>;
+
+const updateColumnSource = (
+  hot: HotInstance,
+  columnIndex: number,
+  source: readonly string[],
+  logMessage: string
+): void => {
+  if (source.length === 0) {
+    return;
+  }
+  const columns = hot.getSettings().columns;
+  if (!Array.isArray(columns) || !columns[columnIndex]) {
+    return;
+  }
+  const nextColumns = columns.map((column, index) =>
+    index === columnIndex ? { ...column, source: [...source] } : column
+  );
+  hot.updateSettings({ columns: nextColumns });
+  logVerbose(logMessage);
+};
+
 interface TimesheetGridProps {
   onChange?: (rows: TimesheetRow[]) => void;
 }
@@ -221,29 +243,24 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(
 
           if (!isMounted) return;
 
-          // Update column sources if HotTable is available
-          if (hotTableRef.current?.hotInstance) {
-            const hot = hotTableRef.current.hotInstance;
-            const columns = hot.getSettings().columns;
-
-            if (Array.isArray(columns) && projectsResult.length > 0) {
-              // Update project column (index 3)
-              if (columns[3]) {
-                columns[3].source = [...projectsResult];
-                hot.updateSettings({ columns });
-                logVerbose("Updated project column sources from database");
-              }
-            }
-
-            if (Array.isArray(columns) && chargeCodesResult.length > 0) {
-              // Update charge code column (index 5)
-              if (columns[5]) {
-                columns[5].source = [...chargeCodesResult];
-                hot.updateSettings({ columns });
-                logVerbose("Updated charge code column sources from database");
-              }
-            }
+          const hot = hotTableRef.current?.hotInstance;
+          if (!hot) {
+            return;
           }
+
+          // Update column sources if HotTable is available
+          updateColumnSource(
+            hot,
+            3,
+            projectsResult,
+            "Updated project column sources from database"
+          );
+          updateColumnSource(
+            hot,
+            5,
+            chargeCodesResult,
+            "Updated charge code column sources from database"
+          );
         } catch (error) {
           logWarn(
             "Could not load business config from database, using static config",
@@ -263,7 +280,7 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(
         isMounted = false;
         clearTimeout(timer);
       };
-    }, [logVerbose, logWarn]);
+    }, []);
     const batchSaveToDatabase = useBatchSaveToDatabase(timesheetDraftData);
     // Expose batch save function to parent component via ref
     useImperativeHandle(ref, () => ({ batchSaveToDatabase }), [
@@ -613,7 +630,7 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(
           rowHeaders={true}
           colHeaders={true}
           customBorders={[]}
-          contextMenu={HOTTABLE_CONTEXT_MENU as any}
+          contextMenu={{ items: [...HOTTABLE_CONTEXT_MENU] }}
           manualColumnResize={true}
           manualRowResize={true}
           stretchH="all"

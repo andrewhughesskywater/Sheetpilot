@@ -45,6 +45,8 @@ type DbRow = {
   submitted_at?: string | null;
 };
 
+type SubmissionTimer = ReturnType<typeof botLogger.startTimer>;
+
 /**
  * Result object for timesheet submission operations
  * Re-export the contract type for backward compatibility
@@ -68,6 +70,198 @@ function toTimesheetEntry(dbRow: DbRow): TimesheetEntry {
     taskDescription: dbRow.task_description,
   };
 }
+
+const buildEmptySubmissionResult = (): SubmissionResult => ({
+  ok: true,
+  submittedIds: [],
+  removedIds: [],
+  totalProcessed: 0,
+  successCount: 0,
+  removedCount: 0,
+});
+
+const buildFailureResult = (
+  dbRowCount: number,
+  error: string,
+  removedIds: number[] = []
+): SubmissionResult => ({
+  ok: false,
+  submittedIds: [],
+  removedIds,
+  totalProcessed: dbRowCount,
+  successCount: 0,
+  removedCount: removedIds.length,
+  error,
+});
+
+const resetInProgressWithLog = (message: string): void => {
+  const remainingInProgressCount = resetInProgressTimesheetEntries();
+  if (remainingInProgressCount > 0) {
+    botLogger.info(message, {
+      count: remainingInProgressCount,
+    });
+  }
+};
+
+const handleServiceUnavailable = (
+  submissionService: ISubmissionService | null,
+  dbRowCount: number,
+  timer: SubmissionTimer
+): SubmissionResult => {
+  const errorMsg = "Submission service not available";
+  botLogger.error("Could not get submission service from plugin system", {
+    hasService: !!submissionService,
+    serviceName: submissionService?.metadata?.name,
+  });
+  resetInProgressWithLog(
+    "Reset in-progress entries to NULL after service unavailable"
+  );
+  timer.done({ outcome: "error", reason: "service-unavailable" });
+  return buildFailureResult(dbRowCount, errorMsg);
+};
+
+const handleAbortBeforeStart = (
+  dbRowCount: number,
+  timer: SubmissionTimer
+): SubmissionResult => {
+  botLogger.info("Submission aborted before starting");
+  resetInProgressWithLog(
+    "Reset in-progress entries to NULL after abort before start"
+  );
+  timer.done({ outcome: "aborted" });
+  return buildFailureResult(dbRowCount, "Submission was cancelled");
+};
+
+const handleSubmittedEntriesUpdate = (
+  submittedIds: number[],
+  dbRowCount: number,
+  timer: SubmissionTimer
+): SubmissionResult | null => {
+  if (submittedIds.length === 0) {
+    return null;
+  }
+
+  botLogger.info("Marking entries as submitted in database", {
+    count: submittedIds.length,
+    ids: submittedIds,
+  });
+  try {
+    markTimesheetEntriesAsSubmitted(submittedIds);
+    botLogger.info("Successfully marked entries as submitted", {
+      count: submittedIds.length,
+    });
+    return null;
+  } catch (markError) {
+    botLogger.error("Could not mark entries as submitted in database", {
+      error: markError instanceof Error ? markError.message : String(markError),
+      count: submittedIds.length,
+      ids: submittedIds,
+    });
+    // Even though bot submission succeeded, database update failed
+    // Reset these entries back to pending so user can retry
+    try {
+      resetTimesheetEntriesStatus(submittedIds);
+      botLogger.info(
+        "Reset entries to pending after database update failure",
+        {
+          count: submittedIds.length,
+        }
+      );
+    } catch (resetError) {
+      botLogger.error(
+        "Could not reset entries after database update failure",
+        {
+          error:
+            resetError instanceof Error
+              ? resetError.message
+              : String(resetError),
+        }
+      );
+    }
+    timer.done({ outcome: "error", reason: "database-update-failed" });
+    return buildFailureResult(
+      dbRowCount,
+      "Submission to Smartsheet succeeded but database update failed. Entries have been reset to pending.",
+      submittedIds
+    );
+  }
+};
+
+const removeFailedEntries = (removedIds: number[]): void => {
+  if (removedIds.length === 0) {
+    return;
+  }
+  botLogger.warn("Removing failed entries from database", {
+    count: removedIds.length,
+  });
+  try {
+    removeFailedTimesheetEntries(removedIds);
+  } catch (removeError) {
+    botLogger.error("Could not remove failed entries from database", {
+      error:
+        removeError instanceof Error ? removeError.message : String(removeError),
+      count: removedIds.length,
+    });
+    // Don't fail the entire operation if we can't update failed entries
+  }
+};
+
+const finalizeSubmission = (
+  result: SubmissionResult,
+  timer: SubmissionTimer
+): SubmissionResult => {
+  resetInProgressWithLog(
+    "Reset remaining in-progress entries to NULL after bot completion"
+  );
+  timer.done({ outcome: result.ok ? "success" : "partial", result });
+  return result;
+};
+
+const isAbortError = (error: unknown): boolean => {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+  const errorMsg = error.message.toLowerCase();
+  return (
+    error.name === "AbortError" ||
+    errorMsg.includes("cancelled") ||
+    errorMsg.includes("aborted") ||
+    errorMsg.includes("browser has been closed")
+  );
+};
+
+const handleSubmissionCancelled = (
+  dbRowCount: number,
+  timer: SubmissionTimer
+): SubmissionResult => {
+  botLogger.info("Submission was cancelled by user");
+  resetInProgressWithLog(
+    "Reset remaining in-progress entries to NULL after cancellation"
+  );
+  timer.done({ outcome: "cancelled" });
+  return buildFailureResult(dbRowCount, "Submission was cancelled");
+};
+
+const handleSubmissionError = (
+  error: unknown,
+  dbRowCount: number,
+  timer: SubmissionTimer
+): SubmissionResult => {
+  botLogger.error("Submission service encountered error", {
+    error: error instanceof Error ? error.message : String(error),
+    stack: error instanceof Error ? error.stack : undefined,
+  });
+
+  resetInProgressWithLog(
+    "Reset remaining in-progress entries to NULL after error"
+  );
+
+  timer.done({ outcome: "error", reason: "service-error" });
+  return buildFailureResult(
+    dbRowCount,
+    error instanceof Error ? error.message : "Unknown error"
+  );
+};
 
 /**
  * Submits all pending timesheet entries using the automation bot
@@ -114,14 +308,7 @@ export async function submitTimesheets(
   if (dbRows.length === 0) {
     botLogger.info("No pending timesheet entries to submit");
     timer.done({ totalProcessed: 0, successCount: 0 });
-    return {
-      ok: true,
-      submittedIds: [],
-      removedIds: [],
-      totalProcessed: 0,
-      successCount: 0,
-      removedCount: 0,
-    };
+    return buildEmptySubmissionResult();
   }
 
   // Mark entries as in-progress to protect them from orphan cleanup during submission
@@ -147,31 +334,7 @@ export async function submitTimesheets(
   });
 
   if (!submissionService || !submissionService.submit) {
-    const errorMsg = "Submission service not available";
-    botLogger.error("Could not get submission service from plugin system", {
-      hasService: !!submissionService,
-      serviceName: submissionService?.metadata?.name,
-    });
-    // Reset entries back to NULL since we couldn't submit them
-    const remainingInProgressCount = resetInProgressTimesheetEntries();
-    if (remainingInProgressCount > 0) {
-      botLogger.info(
-        "Reset in-progress entries to NULL after service unavailable",
-        {
-          count: remainingInProgressCount,
-        }
-      );
-    }
-    timer.done({ outcome: "error", reason: "service-unavailable" });
-    return {
-      ok: false,
-      submittedIds: [],
-      removedIds: [],
-      totalProcessed: dbRows.length,
-      successCount: 0,
-      removedCount: 0,
-      error: errorMsg,
-    };
+    return handleServiceUnavailable(submissionService, dbRows.length, timer);
   }
 
   // Use the plugin system to submit entries
@@ -182,27 +345,7 @@ export async function submitTimesheets(
   try {
     // Check if already aborted before starting
     if (abortSignal?.aborted) {
-      botLogger.info("Submission aborted before starting");
-      // Reset entries back to NULL since we didn't start submission
-      const remainingInProgressCount = resetInProgressTimesheetEntries();
-      if (remainingInProgressCount > 0) {
-        botLogger.info(
-          "Reset in-progress entries to NULL after abort before start",
-          {
-            count: remainingInProgressCount,
-          }
-        );
-      }
-      timer.done({ outcome: "aborted" });
-      return {
-        ok: false,
-        submittedIds: [],
-        removedIds: [],
-        totalProcessed: dbRows.length,
-        successCount: 0,
-        removedCount: 0,
-        error: "Submission was cancelled",
-      };
+      return handleAbortBeforeStart(dbRows.length, timer);
     }
 
     const credentials: Credentials = { email, password };
@@ -223,151 +366,25 @@ export async function submitTimesheets(
     });
 
     // Update database based on results
-    if (result.submittedIds && result.submittedIds.length > 0) {
-      botLogger.info("Marking entries as submitted in database", {
-        count: result.submittedIds.length,
-        ids: result.submittedIds,
-      });
-      try {
-        markTimesheetEntriesAsSubmitted(result.submittedIds);
-        botLogger.info("Successfully marked entries as submitted", {
-          count: result.submittedIds.length,
-        });
-      } catch (markError) {
-        botLogger.error("Could not mark entries as submitted in database", {
-          error:
-            markError instanceof Error ? markError.message : String(markError),
-          count: result.submittedIds.length,
-          ids: result.submittedIds,
-        });
-        // Even though bot submission succeeded, database update failed
-        // Reset these entries back to pending so user can retry
-        try {
-          resetTimesheetEntriesStatus(result.submittedIds);
-          botLogger.info(
-            "Reset entries to pending after database update failure",
-            {
-              count: result.submittedIds.length,
-            }
-          );
-        } catch (resetError) {
-          botLogger.error(
-            "Could not reset entries after database update failure",
-            {
-              error:
-                resetError instanceof Error
-                  ? resetError.message
-                  : String(resetError),
-            }
-          );
-        }
-        // Return error result since database update failed
-        timer.done({ outcome: "error", reason: "database-update-failed" });
-        return {
-          ok: false,
-          submittedIds: [],
-          removedIds: result.submittedIds, // Treat as failed since database update failed
-          totalProcessed: dbRows.length,
-          successCount: 0,
-          removedCount: result.submittedIds.length,
-          error:
-            "Submission to Smartsheet succeeded but database update failed. Entries have been reset to pending.",
-        };
-      }
+    const submittedIds = result.submittedIds ?? [];
+    const updateFailureResult = handleSubmittedEntriesUpdate(
+      submittedIds,
+      dbRows.length,
+      timer
+    );
+    if (updateFailureResult) {
+      return updateFailureResult;
     }
 
-    if (result.removedIds && result.removedIds.length > 0) {
-      botLogger.warn("Removing failed entries from database", {
-        count: result.removedIds.length,
-      });
-      try {
-        removeFailedTimesheetEntries(result.removedIds);
-      } catch (removeError) {
-        botLogger.error("Could not remove failed entries from database", {
-          error:
-            removeError instanceof Error
-              ? removeError.message
-              : String(removeError),
-          count: result.removedIds.length,
-        });
-        // Don't fail the entire operation if we can't update failed entries
-      }
-    }
+    removeFailedEntries(result.removedIds ?? []);
 
-    // After bot finishes, reset any remaining "in_progress" entries to NULL
-    // This handles cases where no rows were successfully submitted
-    const remainingInProgressCount = resetInProgressTimesheetEntries();
-    if (remainingInProgressCount > 0) {
-      botLogger.info(
-        "Reset remaining in-progress entries to NULL after bot completion",
-        {
-          count: remainingInProgressCount,
-        }
-      );
-    }
-
-    timer.done({ outcome: result.ok ? "success" : "partial", result });
-    return result;
+    return finalizeSubmission(result, timer);
   } catch (error) {
-    // Check if error is due to abort or browser closure
-    if (error instanceof Error) {
-      const errorMsg = error.message.toLowerCase();
-      if (
-        error.name === "AbortError" ||
-        errorMsg.includes("cancelled") ||
-        errorMsg.includes("aborted") ||
-        errorMsg.includes("browser has been closed")
-      ) {
-        botLogger.info("Submission was cancelled by user");
-        // Reset any remaining in-progress entries when cancelled
-        const remainingInProgressCount = resetInProgressTimesheetEntries();
-        if (remainingInProgressCount > 0) {
-          botLogger.info(
-            "Reset remaining in-progress entries to NULL after cancellation",
-            {
-              count: remainingInProgressCount,
-            }
-          );
-        }
-        timer.done({ outcome: "cancelled" });
-        return {
-          ok: false,
-          submittedIds: [],
-          removedIds: [],
-          totalProcessed: dbRows.length,
-          successCount: 0,
-          removedCount: 0,
-          error: "Submission was cancelled",
-        };
-      }
+    if (isAbortError(error)) {
+      return handleSubmissionCancelled(dbRows.length, timer);
     }
 
-    botLogger.error("Submission service encountered error", {
-      error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
-    });
-
-    // Reset any remaining in-progress entries when error occurs
-    const remainingInProgressCount = resetInProgressTimesheetEntries();
-    if (remainingInProgressCount > 0) {
-      botLogger.info(
-        "Reset remaining in-progress entries to NULL after error",
-        {
-          count: remainingInProgressCount,
-        }
-      );
-    }
-
-    timer.done({ outcome: "error", reason: "service-error" });
-    return {
-      ok: false,
-      submittedIds: [],
-      removedIds: [],
-      totalProcessed: dbRows.length,
-      successCount: 0,
-      removedCount: 0,
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
+    return handleSubmissionError(error, dbRows.length, timer);
   }
 }
 

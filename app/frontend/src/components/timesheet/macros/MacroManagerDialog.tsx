@@ -32,6 +32,30 @@ import { columnDefinitions } from "./macroManagerDialog.columns";
 registerAllModules();
 registerEditor("spellcheckText", SpellcheckEditor);
 
+const applyMacroChange = (
+  next: MacroRow[],
+  rowIndex: number,
+  field: keyof MacroRow,
+  newVal: unknown,
+  oldVal: unknown
+): boolean => {
+  if (field === "project") {
+    return handleProjectChange(next, rowIndex, newVal, oldVal);
+  }
+  if (field === "tool") {
+    return handleToolChange(next, rowIndex, newVal);
+  }
+  if (
+    field === "hours" &&
+    newVal !== undefined &&
+    newVal !== null &&
+    newVal !== ""
+  ) {
+    return handleHoursChange(next, rowIndex, newVal);
+  }
+  return handleStandardUpdate(next, rowIndex, field, newVal);
+};
+
 interface MacroManagerDialogProps {
   open: boolean;
   onClose: () => void;
@@ -140,35 +164,18 @@ const MacroManagerDialog = ({
       if (!hotInstance) return;
 
       const next = [...macroData];
-      let hasChanges = false;
-
-      changes.forEach(([row, prop, oldVal, newVal]) => {
-        if (oldVal === newVal) return;
+      const hasChanges = changes.reduce((didChange, change) => {
+        const [row, prop, oldVal, newVal] = change;
+        if (oldVal === newVal) return didChange;
 
         const rowIndex = row as number;
-        if (!next[rowIndex]) return;
+        if (!next[rowIndex]) return didChange;
 
         // Cast prop to keyof MacroRow - we know our columns use string keys
         const field = prop as keyof MacroRow;
 
-        // Handle Cascading Logic
-        if (field === "project") {
-          hasChanges =
-            handleProjectChange(next, rowIndex, newVal, oldVal) || hasChanges;
-        } else if (field === "tool") {
-          hasChanges = handleToolChange(next, rowIndex, newVal) || hasChanges;
-        } else if (
-          field === "hours" &&
-          newVal !== undefined &&
-          newVal !== null &&
-          newVal !== ""
-        ) {
-          hasChanges = handleHoursChange(next, rowIndex, newVal) || hasChanges;
-        } else {
-          hasChanges =
-            handleStandardUpdate(next, rowIndex, field, newVal) || hasChanges;
-        }
-      });
+        return applyMacroChange(next, rowIndex, field, newVal, oldVal) || didChange;
+      }, false);
 
       if (hasChanges) {
         // Update state

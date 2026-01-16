@@ -10,17 +10,8 @@ import type BetterSqlite3 from "better-sqlite3";
 import { dbLogger } from "@sheetpilot/shared/logger";
 import { getDbPath } from "./connection-manager";
 
-/**
- * Internal schema creation (takes an open database connection)
- * @private
- */
-export function ensureSchemaInternal(db: BetterSqlite3.Database) {
-  const DB_PATH = getDbPath();
-  try {
-    // Create timesheet table with comprehensive schema and constraints
-    // Note: Core fields are nullable to allow saving partial/draft rows.
-    // Required field validation is enforced at the application level before submission.
-    db.exec(`
+const createTimesheetTables = (db: BetterSqlite3.Database): void => {
+  db.exec(`
         CREATE TABLE IF NOT EXISTS timesheet(
             -- Primary key with auto-increment
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -47,23 +38,25 @@ export function ensureSchemaInternal(db: BetterSqlite3.Database) {
         CREATE INDEX IF NOT EXISTS idx_timesheet_project ON timesheet(project);
         CREATE INDEX IF NOT EXISTS idx_timesheet_status ON timesheet(status);
     `);
+};
 
-    // Create unique index separately to handle existing data that might violate the constraint
-    // Check if index already exists first
-    const indexExists = db
-      .prepare(
-        `
+const getUniqueIndexExists = (db: BetterSqlite3.Database): boolean => {
+  const indexExists = db
+    .prepare(
+      `
         SELECT name FROM sqlite_master 
         WHERE type='index' AND name='uq_timesheet_nk'
     `
-      )
-      .get() as { name: string } | undefined;
+    )
+    .get() as { name: string } | undefined;
 
-    if (!indexExists) {
-      // Check if there's existing data that would violate the unique constraint
-      const duplicateCount = db
-        .prepare(
-          `
+  return Boolean(indexExists);
+};
+
+const getDuplicateCount = (db: BetterSqlite3.Database): number => {
+  const duplicateCount = db
+    .prepare(
+      `
           SELECT COUNT(*) as count
           FROM (
               SELECT date, project, task_description, COUNT(*) as cnt
@@ -75,47 +68,48 @@ export function ensureSchemaInternal(db: BetterSqlite3.Database) {
               HAVING cnt > 1
           )
       `
-        )
-        .get() as { count: number } | undefined;
+    )
+    .get() as { count: number } | undefined;
 
-      if (duplicateCount && duplicateCount.count > 0) {
-        dbLogger.warn(
-          "Skipping unique index creation due to existing duplicate data",
-          {
-            duplicateCount: duplicateCount.count,
-            dbPath: DB_PATH,
-          }
-        );
-        // Don't create the unique index if there are duplicates
-        // The application layer should handle uniqueness validation
-      } else {
-        // Safe to create the unique index
-        try {
-          db.exec(`
+  return duplicateCount?.count ?? 0;
+};
+
+const logDuplicateWarning = (duplicateCount: number, dbPath: string): void => {
+  dbLogger.warn(
+    "Skipping unique index creation due to existing duplicate data",
+    {
+      duplicateCount,
+      dbPath,
+    }
+  );
+};
+
+const createUniqueIndex = (db: BetterSqlite3.Database, dbPath: string): void => {
+  try {
+    db.exec(`
               CREATE UNIQUE INDEX uq_timesheet_nk
                   ON timesheet(date, project, task_description)
                   WHERE date IS NOT NULL 
                     AND project IS NOT NULL 
                     AND task_description IS NOT NULL
           `);
-          dbLogger.verbose("Unique index created successfully", {
-            dbPath: DB_PATH,
-          });
-        } catch (indexError) {
-          // If index creation still fails, log warning but don't fail schema initialization
-          dbLogger.warn("Could not create unique index (non-fatal)", {
-            error:
-              indexError instanceof Error
-                ? indexError.message
-                : String(indexError),
-            dbPath: DB_PATH,
-          });
-        }
-      }
-    }
+    dbLogger.verbose("Unique index created successfully", {
+      dbPath,
+    });
+  } catch (indexError) {
+    // If index creation still fails, log warning but don't fail schema initialization
+    dbLogger.warn("Could not create unique index (non-fatal)", {
+      error:
+        indexError instanceof Error
+          ? indexError.message
+          : String(indexError),
+      dbPath,
+    });
+  }
+};
 
-    // Create other tables
-    db.exec(`
+const createOtherTables = (db: BetterSqlite3.Database): void => {
+  db.exec(`
         -- Credentials table for storing user authentication
         CREATE TABLE IF NOT EXISTS credentials(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -151,6 +145,38 @@ export function ensureSchemaInternal(db: BetterSqlite3.Database) {
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
     `);
+};
+
+/**
+ * Internal schema creation (takes an open database connection)
+ * @private
+ */
+export function ensureSchemaInternal(db: BetterSqlite3.Database) {
+  const DB_PATH = getDbPath();
+  try {
+    // Create timesheet table with comprehensive schema and constraints
+    // Note: Core fields are nullable to allow saving partial/draft rows.
+    // Required field validation is enforced at the application level before submission.
+    createTimesheetTables(db);
+
+    // Create unique index separately to handle existing data that might violate the constraint
+    // Check if index already exists first
+    if (!getUniqueIndexExists(db)) {
+      // Check if there's existing data that would violate the unique constraint
+      const duplicateCount = getDuplicateCount(db);
+
+      if (duplicateCount > 0) {
+        logDuplicateWarning(duplicateCount, DB_PATH);
+        // Don't create the unique index if there are duplicates
+        // The application layer should handle uniqueness validation
+      } else {
+        // Safe to create the unique index
+        createUniqueIndex(db, DB_PATH);
+      }
+    }
+
+    // Create other tables
+    createOtherTables(db);
   } catch (error) {
     dbLogger.error("Error executing schema creation SQL", {
       error: error instanceof Error ? error.message : String(error),

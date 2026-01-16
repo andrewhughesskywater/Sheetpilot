@@ -13,6 +13,8 @@ import {
   calculateSubmittedHoursForDate,
 } from "./timesheet.validation.calculation-helpers";
 
+type SubmittedEntry = { date: string; hours: number | null };
+
 function validateDateField(value: unknown): string | null {
   if (!value) return "Please enter a date";
   if (!isValidDate(String(value))) return "Date must be like 01/15/2024";
@@ -21,12 +23,42 @@ function validateDateField(value: unknown): string | null {
   return null;
 }
 
+function validateTotalHoursForDate(
+  date: string | undefined,
+  hoursValue: number,
+  rows: TimesheetRow[],
+  row: number,
+  submittedEntries?: SubmittedEntry[]
+): string | null {
+  if (!date || !submittedEntries) {
+    return null;
+  }
+
+  // Calculate draft hours excluding the current row (it's being updated)
+  const draftHoursExcludingCurrent = calculateDraftHoursForDate(
+    date,
+    rows,
+    row
+  );
+  const submittedHours = calculateSubmittedHoursForDate(date, submittedEntries);
+
+  // Total = draft (excluding current) + submitted + new hours for current row
+  const totalHours = draftHoursExcludingCurrent + submittedHours + hoursValue;
+
+  if (totalHours <= 24.0) {
+    return null;
+  }
+
+  const draftTotal = draftHoursExcludingCurrent + hoursValue;
+  return `Total hours for ${date} exceeds 24 hours. Current total: ${totalHours.toFixed(2)} hours (${submittedHours.toFixed(2)} submitted + ${draftTotal.toFixed(2)} draft). Maximum allowed: 24.00 hours.`;
+}
+
 function validateHoursField(
   value: unknown,
   rowData: TimesheetRow | undefined,
   row: number,
   rows: TimesheetRow[],
-  submittedEntries?: Array<{ date: string; hours: number | null }>
+  submittedEntries?: SubmittedEntry[]
 ): string | null {
   if (value === undefined || value === null || value === "") {
     return "Hours is required - please enter hours worked";
@@ -43,29 +75,15 @@ function validateHoursField(
   }
 
   // Validate total hours per date (if date and submitted entries are available)
-  if (rowData?.date && submittedEntries) {
-    const date = rowData.date;
-    const currentRowHours = hoursValue;
-
-    // Calculate draft hours excluding the current row (it's being updated)
-    const draftHoursExcludingCurrent = calculateDraftHoursForDate(
-      date,
-      rows,
-      row
-    );
-    const submittedHours = calculateSubmittedHoursForDate(
-      date,
-      submittedEntries
-    );
-
-    // Total = draft (excluding current) + submitted + new hours for current row
-    const totalHours =
-      draftHoursExcludingCurrent + submittedHours + currentRowHours;
-
-    if (totalHours > 24.0) {
-      const draftTotal = draftHoursExcludingCurrent + currentRowHours;
-      return `Total hours for ${date} exceeds 24 hours. Current total: ${totalHours.toFixed(2)} hours (${submittedHours.toFixed(2)} submitted + ${draftTotal.toFixed(2)} draft). Maximum allowed: 24.00 hours.`;
-    }
+  const totalHoursError = validateTotalHoursForDate(
+    rowData?.date,
+    hoursValue,
+    rows,
+    row,
+    submittedEntries
+  );
+  if (totalHoursError) {
+    return totalHoursError;
   }
 
   return null;

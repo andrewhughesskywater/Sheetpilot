@@ -9,6 +9,46 @@ import { handleKeyCombination } from "./timesheet.handlers.keyboard.helpers";
 import { insertDateAndMoveFocus } from "./timesheet.handlers.keyboard.insert";
 import { validateKeyboardInput } from "./timesheet.handlers.keyboard.validate";
 
+type HotInstance = NonNullable<HotTableRef["hotInstance"]>;
+type SelectedRange = NonNullable<ReturnType<HotInstance["getSelected"]>>;
+type ActiveEditor = ReturnType<HotInstance["getActiveEditor"]>;
+
+interface EditorWrapper {
+  isOpened: () => boolean;
+  finishEditing: (restoreOriginalValue: boolean, ctrlDown: boolean) => void;
+}
+
+function getSelectedArray(
+  selected: SelectedRange | null | undefined
+): Array<[number, number]> | null {
+  if (!selected) {
+    return null;
+  }
+  return selected.map((sel) => [sel[0], sel[1]] as [number, number]);
+}
+
+function getPreviousRow(
+  rows: TimesheetRow[],
+  row: number
+): TimesheetRow | undefined {
+  if (row <= 0) {
+    return undefined;
+  }
+  return rows[row - 1];
+}
+
+function getEditorWrapper(editor: ActiveEditor): EditorWrapper | null {
+  if (!editor || !editor.isOpened) {
+    return null;
+  }
+  return {
+    isOpened: () => editor.isOpened(),
+    finishEditing: (restoreOriginalValue: boolean, ctrlDown: boolean) => {
+      editor.finishEditing(restoreOriginalValue, ctrlDown);
+    },
+  };
+}
+
 /**
  * Create handle before key down callback
  */
@@ -33,9 +73,7 @@ export function createHandleBeforeKeyDown(
     if (!hotInstance) return;
 
     const selected = hotInstance.getSelected();
-    const selectedArray: Array<[number, number]> | null = selected
-      ? selected.map((sel) => [sel[0], sel[1]] as [number, number])
-      : null;
+    const selectedArray = getSelectedArray(selected);
     const validation = validateKeyboardInput(
       { getSelected: () => selectedArray },
       timesheetDraftData
@@ -45,7 +83,7 @@ export function createHandleBeforeKeyDown(
     const { row, rowData } = validation;
 
     // Get the smart placeholder for this cell
-    const previousRow = row > 0 ? timesheetDraftData[row - 1] : undefined;
+    const previousRow = getPreviousRow(timesheetDraftData, row);
     const smartPlaceholder = getSmartPlaceholder(
       previousRow,
       timesheetDraftData,
@@ -54,15 +92,7 @@ export function createHandleBeforeKeyDown(
 
     // Check if the date editor is currently open
     const editor = hotInstance.getActiveEditor();
-    const editorWrapper =
-      editor && editor.isOpened
-        ? {
-            isOpened: () => editor.isOpened(),
-            finishEditing: (restoreOriginalValue: boolean, ctrlDown: boolean) => {
-              editor.finishEditing(restoreOriginalValue, ctrlDown);
-            },
-          }
-        : null;
+    const editorWrapper = getEditorWrapper(editor);
     const isEditorOpen = editorWrapper?.isOpened() ?? false;
 
     const { dateToInsert, shouldPreventDefault } = handleKeyCombination(

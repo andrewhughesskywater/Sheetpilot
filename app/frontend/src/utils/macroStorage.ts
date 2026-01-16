@@ -79,22 +79,22 @@ export function loadMacros(): MacroRow[] {
   return Array(MACRO_COUNT).fill(null).map(() => createEmptyMacro());
 }
 
-/**
- * Save macros to localStorage
- * @param macros Array of exactly 5 macro rows
- */
-export function saveMacros(macros: MacroRow[]): void {
+function canPersistMacros(macros: MacroRow[]): boolean {
   if (typeof window === 'undefined') {
-    return;
+    return false;
   }
 
   if (!Array.isArray(macros) || macros.length !== MACRO_COUNT) {
     window.logger?.error('Invalid macros array - must have exactly 5 items', { 
       receivedLength: macros?.length 
     });
-    return;
+    return false;
   }
 
+  return true;
+}
+
+function persistMacros(macros: MacroRow[]): void {
   try {
     const serialized = JSON.stringify(macros);
     localStorage.setItem(MACRO_STORAGE_KEY, serialized);
@@ -104,6 +104,18 @@ export function saveMacros(macros: MacroRow[]): void {
       error: error instanceof Error ? error.message : String(error) 
     });
   }
+}
+
+/**
+ * Save macros to localStorage
+ * @param macros Array of exactly 5 macro rows
+ */
+export function saveMacros(macros: MacroRow[]): void {
+  if (!canPersistMacros(macros)) {
+    return;
+  }
+
+  persistMacros(macros);
 }
 
 /**
