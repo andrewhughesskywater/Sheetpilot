@@ -215,7 +215,7 @@ export function DataProvider({ children }: DataProviderProps) {
       await yieldToMain();
 
       // Use batched API to fetch both timesheet and credentials in one call
-      const archiveResponse = await getAllArchiveData(token);
+      const archiveResponse = await getAllArchiveData(token as string);
 
       // Yield control after IPC call
       await yieldToMain();

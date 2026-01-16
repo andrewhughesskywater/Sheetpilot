@@ -1,9 +1,9 @@
-import { ipcLogger } from '@sheetpilot/shared/logger';
-import { getDb } from '@/models';
-import { validateInput } from '@/validation/validate-ipc-input';
-import { saveDraftSchema } from '@/validation/ipc-schemas';
-import { isTrustedIpcSender } from './main-window';
-import type { DraftRowEntry, DraftRowPayload } from './drafts.types';
+import { ipcLogger } from "@sheetpilot/shared/logger";
+import { getDb } from "@/models";
+import { validateInput } from "@/validation/validate-ipc-input";
+import { saveDraftSchema, type SaveDraft } from "@/validation/ipc-schemas";
+import { isTrustedIpcSender } from "./main-window";
+import type { DraftRowEntry } from "./drafts.types";
 
 type DraftSaveResult = {
   changes: number;
@@ -21,36 +21,35 @@ type SaveDraftTransactionResult = {
   savedEntry: DraftRowEntry | undefined;
 };
 
-const getUpdateData = (validatedRow: DraftRowPayload): UpdateData => {
+const getUpdateData = (validatedRow: SaveDraft): UpdateData => {
   const updateCandidates = [
     {
-      field: 'date',
+      field: "date",
       value: validatedRow.date,
       include: validatedRow.date !== undefined,
     },
     {
-      field: 'hours',
+      field: "hours",
       value: validatedRow.hours,
-      include:
-        validatedRow.hours !== undefined && validatedRow.hours !== null,
+      include: validatedRow.hours !== undefined && validatedRow.hours !== null,
     },
     {
-      field: 'project',
+      field: "project",
       value: validatedRow.project,
       include: validatedRow.project !== undefined,
     },
     {
-      field: 'tool',
+      field: "tool",
       value: validatedRow.tool || null,
       include: validatedRow.tool !== undefined,
     },
     {
-      field: 'detail_charge_code',
+      field: "detail_charge_code",
       value: validatedRow.chargeCode || null,
       include: validatedRow.chargeCode !== undefined,
     },
     {
-      field: 'task_description',
+      field: "task_description",
       value: validatedRow.taskDescription,
       include: validatedRow.taskDescription !== undefined,
     },
@@ -64,16 +63,18 @@ const getUpdateData = (validatedRow: DraftRowPayload): UpdateData => {
     updateFields: filteredCandidates.map(
       (candidate) => `${candidate.field} = ?`
     ),
-    updateValues: filteredCandidates.map((candidate) => candidate.value),
+    updateValues: filteredCandidates.map(
+      (candidate) => candidate.value as string | number | null
+    ),
   };
 };
 
 const runUpdate = (
   db: ReturnType<typeof getDb>,
-  validatedRow: DraftRowPayload,
+  validatedRow: SaveDraft,
   updateData: UpdateData
 ): { result: DraftSaveResult; savedId: number } => {
-  if (updateData.updateFields.length === 0 || validatedRow.id === undefined) {
+  if (updateData.updateFields.length === 0 || !validatedRow.id) {
     return {
       result: {
         changes: 0,
@@ -83,15 +84,17 @@ const runUpdate = (
     };
   }
 
-  const updateSql = `UPDATE timesheet SET ${updateData.updateFields.join(', ')} WHERE id = ? AND status IS NULL`;
+  const updateSql = `UPDATE timesheet SET ${updateData.updateFields.join(
+    ", "
+  )} WHERE id = ? AND status IS NULL`;
   const update = db.prepare(updateSql);
   const result = update.run(...updateData.updateValues, validatedRow.id);
-  return { result, savedId: validatedRow.id };
+  return { result, savedId: validatedRow.id as number };
 };
 
 const runInsert = (
   db: ReturnType<typeof getDb>,
-  validatedRow: DraftRowPayload
+  validatedRow: SaveDraft
 ): DraftSaveResult => {
   const insert = db.prepare(`
       INSERT INTO timesheet
@@ -119,11 +122,11 @@ const getSavedEntry = (
 
 const saveDraftEntry = (
   db: ReturnType<typeof getDb>,
-  validatedRow: DraftRowPayload
+  validatedRow: SaveDraft
 ): SaveDraftTransactionResult => {
-  if (validatedRow.id !== undefined && validatedRow.id !== null) {
+  if (validatedRow.id) {
     ipcLogger.debug(
-      'Updating existing timesheet entry (partial data allowed)',
+      "Updating existing timesheet entry (partial data allowed)",
       { id: validatedRow.id }
     );
     const updateData = getUpdateData(validatedRow);
@@ -135,10 +138,10 @@ const saveDraftEntry = (
     };
   }
 
-  ipcLogger.debug('Inserting new timesheet entry (partial data allowed)');
+  ipcLogger.debug("Inserting new timesheet entry (partial data allowed)");
   const result = runInsert(db, validatedRow);
   const savedId =
-    typeof result.lastInsertRowid === 'bigint'
+    typeof result.lastInsertRowid === "bigint"
       ? Number(result.lastInsertRowid)
       : result.lastInsertRowid;
   return {
@@ -177,40 +180,33 @@ const buildSaveDraftResponse = (
 
 export const handleSaveDraft = async (
   event: Electron.IpcMainInvokeEvent,
-  row: DraftRowPayload
+  row: SaveDraft
 ) => {
-  const timer = ipcLogger.startTimer('save-draft');
+  const timer = ipcLogger.startTimer("save-draft");
 
   if (!isTrustedIpcSender(event)) {
-    timer.done({ outcome: 'error', reason: 'unauthorized' });
+    timer.done({ outcome: "error", reason: "unauthorized" });
     return {
       success: false,
-      error: 'Could not save draft: unauthorized request',
+      error: "Could not save draft: unauthorized request",
     };
   }
 
-  const validation = validateInput(
-    saveDraftSchema,
-    row,
-    'timesheet:saveDraft'
-  );
+  const validation = validateInput(saveDraftSchema, row, "timesheet:saveDraft");
   if (!validation.success) {
-    timer.done({ outcome: 'error', error: 'validation-failed' });
+    timer.done({ outcome: "error", error: "validation-failed" });
     return { success: false, error: validation.error };
   }
 
   const validatedRow = validation.data!;
 
   try {
-    ipcLogger.verbose(
-      'Saving draft timesheet entry (partial data allowed)',
-      {
-        id: validatedRow.id,
-        date: validatedRow.date,
-        hours: validatedRow.hours,
-        project: validatedRow.project,
-      }
-    );
+    ipcLogger.verbose("Saving draft timesheet entry (partial data allowed)", {
+      id: validatedRow.id,
+      date: validatedRow.date,
+      hours: validatedRow.hours,
+      project: validatedRow.project,
+    });
 
     const db = getDb();
     const saveTransaction = db.transaction(() =>
@@ -218,7 +214,7 @@ export const handleSaveDraft = async (
     );
     const { result, savedId, savedEntry } = saveTransaction();
 
-    ipcLogger.info('Draft timesheet entry saved', {
+    ipcLogger.info("Draft timesheet entry saved", {
       id: savedId,
       changes: result.changes,
       date: validatedRow.date,
@@ -228,9 +224,9 @@ export const handleSaveDraft = async (
 
     return buildSaveDraftResponse(result, savedId, savedEntry);
   } catch (err: unknown) {
-    ipcLogger.error('Could not save draft timesheet entry', err);
+    ipcLogger.error("Could not save draft timesheet entry", err);
     const errorMessage = err instanceof Error ? err.message : String(err);
-    timer.done({ outcome: 'error', error: errorMessage });
+    timer.done({ outcome: "error", error: errorMessage });
     return { success: false, error: errorMessage };
   }
 };

@@ -1,7 +1,7 @@
-import { ipcLogger } from '@sheetpilot/shared/logger';
-import { getCredentials, storeCredentials } from '@/models';
-import { validateInput } from '@/validation/validate-ipc-input';
-import { loginSchema } from '@/validation/ipc-schemas';
+import { ipcLogger } from "@sheetpilot/shared/logger";
+import { getCredentials, storeCredentials } from "@/models";
+import { validateInput } from "@/validation/validate-ipc-input";
+import { loginSchema } from "@/validation/ipc-schemas";
 
 export type LoginPayload = {
   email: string;
@@ -25,14 +25,16 @@ export const getValidatedLoginPayload = (
   email: string,
   password: string,
   stayLoggedIn: boolean
-): { success: true; data: LoginPayload } | { success: false; error: string } => {
+):
+  | { success: true; data: LoginPayload }
+  | { success: false; error: string } => {
   const validation = validateInput(
     loginSchema,
     { email, password, stayLoggedIn },
-    'auth:login'
+    "auth:login"
   );
   if (!validation.success) {
-    return { success: false, error: validation.error };
+    return { success: false, error: validation.error ?? "Validation failed" };
   }
   return { success: true, data: validation.data! };
 };
@@ -48,7 +50,7 @@ export const isAdminLogin = (
   const isAdmin =
     payload.email === adminUsername && payload.password === adminPassword;
   if (isAdmin) {
-    ipcLogger.info('Admin login successful', { email: payload.email });
+    ipcLogger.info("Admin login successful", { email: payload.email });
   }
   return isAdmin;
 };
@@ -60,7 +62,7 @@ const getCredentialMismatchError = (
   if (storedEmail === providedEmail) {
     return null;
   }
-  ipcLogger.warn('Login email mismatch', {
+  ipcLogger.warn("Login email mismatch", {
     providedEmail,
     storedEmail,
   });
@@ -75,8 +77,8 @@ const getPasswordMismatchError = (
   if (storedPassword === providedPassword) {
     return null;
   }
-  ipcLogger.warn('Login password mismatch', { email });
-  return 'Incorrect password. Please try again.';
+  ipcLogger.warn("Login password mismatch", { email });
+  return "Incorrect password. Please try again.";
 };
 
 const validateReturningUser = (
@@ -84,10 +86,7 @@ const validateReturningUser = (
   storedPassword: string,
   payload: LoginPayload
 ): string | null => {
-  const emailError = getCredentialMismatchError(
-    storedEmail,
-    payload.email
-  );
+  const emailError = getCredentialMismatchError(storedEmail, payload.email);
   if (emailError) {
     return emailError;
   }
@@ -99,18 +98,18 @@ const validateReturningUser = (
   if (passwordError) {
     return passwordError;
   }
-  ipcLogger.verbose('Password verified for returning user', {
+  ipcLogger.verbose("Password verified for returning user", {
     email: payload.email,
   });
   return null;
 };
 
 const storeNewUserCredentials = (payload: LoginPayload): string | null => {
-  ipcLogger.verbose('Storing credentials for new user', {
+  ipcLogger.verbose("Storing credentials for new user", {
     email: payload.email,
   });
   const storeResult = storeCredentials(
-    'smartsheet',
+    "smartsheet",
     payload.email,
     payload.password
   );
@@ -121,7 +120,7 @@ const storeNewUserCredentials = (payload: LoginPayload): string | null => {
 };
 
 export const ensureUserCredentials = (payload: LoginPayload): string | null => {
-  const existingCredentials = getCredentials('smartsheet');
+  const existingCredentials = getCredentials("smartsheet");
   if (existingCredentials) {
     return validateReturningUser(
       existingCredentials.email,

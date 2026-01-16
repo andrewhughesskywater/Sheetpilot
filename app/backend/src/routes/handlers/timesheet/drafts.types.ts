@@ -1,13 +1,3 @@
-export type DraftRowPayload = {
-  id?: number;
-  date?: string;
-  hours?: number;
-  project?: string;
-  tool?: string | null;
-  chargeCode?: string | null;
-  taskDescription?: string;
-};
-
 export type DraftRowEntry = {
   id: number;
   date: string;
