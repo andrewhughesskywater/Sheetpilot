@@ -94,33 +94,50 @@ export function isDateInAllowedRange(dateStr: string): boolean {
  * Parse a date string in MM/DD/YYYY format to a Date object
  * Returns null if invalid format or invalid date values
  */
-export function parseDateString(dateStr: string): Date | null {
+type DateParts = {
+  month: number;
+  day: number;
+  year: number;
+};
+
+const parseDateSegments = (dateStr: string): DateParts | null => {
   if (!dateStr) return null;
-  
   const parts = dateStr.split('/');
   if (parts.length !== 3) return null;
-  
+
   const month = parseInt(parts[0] || '', 10);
   const day = parseInt(parts[1] || '', 10);
   const year = parseInt(parts[2] || '', 10);
-  
+
   if (isNaN(month) || isNaN(day) || isNaN(year)) return null;
-  
+
+  return { month, day, year };
+};
+
+const isValidDateParts = ({ month, day, year }: DateParts): boolean => {
   // Validate month range (1-12)
-  if (month < 1 || month > 12) return null;
-  
+  if (month < 1 || month > 12) return false;
+
   // Validate day range (1-31)
-  if (day < 1 || day > 31) return null;
-  
+  if (day < 1 || day > 31) return false;
+
   // Month is 0-indexed in Date constructor
   const date = new Date(year, month - 1, day);
-  
+
   // Validate that the date components didn't overflow (e.g., Feb 30 becomes Mar 2)
-  if (date.getMonth() !== month - 1 || date.getDate() !== day || date.getFullYear() !== year) {
+  return (
+    date.getMonth() === month - 1 &&
+    date.getDate() === day &&
+    date.getFullYear() === year
+  );
+};
+
+export function parseDateString(dateStr: string): Date | null {
+  const parts = parseDateSegments(dateStr);
+  if (!parts || !isValidDateParts(parts)) {
     return null;
   }
-  
-  return date;
+  return new Date(parts.year, parts.month - 1, parts.day);
 }
 
 /**
