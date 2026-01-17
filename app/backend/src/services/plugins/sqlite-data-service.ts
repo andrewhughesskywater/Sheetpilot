@@ -22,6 +22,73 @@ import type {
 import { getDb } from '@/models';
 import { getTotalHoursForDate } from '@/models/timesheet-repository';
 
+const validateDraftRequiredFields = (entry: TimesheetEntry): string | null => {
+  if (!entry.date) {
+    return 'Date is required';
+  }
+  if (!entry.project) {
+    return 'Project is required';
+  }
+  if (!entry.taskDescription) {
+    return 'Task description is required';
+  }
+  return null;
+};
+
+const validateDraftHours = (entry: TimesheetEntry): string | null => {
+  if (entry.hours === undefined || entry.hours === null) {
+    return 'Hours is required';
+  }
+  if (typeof entry.hours !== 'number' || isNaN(entry.hours)) {
+    return 'Hours must be a number';
+  }
+  const remainder = (entry.hours * 4) % 1;
+  if (Math.abs(remainder) > 0.0001 && Math.abs(remainder - 1) > 0.0001) {
+    return 'Hours must be in 15-minute increments (0.25, 0.5, 0.75, etc.)';
+  }
+  if (entry.hours < 0.25 || entry.hours > 24.0) {
+    return 'Hours must be between 0.25 and 24.0';
+  }
+  return null;
+};
+
+const getCurrentEntryHours = (entryId: number): number => {
+  const db = getDb();
+  const getCurrent = db
+    .prepare('SELECT hours FROM timesheet WHERE id = ?')
+    .get(entryId) as { hours: number | null } | undefined;
+  return getCurrent?.hours ?? 0;
+};
+
+const getSubmittedHoursForDate = (date: string): number => {
+  const db = getDb();
+  const getSubmitted = db.prepare(`
+            SELECT COALESCE(SUM(hours), 0) as total
+            FROM timesheet
+            WHERE date = ? AND status = 'Complete' AND hours IS NOT NULL
+          `);
+  const result = getSubmitted.get(date) as { total: number } | undefined;
+  return result?.total ?? 0;
+};
+
+const getHoursLimitError = (entry: TimesheetEntry): string | null => {
+  const totalHoursForDate = getTotalHoursForDate(entry.date!);
+  const currentEntryHours =
+    entry.id !== undefined && entry.id !== null
+      ? getCurrentEntryHours(entry.id)
+      : 0;
+
+  const hoursAfterThisEntry =
+    totalHoursForDate - currentEntryHours + entry.hours!;
+  if (hoursAfterThisEntry <= 24.0) {
+    return null;
+  }
+
+  const submittedHours = getSubmittedHoursForDate(entry.date!);
+  const draftHours = totalHoursForDate - submittedHours;
+  return `Total hours for ${entry.date} exceeds 24 hours. Current total: ${hoursAfterThisEntry.toFixed(2)} hours (${submittedHours.toFixed(2)} submitted + ${(draftHours - currentEntryHours + entry.hours!).toFixed(2)} draft). Maximum allowed: 24.00 hours.`;
+};
+
 /**
  * SQLite implementation of the data service
  */
@@ -39,66 +106,19 @@ export class SQLiteDataService implements IDataService {
    */
   public async saveDraft(entry: TimesheetEntry): Promise<SaveResult> {
     try {
-      // Validate required fields
-      if (!entry.date) {
-        return { success: false, error: 'Date is required' };
+      const requiredError = validateDraftRequiredFields(entry);
+      if (requiredError) {
+        return { success: false, error: requiredError };
       }
-      if (!entry.project) {
-        return { success: false, error: 'Project is required' };
+
+      const hoursError = validateDraftHours(entry);
+      if (hoursError) {
+        return { success: false, error: hoursError };
       }
-      if (!entry.taskDescription) {
-        return { success: false, error: 'Task description is required' };
-      }
-      
-      // Validate hours
-      if (entry.hours === undefined || entry.hours === null) {
-        return { success: false, error: 'Hours is required' };
-      }
-      
-      // Validate hours format (15-minute increments, 0.25 to 24.0)
-      if (typeof entry.hours !== 'number' || isNaN(entry.hours)) {
-        return { success: false, error: 'Hours must be a number' };
-      }
-      
-      // Check if it's a multiple of 0.25 (15-minute increments)
-      const remainder = (entry.hours * 4) % 1;
-      if (Math.abs(remainder) > 0.0001 && Math.abs(remainder - 1) > 0.0001) {
-        return { success: false, error: 'Hours must be in 15-minute increments (0.25, 0.5, 0.75, etc.)' };
-      }
-      
-      // Check range
-      if (entry.hours < 0.25 || entry.hours > 24.0) {
-        return { success: false, error: 'Hours must be between 0.25 and 24.0' };
-      }
-      
-      // Validate total hours per date (including submitted entries)
-      const totalHoursForDate = getTotalHoursForDate(entry.date);
-      const currentEntryHours = entry.id !== undefined && entry.id !== null
-        ? (() => {
-            // For updates, get the current hours from the database to calculate the difference
-            const db = getDb();
-            const getCurrent = db.prepare('SELECT hours FROM timesheet WHERE id = ?').get(entry.id) as { hours: number | null } | undefined;
-            return getCurrent?.hours ?? 0;
-          })()
-        : 0;
-      
-      const hoursAfterThisEntry = totalHoursForDate - currentEntryHours + entry.hours;
-      if (hoursAfterThisEntry > 24.0) {
-        const submittedHours = (() => {
-          const db = getDb();
-          const getSubmitted = db.prepare(`
-            SELECT COALESCE(SUM(hours), 0) as total
-            FROM timesheet
-            WHERE date = ? AND status = 'Complete' AND hours IS NOT NULL
-          `);
-          const result = getSubmitted.get(entry.date) as { total: number } | undefined;
-          return result?.total ?? 0;
-        })();
-        const draftHours = totalHoursForDate - submittedHours;
-        return { 
-          success: false, 
-          error: `Total hours for ${entry.date} exceeds 24 hours. Current total: ${hoursAfterThisEntry.toFixed(2)} hours (${submittedHours.toFixed(2)} submitted + ${(draftHours - currentEntryHours + entry.hours).toFixed(2)} draft). Maximum allowed: 24.00 hours.` 
-        };
+
+      const hoursLimitError = getHoursLimitError(entry);
+      if (hoursLimitError) {
+        return { success: false, error: hoursLimitError };
       }
       
       const db = getDb();

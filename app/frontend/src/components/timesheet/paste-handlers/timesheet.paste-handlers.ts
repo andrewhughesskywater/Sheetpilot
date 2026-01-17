@@ -1,6 +1,6 @@
 /**
  * Paste-related operations for timesheet grid
- * 
+ *
  * Handles pasting data into the grid, including tool/charge code application,
  * normalization, and immediate saving of pasted rows.
  */
@@ -17,15 +17,15 @@ export function applyPastedToolAndChargeCode(
   startCol: number,
   hotInstance: { propToCol: (prop: string) => number | unknown; setCellMeta: (row: number, col: number, key: string, value: unknown) => void; setDataAtCell: (row: number, col: number, value: unknown, source?: string) => void }
 ): void {
-  const toolCol = hotInstance.propToCol('tool');
-  const chargeCodeCol = hotInstance.propToCol('chargeCode');
-  
+  const toolCol = hotInstance.propToCol("tool");
+  const chargeCodeCol = hotInstance.propToCol("chargeCode");
+
   data.forEach((row, i) => {
     const targetRow = startRow + i;
     if (targetRow < 0 || row.length < 6) return;
-    
+
     const [_date, _hours, _project, tool, chargeCode, _taskDescription] = row;
-    
+
     /**
      * WHY: Temporarily relax validation to allow pasting Tool values that aren't
      * in current project's dropdown. Without this, strict validation blocks the paste.
@@ -109,29 +109,34 @@ export function savePastedRows(
   pendingSaveRef: MutableRefObject<Map<number, TimesheetRow>>,
   saveAndReloadRow: (row: TimesheetRow, rowIdx: number) => Promise<void>
 ): void {
-  pastedRowIndices.forEach(rowIdx => {
+  pastedRowIndices.forEach((rowIdx) => {
     const normalizedRow = normalizedData[rowIdx];
     if (!normalizedRow) return;
-    
+
     // Check if row is complete (has all required fields)
-    if (normalizedRow.date && normalizedRow.hours !== undefined && normalizedRow.hours !== null && 
-        normalizedRow.project && normalizedRow.taskDescription) {
+    if (
+      normalizedRow.date &&
+      normalizedRow.hours !== undefined &&
+      normalizedRow.hours !== null &&
+      normalizedRow.project &&
+      normalizedRow.taskDescription
+    ) {
       // Clear any existing debounce timer for this row
       const existingTimer = saveTimersRef.current.get(rowIdx);
       if (existingTimer) {
         clearTimeout(existingTimer);
         saveTimersRef.current.delete(rowIdx);
       }
-      
+
       // Remove from pending saves if present
       pendingSaveRef.current.delete(rowIdx);
-      
+
       // Immediately save the row without debounce
-      window.logger?.verbose('Immediately saving pasted row', { rowIdx });
-      saveAndReloadRow(normalizedRow, rowIdx).catch(error => {
-        window.logger?.error('Could not save pasted row immediately', {
+      window.logger?.verbose("Immediately saving pasted row", { rowIdx });
+      saveAndReloadRow(normalizedRow, rowIdx).catch((error) => {
+        window.logger?.error("Could not save pasted row immediately", {
           rowIdx,
-          error: error instanceof Error ? error.message : String(error)
+          error: error instanceof Error ? error.message : String(error),
         });
       });
     }

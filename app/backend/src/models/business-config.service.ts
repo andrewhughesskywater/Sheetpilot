@@ -1,14 +1,3 @@
-/**
- * @fileoverview Business Configuration Service
- *
- * Service layer for business configuration with in-memory caching.
- * Provides business logic functions that mirror business-config.ts API.
- *
- * @author Andrew Hughes
- * @version 1.0.0
- * @since 2025
- */
-
 import { dbLogger } from "@sheetpilot/shared/logger";
 import {
   getAllProjects as repoGetAllProjects,
@@ -22,9 +11,6 @@ import {
 } from "./business-config.repository";
 import type { TimesheetRow } from "@sheetpilot/shared/business-config";
 
-/**
- * Cache for frequently accessed data
- */
 interface BusinessConfigCache {
   projects: readonly string[] | null;
   projectsWithoutTools: readonly string[] | null;
@@ -47,9 +33,6 @@ const cache: BusinessConfigCache = {
   toolRequiresChargeCode: new Map(),
 };
 
-/**
- * Invalidates the entire cache
- */
 export function invalidateCache(): void {
   cache.projects = null;
   cache.projectsWithoutTools = null;
@@ -62,9 +45,6 @@ export function invalidateCache(): void {
   dbLogger.verbose("Business config cache invalidated");
 }
 
-/**
- * Gets all available projects
- */
 export async function getAllProjects(): Promise<readonly string[]> {
   if (cache.projects !== null) {
     return cache.projects;
@@ -82,9 +62,6 @@ export async function getAllProjects(): Promise<readonly string[]> {
   return cache.projects;
 }
 
-/**
- * Gets projects that do not require tools
- */
 export async function getProjectsWithoutTools(): Promise<readonly string[]> {
   if (cache.projectsWithoutTools !== null) {
     return cache.projectsWithoutTools;
@@ -95,9 +72,6 @@ export async function getProjectsWithoutTools(): Promise<readonly string[]> {
   return cache.projectsWithoutTools;
 }
 
-/**
- * Gets tools for a specific project
- */
 export async function getToolsForProject(
   project: string
 ): Promise<readonly string[]> {
@@ -122,9 +96,6 @@ export async function getToolsForProject(
   return toolNames;
 }
 
-/**
- * Gets all available tools
- */
 export async function getAllTools(): Promise<readonly string[]> {
   if (cache.tools !== null) {
     return cache.tools;
@@ -142,9 +113,6 @@ export async function getAllTools(): Promise<readonly string[]> {
   return cache.tools;
 }
 
-/**
- * Gets tools that do not require charge codes
- */
 export async function getToolsWithoutChargeCodes(): Promise<readonly string[]> {
   if (cache.toolsWithoutChargeCodes !== null) {
     return cache.toolsWithoutChargeCodes;
@@ -155,9 +123,6 @@ export async function getToolsWithoutChargeCodes(): Promise<readonly string[]> {
   return cache.toolsWithoutChargeCodes;
 }
 
-/**
- * Gets all available charge codes
- */
 export async function getAllChargeCodes(): Promise<readonly string[]> {
   if (cache.chargeCodes !== null) {
     return cache.chargeCodes;
@@ -168,9 +133,6 @@ export async function getAllChargeCodes(): Promise<readonly string[]> {
   return cache.chargeCodes;
 }
 
-/**
- * Checks if a project does NOT require tools
- */
 export async function isProjectWithoutTools(project: string): Promise<boolean> {
   if (!project) {
     return false;
@@ -193,9 +155,6 @@ export async function isProjectWithoutTools(project: string): Promise<boolean> {
   return !requiresTools;
 }
 
-/**
- * Checks if a project requires tools
- */
 export async function doesProjectNeedTools(project: string): Promise<boolean> {
   if (!project) {
     return false;
@@ -218,9 +177,6 @@ export async function doesProjectNeedTools(project: string): Promise<boolean> {
   return requiresTools;
 }
 
-/**
- * Checks if a tool does NOT require charge codes
- */
 export async function isToolWithoutChargeCode(tool: string): Promise<boolean> {
   if (!tool) {
     return false;
@@ -243,9 +199,6 @@ export async function isToolWithoutChargeCode(tool: string): Promise<boolean> {
   return !requiresChargeCode;
 }
 
-/**
- * Checks if a tool requires charge codes
- */
 export async function doesToolNeedChargeCode(tool: string): Promise<boolean> {
   if (!tool) {
     return false;
@@ -268,9 +221,6 @@ export async function doesToolNeedChargeCode(tool: string): Promise<boolean> {
   return requiresChargeCode;
 }
 
-/**
- * Validates if a project is valid
- */
 export async function isValidProject(project: string): Promise<boolean> {
   if (!project) {
     return false;
@@ -280,9 +230,6 @@ export async function isValidProject(project: string): Promise<boolean> {
   return projects.includes(project);
 }
 
-/**
- * Validates if a tool is valid for a given project
- */
 export async function isValidToolForProject(
   tool: string,
   project: string
@@ -301,9 +248,6 @@ export async function isValidToolForProject(
   return validTools.includes(tool);
 }
 
-/**
- * Validates if a charge code is valid
- */
 export async function isValidChargeCode(chargeCode: string): Promise<boolean> {
   if (!chargeCode) {
     return false;
@@ -313,10 +257,6 @@ export async function isValidChargeCode(chargeCode: string): Promise<boolean> {
   return chargeCodes.includes(chargeCode);
 }
 
-/**
- * Normalizes a timesheet row based on business rules
- * Clears invalid dependent fields when parent selections change
- */
 export async function normalizeTimesheetRow(
   row: TimesheetRow
 ): Promise<TimesheetRow> {

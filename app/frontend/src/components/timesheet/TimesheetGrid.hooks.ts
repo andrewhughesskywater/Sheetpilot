@@ -9,7 +9,7 @@ import { loadMacros } from "@/utils/macroStorage";
 import { detectWeekdayPattern } from "@/utils/smartDate";
 import { saveRowToDatabase } from "./persistence/timesheet.persistence";
 import { batchSaveToDatabase as batchSaveToDatabaseUtil } from "./persistence/timesheet.persistence";
-import type { DatePickerOptions, DateEditor } from "./TimesheetGrid.types";
+import type { DateEditor } from "./TimesheetGrid.types";
 
 /**
  * Hook to load macros on mount
@@ -176,13 +176,13 @@ export function useHandleAfterBeginEditing<
         if (editor) {
           const dateEditor = editor as DateEditor;
           if (dateEditor.$datePicker && dateEditor.$datePicker._o) {
-            const originalOnSelect = dateEditor.$datePicker._o.onSelect;
+            const pickerOptions = dateEditor.$datePicker._o;
+            const originalOnSelect = pickerOptions.onSelect;
             // WHY: 'this' context must be preserved for picker's internal state management
-            dateEditor.$datePicker._o.onSelect = function (
-              this: DatePickerOptions,
-              date: Date
-            ) {
-              if (originalOnSelect) originalOnSelect.call(this, date);
+            pickerOptions.onSelect = function (date: Date) {
+              if (originalOnSelect) {
+                originalOnSelect.call(pickerOptions, date);
+              }
               setTimeout(() => {
                 if (dateEditor.isOpened && dateEditor.isOpened()) {
                   dateEditor.finishEditing(false, false);

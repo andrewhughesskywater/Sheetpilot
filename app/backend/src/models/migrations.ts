@@ -1,32 +1,11 @@
-/**
- * @fileoverview Database Migration System
- *
- * Handles automatic schema migrations with backup and data preservation.
- * Migrations run at app startup before the main window loads.
- *
- * @author Andrew Hughes
- * @version 1.0.0
- * @since 2025
- */
-
 import type BetterSqlite3 from "better-sqlite3";
 import * as fs from "fs";
 import * as path from "path";
 import { dbLogger } from "@sheetpilot/shared/logger";
 import { migrations } from "./migrations.definitions";
 
-/**
- * Current schema version - increment when adding new migrations
- */
 export const CURRENT_SCHEMA_VERSION = 4;
 
-/**
- * Gets the current schema version from the database
- * Returns 0 if schema_info table doesn't exist or has no version record
- *
- * @param db - Database connection
- * @returns Current schema version number
- */
 export function getCurrentSchemaVersion(db: BetterSqlite3.Database): number {
   try {
     // Check if schema_info table exists

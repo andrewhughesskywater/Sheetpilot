@@ -108,7 +108,7 @@ const WeeklySummaryDialog = ({
         setCurrentWeekKey(initialWeekKey ?? getWeekKey(currentWeekStart));
       }, 0);
     }
-  }, [open, initialWeekKey, allWeeks.length]);
+  }, [open, initialWeekKey, allWeeks.length, currentWeekStart]);
 
   // Parse current week Sunday date
   const currentWeekSunday = useMemo(() => {

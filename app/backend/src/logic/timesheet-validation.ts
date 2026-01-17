@@ -89,6 +89,84 @@ export function isValidHours(hours?: number | null): boolean {
   return hours >= 0.25 && hours <= 24.0;
 }
 
+const toIsoDateForQuarterCheck = (dateStr: string): string | null => {
+  const [month, day, year] = dateStr.split('/');
+  if (!month || !day || !year) return null;
+  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+};
+
+const validateDateField = (value: unknown): string | null => {
+  if (!value) return 'Date is required - please enter a date';
+  if (!isValidDate(String(value))) {
+    return 'Date must be like 01/15/2024 or 2024-01-15';
+  }
+
+  const isoDate = toIsoDateForQuarterCheck(String(value));
+  if (!isoDate) return 'Date must be like 01/15/2024';
+
+  const quarterError = validateQuarterAvailability(isoDate);
+  if (quarterError) return quarterError;
+
+  return null;
+};
+
+const validateHoursField = (value: unknown): string | null => {
+  if (value === undefined || value === null || value === '') {
+    return 'Hours is required - please enter hours worked';
+  }
+
+  const hoursValue = typeof value === 'number' ? value : Number(value);
+  if (isNaN(hoursValue)) {
+    return 'Hours must be a number (e.g., 1.25, 1.5, 2.0)';
+  }
+
+  if (!isValidHours(hoursValue)) {
+    return 'Hours must be between 0.25 and 24.0 in 15-minute increments (0.25, 0.5, 0.75, etc.)';
+  }
+
+  return null;
+};
+
+const validateProjectField = (
+  value: unknown,
+  projects: string[]
+): string | null => {
+  if (!value) return 'Project is required - please pick a project';
+  if (!projects.includes(String(value))) return 'Please pick from the list';
+  return null;
+};
+
+const validateToolField = (
+  value: unknown,
+  project?: string
+): string | null => {
+  if (!projectNeedsTools(project)) {
+    return null;
+  }
+  if (!value) return 'Please pick a tool for this project';
+  return null;
+};
+
+const validateChargeCodeField = (
+  value: unknown,
+  tool: string | null | undefined,
+  chargeCodes: string[]
+): string | null => {
+  if (!toolNeedsChargeCode(tool || undefined)) {
+    return null;
+  }
+  if (!value) return 'Please pick a charge code for this tool';
+  if (!chargeCodes.includes(String(value))) return 'Please pick from the list';
+  return null;
+};
+
+const validateTaskDescriptionField = (value: unknown): string | null => {
+  if (!value) {
+    return 'Task description is required - please describe what you did';
+  }
+  return null;
+};
+
 /**
  * Validate a specific field in a timesheet row
  */
@@ -103,72 +181,18 @@ export function validateField(
   const rowData = rows[row];
   
   switch (prop) {
-    case 'date': {
-      if (!value) return 'Date is required - please enter a date';
-      if (!isValidDate(String(value))) return 'Date must be like 01/15/2024 or 2024-01-15';
-      
-      // Convert mm/dd/yyyy to yyyy-mm-dd for quarter validation
-      const dateStr = String(value);
-      const [month, day, year] = dateStr.split('/');
-      if (!month || !day || !year) return 'Date must be like 01/15/2024';
-      const isoDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-      
-      // Validate quarter availability
-      const quarterError = validateQuarterAvailability(isoDate);
-      if (quarterError) return quarterError;
-      
-      return null;
-    }
-      
-    case 'hours': {
-      if (value === undefined || value === null || value === '') {
-        return 'Hours is required - please enter hours worked';
-      }
-      
-      const hoursValue = typeof value === 'number' ? value : Number(value);
-      
-      if (isNaN(hoursValue)) {
-        return 'Hours must be a number (e.g., 1.25, 1.5, 2.0)';
-      }
-      
-      if (!isValidHours(hoursValue)) {
-        return 'Hours must be between 0.25 and 24.0 in 15-minute increments (0.25, 0.5, 0.75, etc.)';
-      }
-      
-      return null;
-    }
-      
+    case 'date':
+      return validateDateField(value);
+    case 'hours':
+      return validateHoursField(value);
     case 'project':
-      if (!value) return 'Project is required - please pick a project';
-      if (!projects.includes(String(value))) return 'Please pick from the list';
-      return null;
-      
-    case 'tool': {
-      const project = rowData?.project;
-      if (!projectNeedsTools(project)) {
-        // Tool is N/A for this project, normalize to null
-        return null;
-      }
-      if (!value) return 'Please pick a tool for this project';
-      // Tool validation against valid list is handled by dropdown
-      return null;
-    }
-      
-    case 'chargeCode': {
-      const tool = rowData?.tool;
-      if (!toolNeedsChargeCode(tool || undefined)) {
-        // Charge code is N/A for this tool, normalize to null
-        return null;
-      }
-      if (!value) return 'Please pick a charge code for this tool';
-      if (!chargeCodes.includes(String(value))) return 'Please pick from the list';
-      return null;
-    }
-      
+      return validateProjectField(value, projects);
+    case 'tool':
+      return validateToolField(value, rowData?.project);
+    case 'chargeCode':
+      return validateChargeCodeField(value, rowData?.tool, chargeCodes);
     case 'taskDescription':
-      if (!value) return 'Task description is required - please describe what you did';
-      return null;
-      
+      return validateTaskDescriptionField(value);
     default:
       return null;
   }
