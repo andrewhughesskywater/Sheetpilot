@@ -72,16 +72,42 @@ export function createHandleAfterChange(
   toolNeedsChargeCodeWrapper: (t?: string) => boolean
 ): (changes: HandsontableChange[] | null, source: string) => void {
   return (changes: HandsontableChange[] | null, source: string) => {
+    // WHY: Filter out updateData source immediately to prevent infinite loops.
+    // Handsontable's React wrapper calls updateData when props change, which triggers
+    // afterChange with source "updateData". If we process these, it can create a loop
+    // where updateData -> afterChange -> state update -> prop change -> updateData.
     if (
       !changes ||
       source === "loadData" ||
       source === "updateData" ||
       source === "internal"
-    )
+    ) {
+      // Log only occasionally to reduce log spam during loops
+      if (!window.__afterChangeSkipCount) {
+        window.__afterChangeSkipCount = 0;
+      }
+      window.__afterChangeSkipCount++;
+      if (window.__afterChangeSkipCount % 100 === 0) {
+        window.logger?.verbose("[TimesheetGrid] afterChange: skipping (many times)", {
+          reason: !changes ? "no changes" : "source filter",
+          source,
+          skipCount: window.__afterChangeSkipCount,
+        });
+      }
       return;
+    }
+
+    window.logger?.verbose("[TimesheetGrid] afterChange: processing", {
+      source,
+      changeCount: changes.length,
+      isProcessing: isProcessingChangeRef.current,
+    });
 
     const hotInstance = hotTableRef.current?.hotInstance;
-    if (!hotInstance) return;
+    if (!hotInstance) {
+      window.logger?.verbose("[TimesheetGrid] afterChange: no hot instance");
+      return;
+    }
 
     isProcessingChangeRef.current = true;
 
@@ -97,8 +123,24 @@ export function createHandleAfterChange(
     );
 
     if (needsUpdate) {
-      setTimesheetDraftData(normalized);
-      onChange?.(normalized);
+      // Only update state if data has actually changed to prevent infinite update loops
+      // Compare normalized data with current data using JSON stringify for deep comparison
+      const currentDataStr = JSON.stringify(timesheetDraftData);
+      const normalizedDataStr = JSON.stringify(normalized);
+      
+      if (currentDataStr !== normalizedDataStr) {
+        window.logger?.verbose("[TimesheetGrid] afterChange: data changed, calling setTimesheetDraftData", {
+          currentLength: timesheetDraftData.length,
+          normalizedLength: normalized.length,
+          source,
+        });
+        setTimesheetDraftData(normalized);
+        onChange?.(normalized);
+      } else {
+        window.logger?.verbose("[TimesheetGrid] afterChange: data unchanged, skipping setTimesheetDraftData", {
+          source,
+        });
+      }
     }
     setValidationErrors((prev) =>
       updateValidationErrors(cellsToClearErrors, newErrors, prev)
@@ -108,7 +150,9 @@ export function createHandleAfterChange(
 
     scheduleRowSaves(changes, normalized, saveTimersRef.current, saveAndReloadRow);
 
-    hotInstance.render();
+    // WHY: Removed manual render() call - Handsontable's React wrapper will re-render
+    // when data prop changes. Calling render() here can cause infinite update loops
+    // because it triggers Handsontable's internal hooks which update React state.
 
     setTimeout(() => {
       isProcessingChangeRef.current = false;

@@ -152,7 +152,8 @@ export function createHandleAfterPaste(
       if (hasChanges) {
         setTimesheetDraftData(updatedData);
         onChange?.(updatedData);
-        hotInstanceAfterPaste.render();
+        // WHY: Removed manual render() call - Handsontable's React wrapper will re-render
+        // when data prop changes. Calling render() here can cause infinite update loops.
       }
 
       // Now save all complete pasted rows immediately

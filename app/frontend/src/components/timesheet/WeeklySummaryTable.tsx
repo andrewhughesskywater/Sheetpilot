@@ -33,8 +33,10 @@ interface TimesheetEntry {
   hours: number | null;
   project: string;
   tool?: string;
-  comment?: string;
-  lastSubmitted?: string;
+  detail_charge_code?: string;
+  task_description: string;
+  status?: string;
+  submitted_at?: string;
 }
 
 /**
@@ -68,7 +70,7 @@ export const WeeklySummaryTable: React.FC<WeeklySummaryTableProps> = ({
 }) => {
   // Calculate week summary
   const weekSummary = useMemo(
-    () => calculateWeekSummary(archiveData, weekDays),
+    () => calculateWeekSummary(archiveData, weekDays[0]),
     [archiveData, weekDays]
   );
 

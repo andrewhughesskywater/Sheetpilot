@@ -5,6 +5,7 @@ import {
   useEffect,
   useCallback,
   useMemo,
+  useRef,
   type Dispatch,
   type ReactNode,
   type SetStateAction,
@@ -129,6 +130,26 @@ export function DataProvider({ children }: DataProviderProps) {
   const [timesheetDraftData, setTimesheetDraftData] = useState<TimesheetRow[]>([
     {},
   ]);
+  
+  // Track data reference changes for debugging
+  const prevDataRef = useRef<TimesheetRow[]>(timesheetDraftData);
+  useEffect(() => {
+    const currentStr = JSON.stringify(timesheetDraftData);
+    const prevStr = JSON.stringify(prevDataRef.current);
+    const referenceChanged = timesheetDraftData !== prevDataRef.current;
+    const contentChanged = currentStr !== prevStr;
+    
+    if (referenceChanged || contentChanged) {
+      logVerbose("[DataContext] timesheetDraftData changed", {
+        referenceChanged,
+        contentChanged,
+        currentLength: timesheetDraftData.length,
+        prevLength: prevDataRef.current.length,
+        stack: new Error().stack?.split('\n').slice(1, 6).join('\n'),
+      });
+    }
+    prevDataRef.current = timesheetDraftData;
+  }, [timesheetDraftData]);
   const [isTimesheetDraftLoading, setIsTimesheetDraftLoading] = useState(true);
   const [timesheetDraftError, setTimesheetDraftError] = useState<string | null>(
     null
@@ -168,6 +189,10 @@ export function DataProvider({ children }: DataProviderProps) {
           draftData.length > 0 && Object.keys(draftData[0] || {}).length > 0
             ? [...draftData, {}]
             : [{}];
+        logVerbose("[DataContext] setTimesheetDraftData called from loadTimesheetDraftData", {
+          newLength: rowsWithBlank.length,
+          stack: new Error().stack?.split('\n').slice(1, 5).join('\n'),
+        });
         setTimesheetDraftData(rowsWithBlank);
       } else {
         // Handle old format or error

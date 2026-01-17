@@ -25,6 +25,7 @@ import {
   useCallback,
   useMemo,
   useEffect,
+  useLayoutEffect,
   useRef,
   useImperativeHandle,
   forwardRef,
@@ -130,19 +131,98 @@ const updateColumnSource = (
   columnIndex: number,
   source: readonly string[],
   logMessage: string
-): void => {
+): boolean => {
   if (source.length === 0) {
-    return;
+    return false;
   }
+  
   const columns = hot.getSettings().columns;
   if (!Array.isArray(columns) || !columns[columnIndex]) {
+    return false;
+  }
+  const currentColumn = columns[columnIndex];
+  const currentSource = currentColumn?.source;
+  
+  // Check if source has actually changed to prevent infinite update loops
+  if (
+    Array.isArray(currentSource) &&
+    currentSource.length === source.length &&
+    currentSource.every((val, idx) => val === source[idx])
+  ) {
+    return false; // Source hasn't changed, no update needed
+  }
+  
+  // Return true to indicate an update is needed (caller will batch updates)
+  return true;
+};
+
+const updateAllColumnSources = (
+  hot: HotInstance,
+  updates: Array<{ columnIndex: number; source: readonly string[]; logMessage: string }>
+): void => {
+  logVerbose("[TimesheetGrid] updateAllColumnSources called", {
+    updateCount: updates.length,
+    stack: new Error().stack?.split('\n').slice(1, 5).join('\n'),
+  });
+  
+  const columns = hot.getSettings().columns;
+  if (!Array.isArray(columns)) {
+    logVerbose("[TimesheetGrid] updateAllColumnSources: columns not an array");
     return;
   }
-  const nextColumns = columns.map((column, index) =>
-    index === columnIndex ? { ...column, source: [...source] } : column
-  );
-  hot.updateSettings({ columns: nextColumns });
-  logVerbose(logMessage);
+  
+  let hasChanges = false;
+  
+  // Check if any update actually changes the source
+  updates.forEach((update) => {
+    const column = columns[update.columnIndex];
+    if (!column) return;
+    
+    const currentSource = column.source;
+    const sourceChanged =
+      !Array.isArray(currentSource) ||
+      currentSource.length !== update.source.length ||
+      !currentSource.every((val, idx) => val === update.source[idx]);
+    
+    if (sourceChanged) {
+      hasChanges = true;
+    }
+  });
+  
+  if (!hasChanges) {
+    logVerbose("[TimesheetGrid] updateAllColumnSources: no changes needed, skipping updateSettings");
+    return; // No changes needed
+  }
+  
+  logVerbose("[TimesheetGrid] updateAllColumnSources: has changes, will call updateSettings", {
+    columnCount: columns.length,
+  });
+  
+  // Apply all updates in a single updateSettings call
+  const nextColumns = columns.map((column, index) => {
+    const update = updates.find((u) => u.columnIndex === index);
+    if (update) {
+      return { ...column, source: [...update.source] };
+    }
+    return column;
+  });
+  
+  // WHY: Use requestAnimationFrame to defer updateSettings outside of the current
+  // React render cycle. This breaks the synchronous cycle where updateSettings
+  // triggers Handsontable hooks that update React state, which retriggers effects.
+  // Note: hot instance is captured in closure - if component unmounts, this becomes a no-op
+  requestAnimationFrame(() => {
+    try {
+      logVerbose("[TimesheetGrid] updateAllColumnSources: calling updateSettings in requestAnimationFrame");
+      hot.updateSettings({ columns: nextColumns });
+      updates.forEach((u) => logVerbose(u.logMessage));
+      logVerbose("[TimesheetGrid] updateAllColumnSources: updateSettings completed");
+    } catch (error) {
+      logError("[TimesheetGrid] updateAllColumnSources: error calling updateSettings", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  });
 };
 
 interface TimesheetGridProps {
@@ -181,6 +261,13 @@ export interface TimesheetGridHandle {
  */
 const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(
   function TimesheetGrid({ onChange }, ref) {
+    // Track render count and what changed between renders
+    const renderCountRef = useRef(0);
+    const prevPropsRef = useRef({ onChange });
+    const prevStateRef = useRef<Record<string, unknown>>({});
+    
+    renderCountRef.current += 1;
+    
     const hotTableRef = useRef<HotTableRef>(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const isProcessingRef = useRef(false); // Synchronous guard against race conditions
@@ -223,47 +310,197 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(
       refreshArchiveData,
       archiveData,
     } = useData();
+    
+    // Track what changed between renders to identify loop cause
+    useEffect(() => {
+      const currentProps = { onChange };
+      const currentState = {
+        isProcessing,
+        macros: macros.length,
+        showMacroDialog,
+        showShortcutsHint,
+        validationErrors: validationErrors.length,
+        showErrorDialog,
+        saveButtonState,
+        timesheetDraftData: timesheetDraftData.length,
+        isTimesheetDraftLoading,
+        timesheetDraftError,
+        token,
+        isAdmin,
+        archiveData: archiveData.timesheet.length,
+      };
+      
+      const propChanged = currentProps.onChange !== prevPropsRef.current.onChange;
+      const stateChanges: string[] = [];
+      
+      Object.keys(currentState).forEach((key) => {
+        const currentValue = currentState[key as keyof typeof currentState];
+        const prevValue = prevStateRef.current[key];
+        if (currentValue !== prevValue) {
+          stateChanges.push(`${key}: ${prevValue} -> ${currentValue}`);
+        }
+      });
+      
+      if (renderCountRef.current <= 5 || (renderCountRef.current > 5 && renderCountRef.current % 50 === 0)) {
+        logVerbose("[TimesheetGrid] Component render", {
+          renderCount: renderCountRef.current,
+          propChanged,
+          stateChanges: stateChanges.length > 0 ? stateChanges : ["none"],
+          onChangeRefChanged: currentProps.onChange !== prevPropsRef.current.onChange,
+          timesheetDraftDataRefChanged: timesheetDraftData !== prevStateRef.current.timesheetDraftDataRef,
+        });
+      }
+      
+      if (renderCountRef.current > 10 && renderCountRef.current % 100 === 0) {
+        logVerbose("[TimesheetGrid] Component rendered many times", {
+          renderCount: renderCountRef.current,
+          recentStateChanges: stateChanges.slice(-5),
+          stack: new Error().stack?.split('\n').slice(1, 8).join('\n'),
+        });
+      }
+      
+      prevPropsRef.current = currentProps;
+      prevStateRef.current = { ...currentState, timesheetDraftDataRef: timesheetDraftData };
+    });
 
     const isProcessingChangeRef = useRef(false);
+    const businessConfigAppliedRef = useRef(false);
+    
+    // Wrap setters to track what's calling them - use refs to create stable callbacks
+    const renderCountRefForLogging = useRef(0);
+    const setMacrosRef = useRef(setMacros);
+    const setSaveButtonStateRef = useRef(setSaveButtonState);
+    const setValidationErrorsRef = useRef(setValidationErrors);
+    const setTimesheetDraftDataRef = useRef(setTimesheetDraftData);
+    const timesheetDraftDataForLoggingRef = useRef(timesheetDraftData);
+    
+    // Keep refs in sync without recreating callbacks
+    useLayoutEffect(() => {
+      setMacrosRef.current = setMacros;
+      setSaveButtonStateRef.current = setSaveButtonState;
+      setValidationErrorsRef.current = setValidationErrors;
+      setTimesheetDraftDataRef.current = setTimesheetDraftData;
+      timesheetDraftDataForLoggingRef.current = timesheetDraftData;
+    });
+    
+    // Create stable wrapped setters that log but don't change on every render
+    const wrappedSetMacros = useCallback((macros: MacroRow[]) => {
+      renderCountRefForLogging.current += 1;
+      const count = renderCountRefForLogging.current;
+      if (count <= 5 || (count > 5 && count % 50 === 0)) {
+        logVerbose("[TimesheetGrid] setMacros called", {
+          renderCount: count,
+          stack: new Error().stack?.split('\n').slice(1, 4).join('\n'),
+        });
+      }
+      setMacrosRef.current(macros);
+    }, []);
+    
+    const wrappedSetSaveButtonState = useCallback((state: "saved" | "saving" | "save") => {
+      renderCountRefForLogging.current += 1;
+      const count = renderCountRefForLogging.current;
+      if (count <= 5 || (count > 5 && count % 50 === 0)) {
+        logVerbose("[TimesheetGrid] setSaveButtonState called", {
+          newState: state,
+          renderCount: count,
+          stack: new Error().stack?.split('\n').slice(1, 4).join('\n'),
+        });
+      }
+      setSaveButtonStateRef.current(state);
+    }, []);
+    
+    const wrappedSetValidationErrors = useCallback((updater: (prev: ValidationError[]) => ValidationError[]) => {
+      renderCountRefForLogging.current += 1;
+      const count = renderCountRefForLogging.current;
+      if (count > 5 && count % 50 !== 0) {
+        setValidationErrorsRef.current(updater);
+        return;
+      }
+      logVerbose("[TimesheetGrid] setValidationErrors called", {
+        renderCount: count,
+        stack: new Error().stack?.split('\n').slice(1, 4).join('\n'),
+      });
+      setValidationErrorsRef.current(updater);
+    }, []);
+    
+    const wrappedSetTimesheetDraftData = useCallback((data: TimesheetRow[]) => {
+      renderCountRefForLogging.current += 1;
+      const count = renderCountRefForLogging.current;
+      if (count <= 5 || (count > 5 && count % 50 === 0)) {
+        logVerbose("[TimesheetGrid] setTimesheetDraftData called", {
+          renderCount: count,
+          newLength: data.length,
+          currentLength: timesheetDraftDataForLoggingRef.current.length,
+          dataReferenceChanged: data !== timesheetDraftDataForLoggingRef.current,
+          stack: new Error().stack?.split('\n').slice(1, 8).join('\n'),
+        });
+      }
+      setTimesheetDraftDataRef.current(data);
+    }, []);
+    
     useSyncTimesheetData(timesheetDraftData, hotTableRef, onChange);
-    useLoadMacros((macros) => setMacros(macros as MacroRow[]));
+    useLoadMacros((macros) => wrappedSetMacros(macros as MacroRow[]));
     useWeekdayPattern(timesheetDraftData, weekdayPatternRef);
     useDialogScrollbarFix(showMacroDialog, hotTableRef);
 
     // Load business config asynchronously and update column sources
+    // WHY: Only run once on mount to prevent infinite loops with updateSettings
     useEffect(() => {
+      logVerbose("[TimesheetGrid] Business config useEffect triggered", {
+        alreadyApplied: businessConfigAppliedRef.current,
+        stack: new Error().stack?.split('\n').slice(1, 5).join('\n'),
+      });
+      
+      if (businessConfigAppliedRef.current) {
+        logVerbose("[TimesheetGrid] Business config already applied, skipping");
+        return;
+      }
+
       let isMounted = true;
 
       async function loadBusinessConfig() {
+        logVerbose("[TimesheetGrid] loadBusinessConfig: starting async load");
         try {
           const [projectsResult, chargeCodesResult] = await Promise.all([
             getAllProjectsAsync(),
             getAllChargeCodesAsync(),
           ]);
 
-          if (!isMounted) return;
+          logVerbose("[TimesheetGrid] loadBusinessConfig: loaded config", {
+            projectsCount: projectsResult.length,
+            chargeCodesCount: chargeCodesResult.length,
+            isMounted,
+          });
 
-          const hot = hotTableRef.current?.hotInstance;
-          if (!hot) {
+          if (!isMounted) {
+            logVerbose("[TimesheetGrid] loadBusinessConfig: component unmounted, aborting");
             return;
           }
 
-          // Update column sources if HotTable is available
-          updateColumnSource(
-            hot,
-            3,
-            projectsResult,
-            "Updated project column sources from database"
-          );
-          updateColumnSource(
-            hot,
-            5,
-            chargeCodesResult,
-            "Updated charge code column sources from database"
-          );
+          const hot = hotTableRef.current?.hotInstance;
+          if (!hot) {
+            logVerbose("[TimesheetGrid] loadBusinessConfig: hot instance not available");
+            return;
+          }
+
+          // WHY: Temporarily disabled column source updates via updateSettings to prevent
+          // infinite loops. The React wrapper's useEffect watches columns prop changes,
+          // and calling updateSettings triggers hooks that cause the wrapper to detect
+          // changes and call updateSettings again, creating a loop.
+          // TODO: Find a way to update column sources without triggering the React wrapper's
+          // sync mechanism, or pass sources directly through props instead of updateSettings.
+          // For now, columns will use static sources from getColumnDefinitions().
+          if (!businessConfigAppliedRef.current) {
+            // DISABLED: updateAllColumnSources(hot, [...]);
+            logVerbose(
+              "[TimesheetGrid] Skipping dynamic column source update to prevent infinite loop. Using static sources from column definitions.",
+              { alreadyApplied: businessConfigAppliedRef.current }
+            );
+            businessConfigAppliedRef.current = true;
+          }
         } catch (error) {
           logWarn(
-            "Could not load business config from database, using static config",
+            "[TimesheetGrid] Could not load business config from database, using static config",
             {
               error: error instanceof Error ? error.message : String(error),
             }
@@ -277,6 +514,7 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(
       }, 100);
 
       return () => {
+        logVerbose("[TimesheetGrid] Business config useEffect cleanup");
         isMounted = false;
         clearTimeout(timer);
       };
@@ -313,16 +551,16 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(
         unsavedRowsRef,
         inFlightSavesRef,
         saveStartTimeRef,
-        setSaveButtonState
+        wrappedSetSaveButtonState
       ),
-      [unsavedRowsRef, inFlightSavesRef, saveStartTimeRef, setSaveButtonState]
+      [unsavedRowsRef, inFlightSavesRef, saveStartTimeRef, wrappedSetSaveButtonState]
     );
     // WHY: Factory function dependencies are correctly listed - ESLint cannot statically analyze factory functions
     // eslint-disable-next-line react-hooks/exhaustive-deps
     const saveAndReloadRow = useCallback(
       createSaveAndReloadRow(
         hotTableRef,
-        setTimesheetDraftData,
+        wrappedSetTimesheetDraftData,
         onChange,
         updateSaveButtonState,
         inFlightSavesRef,
@@ -331,7 +569,7 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(
       ),
       [
         hotTableRef,
-        setTimesheetDraftData,
+        wrappedSetTimesheetDraftData,
         onChange,
         updateSaveButtonState,
         inFlightSavesRef,
@@ -345,12 +583,12 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(
       createHandleAfterChange(
         hotTableRef,
         timesheetDraftData,
-        setTimesheetDraftData,
+        wrappedSetTimesheetDraftData,
         onChange,
         isProcessingChangeRef,
         saveAndReloadRow,
-        setValidationErrors,
-        setSaveButtonState,
+        wrappedSetValidationErrors,
+        wrappedSetSaveButtonState,
         unsavedRowsRef,
         saveTimersRef,
         processCellChange,
@@ -377,14 +615,14 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(
       createHandleAfterRemoveRow(
         hotTableRef,
         timesheetDraftData,
-        setTimesheetDraftData,
+        wrappedSetTimesheetDraftData,
         onChange,
         rowsPendingRemovalRef
       ),
       [
         hotTableRef,
         timesheetDraftData,
-        setTimesheetDraftData,
+        wrappedSetTimesheetDraftData,
         onChange,
         rowsPendingRemovalRef,
       ]
@@ -399,7 +637,7 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(
     const handleAfterPaste = useCallback(
       createHandleAfterPaste(
         hotTableRef,
-        setTimesheetDraftData,
+        wrappedSetTimesheetDraftData,
         onChange,
         saveTimersRef,
         pendingSaveRef,
@@ -413,7 +651,7 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(
       ),
       [
         hotTableRef,
-        setTimesheetDraftData,
+        wrappedSetTimesheetDraftData,
         onChange,
         saveTimersRef,
         pendingSaveRef,
@@ -422,14 +660,14 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(
     );
     const handleAfterBeginEditing = useHandleAfterBeginEditing(
       hotTableRef,
-      setValidationErrors
+      wrappedSetValidationErrors
     );
     // WHY: Factory function dependencies are correctly listed - ESLint cannot statically analyze factory functions
     // eslint-disable-next-line react-hooks/exhaustive-deps
     const applyMacro = useCallback(
       createApplyMacro(
         hotTableRef,
-        setTimesheetDraftData,
+        wrappedSetTimesheetDraftData,
         onChange,
         macros,
         isMacroEmpty,
@@ -439,7 +677,7 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(
       ),
       [
         hotTableRef,
-        setTimesheetDraftData,
+        wrappedSetTimesheetDraftData,
         onChange,
         macros,
         isMacroEmpty,
@@ -517,6 +755,8 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(
       ),
       [timesheetDraftData, weekdayPatternRef, getSmartPlaceholder]
     );
+    
+    
 
     // WHY: Factory function dependencies are correctly listed - ESLint cannot statically analyze factory functions
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -548,9 +788,41 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(
       ),
       [hotTableRef, previousSelectionRef, setValidationErrors]
     );
+    
     // Column definitions - NO validators (validation happens in afterChange to prevent editor blocking)
     // CRITICAL: ID column must be first and hidden - this is the "Golden Rule" for Handsontable-SQL sync
     const columnDefinitions = useMemo(() => getColumnDefinitions(), []);
+    
+    // WHY: Memoize these props to prevent creating new object/array references on every render.
+    // Creating new references causes Handsontable's React wrapper to detect prop changes and
+    // call updateData repeatedly, triggering infinite update loops.
+    const customBorders = useMemo(() => [], []);
+    const contextMenuConfig = useMemo(() => ({ items: [...HOTTABLE_CONTEXT_MENU] }), []);
+    const enterMovesConfig = useMemo(() => ({ row: 1, col: 0 }), []);
+    const tabMovesConfig = useMemo(() => ({ row: 0, col: 1 }), []);
+    
+    // Track when data prop changes for HotTable
+    const prevDataRef = useRef<TimesheetRow[]>(timesheetDraftData);
+    const dataPropRef = useRef<TimesheetRow[]>(timesheetDraftData);
+    
+    useEffect(() => {
+      const currentStr = JSON.stringify(timesheetDraftData);
+      const prevStr = JSON.stringify(prevDataRef.current);
+      const referenceChanged = timesheetDraftData !== prevDataRef.current;
+      const contentChanged = currentStr !== prevStr;
+      
+      if (referenceChanged || contentChanged) {
+        logVerbose("[TimesheetGrid] data prop for HotTable changed", {
+          referenceChanged,
+          contentChanged,
+          currentLength: timesheetDraftData.length,
+          prevLength: prevDataRef.current.length,
+          stack: new Error().stack?.split('\n').slice(1, 6).join('\n'),
+        });
+        dataPropRef.current = timesheetDraftData;
+      }
+      prevDataRef.current = timesheetDraftData;
+    }, [timesheetDraftData]);
     // Validate timesheet data for button status - MUST be before early returns
     const buttonStatus: ButtonStatus = useMemo(
       () => calculateButtonStatus(timesheetDraftData),
@@ -563,7 +835,7 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(
         saveButtonState,
         unsavedRowsRef,
         saveStartTimeRef,
-        setSaveButtonState,
+        wrappedSetSaveButtonState,
         saveAndReloadRow,
         updateSaveButtonState
       ),
@@ -571,7 +843,7 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(
         saveButtonState,
         unsavedRowsRef,
         saveStartTimeRef,
-        setSaveButtonState,
+        wrappedSetSaveButtonState,
         saveAndReloadRow,
         updateSaveButtonState,
       ]
@@ -580,14 +852,14 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(
     // eslint-disable-next-line react-hooks/exhaustive-deps
     const handleRefresh = useCallback(
       createHandleRefresh(
-        setTimesheetDraftData,
+        wrappedSetTimesheetDraftData,
         logInfo,
         logWarn,
         logError,
         resetInProgressIpc,
         loadDraftIpc
       ),
-      [setTimesheetDraftData]
+      [wrappedSetTimesheetDraftData]
     );
     if (isTimesheetDraftLoading || timesheetDraftError) {
       return (
@@ -629,8 +901,8 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(
           width="100%"
           rowHeaders={true}
           colHeaders={true}
-          customBorders={[]}
-          contextMenu={{ items: [...HOTTABLE_CONTEXT_MENU] }}
+          customBorders={customBorders}
+          contextMenu={contextMenuConfig}
           manualColumnResize={true}
           manualRowResize={true}
           stretchH="all"
@@ -650,8 +922,8 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(
           navigableHeaders={true}
           copyPaste={true}
           search={true}
-          enterMoves={{ row: 1, col: 0 }}
-          tabMoves={{ row: 0, col: 1 }}
+          enterMoves={enterMovesConfig}
+          tabMoves={tabMovesConfig}
           invalidCellClassName="htInvalid"
         />
         <TimesheetGridFooter

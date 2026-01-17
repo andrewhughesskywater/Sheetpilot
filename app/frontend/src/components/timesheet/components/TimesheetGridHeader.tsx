@@ -141,7 +141,7 @@ export default function TimesheetGridHeader({
       <WeeklySummaryDialog
         open={showWeeklySummary}
         onClose={() => setShowWeeklySummary(false)}
-        entries={entriesToUse}
+        archiveData={entriesToUse}
       />
     </>
   );

@@ -15,10 +15,17 @@ import type { DateEditor } from "./TimesheetGrid.types";
  * Hook to load macros on mount
  */
 export function useLoadMacros(setMacros: (macros: unknown[]) => void): void {
+  const setMacrosRef = useRef(setMacros);
+  
+  // Keep ref in sync without triggering effects
+  React.useLayoutEffect(() => {
+    setMacrosRef.current = setMacros;
+  }, [setMacros]);
+  
   useEffect(() => {
     const loaded = loadMacros();
-    setMacros(loaded);
-  }, [setMacros]);
+    setMacrosRef.current(loaded);
+  }, []); // Only run once on mount
 }
 
 /**
@@ -28,11 +35,14 @@ export function useWeekdayPattern(
   timesheetDraftData: TimesheetRow[],
   weekdayPatternRef: React.MutableRefObject<boolean>
 ): void {
+  // WHY: weekdayPatternRef is a ref, so it doesn't need to be in the dependency array.
+  // Refs are stable and don't cause re-renders when their current value changes.
+  // Including it in deps is harmless but unnecessary - removing for clarity.
   useEffect(() => {
     if (timesheetDraftData && timesheetDraftData.length > 0) {
       weekdayPatternRef.current = detectWeekdayPattern(timesheetDraftData);
     }
-  }, [timesheetDraftData, weekdayPatternRef]);
+  }, [timesheetDraftData]); // eslint-disable-line react-hooks/exhaustive-deps
 }
 
 /**
@@ -53,6 +63,14 @@ export function useDialogScrollbarFix(
         document.body.style.overflow = "";
       }
       window.dispatchEvent(new Event("resize"));
+      const isDestroyed =
+        typeof (hotInstance as { isDestroyed?: () => boolean }).isDestroyed ===
+        "function"
+          ? (hotInstance as { isDestroyed: () => boolean }).isDestroyed()
+          : false;
+      if (isDestroyed) {
+        return;
+      }
       hotInstance.render();
     }, 100);
 
@@ -115,6 +133,7 @@ export function useSyncTimesheetData(
 ): void {
   const isInitialLoadRef = useRef(true);
   const onChangeRef = useRef(onChange);
+  const prevDataRef = useRef<string>("");
 
   // Keep onChange ref in sync without triggering effects
   React.useLayoutEffect(() => {
@@ -122,9 +141,24 @@ export function useSyncTimesheetData(
   }, [onChange]);
 
   useEffect(() => {
+    const currentDataStr = JSON.stringify(timesheetDraftData);
+    const dataChanged = currentDataStr !== prevDataRef.current;
+    
+    window.logger?.verbose("[TimesheetGrid] useSyncTimesheetData: effect triggered", {
+      isInitialLoad: isInitialLoadRef.current,
+      dataChanged,
+      dataLength: timesheetDraftData.length,
+      prevDataLength: prevDataRef.current ? JSON.parse(prevDataRef.current).length : 0,
+    });
+    
     if (isInitialLoadRef.current) {
       isInitialLoadRef.current = false;
+      prevDataRef.current = currentDataStr;
+      window.logger?.verbose("[TimesheetGrid] useSyncTimesheetData: initial load, calling onChange");
       onChangeRef.current?.(timesheetDraftData);
+    } else if (dataChanged) {
+      prevDataRef.current = currentDataStr;
+      window.logger?.verbose("[TimesheetGrid] useSyncTimesheetData: data changed after initial load (unexpected)");
     }
   }, [timesheetDraftData]);
 }

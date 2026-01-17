@@ -39,8 +39,10 @@ interface TimesheetEntry {
   hours: number | null;
   project: string;
   tool?: string;
-  comment?: string;
-  lastSubmitted?: string;
+  detail_charge_code?: string;
+  task_description: string;
+  status?: string;
+  submitted_at?: string;
 }
 
 /**
@@ -164,11 +166,7 @@ const WeeklySummaryDialog = ({
 
   // Determine if dialog can navigate to previous/next week
   const { canGoPrevious, canGoNext, handlePreviousWeek, handleNextWeek } =
-    useWeekNavigation({
-      allWeeks,
-      currentWeekKey,
-      setCurrentWeekKey,
-    });
+    useWeekNavigation(allWeeks, currentWeekKey, setCurrentWeekKey);
 
   return (
     <Dialog
