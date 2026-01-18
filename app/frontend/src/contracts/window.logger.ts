@@ -25,5 +25,10 @@ declare global {
       /** Log user action for analytics */
       userAction: (action: string, data?: unknown) => void;
     };
+    /**
+     * Internal counter for skipping afterChange events.
+     * Used to reduce log spam during rapid changes.
+     */
+    __afterChangeSkipCount?: number;
   }
 }

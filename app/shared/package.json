@@ -8,7 +8,8 @@
   "types": "./index.ts",
   "sideEffects": [
     "./logger.ts",
-    "./logger-config.ts"
+    "./logger-config.ts",
+    "./business-config.window.ts"
   ],
   "exports": {
     ".": "./index.ts",

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import Dialog from "@mui/material/Dialog";
 import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
@@ -26,11 +26,24 @@ import {
   handleStandardUpdate,
 } from "./macroManagerDialog.helpers";
 import type { HandsontableChange } from "./macroManagerDialog.types";
-import { columnDefinitions } from "./macroManagerDialog.columns";
+import { getColumnDefinitions } from "./macroManagerDialog.columns";
+import {
+  getAllProjectsAsync,
+  getAllChargeCodesAsync,
+} from "@sheetpilot/shared/business-config";
+import { logError, logVerbose } from "@/services/ipc/logger";
 
 // Register Handsontable modules
 registerAllModules();
 registerEditor("spellcheckText", SpellcheckEditor);
+
+const createEmptyMacro = (): MacroRow => ({
+  name: "",
+  project: "",
+  tool: null,
+  chargeCode: null,
+  taskDescription: "",
+});
 
 const applyMacroChange = (
   next: MacroRow[],
@@ -39,18 +52,9 @@ const applyMacroChange = (
   newVal: unknown,
   oldVal: unknown
 ): boolean => {
-  if (field === "project") {
-    return handleProjectChange(next, rowIndex, newVal, oldVal);
-  }
-  if (field === "tool") {
-    return handleToolChange(next, rowIndex, newVal);
-  }
-  if (
-    field === "hours" &&
-    newVal !== undefined &&
-    newVal !== null &&
-    newVal !== ""
-  ) {
+  if (field === "project") return handleProjectChange(next, rowIndex, newVal, oldVal);
+  if (field === "tool") return handleToolChange(next, rowIndex, newVal);
+  if (field === "hours" && newVal !== undefined && newVal !== null && newVal !== "") {
     return handleHoursChange(next, rowIndex, newVal);
   }
   return handleStandardUpdate(next, rowIndex, field, newVal);
@@ -70,30 +74,52 @@ const MacroManagerDialog = ({
   const [macroData, setMacroData] = useState<MacroRow[]>([]);
   const hotTableRef = useRef<HotTableRef>(null);
   const isInternalChangeRef = useRef(false);
+  // Business config state - loaded from database (database is single source of truth)
+  const [projects, setProjects] = useState<readonly string[]>([]);
+  const [chargeCodes, setChargeCodes] = useState<readonly string[]>([]);
+
+  // Load business config from database when dialog opens
+  useEffect(() => {
+    if (open) {
+      async function loadBusinessConfig() {
+        logVerbose("[MacroManagerDialog] Loading business config from database");
+        try {
+          const [projectsResult, chargeCodesResult] = await Promise.all([
+            getAllProjectsAsync(),
+            getAllChargeCodesAsync(),
+          ]);
+          setProjects(projectsResult);
+          setChargeCodes(chargeCodesResult);
+          logVerbose("[MacroManagerDialog] Business config loaded", {
+            projectsCount: projectsResult.length,
+            chargeCodesCount: chargeCodesResult.length,
+          });
+        } catch (error) {
+          logError("[MacroManagerDialog] Could not load business config from database", {
+            error: error instanceof Error ? error.message : String(error),
+          });
+          // Keep empty arrays - database is source of truth, no fallback
+        }
+      }
+      void loadBusinessConfig();
+    }
+  }, [open]);
 
   // Load macros when dialog opens
   useEffect(() => {
     if (open) {
       const loaded = loadMacros();
-      // Ensure we always have 5 rows
-      const filledMacros = Array(5)
-        .fill(null)
-        .map(
-          (_, idx) =>
-            loaded[idx] || {
-              name: "",
-              project: "",
-              tool: null,
-              chargeCode: null,
-              taskDescription: "",
-            }
-        );
-      // This is an appropriate use of setState in useEffect - we're synchronizing
-      // with external state (localStorage) when the dialog opens
+      // Ensure we always have 5 rows - synchronizing with external state (localStorage)
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setMacroData(filledMacros);
+      setMacroData(Array(5).fill(null).map((_, idx) => loaded[idx] || createEmptyMacro()));
     }
   }, [open]);
+  
+  // Column definitions - database is single source of truth
+  const columnDefinitions = useMemo(
+    () => getColumnDefinitions(projects, chargeCodes),
+    [projects, chargeCodes]
+  );
 
   // Initialize table after dialog is fully opened and data is loaded
   useEffect(() => {
@@ -205,28 +231,14 @@ const MacroManagerDialog = ({
       <DialogContent sx={{ p: 0, display: "flex", flexDirection: "column" }}>
         <Box sx={{ p: 2, pb: 1 }}>
           <Typography variant="body2" color="text.secondary">
-            Configure up to 5 macros for quick timesheet entry. Use keyboard
-            shortcuts Ctrl+1 through Ctrl+5 to apply them.
+            Configure up to 5 macros for quick timesheet entry. Use Ctrl+1 through Ctrl+5 to apply them.
           </Typography>
         </Box>
 
         <Box sx={{ flexGrow: 1, width: "100%", minHeight: 400, p: 1 }}>
           <HotTable
             ref={hotTableRef}
-            data={
-              macroData.length > 0
-                ? macroData
-                : Array(5)
-                    .fill(null)
-                    .map(() => ({
-                      name: "",
-                      hours: undefined,
-                      project: "",
-                      tool: null,
-                      chargeCode: null,
-                      taskDescription: "",
-                    }))
-            }
+            data={macroData.length > 0 ? macroData : Array(5).fill(null).map(() => ({ ...createEmptyMacro(), hours: undefined }))}
             columns={columnDefinitions}
             cells={cellsFunction}
             afterChange={handleAfterChange}

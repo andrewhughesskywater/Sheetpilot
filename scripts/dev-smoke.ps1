@@ -36,7 +36,7 @@ try {
     # Start dev server in background
     $DevProcess = Start-Process -FilePath "npm" -ArgumentList "run", "dev" -NoNewWindow -PassThru -RedirectStandardOutput $LogFile -RedirectStandardError $LogFile
 
-    Write-Host "⏳ Waiting for dev server to start ($WaitSeconds seconds)..." -ForegroundColor Cyan
+    Write-Host "⏳ Waiting for dev server to start ($($WaitSeconds) seconds)..." -ForegroundColor Cyan
     Start-Sleep -Seconds $WaitSeconds
 
     # Check if process is still running

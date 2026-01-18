@@ -10,7 +10,7 @@ import Alert from "@mui/material/Alert";
 import AlertTitle from "@mui/material/AlertTitle";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import SecurityIcon from "@mui/icons-material/Security";
-import type { ManualSection } from "./ManualSections1";
+import type { ManualSection } from "./ManualSectionsGettingStartedAndFeatures";
 
 export const securitySection: ManualSection = {
   id: "security",

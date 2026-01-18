@@ -18,7 +18,7 @@ import { validateQuarterAvailability } from '@sheetpilot/bot';
 export interface TimesheetRow {
   id?: number;
   date?: string;
-  hours?: number;
+  hours?: number | undefined;
   project?: string;
   tool?: string | null;
   chargeCode?: string | null;

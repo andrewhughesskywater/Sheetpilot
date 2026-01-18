@@ -203,7 +203,7 @@ export function seedBusinessConfigFromStatic(db: BetterSqlite3.Database): void {
 
   // Insert projects
   const insertProject = db.prepare(`
-    INSERT INTO business_config_projects (name, requires_tools, display_order, is_active)
+    INSERT OR IGNORE INTO business_config_projects (name, requires_tools, display_order, is_active)
     VALUES (?, ?, ?, 1)
   `);
 
@@ -222,7 +222,7 @@ export function seedBusinessConfigFromStatic(db: BetterSqlite3.Database): void {
   });
 
   const insertTool = db.prepare(`
-    INSERT INTO business_config_tools (name, requires_charge_code, display_order, is_active)
+    INSERT OR IGNORE INTO business_config_tools (name, requires_charge_code, display_order, is_active)
     VALUES (?, ?, ?, 1)
   `);
 
@@ -245,7 +245,7 @@ export function seedBusinessConfigFromStatic(db: BetterSqlite3.Database): void {
   `);
 
   const insertToolProjectLink = db.prepare(`
-    INSERT INTO business_config_tools_by_project (project_id, tool_id, display_order)
+    INSERT OR IGNORE INTO business_config_tools_by_project (project_id, tool_id, display_order)
     VALUES (?, ?, ?)
   `);
 
@@ -278,7 +278,7 @@ export function seedBusinessConfigFromStatic(db: BetterSqlite3.Database): void {
 
   // Insert charge codes
   const insertChargeCode = db.prepare(`
-    INSERT INTO business_config_charge_codes (name, display_order, is_active)
+    INSERT OR IGNORE INTO business_config_charge_codes (name, display_order, is_active)
     VALUES (?, ?, 1)
   `);
 

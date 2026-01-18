@@ -1,27 +1,17 @@
 /**
  * @fileoverview Business Configuration - Async Database-Backed Functions
  *
- * Asynchronous functions that prefer database values over static fallback.
+ * Asynchronous functions that query the database. Database is the single source of truth.
  * These functions use IPC to query the database and cache results for performance.
+ * If the database is unavailable, these functions will throw errors or return empty arrays.
  *
  * @author Andrew Hughes
  * @version 1.0.0
  * @since 2025-10-01
  */
 
-import {
-  PROJECTS_WITHOUT_TOOLS,
-  TOOLS_BY_PROJECT,
-} from "./business-config.static";
-import {
-  getAllProjects,
-  getAllChargeCodes,
-  getToolsForProject,
-  isProjectWithoutTools,
-} from "./business-config.sync";
-
 // ============================================================================
-// ASYNC FUNCTIONS (Database-backed with static fallback)
+// ASYNC FUNCTIONS (Database-backed, no static fallback)
 // ============================================================================
 
 /**
@@ -47,38 +37,35 @@ function isIpcAvailable(): boolean {
 }
 
 /**
- * Gets all available projects (async, database-first with static fallback)
+ * Gets all available projects (async, database-only)
+ * @throws Error if database is unavailable or query fails
  */
 export async function getAllProjectsAsync(): Promise<readonly string[]> {
   if (cachedConfig?.projects) {
     return cachedConfig.projects;
   }
 
-  if (isIpcAvailable() && window.businessConfig) {
-    try {
-      const result = await window.businessConfig.getAllProjects();
-      if (result.success && result.projects) {
-        if (!cachedConfig) {
-          cachedConfig = {};
-        }
-        cachedConfig.projects = result.projects;
-        return result.projects;
-      }
-    } catch (error) {
-      // Fall through to static fallback
-      console.warn(
-        "Could not load projects from database, using static fallback",
-        error
-      );
-    }
+  if (!isIpcAvailable() || !window.businessConfig) {
+    throw new Error("Database not available: window.businessConfig is not available");
   }
 
-  // Static fallback
-  return getAllProjects();
+  const result = await window.businessConfig.getAllProjects();
+  if (!result.success || !result.projects) {
+    throw new Error(
+      `Could not load projects from database: ${result.error || "Unknown error"}`
+    );
+  }
+
+  if (!cachedConfig) {
+    cachedConfig = {};
+  }
+  cachedConfig.projects = result.projects;
+  return result.projects;
 }
 
 /**
- * Gets projects that do not require tools (async, database-first with static fallback)
+ * Gets projects that do not require tools (async, database-only)
+ * @throws Error if database is unavailable or query fails
  */
 export async function getProjectsWithoutToolsAsync(): Promise<
   readonly string[]
@@ -87,30 +74,27 @@ export async function getProjectsWithoutToolsAsync(): Promise<
     return cachedConfig.projectsWithoutTools;
   }
 
-  if (isIpcAvailable() && window.businessConfig) {
-    try {
-      const result = await window.businessConfig.getProjectsWithoutTools();
-      if (result.success && result.projects) {
-        if (!cachedConfig) {
-          cachedConfig = {};
-        }
-        cachedConfig.projectsWithoutTools = result.projects;
-        return result.projects;
-      }
-    } catch (error) {
-      console.warn(
-        "Could not load projects without tools from database, using static fallback",
-        error
-      );
-    }
+  if (!isIpcAvailable() || !window.businessConfig) {
+    throw new Error("Database not available: window.businessConfig is not available");
   }
 
-  // Static fallback
-  return PROJECTS_WITHOUT_TOOLS;
+  const result = await window.businessConfig.getProjectsWithoutTools();
+  if (!result.success || !result.projects) {
+    throw new Error(
+      `Could not load projects without tools from database: ${result.error || "Unknown error"}`
+    );
+  }
+
+  if (!cachedConfig) {
+    cachedConfig = {};
+  }
+  cachedConfig.projectsWithoutTools = result.projects;
+  return result.projects;
 }
 
 /**
- * Gets tools for a specific project (async, database-first with static fallback)
+ * Gets tools for a specific project (async, database-only)
+ * @throws Error if database is unavailable or query fails
  */
 export async function getToolsForProjectAsync(
   project: string
@@ -124,72 +108,58 @@ export async function getToolsForProjectAsync(
     return cachedConfig.toolsByProject.get(project)!;
   }
 
-  // Check if project requires tools (use static check for immediate response)
-  if (isProjectWithoutTools(project)) {
-    return [];
+  if (!isIpcAvailable() || !window.businessConfig) {
+    throw new Error("Database not available: window.businessConfig is not available");
   }
 
-  if (isIpcAvailable() && window.businessConfig) {
-    try {
-      const result = await window.businessConfig.getToolsForProject(project);
-      if (result.success && result.tools) {
-        if (!cachedConfig) {
-          cachedConfig = {};
-        }
-        if (!cachedConfig.toolsByProject) {
-          cachedConfig.toolsByProject = new Map();
-        }
-        cachedConfig.toolsByProject.set(project, result.tools);
-        return result.tools;
-      }
-    } catch (error) {
-      console.warn(
-        "Could not load tools for project from database, using static fallback",
-        error
-      );
-    }
+  const result = await window.businessConfig.getToolsForProject(project);
+  if (!result.success) {
+    throw new Error(
+      `Could not load tools for project from database: ${result.error || "Unknown error"}`
+    );
   }
 
-  // Static fallback
-  return getToolsForProject(project);
+  const tools = result.tools || [];
+  if (!cachedConfig) {
+    cachedConfig = {};
+  }
+  if (!cachedConfig.toolsByProject) {
+    cachedConfig.toolsByProject = new Map();
+  }
+  cachedConfig.toolsByProject.set(project, tools);
+  return tools;
 }
 
 /**
- * Gets all available tools (async, database-first with static fallback)
+ * Gets all available tools (async, database-only)
+ * @throws Error if database is unavailable or query fails
  */
 export async function getAllToolsAsync(): Promise<readonly string[]> {
   if (cachedConfig?.tools) {
     return cachedConfig.tools;
   }
 
-  if (isIpcAvailable() && window.businessConfig) {
-    try {
-      const result = await window.businessConfig.getAllTools();
-      if (result.success && result.tools) {
-        if (!cachedConfig) {
-          cachedConfig = {};
-        }
-        cachedConfig.tools = result.tools;
-        return result.tools;
-      }
-    } catch (error) {
-      console.warn(
-        "Could not load tools from database, using static fallback",
-        error
-      );
-    }
+  if (!isIpcAvailable() || !window.businessConfig) {
+    throw new Error("Database not available: window.businessConfig is not available");
   }
 
-  // Static fallback - collect all unique tools from TOOLS_BY_PROJECT
-  const allToolsSet = new Set<string>();
-  Object.values(TOOLS_BY_PROJECT).forEach((tools) => {
-    tools.forEach((tool) => allToolsSet.add(tool));
-  });
-  return Array.from(allToolsSet);
+  const result = await window.businessConfig.getAllTools();
+  if (!result.success || !result.tools) {
+    throw new Error(
+      `Could not load tools from database: ${result.error || "Unknown error"}`
+    );
+  }
+
+  if (!cachedConfig) {
+    cachedConfig = {};
+  }
+  cachedConfig.tools = result.tools;
+  return result.tools;
 }
 
 /**
- * Gets tools that do not require charge codes (async, database-first with static fallback)
+ * Gets tools that do not require charge codes (async, database-only)
+ * @throws Error if database is unavailable or query fails
  */
 export async function getToolsWithoutChargeCodesAsync(): Promise<
   readonly string[]
@@ -198,56 +168,49 @@ export async function getToolsWithoutChargeCodesAsync(): Promise<
     return cachedConfig.toolsWithoutChargeCodes;
   }
 
-  if (isIpcAvailable() && window.businessConfig) {
-    try {
-      const result = await window.businessConfig.getToolsWithoutChargeCodes();
-      if (result.success && result.tools) {
-        if (!cachedConfig) {
-          cachedConfig = {};
-        }
-        cachedConfig.toolsWithoutChargeCodes = result.tools;
-        return result.tools;
-      }
-    } catch (error) {
-      console.warn(
-        "Could not load tools without charge codes from database, using static fallback",
-        error
-      );
-    }
+  if (!isIpcAvailable() || !window.businessConfig) {
+    throw new Error("Database not available: window.businessConfig is not available");
   }
 
-  // Static fallback
-  return PROJECTS_WITHOUT_TOOLS;
+  const result = await window.businessConfig.getToolsWithoutChargeCodes();
+  if (!result.success || !result.tools) {
+    throw new Error(
+      `Could not load tools without charge codes from database: ${result.error || "Unknown error"}`
+    );
+  }
+
+  if (!cachedConfig) {
+    cachedConfig = {};
+  }
+  cachedConfig.toolsWithoutChargeCodes = result.tools;
+  return result.tools;
 }
 
 /**
- * Gets all available charge codes (async, database-first with static fallback)
+ * Gets all available charge codes (async, database-only)
+ * @throws Error if database is unavailable or query fails
  */
 export async function getAllChargeCodesAsync(): Promise<readonly string[]> {
   if (cachedConfig?.chargeCodes) {
     return cachedConfig.chargeCodes;
   }
 
-  if (isIpcAvailable() && window.businessConfig) {
-    try {
-      const result = await window.businessConfig.getAllChargeCodes();
-      if (result.success && result.chargeCodes) {
-        if (!cachedConfig) {
-          cachedConfig = {};
-        }
-        cachedConfig.chargeCodes = result.chargeCodes;
-        return result.chargeCodes;
-      }
-    } catch (error) {
-      console.warn(
-        "Could not load charge codes from database, using static fallback",
-        error
-      );
-    }
+  if (!isIpcAvailable() || !window.businessConfig) {
+    throw new Error("Database not available: window.businessConfig is not available");
   }
 
-  // Static fallback
-  return getAllChargeCodes();
+  const result = await window.businessConfig.getAllChargeCodes();
+  if (!result.success || !result.chargeCodes) {
+    throw new Error(
+      `Could not load charge codes from database: ${result.error || "Unknown error"}`
+    );
+  }
+
+  if (!cachedConfig) {
+    cachedConfig = {};
+  }
+  cachedConfig.chargeCodes = result.chargeCodes;
+  return result.chargeCodes;
 }
 
 /**

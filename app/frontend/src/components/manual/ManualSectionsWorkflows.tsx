@@ -14,7 +14,7 @@ import StepLabel from "@mui/material/StepLabel";
 import StepContent from "@mui/material/StepContent";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import AssignmentIcon from "@mui/icons-material/Assignment";
-import type { ManualSection } from "./ManualSections1";
+import type { ManualSection } from "./ManualSectionsGettingStartedAndFeatures";
 
 export const workflowsSection: ManualSection = {
   id: "workflows",

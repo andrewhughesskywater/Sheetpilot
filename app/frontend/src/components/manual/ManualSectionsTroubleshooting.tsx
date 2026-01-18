@@ -9,9 +9,9 @@ import Alert from "@mui/material/Alert";
 import AlertTitle from "@mui/material/AlertTitle";
 import WarningIcon from "@mui/icons-material/Warning";
 import InfoIcon from "@mui/icons-material/Info";
-import ContactSupportIcon from "@mui/icons-material/ContactSupportIcon";
+import ContactSupportIcon from "@mui/icons-material/ContactSupport";
 import VpnKeyIcon from "@mui/icons-material/VpnKey";
-import type { ManualSection } from "./ManualSections1";
+import type { ManualSection } from "./ManualSectionsGettingStartedAndFeatures";
 
 export const troubleshootingSection: ManualSection = {
   id: "troubleshooting",

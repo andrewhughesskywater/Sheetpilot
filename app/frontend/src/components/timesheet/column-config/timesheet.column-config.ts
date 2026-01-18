@@ -4,20 +4,20 @@
  * Column configuration for Handsontable timesheet grid.
  * NO validators (validation happens in afterChange to prevent editor blocking)
  * CRITICAL: ID column must be first and hidden - this is the "Golden Rule" for Handsontable-SQL sync
+ *
+ * Database is the single source of truth - projects and chargeCodes must be provided.
  */
-
-import { PROJECTS, CHARGE_CODES } from "@sheetpilot/shared/business-config";
 
 /**
  * Get column definitions for timesheet grid
  *
- * @param projects - Optional projects array (defaults to static PROJECTS)
- * @param chargeCodes - Optional charge codes array (defaults to static CHARGE_CODES)
+ * @param projects - Projects array from database (empty array if not loaded yet)
+ * @param chargeCodes - Charge codes array from database (empty array if not loaded yet)
  * @returns Array of column definition objects
  */
 export function getColumnDefinitions(
-  projects?: readonly string[],
-  chargeCodes?: readonly string[]
+  projects: readonly string[],
+  chargeCodes: readonly string[]
 ) {
   return [
     { data: "id", title: "ID", type: "numeric", width: 0.1, readOnly: true }, // Hidden ID column for row identity
@@ -40,7 +40,7 @@ export function getColumnDefinitions(
       data: "project",
       title: "Project",
       type: "dropdown",
-      source: [...(projects || PROJECTS)],
+      source: [...projects],
       strict: true,
       allowInvalid: false,
       placeholder: "Pick a project",
@@ -62,7 +62,7 @@ export function getColumnDefinitions(
       data: "chargeCode",
       title: "Charge Code",
       type: "dropdown",
-      source: [...(chargeCodes || CHARGE_CODES)],
+      source: [...chargeCodes],
       strict: true,
       allowInvalid: false,
       placeholder: "",

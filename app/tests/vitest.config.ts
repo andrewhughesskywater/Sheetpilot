@@ -31,7 +31,7 @@ export default defineProject({
     testTimeout: 30000,
     hookTimeout: 10000,
     teardownTimeout: 10000,
-    reporters: process.env.CI ? ["verbose"] : ["default"],
+    reporters: process.env['CI'] ? ["verbose"] : ["default"],
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html", "lcov"],

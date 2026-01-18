@@ -5,8 +5,8 @@ import Typography from "@mui/material/Typography";
 import Chip from "@mui/material/Chip";
 import Divider from "@mui/material/Divider";
 import Paper from "@mui/material/Paper";
-import ContactSupportIcon from "@mui/icons-material/ContactSupportIcon";
-import type { ManualSection } from "./ManualSections1";
+import ContactSupportIcon from "@mui/icons-material/ContactSupport";
+import type { ManualSection } from "./ManualSectionsGettingStartedAndFeatures";
 
 export const supportSection: ManualSection = {
   id: "support",

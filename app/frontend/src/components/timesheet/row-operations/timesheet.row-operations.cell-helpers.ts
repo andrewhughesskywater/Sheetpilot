@@ -63,8 +63,9 @@ export function getToolColumnCellConfig(
 /**
  * Get charge code column cell configuration
  * Charge code cell is locked when:
- * - Tool doesn't need charge code (N/A case), OR
- * - Charge code is empty/null (when tool needs charge code, empty charge code cell is locked)
+ * - Tool doesn't need charge code (N/A case)
+ * 
+ * Note: When tool needs charge code, the cell must NOT be readOnly so the dropdown can be opened
  */
 export function getChargeCodeColumnCellConfig(
   rowData: TimesheetRow,
@@ -78,13 +79,9 @@ export function getChargeCodeColumnCellConfig(
       readOnly: true,
     };
   }
-  // Tool is set and needs charge code
-  const chargeCode = rowData?.chargeCode;
-  const hasChargeCode =
-    chargeCode !== null && chargeCode !== undefined && chargeCode !== "";
-  // Lock when charge code is empty
+  // Tool is set and needs charge code - cell must be editable to allow dropdown selection
   return {
     placeholder: "Pick a Charge Code",
-    readOnly: !hasChargeCode,
+    readOnly: false, // Must be editable so dropdown can be opened
   };
 }

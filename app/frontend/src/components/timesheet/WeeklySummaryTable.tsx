@@ -70,7 +70,7 @@ export const WeeklySummaryTable: React.FC<WeeklySummaryTableProps> = ({
 }) => {
   // Calculate week summary
   const weekSummary = useMemo(
-    () => calculateWeekSummary(archiveData, weekDays[0]),
+    () => weekDays[0] ? calculateWeekSummary(archiveData, weekDays[0]) : [],
     [archiveData, weekDays]
   );
 

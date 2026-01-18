@@ -5,7 +5,7 @@
  * Handles previous/next week navigation and availability checks.
  */
 
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, type Dispatch, type SetStateAction } from "react";
 
 /**
  * Hook for handling week navigation
@@ -13,7 +13,7 @@ import { useMemo, useCallback } from "react";
 export function useWeekNavigation(
   allWeeks: string[],
   currentWeekKey: string,
-  setCurrentWeekKey: (key: string) => void
+  setCurrentWeekKey: Dispatch<SetStateAction<string>>
 ) {
   // Navigation handlers
   const handlePreviousWeek = useCallback(() => {

@@ -24,7 +24,7 @@ export default defineProject({
     hookTimeout: 10000,
     teardownTimeout: 10000,
     isolate: true,
-    reporters: process.env.CI ? ["verbose"] : ["default"],
+    reporters: process.env['CI'] ? ["verbose"] : ["default"],
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html", "lcov"],
@@ -69,7 +69,9 @@ export default defineProject({
     pool: "threads",
     poolOptions: {
       threads: {
+        // @ts-expect-error - poolOptions typing issue in vitest config
         maxThreads: 4,
+        // @ts-expect-error - poolOptions typing issue in vitest config
         minThreads: 1,
       },
     },

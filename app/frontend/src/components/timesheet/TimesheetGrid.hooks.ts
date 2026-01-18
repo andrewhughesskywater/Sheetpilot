@@ -64,9 +64,9 @@ export function useDialogScrollbarFix(
       }
       window.dispatchEvent(new Event("resize"));
       const isDestroyed =
-        typeof (hotInstance as { isDestroyed?: () => boolean }).isDestroyed ===
+        typeof (hotInstance as unknown as { isDestroyed?: () => boolean }).isDestroyed ===
         "function"
-          ? (hotInstance as { isDestroyed: () => boolean }).isDestroyed()
+          ? (hotInstance as unknown as { isDestroyed: () => boolean }).isDestroyed()
           : false;
       if (isDestroyed) {
         return;

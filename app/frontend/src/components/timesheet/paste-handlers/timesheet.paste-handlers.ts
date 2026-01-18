@@ -88,10 +88,10 @@ function processNormalizedRow(
     updatedData[rowIdx] = normalizedRow;
 
     if (normalizedRow.tool !== row.tool) {
-      updateToolInHot(hotInstance, rowIdx, normalizedRow.tool);
+      updateToolInHot(hotInstance, rowIdx, normalizedRow.tool ?? null);
     }
     if (normalizedRow.chargeCode !== row.chargeCode) {
-      updateChargeCodeInHot(hotInstance, rowIdx, normalizedRow.chargeCode);
+      updateChargeCodeInHot(hotInstance, rowIdx, normalizedRow.chargeCode ?? null);
     }
     return true;
   }

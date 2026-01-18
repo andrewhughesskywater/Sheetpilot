@@ -11,6 +11,10 @@ import type { HotTableRef } from "@handsontable/react-wrapper";
 import type { TimesheetRow } from "./schema/timesheet.schema";
 import type { ButtonStatus } from "./TimesheetGrid.types";
 import { validateTimesheetRows } from "./validation/timesheet.validation";
+import {
+  getGridContextForShortcuts,
+  registerMacroShortcuts,
+} from "./TimesheetGrid.shortcut-helpers";
 
 // Wrapper functions to match expected signatures
 export const projectNeedsToolsWrapper = (p?: string) => doesProjectNeedTools(p || "");
@@ -56,29 +60,25 @@ export function registerTimesheetShortcuts(
   duplicateSelectedRow: () => void
 ): void {
   const hotInstance = hotTableRef.current?.hotInstance;
-  if (!hotInstance) return;
-
-  const gridContext = hotInstance.getShortcutManager().getContext("grid");
-  if (!gridContext) {
-    window.logger?.warn("Could not get grid context for shortcuts");
+  if (!hotInstance) {
+    window.logger?.warn("Could not register shortcuts - Handsontable instance not available");
     return;
   }
 
-  // Register macro shortcuts (Ctrl+1-5)
-  for (let i = 1; i <= 5; i++) {
-    gridContext.addShortcut({
-      keys: [["Ctrl", i.toString()]],
-      callback: () => {
-        const macroIndex = i - 1;
-        applyMacro(macroIndex);
-      },
-      group: "timesheet-macros",
-    });
+  const gridContext = getGridContextForShortcuts(hotInstance);
+  if (!gridContext) {
+    return;
   }
 
+  window.logger?.info("Registering keyboard shortcuts for timesheet macros");
+
+  registerMacroShortcuts(gridContext, hotInstance, applyMacro);
+
   // Register duplicate row shortcut (Ctrl+D)
+  // Use 'Control' for Ctrl key (Handsontable uses KeyboardEvent.key values)
   gridContext.addShortcut({
-    keys: [["Ctrl", "d"]],
+    keys: [["Control", "d"]],
+    preventDefault: true,
     callback: () => {
       duplicateSelectedRow();
     },
