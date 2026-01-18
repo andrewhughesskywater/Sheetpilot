@@ -11,7 +11,7 @@ import "handsontable/styles/ht-theme-horizon.css";
 import { useData } from "@/contexts/DataContext";
 import { useHandsontableTheme } from "@/hooks/useHandsontableTheme";
 import { StatusButton } from "@/components/StatusButton";
-import { exportToCSV as exportToCSVIpc } from "@/services/ipc/timesheet";
+import { handleCSVExport } from "./DatabaseViewer.helpers";
 import "./DatabaseViewer.css";
 
 type ButtonStatus = "neutral" | "ready" | "warning";
@@ -153,48 +153,10 @@ function Archive() {
   }, [isRefreshing, refreshArchiveData]);
 
   const exportToCSV = useCallback(async () => {
-    // Prevent multiple simultaneous exports
     if (isExporting) return;
-
-    window.logger?.userAction("export-to-csv-clicked");
     setIsExporting(true);
-
     try {
-      const response = await exportToCSVIpc();
-
-      if (!response.success) {
-        const errorMsg = response.error || "Could not export CSV";
-        window.alert(errorMsg);
-        window.logger?.error("CSV export error", { error: errorMsg });
-        return;
-      }
-
-      if (!response.csvContent) {
-        const errorMsg = "CSV content not available";
-        window.alert(errorMsg);
-        window.logger?.error("CSV export missing content");
-        return;
-      }
-
-      const filename = response.filename || `timesheet_export_${new Date().toISOString().split("T")[0]}.csv`;
-
-      // Create and download the CSV file
-      const blob = new Blob([response.csvContent], { type: "text/csv" });
-      const downloadUrl = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = downloadUrl;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(downloadUrl);
-
-      window.logger?.info("CSV exported successfully", {
-        filename,
-        entryCount: response.entryCount,
-      });
-
-      window.alert(`Successfully exported ${response.entryCount || 0} entries to ${filename}`);
+      await handleCSVExport();
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       window.alert(`Export failed: ${errorMsg}`);

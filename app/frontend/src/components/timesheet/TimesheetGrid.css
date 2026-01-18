@@ -6,27 +6,14 @@
   overflow: visible;
 }
 
-.timesheet-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--sp-space-3);
-  gap: var(--sp-space-3);
-}
 
-.timesheet-header h2 {
-  margin: 0;
-  flex: 1;
-}
-
-/* Footer container for submit button below table */
+/* Footer container for validation errors and refresh button below table */
 .timesheet-footer {
   display: flex;
   flex-direction: column;
-  justify-content: center;
   align-items: center;
   margin-top: var(--sp-space-3);
-  gap: var(--sp-space-3);
+  gap: var(--sp-space-2);
 }
 
 .debug-state-display {
@@ -147,29 +134,68 @@
   align-items: center;
 }
 
+/* Combined Macro and Actions Toolbar */
+.macro-actions-toolbar {
+  display: flex;
+  gap: var(--sp-space-3);
+  margin-bottom: var(--sp-space-3);
+  padding: var(--sp-space-2);
+  background-color: var(--md-sys-color-surface-container-highest);
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-medium);
+  align-items: center;
+  flex-wrap: wrap;
+  position: relative;
+}
+
+.macro-section {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-space-2);
+  align-items: center;
+  flex: 1 1 50%;
+  min-width: 400px;
+  position: relative;
+  z-index: 1;
+}
+
+.actions-section {
+  display: flex;
+  gap: var(--sp-space-2);
+  align-items: center;
+  justify-content: flex-end;
+  flex: 1 1 45%;
+  min-width: 300px;
+  position: relative;
+  z-index: 1;
+  padding-right: 5px;
+}
+
 .macro-button {
-  background-color: var(--md-sys-color-surface-container);
-  color: var(--md-sys-color-on-surface);
-  border: 1px solid var(--md-sys-color-outline);
-  border-radius: var(--md-sys-shape-corner-small);
+  background-color: var(--md-sys-color-surface-container) !important;
+  color: var(--md-sys-color-on-surface) !important;
+  border: 1px solid var(--md-sys-color-outline) !important;
+  border-radius: var(--md-sys-shape-corner-medium);
   padding: var(--sp-space-2) var(--sp-space-3);
   font-family: var(--md-sys-typescale-label-large-font);
-  font-size: var(--md-sys-typescale-label-large-size);
-  font-weight: var(--md-sys-typescale-label-large-weight);
+  font-size: 14px !important;
+  font-weight: 500 !important;
   text-transform: none;
   transition: background-color 0.2s ease, border-color 0.2s ease;
+  position: relative;
+  z-index: 2;
 }
 
 .macro-button:hover:not(:disabled) {
-  background-color: var(--md-sys-color-primary-container);
-  border-color: var(--md-sys-color-primary);
-  color: var(--md-sys-color-on-primary-container);
+  background-color: var(--md-sys-color-primary-container) !important;
+  border-color: var(--md-sys-color-primary) !important;
+  color: var(--md-sys-color-on-primary-container) !important;
 }
 
 .macro-button:disabled {
-  background-color: var(--md-sys-color-surface-container-low);
-  color: var(--md-sys-color-on-surface-variant);
-  border-color: var(--md-sys-color-outline-variant);
+  background-color: var(--md-sys-color-surface-container-low) !important;
+  color: var(--md-sys-color-on-surface-variant) !important;
+  border-color: var(--md-sys-color-outline-variant) !important;
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -177,43 +203,66 @@
 .macro-button-label {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: var(--sp-space-1);
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1;
+  margin: 0;
+  padding: 0;
 }
 
 .macro-button-shortcut {
   font-size: 10px;
+  font-weight: 400;
   color: var(--md-sys-color-on-surface-variant);
   font-family: var(--md-sys-typescale-label-small-font);
   opacity: 0.7;
+  line-height: 1;
+  margin: 0;
+  padding: 0;
+  margin-top: 2px;
 }
 
-.macro-edit-button {
-  margin-left: auto;
-  background-color: transparent;
-  color: var(--md-sys-color-primary);
-  border: none;
-  padding: var(--sp-space-2) var(--sp-space-3);
-  font-family: var(--md-sys-typescale-label-large-font);
-  font-size: var(--md-sys-typescale-label-large-size);
-  font-weight: var(--md-sys-typescale-label-large-weight);
-  text-transform: none;
+/* Action buttons (Summary, Submit, Stop) - match macro button height and font */
+.action-button,
+.submit-button {
+  padding: var(--sp-space-2) var(--sp-space-3) !important;
+  min-height: 40px !important;
+  max-height: 40px !important;
+  height: 40px !important;
+  box-sizing: border-box !important;
+  position: relative;
+  z-index: 2;
+  pointer-events: auto !important;
+  border-radius: var(--md-sys-shape-corner-medium) !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
 }
 
-.macro-edit-button:hover {
-  background-color: var(--md-sys-color-primary-container);
-  color: var(--md-sys-color-on-primary-container);
+/* Ensure macro buttons also have consistent height */
+.macro-button {
+  min-height: 40px !important;
+  max-height: 40px !important;
+  height: 40px !important;
+  box-sizing: border-box !important;
 }
 
-/* Save Button Styles */
-.save-button {
-  font-family: var(--md-sys-typescale-label-large-font);
-  font-size: var(--md-sys-typescale-label-large-size);
-  font-weight: var(--md-sys-typescale-label-large-weight);
-  text-transform: none;
-  transition: background-color 0.2s ease, color 0.2s ease;
+/* Force submit button to be opaque and clickable */
+.submit-button {
+  opacity: 0.9 !important;
+  pointer-events: auto !important;
 }
 
-.save-button:disabled {
-  opacity: 1; /* Keep full opacity when disabled to show state clearly */
+.submit-button.MuiButton-root {
+  opacity: 0.9 !important;
+  pointer-events: auto !important;
 }
+
+.submit-button.MuiButton-root.Mui-disabled {
+  opacity: 0.9 !important;
+  pointer-events: none !important;
+  cursor: not-allowed !important;
+}
+

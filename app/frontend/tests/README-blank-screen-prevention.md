@@ -9,8 +9,9 @@ The original issue was caused by missing Electron APIs (`window.logger`, `window
 ## Test Files
 
 ### 1. `blank-screen-prevention.spec.tsx`
+
 - **Purpose**: Tests the main App component under various API availability scenarios
-- **Coverage**: 
+- **Coverage**:
   - Development environment with/without APIs
   - Production environment with/without APIs
   - API error handling
@@ -18,6 +19,7 @@ The original issue was caused by missing Electron APIs (`window.logger`, `window
   - Error boundary behavior
 
 ### 2. `fallback-utilities.spec.tsx`
+
 - **Purpose**: Tests the fallback utility functions themselves
 - **Coverage**:
   - Logger fallback initialization and functionality
@@ -26,6 +28,7 @@ The original issue was caused by missing Electron APIs (`window.logger`, `window
   - Environment-specific behavior (dev vs production)
 
 ### 3. `e2e-blank-screen-prevention.spec.tsx`
+
 - **Purpose**: End-to-end tests that simulate the exact scenario that caused the blank screen
 - **Coverage**:
   - Original blank screen scenario reproduction
@@ -36,18 +39,21 @@ The original issue was caused by missing Electron APIs (`window.logger`, `window
 ## Running the Tests
 
 ### Run All Blank Screen Prevention Tests
+
 ```bash
 cd app/frontend
 npx vitest run --config tests/vitest.config.blank-screen-prevention.ts
 ```
 
 ### Run Tests in Watch Mode
+
 ```bash
 cd app/frontend
 npx vitest --watch --config tests/vitest.config.blank-screen-prevention.ts
 ```
 
 ### Run Individual Test Files
+
 ```bash
 # Run specific test file
 cd app/frontend
@@ -61,6 +67,7 @@ npx vitest run --config tests/vitest.config.blank-screen-prevention.ts -- e2e-bl
 ```
 
 ### Run with Coverage
+
 ```bash
 cd app/frontend
 npx vitest run --coverage --config tests/vitest.config.blank-screen-prevention.ts
@@ -69,6 +76,7 @@ npx vitest run --coverage --config tests/vitest.config.blank-screen-prevention.t
 ## Test Configuration
 
 The tests use a custom Vitest configuration (`tests/vitest.config.blank-screen-prevention.ts`) that:
+
 - Sets up jsdom environment for React testing
 - Includes proper setup files
 - Configures coverage reporting
@@ -85,6 +93,7 @@ The tests use a custom Vitest configuration (`tests/vitest.config.blank-screen-p
 ## Test Scenarios Covered
 
 ### API Availability Scenarios
+
 - ✅ All APIs available (normal Electron environment)
 - ✅ No APIs available (browser dev environment)
 - ✅ Partial APIs available (mixed environment)
@@ -93,11 +102,13 @@ The tests use a custom Vitest configuration (`tests/vitest.config.blank-screen-p
 - ✅ APIs return malformed data
 
 ### Environment Scenarios
+
 - ✅ Development mode with fallbacks
 - ✅ Production mode without fallbacks
 - ✅ Mixed environments
 
 ### Error Scenarios
+
 - ✅ JavaScript errors from missing APIs
 - ✅ Network errors
 - ✅ Component rendering errors
@@ -106,6 +117,7 @@ The tests use a custom Vitest configuration (`tests/vitest.config.blank-screen-p
 ## Maintenance
 
 These tests should be updated when:
+
 1. New APIs are added to the window object
 2. Fallback systems are modified
 3. The main App component structure changes
@@ -114,6 +126,7 @@ These tests should be updated when:
 ## Success Criteria
 
 The tests pass when:
+
 1. App renders without blank screen in all scenarios
 2. No JavaScript errors occur from missing APIs
 3. Fallback systems initialize correctly

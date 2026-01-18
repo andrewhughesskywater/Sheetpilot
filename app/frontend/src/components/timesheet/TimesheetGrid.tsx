@@ -45,9 +45,10 @@ import type { TimesheetRow } from "./schema/timesheet.schema";
 import MacroManagerDialog from "./macros/MacroManagerDialog";
 import KeyboardShortcutsHintDialog from "@/components/KeyboardShortcutsHintDialog";
 import { ValidationErrorDialog } from "./validation/ValidationErrorDialog";
+import WeeklySummaryDialog from "./WeeklySummaryDialog";
+import Alert from "@mui/material/Alert";
 import TimesheetGridLoadingState from "./components/TimesheetGridLoadingState";
-import TimesheetGridHeader from "./components/TimesheetGridHeader";
-import MacroToolbar from "./macros/MacroToolbar";
+import MacroAndActionsToolbar from "./components/MacroAndActionsToolbar";
 import TimesheetGridFooter from "./components/TimesheetGridFooter";
 import type { MacroRow } from "@/utils/macroStorage";
 import { isMacroEmpty } from "@/utils/macroStorage";
@@ -189,6 +190,9 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(
     // Keyboard shortcuts hint dialog state
     const [showShortcutsHint, setShowShortcutsHint] = useState(false);
 
+    // Weekly summary dialog state
+    const [showWeeklySummary, setShowWeeklySummary] = useState(false);
+
     // Validation error state
     const [validationErrors, setValidationErrors] = useState<ValidationError[]>(
       []
@@ -219,6 +223,13 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(
       refreshArchiveData,
       archiveData,
     } = useData();
+    
+    // Ensure archive data is loaded when weekly summary dialog opens
+    useEffect(() => {
+      if (showWeeklySummary) {
+        void refreshArchiveData();
+      }
+    }, [showWeeklySummary, refreshArchiveData]);
     
     // Track what changed between renders to identify loop cause
     useEffect(() => {
@@ -815,16 +826,23 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(
 
     return (
       <div className="timesheet-page">
-        <TimesheetGridHeader
-          saveButtonState={saveButtonState}
-          onSave={handleManualSave}
-          isAdmin={isAdmin}
-          archiveEntries={archiveData.timesheet}
-        />
-        <MacroToolbar
+        {isAdmin && (
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            Admin users cannot submit timesheet entries to SmartSheet.
+          </Alert>
+        )}
+        <MacroAndActionsToolbar
           macros={macros}
           onApplyMacro={applyMacro}
           onEditMacros={() => setShowMacroDialog(true)}
+          buttonStatus={buttonStatus}
+          onSubmit={handleSubmitTimesheet}
+          isSubmitting={isProcessing}
+          onStop={handleStopSubmission}
+          isAdmin={isAdmin}
+          onShowWeeklySummary={() => setShowWeeklySummary(true)}
+          saveButtonState={saveButtonState}
+          onSave={handleManualSave}
         />
         <HotTable
           ref={hotTableRef}
@@ -873,10 +891,6 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(
           validationErrors={validationErrors}
           onShowAllErrors={() => setShowErrorDialog(true)}
           onRefresh={handleRefresh}
-          buttonStatus={buttonStatus}
-          onSubmit={handleSubmitTimesheet}
-          isSubmitting={isProcessing}
-          onStop={handleStopSubmission}
           isAdmin={isAdmin}
           isLoading={isTimesheetDraftLoading}
         />
@@ -901,6 +915,12 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(
         <KeyboardShortcutsHintDialog
           open={showShortcutsHint}
           onClose={() => setShowShortcutsHint(false)}
+        />
+        {/* Weekly Summary Dialog */}
+        <WeeklySummaryDialog
+          open={showWeeklySummary}
+          onClose={() => setShowWeeklySummary(false)}
+          archiveData={archiveData.timesheet}
         />
       </div>
     );

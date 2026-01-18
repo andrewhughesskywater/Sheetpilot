@@ -93,7 +93,6 @@ function Settings() {
   const [updateEmail, setUpdateEmail] = useState('');
   const [updatePassword, setUpdatePassword] = useState('');
   const [isUpdatingCredentials, setIsUpdatingCredentials] = useState(false);
-  
   // Admin state
   const [showClearCredentialsDialog, setShowClearCredentialsDialog] = useState(false);
   const [showRebuildDatabaseDialog, setShowRebuildDatabaseDialog] = useState(false);
@@ -130,7 +129,6 @@ function Settings() {
     void loadLogFiles();
     void loadStoredCredentials();
     void loadSettings();
-   
   }, [loadLogFiles, loadStoredCredentials, loadSettings]);
 
   const handleUpdateCredentials = useCallback(async () => {
