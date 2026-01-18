@@ -7,7 +7,7 @@ import App, { Splash } from './App'
 import { initializeLoggerFallback } from './utils/logger-fallback'
 import { initializeAPIFallback } from './utils/api-fallback'
 import { runOnce } from './utils/safe-init'
-import { initializeTheme, getCurrentEffectiveTheme, subscribeToThemeChanges } from './utils/theme-manager'
+import { loadThemeFromSettings, getCurrentEffectiveTheme, subscribeToThemeChanges, setupSystemThemeListener } from './utils/theme-manager'
 
 // Initialize logger and API fallbacks for development mode (idempotent with guard)
 runOnce(() => {
@@ -60,7 +60,14 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 // Initialize theme system before rendering
-initializeTheme();
+// Load theme from backend settings (falls back to localStorage then auto)
+loadThemeFromSettings().catch((error) => {
+  window.logger?.warn('Could not load theme from settings on startup', {
+    error: error instanceof Error ? error.message : String(error)
+  });
+});
+// Set up system theme change listener for auto mode
+setupSystemThemeListener();
 
 // MUI theme is primarily overridden by M3 CSS tokens in m3-mui-overrides.css
 // This theme ensures MUI respects dark mode and doesn't break

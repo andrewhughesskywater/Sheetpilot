@@ -38,19 +38,21 @@ export default function TimesheetGridFooter({
         onShowAllErrors={onShowAllErrors}
       />
       <div style={{ display: 'flex', gap: 'var(--sp-space-2)', alignItems: 'center' }}>
-        <Button
-          variant="outlined"
-          size="medium"
-          startIcon={<RefreshIcon />}
-          onClick={onRefresh}
-          disabled={isLoading}
-          sx={{
-            minWidth: 'auto',
-            textTransform: 'none'
-          }}
-        >
-          Refresh
-        </Button>
+        {isAdmin && (
+          <Button
+            variant="outlined"
+            size="medium"
+            startIcon={<RefreshIcon />}
+            onClick={onRefresh}
+            disabled={isLoading}
+            sx={{
+              minWidth: 'auto',
+              textTransform: 'none'
+            }}
+          >
+            Refresh
+          </Button>
+        )}
         <SubmitProgressBar
           status={buttonStatus}
           onSubmit={onSubmit}

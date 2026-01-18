@@ -24,12 +24,15 @@ import CardContent from '@mui/material/CardContent';
 import Typography from '@mui/material/Typography';
 import SettingsIcon from '@mui/icons-material/Settings';
 import { useSession } from '@/contexts/SessionContext';
+import type { ThemeMode } from '@/utils/theme-manager';
 import './Settings.css';
 import {
   loadStoredCredentials as loadStoredCredentialsHelper,
   loadLogFiles as loadLogFilesHelper,
   loadSettings as loadSettingsHelper,
+  loadThemeSettings as loadThemeSettingsHelper,
   handleHeadlessModeToggle as handleHeadlessModeToggleHelper,
+  handleThemeModeChange as handleThemeModeChangeHelper,
   handleUpdateCredentials as handleUpdateCredentialsHelper,
   handleLogout as handleLogoutHelper,
   handleAdminClearCredentials as handleAdminClearCredentialsHelper,
@@ -98,6 +101,7 @@ function Settings() {
   
   // Settings state
   const [headlessMode, setHeadlessMode] = useState<boolean>(false);
+  const [themeMode, setThemeMode] = useState<ThemeMode>('auto');
   const [isLoadingSettings, setIsLoadingSettings] = useState(false);
 
   const loadStoredCredentials = useCallback(async () => {
@@ -110,10 +114,15 @@ function Settings() {
 
   const loadSettings = useCallback(async () => {
     await loadSettingsHelper(setHeadlessMode);
+    await loadThemeSettingsHelper(setThemeMode);
   }, []);
 
   const handleHeadlessModeToggle = useCallback(async (checked: boolean) => {
     await handleHeadlessModeToggleHelper(checked, setIsLoadingSettings, setHeadlessMode, setError);
+  }, []);
+
+  const handleThemeModeChange = useCallback(async (mode: ThemeMode) => {
+    await handleThemeModeChangeHelper(mode, setIsLoadingSettings, setThemeMode, setError);
   }, []);
 
   // Load log files, credentials, and settings on component mount
@@ -276,8 +285,10 @@ function Settings() {
         }}
         error={error}
         headlessMode={headlessMode}
+        themeMode={themeMode}
         isLoadingSettings={isLoadingSettings}
         onHeadlessModeToggle={handleHeadlessModeToggle}
+        onThemeModeChange={handleThemeModeChange}
       />
 
       <AboutDialog

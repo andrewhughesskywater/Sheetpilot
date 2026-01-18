@@ -8,16 +8,23 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
 import Switch from "@mui/material/Switch";
 import FormControlLabel from "@mui/material/FormControlLabel";
+import FormControl from "@mui/material/FormControl";
+import FormLabel from "@mui/material/FormLabel";
+import RadioGroup from "@mui/material/RadioGroup";
+import Radio from "@mui/material/Radio";
 import logoImage from "@/assets/images/logo.svg";
 import { APP_VERSION } from "@sheetpilot/shared";
+import type { ThemeMode } from "@/utils/theme-manager";
 
 interface ApplicationSettingsDialogProps {
   open: boolean;
   onClose: () => void;
   error: string;
   headlessMode: boolean;
+  themeMode: ThemeMode;
   isLoadingSettings: boolean;
   onHeadlessModeToggle: (checked: boolean) => void;
+  onThemeModeChange: (mode: ThemeMode) => void;
 }
 
 export const ApplicationSettingsDialog = ({
@@ -25,8 +32,10 @@ export const ApplicationSettingsDialog = ({
   onClose,
   error,
   headlessMode,
+  themeMode,
   isLoadingSettings,
   onHeadlessModeToggle,
+  onThemeModeChange,
 }: ApplicationSettingsDialogProps) => {
   return (
     <Dialog
@@ -44,6 +53,54 @@ export const ApplicationSettingsDialog = ({
           </Alert>
         )}
         <Box sx={{ mt: 2 }}>
+          <Typography variant="h6" gutterBottom>
+            Appearance
+          </Typography>
+          <FormControl component="fieldset" sx={{ mb: 3 }}>
+            <FormLabel component="legend">Theme Mode</FormLabel>
+            <RadioGroup
+              value={themeMode}
+              onChange={(e) => onThemeModeChange(e.target.value as ThemeMode)}
+            >
+              <FormControlLabel
+                value="auto"
+                control={<Radio disabled={isLoadingSettings} />}
+                label={
+                  <Box>
+                    <Typography variant="body1">Auto (System)</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Automatically match Windows theme
+                    </Typography>
+                  </Box>
+                }
+              />
+              <FormControlLabel
+                value="light"
+                control={<Radio disabled={isLoadingSettings} />}
+                label={
+                  <Box>
+                    <Typography variant="body1">Light</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Always use light theme
+                    </Typography>
+                  </Box>
+                }
+              />
+              <FormControlLabel
+                value="dark"
+                control={<Radio disabled={isLoadingSettings} />}
+                label={
+                  <Box>
+                    <Typography variant="body1">Dark</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Always use dark theme
+                    </Typography>
+                  </Box>
+                }
+              />
+            </RadioGroup>
+          </FormControl>
+
           <Typography variant="h6" gutterBottom>
             Browser Settings
           </Typography>

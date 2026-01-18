@@ -17,6 +17,7 @@ import "@/components/timesheet/TimesheetGrid.css"; // Reuse TimesheetGrid styles
 import type { MacroRow } from "@/utils/macroStorage";
 import { saveMacros, loadMacros } from "@/utils/macroStorage";
 import { SpellcheckEditor } from "@/components/timesheet/editors/SpellcheckEditor";
+import { useHandsontableTheme } from "@/hooks/useHandsontableTheme";
 import {
   getToolColumnConfig,
   getChargeCodeColumnConfig,
@@ -77,6 +78,7 @@ const MacroManagerDialog = ({
   // Business config state - loaded from database (database is single source of truth)
   const [projects, setProjects] = useState<readonly string[]>([]);
   const [chargeCodes, setChargeCodes] = useState<readonly string[]>([]);
+  const handsontableTheme = useHandsontableTheme();
 
   // Load business config from database when dialog opens
   useEffect(() => {
@@ -242,7 +244,7 @@ const MacroManagerDialog = ({
             columns={columnDefinitions}
             cells={cellsFunction}
             afterChange={handleAfterChange}
-            themeName="ht-theme-horizon"
+            themeName={handsontableTheme}
             width="100%"
             height={400}
             rowHeaders={true}

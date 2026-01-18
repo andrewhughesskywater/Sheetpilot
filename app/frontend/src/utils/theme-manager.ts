@@ -95,7 +95,7 @@ export function applyTheme(mode: ThemeMode): void {
 /**
  * Set up listener for system theme changes
  */
-function setupSystemThemeListener(): void {
+export function setupSystemThemeListener(): void {
   if (typeof window === "undefined" || !window.matchMedia) return;
 
   try {
@@ -189,4 +189,68 @@ export function subscribeToThemeChanges(
   return () => {
     window.removeEventListener("theme-change", handler);
   };
+}
+
+/**
+ * Load theme from backend settings
+ * Falls back to localStorage if backend is unavailable
+ */
+export async function loadThemeFromSettings(): Promise<ThemeMode> {
+  try {
+    // Try to load from backend settings
+    if (window.settings?.get) {
+      const response = await window.settings.get("themeMode");
+      if (response?.success && response.value) {
+        const mode = response.value as ThemeMode;
+        if (mode === "auto" || mode === "light" || mode === "dark") {
+          // Cache in localStorage for fast initial load
+          setStoredTheme(mode);
+          applyTheme(mode);
+          return mode;
+        }
+      }
+    }
+  } catch (error) {
+    getWindowLogger()?.warn?.("Could not load theme from backend settings", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+
+  // Fall back to localStorage
+  const stored = getStoredTheme();
+  if (stored) {
+    applyTheme(stored);
+    return stored;
+  }
+
+  // Default to auto
+  const defaultMode: ThemeMode = "auto";
+  applyTheme(defaultMode);
+  return defaultMode;
+}
+
+/**
+ * Save theme to backend settings
+ * Also caches in localStorage for fast initial load
+ */
+export async function saveThemeToSettings(mode: ThemeMode): Promise<void> {
+  // Save to localStorage immediately for fast access
+  setStoredTheme(mode);
+  applyTheme(mode);
+
+  // Save to backend settings
+  try {
+    if (window.settings?.set) {
+      const response = await window.settings.set("themeMode", mode);
+      if (!response?.success) {
+        getWindowLogger()?.error?.("Could not save theme to backend settings", {
+          error: response?.error,
+        });
+      }
+    }
+  } catch (error) {
+    getWindowLogger()?.error?.("Could not save theme to backend settings", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
 }

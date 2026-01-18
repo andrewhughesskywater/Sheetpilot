@@ -1,0 +1,819 @@
+---
+alwaysApply: true
+---
+
+# Code Quality Rules
+
+**Purpose**: These rules quantify and enforce the principles defined in linting.mdc. They provide measurable limits for complexity, cohesion, and lines of code to ensure maintainable, testable code.
+
+**Connection to Linting Rules**:
+
+- Linting rule: "Keep functions focused and small" → Quality rule: Function size limits per file type
+- Linting rule: "Single Responsibility Principle" → Quality rule: Cohesion standards and module organization
+- Linting rule: "One class/component per file" → Quality rule: File size limits per file type
+- Linting rule: "Maximum 50 lines per function (guideline)" → Quality rule: Specific limits per function type
+
+## Complexity Limits
+
+### Cyclomatic Complexity
+
+**Definition**: Cyclomatic complexity measures the number of independent paths through code by counting decision points (if, while, for, case, &&, ||, ?, catch).
+
+**Limits**:
+
+- **Functions**: Maximum cyclomatic complexity of **10**
+- **Classes/Modules**: Maximum average complexity of **5**
+
+**Why**: High complexity makes code harder to understand, test, and maintain. Each additional path requires separate test cases.
+
+**Example - TOO COMPLEX (complexity = 12)**:
+
+```typescript
+function processTimesheet(entry: TimesheetEntry, config: Config) {
+  if (!entry) return null;
+  if (!entry.hours || entry.hours <= 0) return null;
+  if (entry.hours > config.maxHours) return null;
+  
+  if (entry.type === 'regular') {
+    if (entry.isWeekend && config.allowWeekend) {
+      return calculateRegularWeekend(entry);
+    } else if (!entry.isWeekend) {
+      return calculateRegular(entry);
+    }
+  } else if (entry.type === 'overtime') {
+    if (entry.hours > config.overtimeThreshold) {
+      return calculateOvertime(entry);
+    }
+  } else if (entry.type === 'holiday') {
+    if (config.allowHoliday && entry.isApproved) {
+      return calculateHoliday(entry);
+    }
+  }
+  
+  return null;
+}
+```
+
+**Refactored - ACCEPTABLE (complexity = 3 per function)**:
+
+```typescript
+function processTimesheet(entry: TimesheetEntry, config: Config): ProcessedEntry | null {
+  if (!isValidEntry(entry, config)) return null;
+  
+  const processor = getProcessorForType(entry.type);
+  return processor.process(entry, config);
+}
+
+function isValidEntry(entry: TimesheetEntry, config: Config): boolean {
+  return entry && 
+         entry.hours > 0 && 
+         entry.hours <= config.maxHours;
+}
+
+function getProcessorForType(type: string): TimesheetProcessor {
+  const processors: Record<string, TimesheetProcessor> = {
+    regular: new RegularProcessor(),
+    overtime: new OvertimeProcessor(),
+    holiday: new HolidayProcessor(),
+  };
+  
+  return processors[type] ?? new DefaultProcessor();
+}
+```
+
+### Cognitive Complexity
+
+**Definition**: Cognitive complexity measures how difficult code is to understand by counting nested control structures and interruptions to linear flow.
+
+**Limits**:
+
+- **Functions**: Maximum cognitive complexity of **15**
+- **Nested blocks**: Maximum nesting depth of **4**
+
+**Why**: Deeply nested code with many breaks in linear flow is mentally exhausting to read and understand.
+
+**Techniques to Reduce Complexity**:
+
+1. **Extract methods** - Break complex functions into smaller, focused functions
+
+   ```typescript
+   // ❌ High complexity
+   function handleSubmit() {
+     if (user) {
+       if (user.isAuthenticated) {
+         if (form.isValid) {
+           // ... 20 lines of logic
+         }
+       }
+     }
+   }
+   
+   // ✅ Reduced complexity
+   function handleSubmit() {
+     if (!canSubmit(user, form)) return;
+     submitForm(form);
+   }
+   ```
+
+2. **Use early returns** - Eliminate nesting by failing fast
+
+   ```typescript
+   // ❌ Nested
+   function process(data: Data) {
+     if (data) {
+       if (data.isValid) {
+         // ... process
+       }
+     }
+   }
+   
+   // ✅ Early return
+   function process(data: Data) {
+     if (!data || !data.isValid) return;
+     // ... process
+   }
+   ```
+
+3. **Replace complex conditionals with polymorphism or lookup tables**
+
+   ```typescript
+   // ❌ Complex branching
+   function getIcon(type: string) {
+     if (type === 'success') return '✓';
+     else if (type === 'error') return '✗';
+     else if (type === 'warning') return '⚠';
+     else if (type === 'info') return 'ℹ';
+     else return '?';
+   }
+   
+   // ✅ Lookup table
+   const ICONS: Record<string, string> = {
+     success: '✓',
+     error: '✗',
+     warning: '⚠',
+     info: 'ℹ',
+   };
+   
+   function getIcon(type: string): string {
+     return ICONS[type] ?? '?';
+   }
+   ```
+
+4. **Use functional methods** - Replace loops with map/filter/reduce
+
+   ```typescript
+   // ❌ Imperative loop
+   function getActiveUsers(users: User[]) {
+     const active = [];
+     for (let i = 0; i < users.length; i++) {
+       if (users[i].isActive && users[i].lastLogin) {
+         active.push(users[i]);
+       }
+     }
+     return active;
+   }
+   
+   // ✅ Functional
+   function getActiveUsers(users: User[]): User[] {
+     return users.filter(user => user.isActive && user.lastLogin);
+   }
+   ```
+
+### Measuring Complexity
+
+Use ESLint plugin to enforce complexity limits in `eslint.config.mjs`:
+
+```javascript
+{
+  rules: {
+    'complexity': ['error', { max: 10 }],
+    'max-depth': ['error', { max: 4 }],
+    'max-nested-callbacks': ['error', { max: 3 }],
+  }
+}
+```
+
+## Cohesion Standards
+
+### Module Cohesion
+
+**Definition**: Cohesion measures how closely related and focused the responsibilities of a module are. High cohesion means a module does one thing well.
+
+**Principles**:
+
+1. **Single Responsibility** - Each module, class, or file should have ONE clear purpose
+
+   ```typescript
+   // ❌ Low cohesion - mixed responsibilities
+   // user-manager.ts
+   export class UserManager {
+     createUser() { }
+     deleteUser() { }
+     sendEmail() { }        // Email responsibility
+     logActivity() { }      // Logging responsibility
+     validatePassword() { } // Validation responsibility
+   }
+   
+   // ✅ High cohesion - focused responsibilities
+   // user-service.ts
+   export class UserService {
+     createUser() { }
+     deleteUser() { }
+     updateUser() { }
+   }
+   
+   // email-service.ts
+   export class EmailService {
+     sendEmail() { }
+     sendWelcomeEmail() { }
+   }
+   
+   // password-validator.ts
+   export class PasswordValidator {
+     validate() { }
+     checkStrength() { }
+   }
+   ```
+
+2. **Related Data and Behavior Together** - Keep data structures close to functions that operate on them
+
+   ```typescript
+   // ✅ High cohesion
+   // timesheet-entry.ts
+   export interface TimesheetEntry {
+     hours: number;
+     date: Date;
+     project: string;
+   }
+   
+   export function calculateTotal(entries: TimesheetEntry[]): number {
+     return entries.reduce((sum, entry) => sum + entry.hours, 0);
+   }
+   
+   export function filterByProject(entries: TimesheetEntry[], project: string): TimesheetEntry[] {
+     return entries.filter(entry => entry.project === project);
+   }
+   ```
+
+3. **Avoid God Objects** - No single class/module should know or do everything
+
+   **Warning signs**:
+   - File has 500+ lines
+   - Class has 15+ methods
+   - Module imports from many unrelated domains
+   - Name is vague (Manager, Handler, Util, Helper)
+
+### Function Cohesion
+
+**Sequential Cohesion** - Function steps naturally follow each other:
+
+```typescript
+// ✅ High cohesion - steps are sequential
+function submitTimesheet(entry: TimesheetEntry): Promise<void> {
+  const validated = validateEntry(entry);
+  const formatted = formatForAPI(validated);
+  const result = await sendToAPI(formatted);
+  return result;
+}
+```
+
+**Functional Cohesion** - Function performs ONE well-defined task:
+
+```typescript
+// ✅ Each function has single, clear purpose
+function isValidEmail(email: string): boolean { }
+function sendPasswordReset(email: string): Promise<void> { }
+function hashPassword(password: string): string { }
+
+// ❌ Low cohesion - multiple unrelated tasks
+function handleUser(email: string, password: string) {
+  // validates email
+  // sends email
+  // hashes password
+  // updates database
+  // logs activity
+}
+```
+
+### File Organization for High Cohesion
+
+1. **Group by feature, not by type**
+
+   ```text
+   ✅ Feature-based (high cohesion)
+   features/
+     timesheet/
+       TimesheetGrid.tsx
+       TimesheetRow.tsx
+       timesheet-service.ts
+       timesheet-types.ts
+     authentication/
+       LoginForm.tsx
+       auth-service.ts
+       auth-types.ts
+   
+   ❌ Type-based (low cohesion)
+   components/
+     TimesheetGrid.tsx
+     TimesheetRow.tsx
+     LoginForm.tsx
+   services/
+     timesheet-service.ts
+     auth-service.ts
+   ```
+
+2. **Minimize dependencies between modules**
+   - Each feature should be as independent as possible
+   - Shared code goes in `shared/` or `utils/`
+   - Features should not directly import from other features
+
+3. **Use clear module boundaries**
+   - Export only what's necessary (minimize public API)
+   - Use `index.ts` to control what's exposed from a module
+
+## Lines of Code (LOC) Limits
+
+**Purpose**: These limits enforce the linting principle of "keep functions focused and small" (see linting.mdc) by quantifying what "small" means for different file types.
+
+**Measuring**: Count only code lines (exclude blank lines, comments, imports). Use `skipBlankLines: true, skipComments: true` in ESLint configuration.
+
+### Quick Reference Table
+
+| File Type | Function Target | Function Max | File Target | File Max | Hard Limit |
+|-----------|----------------|--------------|-------------|----------|------------|
+| **React Components** | 30-50 | 75-100 | 100-200 | 250 | 400 |
+| **Services/Business Logic** | 20-30 | 50 | 150-250 | 300 | 400 |
+| **Utilities** | 20-30 | 50 | 100-150 | 200 | 250 |
+| **Tests** | 40-60 | 100-150 | 150-250 | 400 | 500 |
+| **Types** | N/A | N/A | 100-200 | 300 | 400 |
+| **Route Handlers** | 30-50 | 50 | 150-200 | 250 | - |
+| **Config Files** | N/A | N/A | < 300 | 500 | exempt |
+
+### Function Size Limits
+
+Per the linting rules, functions should follow Single Responsibility Principle. These LOC limits enforce that:
+
+**Standard Functions** (business logic, utilities, services):
+
+- **Target**: 20-30 lines
+- **Maximum**: 50 lines
+- **Hard limit**: 75 lines (requires justification comment)
+
+**React Component Functions**:
+
+- **Presentation components**: 30-50 lines
+- **Container components**: 50-75 lines
+- **Hard limit**: 100 lines (requires justification comment)
+
+**Test Functions**:
+
+- **Unit tests**: 40-60 lines (AAA pattern with setup)
+- **Integration tests**: 60-100 lines (complex setup/teardown)
+- **Hard limit**: 150 lines (requires justification comment)
+
+**Why**: Long functions violate Single Responsibility (linting rule). They indicate multiple tasks and increase cyclomatic complexity.
+
+**Example violations**:
+
+```typescript
+// ❌ TOO LONG (120 lines) - violates linting "keep functions focused and small"
+function processCompleteWorkflow() {
+  // ... 120 lines of mixed logic
+}
+
+// ✅ Refactored into focused functions (30 lines each)
+function processCompleteWorkflow() {
+  const validated = validateInput();
+  const processed = processData(validated);
+  const result = saveResults(processed);
+  return result;
+}
+```
+
+### React Component File Limits
+
+React components should follow the component structure guidelines in linting.mdc (functional components with hooks, proper hook ordering).
+
+**Presentation Components** (pure UI, no business logic):
+
+- **Target**: 50-100 lines
+- **Maximum**: 150 lines
+- **Example**: Button, Input, Card, Modal (one component per file per linting rules)
+
+**Feature Components** (connected components with logic):
+
+- **Target**: 100-200 lines
+- **Maximum**: 250 lines
+- **Example**: TimesheetGrid, LoginForm, SettingsPanel
+
+**Page/Container Components** (route-level components):
+
+- **Target**: 150-250 lines
+- **Maximum**: 300 lines
+- **Hard limit**: 400 lines (split into sub-components)
+- **Example**: DashboardPage, TimesheetPage
+
+**Why**: Large components violate "one component per file" (linting rule). They often contain multiple responsibilities and become hard to test.
+
+**Refactoring strategy**:
+
+```typescript
+// ❌ TimesheetPage.tsx (450 lines) - TOO LARGE
+export const TimesheetPage: React.FC = () => {
+  // 50 lines of state and hooks
+  // 100 lines of handlers
+  // 300 lines of JSX with inline components
+};
+
+// ✅ Split into focused components
+// TimesheetPage.tsx (150 lines)
+export const TimesheetPage: React.FC = () => {
+  return (
+    <>
+      <TimesheetHeader />
+      <TimesheetGrid entries={entries} />
+      <TimesheetFooter />
+    </>
+  );
+};
+
+// TimesheetGrid.tsx (200 lines)
+// TimesheetHeader.tsx (80 lines)
+// TimesheetFooter.tsx (120 lines)
+```
+
+### Service/Business Logic File Limits
+
+Services implement business logic and should follow the linting rules for error handling (try-catch blocks, validation) and async/await patterns.
+
+**Simple Services** (single domain responsibility):
+
+- **Target**: 100-150 lines
+- **Maximum**: 200 lines
+- **Example**: AuthService (login, logout, validateToken)
+
+**Complex Services** (multiple related operations):
+
+- **Target**: 150-250 lines
+- **Maximum**: 300 lines
+- **Example**: TimesheetService (create, update, submit, calculate)
+
+**Hard limit**: 400 lines (split into multiple services)
+
+**Why**: Large services violate Single Responsibility. They become god objects and are hard to test.
+
+**Class-based services**:
+
+- Follow class size limits (15 public methods max per linting warning)
+- Each method should be focused (50 lines max)
+
+### Utility File Limits
+
+Utility files contain helper functions. Per linting rules, keep related functions together but avoid "utility dumps."
+
+**Focused Utility Files** (single category of helpers):
+
+- **Target**: 100-150 lines
+- **Maximum**: 200 lines
+- **Example**: date-utils.ts, string-utils.ts, validation-utils.ts
+
+**Hard limit**: 250 lines (split by subcategory)
+
+**Why**: Large utility files become "junk drawers" with low cohesion. Split by function category.
+
+**Structure**:
+
+```typescript
+// ✅ date-utils.ts (150 lines)
+export function formatDate(date: Date): string { }
+export function parseDate(str: string): Date { }
+export function addBusinessDays(date: Date, days: number): Date { }
+// ... related date functions only
+
+// ❌ utils.ts (800 lines) - AVOID
+// Mix of date, string, array, validation, formatting, etc.
+```
+
+### Type Definition File Limits
+
+Type files follow linting rules: prefer interfaces for object shapes, keep external service contracts in shared/types/.
+
+**Type-Only Files** (.d.ts or types.ts):
+
+- **Target**: 100-200 lines
+- **Maximum**: 300 lines
+- **Hard limit**: 400 lines (split by domain)
+
+**Why**: Large type files indicate multiple domains. Split by feature/domain per cohesion principles.
+
+**Organization**:
+
+```typescript
+// ✅ Split by domain (150 lines each)
+// timesheet-types.ts
+// user-types.ts
+// settings-types.ts
+
+// ❌ types.ts (600 lines) - low cohesion
+// All types mixed together
+```
+
+### Test File Limits
+
+Test files should co-locate with source files per linting rules and follow AAA pattern.
+
+**Unit Test Files** (.test.ts):
+
+- **Target**: 150-250 lines
+- **Maximum**: 300 lines
+- **Structure**: One describe block per function, multiple it blocks
+
+**Integration Test Files**:
+
+- **Target**: 200-300 lines
+- **Maximum**: 400 lines
+- **Structure**: Complex setup, multiple test scenarios
+
+**Hard limit**: 500 lines (split by test category or feature)
+
+**Why**: Test files can be longer than source files, but excessive length indicates the source code being tested is too complex.
+
+### Backend Route Handler File Limits
+
+Route handlers follow linting rules for error handling and async/await patterns.
+
+**Route Handler Files** (e.g., settings-handlers.ts):
+
+- **Target**: 150-200 lines
+- **Maximum**: 250 lines
+- **Structure**: Multiple handler functions (3-7 handlers per file)
+- **Each handler**: 30-50 lines max
+
+**Why**: Route files group related endpoints. Too many handlers indicate multiple features (split by feature).
+
+### Configuration File Limits
+
+Configuration files are exempt from strict limits but should remain organized.
+
+**Config Files** (eslint.config.mjs, vitest.config.ts):
+
+- **Reasonable**: < 300 lines
+- **Warning**: > 500 lines (consider splitting or extracting)
+
+**Exception**: These files are not subject to hard limits.
+
+## Enforcement Strategy
+
+### Code Review Checklist
+
+Before approving PR, verify file-specific limits:
+
+**For All Files**:
+
+- [ ] Functions follow Single Responsibility Principle (linting rule)
+- [ ] Cyclomatic complexity < 10 per function
+- [ ] Maximum nesting depth < 4 levels
+- [ ] Each module has single, clear responsibility
+- [ ] No "god objects" or "utility dumps"
+
+**For React Components** (*.tsx):
+
+- [ ] Presentation components < 150 lines
+- [ ] Feature components < 250 lines
+- [ ] Page components < 400 lines
+- [ ] Each component file contains ONE component (linting rule)
+- [ ] Hooks follow proper ordering (linting rule)
+
+**For Services/Business Logic** (*.service.ts, *-service.ts):
+
+- [ ] Simple services < 200 lines
+- [ ] Complex services < 300 lines
+- [ ] Classes have < 15 public methods (linting warning sign)
+- [ ] Functions < 50 lines (linting guideline)
+
+**For Utilities** (*-utils.ts, *.utils.ts):
+
+- [ ] Utility files < 200 lines
+- [ ] Functions are focused (one clear purpose each)
+- [ ] Related functions grouped together (high cohesion)
+
+**For Tests** (*.test.ts, *.test.tsx):
+
+- [ ] Unit test files < 300 lines
+- [ ] Integration test files < 400 lines
+- [ ] Test functions follow AAA pattern (linting rule)
+
+**For Types** (*-types.ts, *.d.ts):
+
+- [ ] Type files < 300 lines
+- [ ] Interfaces used for object shapes (linting rule)
+- [ ] Types split by domain/feature (high cohesion)
+
+### Automated Tools
+
+1. **ESLint** - Configure per-file-type rules in `eslint.config.mjs`
+
+   ```javascript
+   {
+     // Global complexity rules
+     rules: {
+       'complexity': ['error', { max: 10 }],
+       'max-depth': ['error', { max: 4 }],
+       'max-nested-callbacks': ['error', { max: 3 }],
+     },
+     
+     // File-type specific overrides
+     overrides: [
+       {
+         // React components
+         files: ['**/*.tsx'],
+         rules: {
+           'max-lines-per-function': ['warn', { 
+             max: 100, 
+             skipBlankLines: true, 
+             skipComments: true 
+           }],
+           'max-lines': ['warn', { 
+             max: 250,
+             skipBlankLines: true, 
+             skipComments: true 
+           }],
+         },
+       },
+       {
+         // Services and business logic
+         files: ['**/*.service.ts', '**/*-service.ts'],
+         rules: {
+           'max-lines-per-function': ['warn', { 
+             max: 50, 
+             skipBlankLines: true, 
+             skipComments: true 
+           }],
+           'max-lines': ['warn', { 
+             max: 300,
+             skipBlankLines: true, 
+             skipComments: true 
+           }],
+         },
+       },
+       {
+         // Utilities
+         files: ['**/*.utils.ts', '**/*-utils.ts', '**/utils/**/*.ts'],
+         rules: {
+           'max-lines-per-function': ['warn', { 
+             max: 50, 
+             skipBlankLines: true, 
+             skipComments: true 
+           }],
+           'max-lines': ['warn', { 
+             max: 200,
+             skipBlankLines: true, 
+             skipComments: true 
+           }],
+         },
+       },
+       {
+         // Test files
+         files: ['**/*.test.ts', '**/*.test.tsx'],
+         rules: {
+           'max-lines-per-function': ['warn', { 
+             max: 150, 
+             skipBlankLines: true, 
+             skipComments: true 
+           }],
+           'max-lines': ['warn', { 
+             max: 400,
+             skipBlankLines: true, 
+             skipComments: true 
+           }],
+         },
+       },
+       {
+         // Type definitions
+         files: ['**/*.d.ts', '**/*-types.ts', '**/types/**/*.ts'],
+         rules: {
+           'max-lines': ['warn', { 
+             max: 300,
+             skipBlankLines: true, 
+             skipComments: true 
+           }],
+         },
+       },
+     ],
+   }
+   ```
+
+2. **TypeScript Compiler** - Type safety reduces complexity (linting rule: strict mode)
+
+3. **Code Coverage** - High complexity areas often have low test coverage
+
+4. **Measuring LOC** - Use automated tools:
+
+   ```bash
+   # Count lines in a file (excluding blank and comments)
+   cloc src/path/to/file.ts
+   
+   # Count lines by file type
+   cloc --by-file-by-lang src/
+   
+   # Get statistics for React components
+   cloc src/**/*.tsx
+   ```
+
+### Refactoring Triggers
+
+Refactor when ANY of these occur:
+
+**Complexity-Based**:
+
+1. Function cyclomatic complexity > 10
+2. Function cognitive complexity > 15
+3. Nesting depth > 4 levels
+4. Class has > 15 public methods (linting warning sign)
+5. File imports from > 10 different modules (low cohesion indicator)
+
+**LOC-Based (per file type)**:
+
+**React Components**:
+
+- Function length > 100 lines
+- Presentation component > 150 lines
+- Feature component > 250 lines
+- Page component > 300 lines
+
+**Services/Business Logic**:
+
+- Function length > 50 lines (violates linting guideline)
+- Service file > 300 lines
+
+**Utilities**:
+
+- Function length > 50 lines
+- Utility file > 200 lines
+
+**Tests**:
+
+- Test function > 150 lines
+- Test file > 400 lines
+
+**Types**:
+
+- Type file > 300 lines
+
+**General Warning Signs**:
+
+- Difficulty naming the file/function (indicates unclear responsibility)
+- Multiple unrelated imports (indicates low cohesion)
+- Difficulty writing tests (indicates high complexity)
+- Need to scroll extensively to understand logic (indicates poor organization)
+
+## Best Practices Summary
+
+**From Linting + Quality Rules**:
+
+1. **Write small, focused functions** (linting.mdc) - Follow file-type-specific LOC limits
+2. **Single Responsibility Principle** (linting.mdc) - Enforce with cohesion standards and cyclomatic complexity < 10
+3. **One component per file** (linting.mdc) - React components follow specific size limits
+4. **Prefer early returns** (linting.mdc) - Reduces nesting depth (keep < 4 levels)
+5. **Extract complex conditionals** (linting.mdc) - Use lookup tables, keep complexity < 10
+6. **Keep related code together** (cohesion) - High cohesion within modules, low coupling between
+7. **Use composition over inheritance** - Build complex behavior from simple services
+8. **Refactor proactively** - Don't let metrics exceed warning thresholds
+9. **Measure regularly** - Use ESLint rules and cloc to track metrics over time
+10. **Follow file-type limits** - Different standards for components, services, utilities, tests
+
+## When to Break These Rules
+
+These are guidelines, not absolute laws. Break them when:
+
+1. **Generated code** - Auto-generated files are exempt
+2. **Configuration** - Large config objects are acceptable if well-organized
+3. **Type definitions** - Complex type hierarchies may need more lines
+4. **Integration tests** - May require longer setup/teardown
+5. **Clear justification** - Document why in comments
+
+Always ask: "Will this code be easy to understand in 6 months?"
+
+## Relationship to Other Rules
+
+**These quality rules enforce the principles from linting.mdc**:
+
+1. **Linting: "Keep functions focused and small (max 50 lines)"**
+   - Quality: Defines 50 lines for services/utilities, 75-100 for components, 100-150 for tests
+
+2. **Linting: "Single Responsibility Principle"**
+   - Quality: Enforced through cohesion standards and cyclomatic complexity < 10
+
+3. **Linting: "One class/component per file"**
+   - Quality: File size limits ensure files don't become god objects (250-400 lines max)
+
+4. **Linting: "Prefer early returns over nested conditionals"**
+   - Quality: Maximum nesting depth of 4 levels, cognitive complexity < 15
+
+5. **Linting: "Extract complex logic into helper functions"**
+   - Quality: Cyclomatic complexity < 10 forces extraction of complex conditionals
+
+6. **Linting: Error handling and validation**
+   - Quality: Try-catch blocks count toward complexity; keep functions focused to maintain testability
+
+**Result**: Following both sets of rules produces code that is readable, testable, and maintainable with clear responsibilities per module.

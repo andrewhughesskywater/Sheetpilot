@@ -9,6 +9,7 @@ import CircularProgress from "@mui/material/CircularProgress";
 import "handsontable/styles/handsontable.css";
 import "handsontable/styles/ht-theme-horizon.css";
 import { useData } from "@/contexts/DataContext";
+import { useHandsontableTheme } from "@/hooks/useHandsontableTheme";
 import { StatusButton } from "@/components/StatusButton";
 import { exportToCSV as exportToCSVIpc } from "@/services/ipc/timesheet";
 import "./DatabaseViewer.css";
@@ -51,6 +52,8 @@ function Archive() {
     archiveDataError,
     refreshArchiveData,
   } = useData();
+  
+  const handsontableTheme = useHandsontableTheme();
 
   window.logger?.debug("[Archive] Component state", {
     isLoading: isArchiveDataLoading,
@@ -231,6 +234,15 @@ function Archive() {
   return (
     <div className="archive-page">
       <div className="archive-header">
+        <StatusButton
+          status={buttonStatus}
+          onClick={exportToCSV}
+          isProcessing={isExporting}
+          processingText="Exporting..."
+          icon={<DownloadIcon />}
+        >
+          Export to CSV
+        </StatusButton>
         <Tooltip title="Refresh archive data" placement="bottom">
           <span>
             <IconButton
@@ -276,7 +288,7 @@ function Archive() {
           colHeaders={true}
           rowHeaders={true}
           stretchH="all"
-          themeName="ht-theme-horizon"
+          themeName={handsontableTheme}
           licenseKey="non-commercial-and-evaluation"
           width="100%"
           readOnly={true}
@@ -301,7 +313,7 @@ function Archive() {
           colHeaders={true}
           rowHeaders={true}
           stretchH="all"
-          themeName="ht-theme-horizon"
+          themeName={handsontableTheme}
           licenseKey="non-commercial-and-evaluation"
           width="100%"
           readOnly={true}
@@ -314,17 +326,6 @@ function Archive() {
           activeHeaderClassName=""
         />
       )}
-      <div className="archive-footer">
-        <StatusButton
-          status={buttonStatus}
-          onClick={exportToCSV}
-          isProcessing={isExporting}
-          processingText="Exporting..."
-          icon={<DownloadIcon />}
-        >
-          Export to CSV
-        </StatusButton>
-      </div>
     </div>
   );
 }

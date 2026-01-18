@@ -14,6 +14,11 @@ import {
   logUserAction,
   logWarn,
 } from "@/services/ipc/logger";
+import {
+  type ThemeMode,
+  loadThemeFromSettings as loadThemeFromSettingsUtil,
+  saveThemeToSettings as saveThemeToSettingsUtil,
+} from "@/utils/theme-manager";
 
 export const loadStoredCredentials = async (
   setStoredCredentials: (
@@ -83,6 +88,19 @@ export const loadSettings = async (
   }
 };
 
+export const loadThemeSettings = async (
+  setThemeMode: (mode: ThemeMode) => void
+) => {
+  try {
+    const mode = await loadThemeFromSettingsUtil();
+    setThemeMode(mode);
+  } catch (err) {
+    logError("Could not load theme settings", {
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+};
+
 export const handleHeadlessModeToggle = async (
   checked: boolean,
   setIsLoadingSettings: (loading: boolean) => void,
@@ -104,6 +122,27 @@ export const handleHeadlessModeToggle = async (
   } catch (err) {
     setError(err instanceof Error ? err.message : "Unknown error");
     logError("Headless mode toggle error", {
+      error: err instanceof Error ? err.message : String(err),
+    });
+  } finally {
+    setIsLoadingSettings(false);
+  }
+};
+
+export const handleThemeModeChange = async (
+  mode: ThemeMode,
+  setIsLoadingSettings: (loading: boolean) => void,
+  setThemeMode: (mode: ThemeMode) => void,
+  setError: (error: string) => void
+) => {
+  setIsLoadingSettings(true);
+  try {
+    await saveThemeToSettingsUtil(mode);
+    setThemeMode(mode);
+    logInfo("Theme mode setting updated", { themeMode: mode });
+  } catch (err) {
+    setError(err instanceof Error ? err.message : "Unknown error");
+    logError("Theme mode change error", {
       error: err instanceof Error ? err.message : String(err),
     });
   } finally {

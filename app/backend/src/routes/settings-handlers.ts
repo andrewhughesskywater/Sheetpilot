@@ -13,6 +13,7 @@ import { isTrustedIpcSender } from './handlers/timesheet/main-window';
 
 interface AppSettings {
   browserHeadless?: boolean;
+  themeMode?: 'auto' | 'light' | 'dark';
 }
 
 const getSettingsPath = (): string => {

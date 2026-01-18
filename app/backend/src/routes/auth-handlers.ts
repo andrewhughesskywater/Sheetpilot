@@ -32,14 +32,13 @@ import {
 } from './auth-helpers';
 
 // Admin credentials from environment variables
-// For production: Set SHEETPILOT_ADMIN_USERNAME and SHEETPILOT_ADMIN_PASSWORD
-const ADMIN_USERNAME = process.env['SHEETPILOT_ADMIN_USERNAME'] || 'Admin';
-const ADMIN_PASSWORD = process.env['SHEETPILOT_ADMIN_PASSWORD'];
+// For production: Set SHEETPILOT_ADMIN_USERNAME and SHEETPILOT_ADMIN_PASSWORD to override defaults
+const ADMIN_USERNAME = process.env['SHEETPILOT_ADMIN_USERNAME'] || 'admin';
+const ADMIN_PASSWORD = process.env['SHEETPILOT_ADMIN_PASSWORD'] || 'SWFL_admin';
 
-if (!ADMIN_PASSWORD) {
-  appLogger.warn('Admin password not configured', {
-    message: 'Set SHEETPILOT_ADMIN_PASSWORD environment variable for admin access',
-    security: 'Admin login will be disabled'
+if (ADMIN_PASSWORD === 'SWFL_admin') {
+  appLogger.info('Using default admin credentials', {
+    message: 'Set SHEETPILOT_ADMIN_PASSWORD environment variable to use custom admin password'
   });
 }
 

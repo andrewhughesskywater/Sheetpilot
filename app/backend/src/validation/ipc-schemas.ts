@@ -48,7 +48,15 @@ export const deleteCredentialsSchema = z.object({
 });
 
 export const loginSchema = z.object({
-  email: emailSchema,
+  email: z.string()
+    .min(1, 'Email is required')
+    .max(255, 'Email must not exceed 255 characters')
+    .refine((val) => {
+      // Allow 'admin' as a special case for admin login
+      if (val === 'admin') return true;
+      // Otherwise validate as email
+      return emailSchema.safeParse(val).success;
+    }, 'Invalid email format'),
   password: passwordSchema,
   stayLoggedIn: z.boolean()
 });

@@ -1,0 +1,419 @@
+---
+alwaysApply: true
+---
+
+# Linting Rules
+
+## TypeScript Standards
+
+### Type Safety
+
+1. **NEVER use explicit `any` type**
+   - Use `unknown` for truly dynamic types and narrow with type guards
+   - Use generic type parameters when the type is determined by usage
+   - Use proper type definitions or interfaces instead of `any`
+   - Exception: Third-party libraries with missing type definitions may use `any` ONLY in `.d.ts` declaration files
+
+   ```typescript
+   // ❌ Incorrect
+   function process(data: any) { }
+   const result: any = await fetch();
+   
+   // ✅ Correct
+   function process(data: unknown) {
+     if (typeof data === 'string') { /* ... */ }
+   }
+   const result: Response = await fetch();
+   ```
+
+2. **Use strict null checks**
+   - Always handle `null` and `undefined` explicitly
+   - Use optional chaining (`?.`) and nullish coalescing (`??`)
+   - Prefer explicit type unions over loose checks: `string | null` not `string | any`
+
+3. **Prefer interfaces over type aliases for object shapes**
+   - Use `interface` for public API contracts
+   - Use `type` for unions, intersections, and utility types
+   - Keep external service contracts in `shared/types/`
+
+4. **Enable strict mode**
+   - Ensure `strict: true` in `tsconfig.json`
+   - Fix all type errors before committing
+
+### Naming Conventions
+
+1. **PascalCase** for types, interfaces, classes, React components
+
+   ```typescript
+   interface UserCredentials { }
+   class DatabaseService { }
+   const TimesheetGrid: React.FC = () => { };
+   ```
+
+2. **camelCase** for variables, functions, methods, properties
+
+   ```typescript
+   const userName = 'John';
+   function fetchTimesheetData() { }
+   ```
+
+3. **SCREAMING_SNAKE_CASE** for constants and environment variables
+
+   ```typescript
+   const MAX_RETRY_ATTEMPTS = 3;
+   const API_BASE_URL = process.env.SHEETPILOT_API_URL;
+   ```
+
+4. **Prefix private class members with underscore**
+
+   ```typescript
+   class Service {
+     private _internalState: string;
+   }
+   ```
+
+5. **Use descriptive names**
+   - Avoid abbreviations except for common ones (e.g., `id`, `url`, `api`)
+   - Boolean variables should be prefixed with `is`, `has`, `should`, `can`
+
+   ```typescript
+   const isAuthenticated = true;
+   const hasPermission = checkPermission();
+   ```
+
+## Code Organization
+
+### File Structure
+
+1. **One class/component per file**
+   - File name matches the primary export
+   - Helper functions in separate utility files
+
+2. **Import organization**
+
+   ```typescript
+   // 1. External dependencies
+   import React from 'react';
+   import { ipcRenderer } from 'electron';
+   
+   // 2. Internal absolute imports
+   import { logger } from '@/shared/utils/logger';
+   
+   // 3. Relative imports (same feature/module)
+   import { TimesheetRow } from './TimesheetRow';
+   
+   // 4. Type imports (separate)
+   import type { TimesheetEntry } from '@/shared/types';
+   
+   // 5. CSS imports (last)
+   import './TimesheetGrid.css';
+   ```
+
+3. **Export organization**
+   - Use named exports for utilities and multiple exports
+   - Use default exports for React components and single-purpose modules
+   - Re-export from index files for cleaner imports
+
+### Function Guidelines
+
+1. **Keep functions focused and small**
+   - Single Responsibility Principle: one function, one task
+   - Maximum 50 lines per function (guideline, not hard limit)
+   - Extract complex logic into helper functions
+
+2. **Use arrow functions for inline callbacks**
+
+   ```typescript
+   // ✅ Correct
+   items.map((item) => item.id);
+   
+   // ❌ Avoid
+   items.map(function(item) { return item.id; });
+   ```
+
+3. **Use async/await over raw promises**
+
+   ```typescript
+   // ✅ Correct
+   async function fetchData() {
+     const response = await fetch(url);
+     return await response.json();
+   }
+   
+   // ❌ Avoid
+   function fetchData() {
+     return fetch(url).then(r => r.json());
+   }
+   ```
+
+## React/JSX Standards
+
+### Component Structure
+
+1. **Functional components with hooks**
+   - Use `React.FC` type for function components
+   - Define prop types with interfaces
+
+   ```typescript
+   interface TimesheetGridProps {
+     entries: TimesheetEntry[];
+     onUpdate: (entry: TimesheetEntry) => void;
+   }
+   
+   export const TimesheetGrid: React.FC<TimesheetGridProps> = ({ entries, onUpdate }) => {
+     // Component logic
+   };
+   ```
+
+2. **Hook ordering**
+
+   ```typescript
+   // 1. State hooks
+   const [data, setData] = useState<Data[]>([]);
+   
+   // 2. Ref hooks
+   const inputRef = useRef<HTMLInputElement>(null);
+   
+   // 3. Context hooks
+   const theme = useContext(ThemeContext);
+   
+   // 4. Effect hooks
+   useEffect(() => { }, []);
+   
+   // 5. Custom hooks
+   const { isLoading } = useDataFetch();
+   
+   // 6. Memoized values
+   const computedValue = useMemo(() => calculate(), [deps]);
+   
+   // 7. Callbacks
+   const handleClick = useCallback(() => { }, [deps]);
+   ```
+
+3. **JSX formatting**
+   - Self-close components without children: `<Component />`
+   - Props on multiple lines if more than 2 props
+   - Use fragments `<>` instead of `<div>` when no DOM element needed
+
+### State Management
+
+1. **Keep state close to where it's used**
+   - Lift state only when necessary
+   - Use context for deeply nested props
+
+2. **Immutable state updates**
+
+   ```typescript
+   // ✅ Correct
+   setItems([...items, newItem]);
+   setUser({ ...user, name: newName });
+   
+   // ❌ Incorrect
+   items.push(newItem);
+   setItems(items);
+   ```
+
+## Error Handling
+
+### Try-Catch Blocks
+
+1. **Always catch errors in async operations**
+
+   ```typescript
+   try {
+     await riskyOperation();
+   } catch (error) {
+     logger.error('Could not complete operation', { error });
+     // Handle or rethrow
+   }
+   ```
+
+2. **Use type guards for error objects**
+
+   ```typescript
+   catch (error) {
+     if (error instanceof Error) {
+       logger.error('Operation failed', { message: error.message });
+     } else {
+       logger.error('Unknown error occurred', { error: String(error) });
+     }
+   }
+   ```
+
+3. **Don't swallow errors silently**
+   - Always log or handle caught errors
+   - Empty catch blocks are prohibited except with explicit comment
+
+### Validation
+
+1. **Validate external data**
+   - Check API responses before using
+   - Validate user input before processing
+   - Use type guards for runtime type checking
+
+## Performance
+
+### Optimization Rules
+
+1. **Use React.memo for expensive components**
+
+   ```typescript
+   export const ExpensiveComponent = React.memo<Props>(({ data }) => {
+     // Component logic
+   });
+   ```
+
+2. **Memoize expensive computations**
+
+   ```typescript
+   const sortedData = useMemo(
+     () => data.sort((a, b) => a.value - b.value),
+     [data]
+   );
+   ```
+
+3. **Avoid inline object/array creation in render**
+
+   ```typescript
+   // ❌ Incorrect - creates new object every render
+   <Component style={{ margin: 10 }} />
+   
+   // ✅ Correct - define outside or memoize
+   const style = { margin: 10 };
+   <Component style={style} />
+   ```
+
+## Testing Standards
+
+### Test File Organization
+
+1. **Co-locate tests with source files**
+   - Use `.test.ts` or `.test.tsx` suffix
+   - Mirror the structure of source files
+
+2. **Test naming**
+
+   ```typescript
+   describe('TimesheetService', () => {
+     describe('submitTimesheet', () => {
+       it('submits timesheet successfully with valid data', () => { });
+       it('throws error when credentials are missing', () => { });
+     });
+   });
+   ```
+
+3. **Use AAA pattern**
+
+   ```typescript
+   it('calculates total hours correctly', () => {
+     // Arrange
+     const entries = [{ hours: 8 }, { hours: 6 }];
+     
+     // Act
+     const total = calculateTotal(entries);
+     
+     // Assert
+     expect(total).toBe(14);
+   });
+   ```
+
+## ESLint Integration
+
+### Required Rules
+
+Ensure these rules are enabled in `eslint.config.mjs`:
+
+- `@typescript-eslint/no-explicit-any`: error
+- `@typescript-eslint/no-unused-vars`: error (except with underscore prefix)
+- `@typescript-eslint/explicit-function-return-type`: warn (for public APIs)
+- `no-console`: warn (use logger instead)
+- `eqeqeq`: error (always use `===` and `!==`)
+- `curly`: error (always use braces for control structures)
+- `prefer-const`: error
+- `no-var`: error
+
+### Disable Rules Sparingly
+
+Only disable rules with inline comments when absolutely necessary:
+
+```typescript
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Third-party library has no types
+const result: any = thirdPartyLib.unknownMethod();
+```
+
+## Pre-Commit Checks
+
+Before committing code, ensure:
+
+1. ✅ No TypeScript errors: `npm run typecheck`
+2. ✅ No ESLint errors: `npm run lint`
+3. ✅ All tests pass: `npm test`
+4. ✅ No console.log statements (use logger)
+5. ✅ No commented-out code blocks
+6. ✅ No TODO comments without issue references
+
+## Additional Standards
+
+1. **Prefer early returns over nested conditionals**
+
+   ```typescript
+   // ✅ Correct
+   function process(data: Data | null) {
+     if (!data) return null;
+     if (!data.isValid) return null;
+     return processValid(data);
+   }
+   
+   // ❌ Avoid
+   function process(data: Data | null) {
+     if (data) {
+       if (data.isValid) {
+         return processValid(data);
+       }
+     }
+     return null;
+   }
+   ```
+
+2. **Use template literals for string concatenation**
+
+   ```typescript
+   // ✅ Correct
+   const message = `User ${userName} logged in`;
+   
+   // ❌ Avoid
+   const message = 'User ' + userName + ' logged in';
+   ```
+
+3. **Destructure objects and arrays**
+
+   ```typescript
+   // ✅ Correct
+   const { name, email } = user;
+   const [first, second] = items;
+   
+   // ❌ Avoid
+   const name = user.name;
+   const email = user.email;
+   ```
+
+4. **Use optional chaining and nullish coalescing**
+
+   ```typescript
+   // ✅ Correct
+   const userName = user?.profile?.name ?? 'Unknown';
+   
+   // ❌ Avoid
+   const userName = user && user.profile && user.profile.name || 'Unknown';
+   ```
+
+5. **Avoid magic numbers and strings**
+
+   ```typescript
+   // ✅ Correct
+   const MAX_ATTEMPTS = 3;
+   if (attempts >= MAX_ATTEMPTS) { }
+   
+   // ❌ Avoid
+   if (attempts >= 3) { }
+   ```

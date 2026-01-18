@@ -39,6 +39,7 @@ import "handsontable/styles/handsontable.css";
 import "handsontable/styles/ht-theme-horizon.css";
 import { useData } from "@/contexts/DataContext";
 import { useSession } from "@/contexts/SessionContext";
+import { useHandsontableTheme } from "@/hooks/useHandsontableTheme";
 import "./TimesheetGrid.css";
 import type { TimesheetRow } from "./schema/timesheet.schema";
 import MacroManagerDialog from "./macros/MacroManagerDialog";
@@ -350,6 +351,7 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(
     useLoadMacros((macros) => wrappedSetMacros(macros as MacroRow[]));
     useWeekdayPattern(timesheetDraftData, weekdayPatternRef);
     useDialogScrollbarFix(showMacroDialog, hotTableRef);
+    const handsontableTheme = useHandsontableTheme();
 
     // Load business config asynchronously and update column sources
     // WHY: Only run once on mount to prevent infinite loops with updateSettings
@@ -838,7 +840,7 @@ const TimesheetGrid = forwardRef<TimesheetGridHandle, TimesheetGridProps>(
           afterBeginEditing={handleAfterBeginEditing}
           beforeKeyDown={handleBeforeKeyDown}
           afterSelection={handleAfterSelection}
-          themeName="ht-theme-horizon"
+          themeName={handsontableTheme}
           width="100%"
           rowHeaders={true}
           colHeaders={true}
